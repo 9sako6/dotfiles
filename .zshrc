@@ -36,13 +36,13 @@ export LANG=ja_JP.UTF-8
     autoload -U select-word-style
     select-word-style bash
   }
-  : "Ctrl-[で直前コマンドの単語を挿入できる" && {
-    autoload -Uz smart-insert-last-word
-    zstyle :insert-last-word match '*([[:alpha:]/\\]?|?[[:alpha:]/\\])*' # [a-zA-Z], /, \ のうち少なくとも1文字を含む長さ2以上の単語
-    zle -N insert-last-word smart-insert-last-word
-    bindkey '^[' insert-last-word
-    # see http://qiita.com/mollifier/items/1a9126b2200bcbaf515f
-  }
+  # : "Ctrl-[で直前コマンドの単語を挿入できる" && {
+  #   autoload -Uz smart-insert-last-word
+  #   zstyle :insert-last-word match '*([[:alpha:]/\\]?|?[[:alpha:]/\\])*' # [a-zA-Z], /, \ のうち少なくとも1文字を含む長さ2以上の単語
+  #   zle -N insert-last-word smart-insert-last-word
+  #   bindkey '^[' insert-last-word
+  #   # see http://qiita.com/mollifier/items/1a9126b2200bcbaf515f
+  # }
 }
 : "prompt" && {
   autoload -Uz colors
