@@ -52,9 +52,11 @@ $%f "
 }
 : "alias" && {
   alias tree="tree -NC" # N: 文字化け対策, C:色をつける
-  alias gpl="git pull"
-  alias gps="git push"
-  alias gco="git commit"
-  alias gad="git add"
+  : "git" && {
+    alias gpl="git pull"
+    alias gps="git push"
+    alias gco="git commit"
+    alias gad="git add"
+  }
   #alias -g and="|" # パイプが遠いのでandを割り当てる。例えば`tail -f ./log | grep error`を`tail -f ./log and grep error`と書くことができる
 }
