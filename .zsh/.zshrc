@@ -5,6 +5,7 @@ export LANG=ja_JP.UTF-8
   source ~/.zplug/init.zsh
   # (1) プラグインを定義する
   zplug 'momo-lab/zsh-abbrev-alias' # 略語を展開する
+  zplug 'zsh-users/zsh-syntax-highlighting' # 実行可能なコマンドに色付け
   # (2) インストールする
   if ! zplug check --verbose; then
     printf 'Install? [y/N]: '
@@ -27,7 +28,6 @@ export LANG=ja_JP.UTF-8
 }
 : "completion" && {
   autoload -Uz compinit && compinit -u # 補完機能強化
-  # zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' # 補完で小文字でも大文字にマッチさせる
   setopt list_packed # 補完候補を詰めて表示
   zstyle ':completion:*' list-colors '' # 補完候補一覧をカラー表示
 }
@@ -65,5 +65,4 @@ $%f "
     abbrev-alias gco="git commit -m"
     abbrev-alias gad="git add"
   }
-  #alias -g and="|" # パイプが遠いのでandを割り当てる。例えば`tail -f ./log | grep error`を`tail -f ./log and grep error`と書くことができる
 }
