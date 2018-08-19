@@ -59,9 +59,9 @@ $%f "
   #alias -g and="|" # パイプが遠いのでandを割り当てる。例えば`tail -f ./log | grep error`を`tail -f ./log and grep error`と書くことができる
 }
 
-: "golang" && {
-  if [ -x "`which go`" ]; then
-    export GOPATH=$HOME/.go
-    export PATH=$PATH:$GOPATH/bin
-  fi
-}
+# : "golang" && {
+#   if [ -x "`which go`" ]; then
+#     export GOPATH=$HOME/.go
+#     export PATH=$PATH:$GOPATH/bin
+#   fi
+# }
