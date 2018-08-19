@@ -64,5 +64,6 @@ $%f "
     abbrev-alias gps="git push"
     abbrev-alias gco="git commit -m"
     abbrev-alias gad="git add"
+    abbrev-alias gbr="git branch"
   }
 }
