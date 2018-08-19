@@ -1,6 +1,19 @@
 # 環境変数
 export LANG=ja_JP.UTF-8
 
+: "zplug" && {
+  source ~/.zplug/init.zsh
+  # (1) プラグインを定義する
+  zplug 'momo-lab/zsh-abbrev-alias' # 略語を展開する
+  # (2) インストールする
+  if ! zplug check --verbose; then
+    printf 'Install? [y/N]: '
+    if read -q; then
+      echo; zplug install
+    fi
+  fi
+  zplug load --verbose
+}
 # ref: https://suin.io/568
 : "general" && {
   setopt correct # コマンドのスペルを訂正
@@ -36,13 +49,6 @@ export LANG=ja_JP.UTF-8
     autoload -U select-word-style
     select-word-style bash
   }
-  # : "Ctrl-[で直前コマンドの単語を挿入できる" && {
-  #   autoload -Uz smart-insert-last-word
-  #   zstyle :insert-last-word match '*([[:alpha:]/\\]?|?[[:alpha:]/\\])*' # [a-zA-Z], /, \ のうち少なくとも1文字を含む長さ2以上の単語
-  #   zle -N insert-last-word smart-insert-last-word
-  #   bindkey '^[' insert-last-word
-  #   # see http://qiita.com/mollifier/items/1a9126b2200bcbaf515f
-  # }
 }
 : "prompt" && {
   autoload -Uz colors
@@ -52,18 +58,12 @@ $%f "
 }
 : "alias" && {
   alias tree="tree -NC" # N: 文字化け対策, C:色をつける
+  abbrev-alias ls="ls -G"
   : "git" && {
-    alias gpl="git pull"
-    alias gps="git push"
-    alias gco="git commit"
-    alias gad="git add"
+    abbrev-alias gpl="git pull"
+    abbrev-alias gps="git push"
+    abbrev-alias gco="git commit -m"
+    abbrev-alias gad="git add"
   }
   #alias -g and="|" # パイプが遠いのでandを割り当てる。例えば`tail -f ./log | grep error`を`tail -f ./log and grep error`と書くことができる
 }
-
-# : "golang" && {
-#   if [ -x "`which go`" ]; then
-#     export GOPATH=$HOME/.go
-#     export PATH=$PATH:$GOPATH/bin
-#   fi
-# }
