@@ -65,5 +65,6 @@ $%f "
     abbrev-alias gco="git commit -m"
     abbrev-alias gad="git add"
     abbrev-alias gbr="git branch"
+    abbrev-alias gcl="git clone"
   }
 }
