@@ -18,6 +18,6 @@ ln -sf ~/dotfiles/.bash/.bash_profile ~/.bash_profile
 ln -sf ~/dotfiles/.bash/.bashrc ~/.bashrc
 
 # vim
-ln -sf ~/dotfiles/.vimrc ~/.vimrc
+ln -sf ~/dotfiles/.vim/.vimrc ~/.vimrc
 
 echo "\033[0;32mdotfiles are successfully installed!\033[0m"
