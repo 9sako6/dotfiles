@@ -34,5 +34,3 @@ set shiftwidth=2
 
 " 検索語をハイライト表示
 set hlsearch
-
-
