@@ -6,6 +6,11 @@ if ! $git_exists || ! $vim_exists || ! $zsh_exists; then
   exit
 fi
 
+if [ ! -d ~/.zplug ]; then
+  mkdir -p ~/.zplug
+  curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh| zsh
+fi
+
 # zsh
 if [ ! -d ~/.zsh ]; then
   mkdir ~/.zsh
