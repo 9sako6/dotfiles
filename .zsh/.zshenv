@@ -5,8 +5,8 @@ export ZDOTDIR=$HOME/.zsh
 setopt no_global_rcs
 
 # anyenv
-export PATH="$HOME/.anyenv/bin:$PATH"
+export PATH="$HOME/.anyenv/bin(N-/):$PATH"
 eval "$(anyenv init -)"
 
 # PATH general
-export PATH="$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:"
+export PATH="$PATH:/usr/local/bin(N-/):/usr/bin(N-/):/bin(N-/):/usr/sbin(N-/):/sbin(N-/):/Library/TeX/texbin(N-/):"
