@@ -6,6 +6,7 @@ export LANG=ja_JP.UTF-8
   # (1) プラグインを定義する
   zplug 'momo-lab/zsh-abbrev-alias' # 略語を展開する
   zplug 'zsh-users/zsh-syntax-highlighting' # 実行可能なコマンドに色付け
+  zplug 'zsh-users/zsh-completions' # 補完
   # (2) インストールする
   if ! zplug check --verbose; then
     printf 'Install? [y/N]: '
