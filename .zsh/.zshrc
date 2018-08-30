@@ -22,6 +22,7 @@ export LANG=ja_JP.UTF-8
   setopt no_beep # ビープ音を鳴らさない
   setopt print_eight_bit # 日本語ファイル名を表示可能にする
   unsetopt promptcr # 改行のない出力をpromptで上書きするのを防ぐ
+  bindkey "^[[3~" delete-char # delete key有効化
   # lsをカラー表示
   export LSCOLORS=exfxcxdxbxegedabagacad
   export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=46;34:cd=43;34:su=41;30:sg=46;30:tw=42;30:ow=43;30'
@@ -67,6 +68,8 @@ $%f "
     abbrev-alias gad="git add"
     abbrev-alias gbr="git branch"
     abbrev-alias gcl="git clone"
+    abbrev-alias glog="git log --decorate=full"
   }
 }
+
 # fin.
