@@ -6,9 +6,21 @@ if ! $git_exists || ! $vim_exists || ! $zsh_exists; then
   exit
 fi
 
+if [ ! -d ~/dotfiles ]; then
+  cd ~
+  git clone https://github.com/9sako6/dotfiles
+fi
+
+# zplug
 if [ ! -d ~/.zplug ]; then
   mkdir -p ~/.zplug
   curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh| zsh
+fi
+
+# vim-plug
+if [ ! -e ~/.vim/autoload/plug.vim ]; then
+  curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+      https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi
 
 # zsh
@@ -25,4 +37,15 @@ ln -sf ~/dotfiles/.bash/.bashrc ~/.bashrc
 # vim
 ln -sf ~/dotfiles/.vim/.vimrc ~/.vimrc
 
-echo "\033[0;32mdotfiles are successfully installed!\033[0m"
+echo "dotfiles are successfully installed!"
+echo " ~"
+echo " ├── .bashrc"
+echo " ├── .bash_profile"
+echo " ├── \033[0;34m.vim\033[0m"
+echo " │   └── autoload"
+echo " │       └── plug.vim"
+echo " ├── .vimrc"
+echo " ├── \033[0;34m.zsh\033[0m"
+echo " │   └── .zshrc"
+echo " └── .zshenv"
+echo "To finish vim settings, do \033[0;32m:PlugInstall\033[0m in vim console"
