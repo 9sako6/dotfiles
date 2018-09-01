@@ -69,7 +69,11 @@ $%f "
     abbrev-alias gbr="git branch"
     abbrev-alias gcl="git clone"
     abbrev-alias glog="git log --decorate=full"
+    abbrev-alias gst="git status"
+    abbrev-alias gch="git checkout"
   }
+  # electron
+  abbrev-alias electron="~/node_modules/.bin/electron"
 }
 
 # fin.
