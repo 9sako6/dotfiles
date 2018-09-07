@@ -8,5 +8,8 @@ setopt no_global_rcs
 export PATH="$HOME/.anyenv/bin:$PATH"
 eval "$(anyenv init -)"
 
+# nodebrew
+export PATH="$PATH:$HOME/.nodebrew/current/bin"
+
 # PATH general
 export PATH="$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:"
