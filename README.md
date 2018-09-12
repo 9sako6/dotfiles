@@ -5,7 +5,7 @@ zsh, bash, vim
 ## Set Up
 
 ```shell
-$ cd && git clone https://github.com/9sako6/dotfiles.git && cd dotfiles && ./install.sh
+$ cd && curl -L https://github.com/9sako6/dotfiles/raw/master/install.sh | sh
 ```
 
 👋
