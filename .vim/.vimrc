@@ -1,5 +1,7 @@
 syntax enable
 
+" 左右のカーソル移動で行間移動可能にする。
+set whichwrap=b,s,<,>,[,]
 
 " 行番号を表示
 set number
