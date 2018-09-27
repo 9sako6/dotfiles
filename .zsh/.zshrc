@@ -56,7 +56,7 @@ export LANG=ja_JP.UTF-8
   autoload -Uz colors
   colors
   PROMPT="%F{cyan}[%d]
-$%f "
+( •ᴗ•)っ%f "
 }
 : "alias" && {
   alias tree="tree -NC" # N: 文字化け対策, C:色をつける
