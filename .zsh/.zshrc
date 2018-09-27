@@ -55,8 +55,17 @@ export LANG=ja_JP.UTF-8
 : "prompt" && {
   autoload -Uz colors
   colors
-  PROMPT="%F{cyan}[%d]
+  PROMPT="%F{cyan}[%n@%F{cyan}%d]
 ( •ᴗ•)っ%f "
+  autoload -Uz vcs_info
+  setopt prompt_subst
+  zstyle ':vcs_info:git:*' check-for-changes true
+  zstyle ':vcs_info:git:*' stagedstr "%F{yellow}!"
+  zstyle ':vcs_info:git:*' unstagedstr "%F{red}+"
+  zstyle ':vcs_info:*' formats "%F{green}%c%u[%b]%f"
+  zstyle ':vcs_info:*' actionformats '[%b|%a]'
+  precmd () { vcs_info }
+  RPROMPT=$RPROMPT'${vcs_info_msg_0_}'
 }
 : "alias" && {
   alias tree="tree -NC" # N: 文字化け対策, C:色をつける
