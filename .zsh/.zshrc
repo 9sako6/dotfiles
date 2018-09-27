@@ -56,7 +56,7 @@ export LANG=ja_JP.UTF-8
   autoload -Uz colors
   colors
   PROMPT="%F{cyan}[%n@%F{cyan}%d]
-( •ᴗ•)っ%f "
+( ;ᴗ;)っ%f "
   autoload -Uz vcs_info
   setopt prompt_subst
   zstyle ':vcs_info:git:*' check-for-changes true
