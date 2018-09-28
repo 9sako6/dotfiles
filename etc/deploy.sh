@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # deploy
+cd ~/dotfiles
 for f in .??*
 do
     [[ "$f" == ".git" ]] && continue

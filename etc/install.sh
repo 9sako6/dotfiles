@@ -7,6 +7,8 @@ echo '| (_| | (_) | |_| | | | |  __/\__ \ '
 echo ' \__,_|\___/ \__|_| |_|_|\___||___/ '
 echo ''
 
+cd
+
 if ! $git_exists || ! $vim_exists || ! $zsh_exists; then
   echo -e "\033[0;31mError: git or vim or zsh is not installed.\033[0m"
   echo -e "\033[0;31mPlease install them\033[0m"
@@ -29,6 +31,8 @@ if [ ! -e ~/.vim/autoload/plug.vim ]; then
   curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi
+
+cd ~/dotfiles
 
 for f in .??*
 do
