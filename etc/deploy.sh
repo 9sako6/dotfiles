@@ -1,9 +1,11 @@
 #!/bin/bash
 
+current_dir=$(cd $(dirname $0); pwd)
 # deploy
-cd ~/dotfiles
-for f in .??*
-do
+if [ $current_dir = "$HOME/dotfiles/etc" ]; then
+  cd ~/dotfiles
+  for f in .??*
+  do
     [[ "$f" == ".git" ]] && continue
     [[ "$f" == ".gitignore" ]] && continue
     [[ "$f" == ".DS_Store" ]] && continue
@@ -13,7 +15,11 @@ do
     else
       ln -sfv ~/dotfiles/$f ~/$f
     fi
-done
-ln -sfv ~/dotfiles/mybin ~/
-
-echo -e "\033[0;32mdotfiles are successfully deployed!\033[0m"
+    echo $f
+  done
+  ln -sfv ~/dotfiles/mybin ~/
+  echo -e "\033[0;32mdotfiles are successfully deployed!\033[0m"
+else
+  echo "move to dotfiles"
+  # echo $current_dir
+fi
