@@ -37,6 +37,12 @@ ln -sf ~/dotfiles/.bash/.bashrc ~/.bashrc
 # vim
 ln -sf ~/dotfiles/.vim/.vimrc ~/.vimrc
 
+# mybin - original commands
+if [ -d ~/mybin ]; then
+  rm -r ~/mybin
+fi
+ln -sf ~/dotfiles/mybin ~/mybin
+
 echo "dotfiles are successfully installed!"
 echo " ~"
 echo " ├── .bashrc"
