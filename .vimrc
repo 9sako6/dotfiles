@@ -90,7 +90,7 @@ let g:indent_guides_guide_size = 2
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 let g:airline_solarized_bg='dark'
-
+let g:airline_theme = 'vombat'
 call plug#end()
 
 colorscheme night-owl
