@@ -1,7 +1,7 @@
 syntax enable
 
 " 左右のカーソル移動で行間移動可能にする。
-set whichwrap=b,s,<,>,[,]
+" set whichwrap=b,s,<,>,[,]
 
 " 行番号を表示
 set number
@@ -13,7 +13,7 @@ set noerrorbells
 set visualbell
 
 " 括弧入力時の対応する括弧を表示
-set showmatch
+" set showmatch
 
 "文字コードをUFT-8に設定
 set fenc=utf-8

@@ -55,7 +55,7 @@ export LANG=ja_JP.UTF-8
 : "prompt" && {
   autoload -Uz colors
   colors
-  PROMPT="%F{cyan}[%n@%F{cyan}%d]
+  PROMPT="%F{cyan}%n@%d
 ( ;ᴗ;)っ%f "
   autoload -Uz vcs_info
   setopt prompt_subst
