@@ -16,6 +16,13 @@ export LANG=ja_JP.UTF-8
   fi
   zplug load --verbose
 }
+
+if [ $(($RANDOM % 2)) = 0 ]; then
+  nonnonbiyori
+else
+  renchon
+fi
+
 # ref: https://suin.io/568
 : "general" && {
   setopt correct # コマンドのスペルを訂正
