@@ -12,6 +12,15 @@ clean:
 
 #
 # git
+#   - config
+#
+git-config:
+	git config --global user.email "31821663+9sako6@users.noreply.github.com"
+	git config --global user.name "9sako6"
+	git config --global commit.template ~/.commit_template
+
+#
+# git
 #   - version up
 #
 git-version-up:
