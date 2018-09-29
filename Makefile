@@ -11,7 +11,20 @@ clean:
 	@bash etc/clean.sh
 
 #
+# git
+#   - version up
+#
+git-version-up:
+	git version
+	sudo apt-get install software-properties-common
+	sudo add-apt-repository ppa:git-core/ppa
+	sudo apt-get update
+	sudo apt-get install git
+	git version
+
+#
 # anyenv
+#   - installation
 #
 install-anyenv:
 	@git clone https://github.com/riywo/anyenv ~/.anyenv
