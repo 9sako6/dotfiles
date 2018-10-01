@@ -1,5 +1,5 @@
 #!/bin/bash
-DOTFILES=( .bash_profile .bashrc .vimrc .zshenv .zsh mybin .commit_template )
+DOTFILES=( .bash_profile .bashrc .vimrc .zshenv .zsh mybin .commit_template .tmux.conf )
 
 for f in ${DOTFILES[@]}
 do
