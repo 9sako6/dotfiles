@@ -53,6 +53,12 @@ set hlsearch
 set wildmenu
 
 " ----------------
+" Key mapping
+" ----------------
+noremap <S-h> ^
+noremap <S-l> $
+
+" ----------------
 "  Status Line
 " ----------------
 " ステータスラインを常に表示
