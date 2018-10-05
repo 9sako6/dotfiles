@@ -11,9 +11,6 @@ eval "$(anyenv init -)"
 # Settings for Python
 export PYTHONPATH="/usr/local/lib/python3.7/site-packages:$PYTHONPATH"
 
-# Setting for anaconda
-# export PATH="$PATH:$PYENV_ROOT/versions/anaconda3-5.0.0/bin/"
-
 # Settings for nodebrew
 export PATH="$PATH:$HOME/.nodebrew/current/bin"
 
@@ -22,9 +19,4 @@ export PATH="$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/tex
 
 # Setting for original commands
 export PATH="$PATH:$HOME/mybin"
-
-# Setting for anaconda
-export PATH="$PATH:$PYENV_ROOT/versions/anaconda3-5.0.0/bin"
-
-
 

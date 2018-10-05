@@ -56,3 +56,12 @@ install-anyenv: ## Install anyenv
 # https://github.com/rbenv/ruby-build/wiki
 install-packages-for-ruby-build: ## Install some packages for ruby-build (needed: ruby via rbenv)
 	sudo apt-get install -y autoconf bison build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev libgdbm3 libgdbm-dev
+
+
+
+# python3
+#   - No module named '_sqlite3'って怒られた時用
+#   - Pythonのビルドに必要らしい
+install-packages-for-python-build: ## Install some packages for python-build
+	sudo apt-get install libsqlite3-dev libbz2-dev libncurses5-dev libgdbm-dev liblzma-dev libssl-dev tcl-dev tk-dev libreadline-dev
+
