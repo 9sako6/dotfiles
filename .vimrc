@@ -17,6 +17,12 @@ set visualbell
 
 " 括弧入力時の対応する括弧を表示
 " set showmatch
+" 括弧とくオーテーションの自動補完
+inoremap { {}<LEFT>
+inoremap [ []<LEFT>
+inoremap ( ()<LEFT>
+inoremap " ""<LEFT>
+inoremap ' ''<LEFT>
 
 "文字コードをUFT-8に設定
 set fenc=utf-8
@@ -105,3 +111,14 @@ let g:airline_theme = 'wombat'
 call plug#end()
 
 colorscheme night-owl
+
+" 入力補完メニューの色
+" ctermfg  : 文字の色
+" ctermbg  : 背景色
+" Pmenu    : 選択されていない候補
+" PmenuSel : 選択されている候補
+highlight Pmenu ctermfg=white ctermbg=darkgray
+highlight PmenuSel ctermfg=white ctermbg=blue
+
+
+
