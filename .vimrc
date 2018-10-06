@@ -109,7 +109,7 @@ let g:indent_guides_auto_colors=0
 autocmd VimEnter,Colorscheme * :hi IndentGuidesOdd  ctermbg=235
 " 偶数番目のインデントの色
 autocmd VimEnter,Colorscheme * :hi IndentGuidesEven ctermbg=235
-let g:indent_guides_guide_size = 1
+let g:indent_guides_guide_size = 2
 
 "
 " vim-airline
