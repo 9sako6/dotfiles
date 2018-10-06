@@ -6,6 +6,17 @@ syntax enable
 " 左右のカーソル移動で行間移動可能にする。
 set whichwrap=b,s,<,>,[,]
 
+
+" 縦棒カーソルを使用
+if has('vim_starting')
+  " 挿入モード時に非点滅の縦棒タイプのカーソル
+  let &t_SI .= "\e[6 q"
+  " ノーマルモード時に非点滅のブロックタイプのカーソル
+  let &t_EI .= "\e[2 q"
+  " 置換モード時に非点滅の下線タイプのカーソル
+  let &t_SR .= "\e[4 q"
+endif
+
 " 行番号を表示
 set number
 
@@ -97,8 +108,8 @@ let g:indent_guides_auto_colors=0
 " 奇数番目のインデントの色
 autocmd VimEnter,Colorscheme * :hi IndentGuidesOdd  ctermbg=235
 " 偶数番目のインデントの色
-autocmd VimEnter,Colorscheme * :hi IndentGuidesEven ctermbg=16
-let g:indent_guides_guide_size = 2
+autocmd VimEnter,Colorscheme * :hi IndentGuidesEven ctermbg=235
+let g:indent_guides_guide_size = 1
 
 "
 " vim-airline
@@ -113,12 +124,14 @@ call plug#end()
 colorscheme night-owl
 
 " 入力補完メニューの色
-" ctermfg  : 文字の色
-" ctermbg  : 背景色
-" Pmenu    : 選択されていない候補
-" PmenuSel : 選択されている候補
+"   - ctermfg  : 文字の色
+"   - ctermbg  : 背景色
+"   - Pmenu    : 選択されていない候補
+"   - PmenuSel : 選択されている候補
 highlight Pmenu ctermfg=white ctermbg=darkgray
 highlight PmenuSel ctermfg=white ctermbg=blue
 
+" 括弧ハイライトの色
+highlight MatchParen ctermfg=LightGreen ctermbg=blue
 
 
