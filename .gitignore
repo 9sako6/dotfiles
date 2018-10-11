@@ -2,3 +2,4 @@
 .vimrc.swp
 .zcompdump
 .zsh_history
+tmux-client*
