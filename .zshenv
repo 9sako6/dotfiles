@@ -9,7 +9,7 @@ export PATH="$HOME/.anyenv/bin:$PATH"
 eval "$(anyenv init -)"
 
 # Settings for Python
-export PYTHONPATH="/usr/local/lib/python3.7/site-packages:$PYTHONPATH"
+#export PYTHONPATH="/usr/local/lib/python3.7/site-packages:$PYTHONPATH"
 
 # Settings for nodebrew
 export PATH="$PATH:$HOME/.nodebrew/current/bin"
