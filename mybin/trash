@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [[ ! -e ~/trash ]]; then
+  mkdir ~/trash
+fi
+
+if [[ -e ~/trash/$1 ]]; then
+  fname="$(date '+%Y-%m-%d_%H-%M-%S')_$(echo $RANDOM)_$1"
+  mv "$1" ~/trash/"$fname"
+else
+  mv "$1" ~/trash
+fi
