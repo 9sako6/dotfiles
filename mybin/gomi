@@ -2,8 +2,7 @@
 
 # USAGE: コマンドライン引数が空のとき実行
 usage_exit() {
-  echo "Usage: gomi filename ..." 1>&2
-  # echo "Usage: $0 [-a] [-d dir] item ..." 1>&2
+  echo "Usage: gomi FILENAME ..." 1>&2
   exit 1
 }
 
@@ -43,11 +42,19 @@ del_file() {
   done
 }
 
-if [ "$1" = "" ]; then # コマンドライン引数存在確認
-  usage_exit
-else
-  for file in "$@"; do
-    move_file "$file"
-  done
-  del_file
-fi
+ls_file() {
+  \find "$HOME"/gomi
+}
+
+main() {
+  if [ "$1" = "" ]; then # コマンドライン引数存在確認
+    usage_exit
+  else
+    for file in "$@"; do
+      move_file "$file"
+    done
+    del_file
+  fi
+}
+
+main "$@"
