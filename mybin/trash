@@ -1,26 +1,52 @@
 #!/bin/sh
 
+# USAGE: コマンドライン引数が空のとき実行
 usage_exit() {
   echo "Usage: trash filename" 1>&2
   # echo "Usage: $0 [-a] [-d dir] item ..." 1>&2
   exit 1
 }
 
+move_file() {
+  if [[ ! -e ~/trash ]]; then # ~/trashが存在しなければ作成
+    \mkdir ~/trash
+  fi
+
+   # ファイルを移動するディレクトリ作成
+  dirname=$(date '+%Y%m%d')
+  \mkdir -p ~/trash/"$dirname"
+
+  # ファイルを~/trash/$dirnameに移動
+  if [[ -e ~/trash/"$dirname"/"$1" ]]; then # 同名のファイルが存在した場合、filename.$RANDOMに名称変更
+    cnt=1
+    fname="$1.$cnt"
+    while [[ -e ~/trash/"$dirname"/"$fname" ]]
+    do
+      cnt=$(($cnt + 1))
+      fname="$1.$cnt"
+    done
+
+    \mv "$1" ~/trash/"$dirname"/"$fname"
+  else
+    \mv "$1" ~/trash/"$dirname"
+  fi
+}
+
+del_file() {
+  # 10日以前のディレクトリを削除
+  del_point_dirname="$(date -v-10d '+%Y%m%d')"
+  for file in `\find ~/trash -maxdepth 1 -mindepth 1`; do
+    if [[ $del_point_dirname > $(\basename $file) ]]; then
+      \rm -r "$file"
+    fi
+  done
+}
+
 if [ "$1" = "" ]; then # コマンドライン引数存在確認
   usage_exit
 else
-  if [[ ! -e ~/trash ]]; then # ~/trashが存在しなければ作成
-    mkdir ~/trash
-  fi
-
-  if [[ -e ~/trash/$1 ]]; then # 同名のファイルが存在した場合、YYYY-MM-DD_HH-MM-SS_filenameに名称変更
-    fname="$(date '+%Y-%m-%d_%H-%M-%S')_$(echo $RANDOM)_$1"
-    mv "$1" ~/trash/"$fname"
-  else
-    mv "$1" ~/trash
-  fi
+  for file in "$@"; do
+    move_file "$file"
+  done
+  del_file
 fi
-
-
-# TODO:自動削除
-# [ $(( $(date +%s)0 - $(stat -c %Y ~/trash/*)0 )) -gt $((60 * 60 * 4)) ]
