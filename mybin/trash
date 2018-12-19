@@ -1,12 +1,26 @@
 #!/bin/sh
 
-if [[ ! -e ~/trash ]]; then
-  mkdir ~/trash
+usage_exit() {
+  echo "Usage: $0 itemName" 1>&2
+  # echo "Usage: $0 [-a] [-d dir] item ..." 1>&2
+  exit 1
+}
+
+if [ "$1" = "" ]; then # コマンドライン引数存在確認
+  usage_exit
+else
+  if [[ ! -e ~/trash ]]; then # ~/trashが存在しなければ作成
+    mkdir ~/trash
+  fi
+
+  if [[ -e ~/trash/$1 ]]; then # 同名のファイルが存在した場合、YYYY-MM-DD_HH-MM-SS_filenameに名称変更
+    fname="$(date '+%Y-%m-%d_%H-%M-%S')_$(echo $RANDOM)_$1"
+    mv "$1" ~/trash/"$fname"
+  else
+    mv "$1" ~/trash
+  fi
 fi
 
-if [[ -e ~/trash/$1 ]]; then
-  fname="$(date '+%Y-%m-%d_%H-%M-%S')_$(echo $RANDOM)_$1"
-  mv "$1" ~/trash/"$fname"
-else
-  mv "$1" ~/trash
-fi
+
+# TODO:自動削除
+# [ $(( $(date +%s)0 - $(stat -c %Y ~/trash/*)0 )) -gt $((60 * 60 * 4)) ]
