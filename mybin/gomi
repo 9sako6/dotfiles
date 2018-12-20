@@ -32,9 +32,16 @@ move_file() {
   fi
 }
 
+
+
+
 del_file() {
   # 10日以前のディレクトリを削除
-  del_point_dirname="$(date --date '10 day ago' +%Y%m%d)"
+  if [ "$(uname)" == 'Darwin' ]; then # Mac OSの場合、--dateオプションが使えない
+    del_point_dirname="$(date -v-10d +%Y%m%d)"
+  else
+    del_point_dirname="$(date --date '10 day ago' +%Y%m%d)"
+  fi
   for file in `\ls -1 "$HOME"/gomi`; do
     if [[ $del_point_dirname > $file ]]; then
       \rm -rv "$HOME"/gomi/"$file"
