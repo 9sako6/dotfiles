@@ -1,39 +1,73 @@
 #!/bin/bash
 
-# USAGE: コマンドライン引数が空のとき実行
+GOMI_PATH="$HOME"/gomi
+
+# USAGE
 usage_exit() {
-  echo "Usage: gomi FILENAME ..." 1>&2
+  echo "usage: gomi [-l | -h] target ..." 1>&2
+  echo "options:"
+  echo "  -l  Show $GOMI_PATH/*"
+  echo "  -h  Show this help"
   exit 1
 }
 
+check_opts() {
+  help_flag=false
+  ls_flag=false
+  while getopts lh OPT
+  do
+    case $OPT in
+      "h") help_flag=true
+      ;;
+      "l") ls_flag=true
+      ;;
+      \? ) usage_exit
+      ;;
+    esac
+  done
+
+  shift $((OPTIND - 1))
+
+  if $ls_flag; then
+    ls_file
+  elif $help_flag; then
+    usage_exit
+  else
+    main "$@"
+  fi
+}
+
 move_file() {
-  if [[ ! -e "$HOME"/gomi ]]; then # "$HOME"/gomiが存在しなければ作成
-    \mkdir "$HOME"/gomi
+  # ファイル存在確認
+  if [[ ! -e "$1" ]]; then
+    echo "gomi: $1: No such file or directory"
+    exit 1
+  fi
+
+  if [[ ! -e "$GOMI_PATH" ]]; then # "$GOMI_PATH"が存在しなければ作成
+    \mkdir "$GOMI_PATH"
   fi
 
    # ファイルを移動するディレクトリ作成
   dirname=$(date '+%Y%m%d')
-  \mkdir -p "$HOME"/gomi/"$dirname"
+  \mkdir -p "$GOMI_PATH"/"$dirname"
 
-  # ファイルを"$HOME"/gomi/$dirnameに移動
-  if [[ -e "$HOME"/gomi/"$dirname"/"$1" ]]; then # 同名のファイルが存在した場合、filename.1に名称変更
+  # ファイルを"$GOMI_PATH"/$dirnameに移動
+  if [[ -e "$GOMI_PATH"/"$dirname"/"$1" ]]; then # 同名のファイルが存在した場合、filename.1に名称変更
     cnt=1
     fname="$1.$cnt"
     # filename.1が存在する場合、かぶりのない番号をつける
-    while [[ -e "$HOME"/gomi/"$dirname"/"$fname" ]]
+    while [[ -e "$GOMI_PATH"/"$dirname"/"$fname" ]]
     do
       cnt=$(($cnt + 1))
       fname="$1.$cnt"
     done
 
-    \mv -v "$1" "$HOME"/gomi/"$dirname"/"$fname"
+    \mv "$1" "$GOMI_PATH"/"$dirname"/"$fname"
   else
-    \mv -v "$1" "$HOME"/gomi/"$dirname"
+    \mv "$1" "$GOMI_PATH"/"$dirname"
   fi
 }
-
-
-
 
 del_file() {
   # 10日以前のディレクトリを削除
@@ -42,15 +76,15 @@ del_file() {
   else
     del_point_dirname="$(date --date '10 day ago' +%Y%m%d)"
   fi
-  for file in `\ls -1 "$HOME"/gomi`; do
+  for file in `\ls -1 "$GOMI_PATH"`; do
     if [[ $del_point_dirname > $file ]]; then
-      \rm -rv "$HOME"/gomi/"$file"
+      \rm -r "$GOMI_PATH"/"$file"
     fi
   done
 }
 
 ls_file() {
-  \find "$HOME"/gomi
+  \find "$GOMI_PATH" | sort -n | less
 }
 
 main() {
@@ -64,4 +98,4 @@ main() {
   fi
 }
 
-main "$@"
+check_opts "$@"
