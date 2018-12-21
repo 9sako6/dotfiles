@@ -1,0 +1,31 @@
+#!/usr/bin/env ruby
+
+require './lib/work_timer.rb'
+require 'io/console' # 改行なしで'q'を取得するのに必要
+
+def setWork(workObj, fileName="Nil", logFlag=false)
+  puts "quit : 'q'"
+  puts "total: " + workObj.total_time if logFlag
+  # 作業時間をリアルタイム表示
+  workObj.view
+  workObj.start_work
+  # 'q'が入力されたら作業時間カウント終了
+  while STDIN.getch != 'q'; end
+  puts
+  workObj.end_work
+  if logFlag
+    puts "save : " + fileName
+    workObj.record_time
+    puts "total: " + workObj.total_time
+  end
+end
+
+if ARGV[0]
+  # 作業記録を保存するログファイル
+  fileName = ARGV[0]
+  myWork = WorkTimer::Work.new(fileName)
+  setWork(myWork, fileName, true)
+else
+  myWork = WorkTimer::Work.new("Nil")
+  setWork(myWork)
+end

@@ -70,7 +70,7 @@ move_file() {
 }
 
 del_file() {
-  # 10日以前のディレクトリを削除
+  # 10日以上経過したディレクトリを削除
   if [ "$(uname)" == 'Darwin' ]; then # Mac OSの場合、--dateオプションが使えない
     del_point_dirname="$(date -v-10d +%Y%m%d)"
   else
@@ -84,6 +84,7 @@ del_file() {
 }
 
 ls_file() {
+  # $GOMI_PATH内を表示
   \find "$GOMI_PATH" | sort -n | less
 }
 
