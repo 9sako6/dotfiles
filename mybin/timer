@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require './lib/work_timer.rb'
+require_relative './lib/work_timer.rb'
 require 'io/console' # 改行なしで'q'を取得するのに必要
 
 def setWork(workObj, fileName="Nil", logFlag=false)
