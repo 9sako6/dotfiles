@@ -2,16 +2,13 @@
 export LANG=ja_JP.UTF-8
 
 : "zcompile" && {
-  # source: https://blog.n-z.jp/blog/2013-12-10-auto-zshrc-recompile.html
-  if [ ! -f "$HOME"/.zshrc.zwc -o "$HOME"/.zshrc -nt "$HOME"/.zshrc.zwc ]; then
-     zcompile "$HOME"/.zshrc
-  fi
-
-  if [ ! -f "$HOME"/.zshenv.zwc -o "$HOME"/.zshenv -nt "$HOME"/.zshenv.zwc ]; then
-     zcompile "$HOME"/.zshenv
-  fi
+  # zshファイル更新したら自動でコンパイル
+  function() {for arg; do
+    if [ ! -f "$HOME"/${arg}.zwc -o "$HOME"/${arg} -nt ${arg}.zwc ]; then
+      zcompile "$HOME"/${arg}
+    fi
+  done} .zshrc .zshenv
 }
-
 : "zplug" && {
   source ~/.zplug/init.zsh
   # (1) プラグインを定義する
@@ -27,7 +24,6 @@ export LANG=ja_JP.UTF-8
   # fi
   zplug load --verbose
 }
-
 : "iyashi" && {
   if [ $(($RANDOM % 2)) = 0 ]; then
     nonnonbiyori
@@ -35,7 +31,6 @@ export LANG=ja_JP.UTF-8
     renchon
   fi
 }
-
 # ref: https://suin.io/568
 : "general" && {
   setopt correct # コマンドのスペルを訂正
@@ -65,16 +60,16 @@ export LANG=ja_JP.UTF-8
   setopt share_history # 同時に起動したzshの間でヒストリを共有
 }
 : "key-bindings" && {
-  : "Ctrl-Yで上のディレクトリに移動できる" && {
+  : "Ctrl-Y：上のディレクトリに移動できる" && {
     function cd-up { zle push-line && LBUFFER='builtin cd ..' && zle accept-line }
     zle -N cd-up
     bindkey "^Y" cd-up
   }
-  : "Ctrl-Wでパスの文字列などをスラッシュ単位でdeleteできる" && {
+  : "Ctrl-W：パスの文字列などをスラッシュ単位でdeleteできる" && {
     autoload -U select-word-style
     select-word-style bash
   }
-  : "Ctrl-Fでfzf-cdr" && {
+  : "Ctrl-F：fzfでディレクトリ履歴参照" && {
     # https://rasukarusan.hatenablog.com/entry/2018/08/14/083000
     autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
     add-zsh-hook chpwd chpwd_recent_dirs
@@ -92,6 +87,15 @@ export LANG=ja_JP.UTF-8
     }
     zle -N fzf-cdr
     bindkey '^F' fzf-cdr
+  }
+  : "Ctrl-R：fzfでコマンド履歴参照" && {
+    # https://tech-blog.sgr-ksmt.org/2016/12/10/smart_fzf_history/
+    function select-history() {
+      BUFFER=$(history -n -r 1 | fzf --no-sort +m --query "$LBUFFER" --prompt="History > ")
+      CURSOR=$#BUFFER
+    }
+    zle -N select-history
+    bindkey '^r' select-history
   }
 }
 : "prompt" && {
