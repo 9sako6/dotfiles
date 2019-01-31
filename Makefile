@@ -1,12 +1,12 @@
-# _   .-')      ('-.    .-. .-')     ('-.                                 ('-.   
-# ( '.( OO )_   ( OO ).-.\  ( OO )  _(  OO)                              _(  OO)  
-#  ,--.   ,--.) / . --. /,--. ,--. (,------.   ,------.,-.-')  ,--.     (,------. 
-#  |   `.'   |  | \-.  \ |  .'   /  |  .---'('-| _.---'|  |OO) |  |.-')  |  .---' 
-#  |         |.-'-'  |  ||      /,  |  |    (OO|(_\    |  |  \ |  | OO ) |  |     
-#  |  |'.'|  | \| |_.'  ||     ' _)(|  '--. /  |  '--. |  |(_/ |  |`-' |(|  '--.  
-#  |  |   |  |  |  .-.  ||  .   \   |  .--' \_)|  .--',|  |_.'(|  '---.' |  .--'  
-#  |  |   |  |  |  | |  ||  |\   \  |  `---.  \|  |_)(_|  |    |      |  |  `---. 
-#  `--'   `--'  `--' `--'`--' '--'  `------'   `--'    `--'    `------'  `------' 
+# _   .-')      ('-.    .-. .-')     ('-.                                 ('-.
+# ( '.( OO )_   ( OO ).-.\  ( OO )  _(  OO)                              _(  OO)
+#  ,--.   ,--.) / . --. /,--. ,--. (,------.   ,------.,-.-')  ,--.     (,------.
+#  |   `.'   |  | \-.  \ |  .'   /  |  .---'('-| _.---'|  |OO) |  |.-')  |  .---'
+#  |         |.-'-'  |  ||      /,  |  |    (OO|(_\    |  |  \ |  | OO ) |  |
+#  |  |'.'|  | \| |_.'  ||     ' _)(|  '--. /  |  '--. |  |(_/ |  |`-' |(|  '--.
+#  |  |   |  |  |  .-.  ||  .   \   |  .--' \_)|  .--',|  |_.'(|  '---.' |  .--'
+#  |  |   |  |  |  | |  ||  |\   \  |  `---.  \|  |_)(_|  |    |      |  |  `---.
+#  `--'   `--'  `--' `--'`--' '--'  `------'   `--'    `--'    `------'  `------'
 
 init: ## Initialize settings for dotfiles
 	@bash etc/init.sh
@@ -45,8 +45,25 @@ git-version-up: ## Update Git
 # anyenv
 #   - installation
 #
-install-anyenv: ## Install anyenv
-	@git clone https://github.com/riywo/anyenv ~/.anyenv
+# install-anyenv: ## Install anyenv
+# 	@git clone https://github.com/riywo/anyenv ~/.anyenv
+
+#
+# rbenv
+#    - installation
+#
+install-rbenv: ## Install rbenv via github
+	git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+	cd ~/.rbenv && src/configure && make -C src
+	cd
+	git clone https://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
+
+#
+# pyenv
+#    - installation
+#
+install-pyenv: ## Install pyenv via github
+	git clone https://github.com/pyenv/pyenv.git ~/.pyenv
 
 #
 # ruby-build
@@ -57,11 +74,8 @@ install-anyenv: ## Install anyenv
 install-packages-for-ruby-build: ## Install some packages for ruby-build (needed: ruby via rbenv)
 	sudo apt-get install -y autoconf bison build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev libgdbm3 libgdbm-dev
 
-
-
 # python3
 #   - No module named '_sqlite3'って怒られた時用
 #   - Pythonのビルドに必要らしい
 install-packages-for-python-build: ## Install some packages for python-build
 	sudo apt-get install libsqlite3-dev libbz2-dev libncurses5-dev libgdbm-dev liblzma-dev libssl-dev tcl-dev tk-dev libreadline-dev
-

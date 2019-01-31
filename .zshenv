@@ -5,85 +5,65 @@
 # 勝手に読み込まれるとPATH先頭に/usr/binが来てanyenvで入れた*envのPATHが読み込まれない
 setopt no_global_rcs
 
-# Settings for anyenv
-export PATH="$HOME/.anyenv/bin:$PATH"
-#
-# eval "$(anyenv init - --no-rehash)" # 遅い
-#
-source "$HOME/.anyenv/libexec/../completions/anyenv.zsh"
-anyenv() {
-  typeset command
-  command="$1"
-  if [ "$#" -gt 0 ]; then
-    shift
-  fi
-  command anyenv "$command" "$@"
-}
-export GOENV_ROOT="$HOME/.anyenv/envs/goenv"
-export PATH="$HOME/.anyenv/envs/goenv/bin:$PATH"
-export PATH="$HOME/.anyenv/envs/goenv/shims:${PATH}"
-export GOENV_SHELL=zsh
-source "$HOME/.anyenv/envs/goenv/libexec/../completions/goenv.zsh"
-goenv() {
-  local command
-  command="$1"
-  if [ "$#" -gt 0 ]; then
-    shift
-  fi
+# Settings for rbenv
+export RBENV_ROOT="$HOME/.rbenv"
+if [ -d "$RBENV_ROOT" ]; then
+  export PATH="$RBENV_ROOT/bin:$PATH"
+  #
+  # eval "$(rbenv init -)"
+  #
+  export PATH="$HOME/.rbenv/shims:${PATH}"
+  export RBENV_SHELL=zsh
+  source "$HOME/.rbenv/libexec/../completions/rbenv.zsh"
+  command rbenv rehash 2>/dev/null
+  rbenv() {
+    local command
+    command="${1:-}"
+    if [ "$#" -gt 0 ]; then
+      shift
+    fi
 
-  case "$command" in
-  rehash|shell)
-    eval "$(goenv "sh-$command" "$@")";;
-  *)
-    command goenv "$command" "$@";;
-  esac
-}
-export HSENV_ROOT="$HOME/.anyenv/envs/hsenv"
-export PATH="$HOME/.anyenv/envs/hsenv/bin:$PATH"
-export PATH="$HOME/.anyenv/envs/hsenv/shims:${PATH}"
-hsenv rehash 2>/dev/null
-export PYENV_ROOT="$HOME/.anyenv/envs/pyenv"
-export PATH="$HOME/.anyenv/envs/pyenv/bin:$PATH"
-export PATH="$HOME/.anyenv/envs/pyenv/shims:${PATH}"
-export PYENV_SHELL=zsh
-source "$HOME/.anyenv/envs/pyenv/libexec/../completions/pyenv.zsh"
-pyenv() {
-  local command
-  command="${1:-}"
-  if [ "$#" -gt 0 ]; then
-    shift
-  fi
+    case "$command" in
+    rehash|shell)
+      eval "$(rbenv "sh-$command" "$@")";;
+    *)
+      command rbenv "$command" "$@";;
+    esac
+  }
+  #
+  #
+  #
+fi
 
-  case "$command" in
-  activate|deactivate|rehash|shell)
-    eval "$(pyenv "sh-$command" "$@")";;
-  *)
-    command pyenv "$command" "$@";;
-  esac
-}
-export RBENV_ROOT="$HOME/.anyenv/envs/rbenv"
-export PATH="$HOME/.anyenv/envs/rbenv/bin:$PATH"
-export PATH="$HOME/.anyenv/envs/rbenv/shims:${PATH}"
-export RBENV_SHELL=zsh
-source "$HOME/.anyenv/envs/rbenv/libexec/../completions/rbenv.zsh"
-rbenv() {
-  local command
-  command="${1:-}"
-  if [ "$#" -gt 0 ]; then
-    shift
-  fi
+# Settings for pyenv
+export PYENV_ROOT="$HOME/.pyenv"
+if [ -d "$PYENV_ROOT" ]; then
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  #
+  # eval "$(pyenv init -)"
+  #
+  export PATH="$HOME/.pyenv/shims:${PATH}"
+  export PYENV_SHELL=zsh
+  source "$HOME/.pyenv/libexec/../completions/pyenv.zsh"
+  command pyenv rehash 2>/dev/null
+  pyenv() {
+    local command
+    command="${1:-}"
+    if [ "$#" -gt 0 ]; then
+      shift
+    fi
 
-  case "$command" in
-  rehash|shell)
-    eval "$(rbenv "sh-$command" "$@")";;
-  *)
-    command rbenv "$command" "$@";;
-  esac
-}
-#
-# anyenv ここまで
-#
-
+    case "$command" in
+      activate|deactivate|rehash|shell)
+      eval "$(pyenv "sh-$command" "$@")";;
+      *)
+      command pyenv "$command" "$@";;
+    esac
+  }
+  #
+  #
+  #
+fi
 
 # Settings for Python
 #export PYTHONPATH="/usr/local/lib/python3.7/site-packages:$PYTHONPATH"
