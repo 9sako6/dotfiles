@@ -133,3 +133,5 @@ export LANG=ja_JP.UTF-8
 }
 
 # fin.
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
