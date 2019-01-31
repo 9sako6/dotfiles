@@ -19,10 +19,9 @@ if [ ! -d "$HOME"/dotfiles ]; then
   git clone https://github.com/9sako6/dotfiles
 fi
 
-# zplug
-if [ ! -d "$HOME"/.zplug ]; then
-  mkdir -p "$HOME"/.zplug
-  curl -sL --proto-redir -all,https https://raw.githubusercontent.com/zplug/installer/master/installer.zsh| zsh
+# zplugin
+if [ ! -d "$HOME"/.zplugin ]; then
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh)"
 fi
 
 # vim-plug

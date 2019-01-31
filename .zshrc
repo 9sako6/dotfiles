@@ -9,20 +9,15 @@ export LANG=ja_JP.UTF-8
     fi
   done} .zshrc .zshenv
 }
-: "zplug" && {
-  source ~/.zplug/init.zsh
-  # (1) プラグインを定義する
-  zplug 'momo-lab/zsh-abbrev-alias' # 略語を展開する
-  zplug 'zsh-users/zsh-syntax-highlighting' # 実行可能なコマンドに色付け
-  zplug 'zsh-users/zsh-completions' # 補完
-  # (2) インストールする
-  # if ! zplug check --verbose; then
-  #   printf 'Install? [y/N]: '
-  #   if read -q; then
-  #     echo; zplug install
-  #   fi
-  # fi
-  zplug load --verbose
+: "zplugin" && {
+  ### Added by Zplugin's installer
+  source '/home/qsako6/.zplugin/bin/zplugin.zsh'
+  autoload -Uz _zplugin
+  (( ${+_comps} )) && _comps[zplugin]=_zplugin
+  ### End of Zplugin's installer chunk
+  zplugin load momo-lab/zsh-abbrev-alias # 略語を展開する
+  zplugin load zsh-users/zsh-syntax-highlighting # 実行可能なコマンドに色付け
+  zplugin load zsh-users/zsh-completions # 補完
 }
 : "iyashi" && {
   if [ $(($RANDOM % 2)) = 0 ]; then
@@ -133,5 +128,3 @@ export LANG=ja_JP.UTF-8
 }
 
 # fin.
-
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
