@@ -1,12 +1,14 @@
 # 環境変数
 export LANG=ja_JP.UTF-8
 
-DOT_PATH="$HOME"/dotfiles
-
 : "zcompile" && {
   # source: https://blog.n-z.jp/blog/2013-12-10-auto-zshrc-recompile.html
-  if [ ! -f "$DOT_PATH"/.zsh/.zshrc.zwc -o "$DOT_PATH"/.zsh/.zshrc -nt "$DOT_PATH"/.zsh/.zshrc.zwc ]; then
-     zcompile "$DOT_PATH"/.zsh/.zshrc
+  if [ ! -f "$HOME"/.zshrc.zwc -o "$HOME"/.zshrc -nt "$HOME"/.zshrc.zwc ]; then
+     zcompile "$HOME"/.zshrc
+  fi
+
+  if [ ! -f "$HOME"/.zshenv.zwc -o "$HOME"/.zshenv -nt "$HOME"/.zshenv.zwc ]; then
+     zcompile "$HOME"/.zshenv
   fi
 }
 
@@ -110,6 +112,7 @@ DOT_PATH="$HOME"/dotfiles
 : "alias" && {
   alias tree="tree -NC" # N: 文字化け対策, C:色をつける
   abbrev-alias ls="ls -G"
+  abbrev-alias cd-="cd -"
   : "git" && {
     abbrev-alias gpl="git pull"
     abbrev-alias gps="git push"
