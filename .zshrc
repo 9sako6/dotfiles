@@ -27,12 +27,12 @@ export LANG=ja_JP.UTF-8
 #   zplug 'zsh-users/zsh-syntax-highlighting' # 実行可能なコマンドに色付け
 #   zplug 'zsh-users/zsh-completions' # 補完
 #   # (2) インストールする
-#   # if ! zplug check --verbose; then
-#   #   printf 'Install? [y/N]: '
-#   #   if read -q; then
-#   #     echo; zplug install
-#   #   fi
-#   # fi
+#   if ! zplug check --verbose; then
+#     printf 'Install? [y/N]: '
+#     if read -q; then
+#       echo; zplug install
+#     fi
+#   fi
 #   zplug load --verbose
 # }
 : "iyashi" && {
