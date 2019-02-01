@@ -11,7 +11,7 @@ export LANG=ja_JP.UTF-8
 }
 : "zplugin" && {
   ### Added by Zplugin's installer
-  source '/home/qsako6/.zplugin/bin/zplugin.zsh'
+  source "$HOME/.zplugin/bin/zplugin.zsh"
   autoload -Uz _zplugin
   (( ${+_comps} )) && _comps[zplugin]=_zplugin
   ### End of Zplugin's installer chunk
