@@ -15,17 +15,33 @@ export LANG=ja_JP.UTF-8
   autoload -Uz _zplugin
   (( ${+_comps} )) && _comps[zplugin]=_zplugin
   ### End of Zplugin's installer chunk
+
   zplugin load momo-lab/zsh-abbrev-alias # 略語を展開する
-  zplugin load zsh-users/zsh-syntax-highlighting # 実行可能なコマンドに色付け
-  zplugin load zsh-users/zsh-completions # 補完
+  zplugin ice wait'!0'; zplugin load zsh-users/zsh-syntax-highlighting # 実行可能なコマンドに色付け
+  zplugin ice wait'!0'; zplugin load zsh-users/zsh-completions # 補完
 }
-: "iyashi" && {
-  if [ $(($RANDOM % 2)) = 0 ]; then
-    nonnonbiyori
-  else
-    renchon
-  fi
-}
+# : "zplug" && {
+#   source ~/.zplug/init.zsh
+#   # (1) プラグインを定義する
+#   zplug 'momo-lab/zsh-abbrev-alias' # 略語を展開する
+#   zplug 'zsh-users/zsh-syntax-highlighting' # 実行可能なコマンドに色付け
+#   zplug 'zsh-users/zsh-completions' # 補完
+#   # (2) インストールする
+#   # if ! zplug check --verbose; then
+#   #   printf 'Install? [y/N]: '
+#   #   if read -q; then
+#   #     echo; zplug install
+#   #   fi
+#   # fi
+#   zplug load --verbose
+# }
+# : "iyashi" && {
+#   if [ $((${RANDOM} % 2)) = 0 ]; then
+#     nonnonbiyori
+#   else
+#     renchon
+#   fi
+# }
 # ref: https://suin.io/568
 : "general" && {
   setopt correct # コマンドのスペルを訂正
@@ -128,3 +144,6 @@ export LANG=ja_JP.UTF-8
 }
 
 # fin.
+# if (which zprof > /dev/null) ;then
+#   zprof | cat
+# fi
