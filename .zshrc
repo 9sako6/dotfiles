@@ -17,7 +17,8 @@ export LANG=ja_JP.UTF-8
   ### End of Zplugin's installer chunk
 
   zplugin load momo-lab/zsh-abbrev-alias # 略語を展開する
-  zplugin ice wait'!0'; zplugin load zsh-users/zsh-syntax-highlighting # 実行可能なコマンドに色付け
+  # zplugin ice wait'!0'; zplugin load zsh-users/zsh-syntax-highlighting # 実行可能なコマンドに色付け
+  zplugin ice wait'!0'; zplugin light zdharma/fast-syntax-highlighting
   zplugin ice wait'!0'; zplugin load zsh-users/zsh-completions # 補完
 }
 # : "zplug" && {
