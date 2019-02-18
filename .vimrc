@@ -134,4 +134,9 @@ highlight PmenuSel ctermfg=white ctermbg=blue
 " 括弧ハイライトの色
 highlight MatchParen ctermfg=LightGreen ctermbg=blue
 
-
+" 透明化
+highlight Normal ctermbg=none
+highlight NonText ctermbg=none
+highlight LineNr ctermbg=none
+highlight Folded ctermbg=none
+highlight EndOfBuffer ctermbg=none 
