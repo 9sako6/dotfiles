@@ -1,0 +1,1 @@
+$PROMPT="{BOLD_GREEN}{cwd}{branch_color}{curr_branch: {}}{NO_COLOR} {BOLD_BLUE}( ;ᴗ;)っ{prompt_end}{NO_COLOR}"
