@@ -1,6 +1,6 @@
 # $HOME/.zsh/.zshrcを読み込む
 # export ZDOTDIR="$HOME"/.zsh
-# zmodload zsh/zprof && zprof
+
 # /etc/profile を読み込まない設定
 # 勝手に読み込まれるとPATH先頭に/usr/binが来てanyenvで入れた*envのPATHが読み込まれない
 setopt no_global_rcs
