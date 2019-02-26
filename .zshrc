@@ -129,4 +129,9 @@ export LANG=ja_JP.UTF-8
   abbrev-alias electron="~/node_modules/.bin/electron"
 }
 
+# commands
+mkcd () {
+    mkdir $@ && cd `echo $@ | sed -e "s/-[^ \f\n\r\t]*//g"`
+}
+
 # fin.
