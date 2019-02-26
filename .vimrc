@@ -8,13 +8,15 @@ set whichwrap=b,s,<,>,[,]
 
 
 " 縦棒カーソルを使用
+" カーソルの形状：https://ttssh2.osdn.jp/manual/ja/usage/tips/vim.html
+"
 if has('vim_starting')
-  " 挿入モード時に非点滅の縦棒タイプのカーソル
-  let &t_SI .= "\e[6 q"
-  " ノーマルモード時に非点滅のブロックタイプのカーソル
-  let &t_EI .= "\e[2 q"
-  " 置換モード時に非点滅の下線タイプのカーソル
-  let &t_SR .= "\e[4 q"
+  " 挿入モード時に点滅の縦棒タイプのカーソル
+  let &t_SI .= "\e[5 q"
+  " ノーマルモード時に点滅のブロックタイプのカーソル
+  let &t_EI .= "\e[1 q"
+  " 置換モード時に点滅の下線タイプのカーソル
+  let &t_SR .= "\e[3 q"
 endif
 
 " 行番号を表示
@@ -116,8 +118,8 @@ let g:indent_guides_guide_size = 2
 "  - :AirlineTheme THEMENAME
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
-let g:airline_solarized_bg='dark'
-let g:airline_theme = 'wombat'
+"let g:airline_solarized_bg='light'
+let g:airline_theme = 'luna'
 
 call plug#end()
 
@@ -133,10 +135,3 @@ highlight PmenuSel ctermfg=white ctermbg=blue
 
 " 括弧ハイライトの色
 highlight MatchParen ctermfg=LightGreen ctermbg=blue
-
-" 透明化
-highlight Normal ctermbg=none
-highlight NonText ctermbg=none
-highlight LineNr ctermbg=none
-highlight Folded ctermbg=none
-highlight EndOfBuffer ctermbg=none 
