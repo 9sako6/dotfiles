@@ -3,6 +3,9 @@
 " ----------------
 syntax enable
 
+" クリップボードにコピーされる
+set clipboard+=unnamed
+
 " 左右のカーソル移動で行間移動可能にする。
 set whichwrap=b,s,<,>,[,]
 

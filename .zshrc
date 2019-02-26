@@ -114,6 +114,7 @@ export LANG=ja_JP.UTF-8
   alias tree="tree -NC" # N: 文字化け対策, C:色をつける
   abbrev-alias ls="ls -G"
   abbrev-alias cd-="cd -"
+  alias vim="/usr/local/bin/vim" # 次善の策
   : "git" && {
     abbrev-alias gpl="git pull"
     abbrev-alias gps="git push"
