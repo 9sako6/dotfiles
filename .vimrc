@@ -9,6 +9,8 @@ set clipboard+=unnamed
 " 左右のカーソル移動で行間移動可能にする。
 set whichwrap=b,s,<,>,[,]
 
+" バックスペース有効
+set backspace=indent,eol,start
 
 " 縦棒カーソルを使用
 " カーソルの形状：https://ttssh2.osdn.jp/manual/ja/usage/tips/vim.html
