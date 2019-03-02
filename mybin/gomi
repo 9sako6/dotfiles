@@ -78,7 +78,7 @@ del_file() {
   fi
   for file in `\ls -1 "$GOMI_PATH"`; do
     if [[ $del_point_dirname > $file ]]; then
-      \rm -r "$GOMI_PATH"/"$file"
+      \rm -rf "$GOMI_PATH"/"$file"
     fi
   done
 }
