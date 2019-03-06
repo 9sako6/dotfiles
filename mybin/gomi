@@ -85,7 +85,7 @@ del_file() {
 
 ls_file() {
   # $GOMI_PATH内を表示
-  \find "$GOMI_PATH" | sort -n | less
+  \find "$GOMI_PATH" | fzf > selected
 }
 
 main() {
