@@ -113,6 +113,7 @@ export LANG=ja_JP.UTF-8
 : "alias" && {
   alias tree="tree -NC" # N: 文字化け対策, C:色をつける
   alias v="code"
+  alias gpp="g++"
   abbrev-alias ls="ls -G"
   abbrev-alias cd-="cd -"
   alias vim="/usr/local/bin/vim" # 次善の策
