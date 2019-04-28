@@ -1,4 +1,4 @@
 #!/bin/bash
 
-g++-8 $1
+g++-8 -std=c++14 -Wall -fsanitize=undefined -D_GLIBCXX_DEBUG $1
 ./a.out
