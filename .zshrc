@@ -139,4 +139,25 @@ mkcd () {
     mkdir $@ && cd `echo $@ | sed -e "s/-[^ \f\n\r\t]*//g"`
 }
 
+# source: https://blog.wnotes.net/posts/completion-for-npm-rscripts/
+# This is bash-completion for 'npm run' command.
+# Find up package.json and completion 'npm scripts'.
+_npm_run_completion() {
+  CURRENT="${COMP_WORDS[COMP_CWORD]}"
+  SUBCOMMAND="${COMP_WORDS[COMP_CWORD-1]}"
+  if [ "${SUBCOMMAND}" != "run" ]; then
+    return
+  fi
+  DIR=$(pwd)
+  while [ ! -f "${DIR}/package.json" ]; do
+    if [ "${DIR}" = "/" ]; then
+      return
+    fi
+    DIR=$(cd $(dirname $(readlink $DIR || echo $DIR)) || exit;pwd)
+  done
+  SCRIPTS=$(cat "${DIR}/package.json" | jq '.scripts | keys[]' | sed -e 's/"//g')
+  COMPREPLY=( $(compgen -W "${SCRIPTS}" ${CURRENT}) )
+}
+
+complete -F _npm_run_completion npm
 # fin.
