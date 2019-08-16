@@ -116,17 +116,22 @@ export LANG=ja_JP.UTF-8
   alias gpp="g++"
   abbrev-alias ls="ls -G"
   abbrev-alias cd-="cd -"
-  alias vim="/usr/local/bin/vim" # 次善の策
+  # alias vim="/usr/local/bin/vim" # 次善の策
   : "git" && {
     abbrev-alias gpl="git pull"
     abbrev-alias gps="git push"
-    abbrev-alias gco="git commit -m"
     abbrev-alias gad="git add"
     abbrev-alias gbr="git branch"
+    abbrev-alias gch="git checkout"
     abbrev-alias gcl="git clone"
+    abbrev-alias gco="git commit"
+    abbrev-alias gcm="git commit -m"
     abbrev-alias glog="git log --decorate=full"
     abbrev-alias gst="git status"
-    abbrev-alias gch="git checkout"
+    abbrev-alias gme="git merge"
+  }
+  : "docker-compose" && {
+    abbrev-alias dc="docker-compose"
   }
   # electron
   abbrev-alias electron="~/node_modules/.bin/electron"
