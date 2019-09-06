@@ -9,3 +9,5 @@ do
     ln -sv $HOME/dotfiles/$f $HOME/$f
   fi
 done
+
+ln -sv $HOME/dotfiles/.vscode/snippets "/Users/ty/Library/Application Support/Code/User/snippets"
