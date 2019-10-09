@@ -41,3 +41,7 @@ export NVM_DIR="$HOME/.nvm"
 
 # rust
 export PATH="$HOME/.cargo/bin:$PATH"
+
+# go
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
