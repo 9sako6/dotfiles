@@ -141,7 +141,7 @@ export LANG=ja_JP.UTF-8
 # commands
 #
 mkcd () {
-    mkdir $@ && cd `echo $@ | sed -e "s/-[^ \f\n\r\t]*//g"`
+  mkdir "$@" && cd "$@"
 }
 
 # source: https://blog.wnotes.net/posts/completion-for-npm-rscripts/
