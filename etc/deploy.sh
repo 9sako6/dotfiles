@@ -10,4 +10,4 @@ do
   fi
 done
 
-ln -sv "${HOME}/dotfiles/.vscode/snippets" "${HOME}/Library/Application Support/Code/User/snippets"
+ln -sv "${HOME}/dotfiles/.vscode/snippets" "${HOME}/Library/Application Support/Code/User/"
