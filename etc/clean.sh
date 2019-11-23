@@ -1,11 +1,13 @@
 #!/bin/bash
-DOTFILES=( .bash_profile .bashrc .vimrc .zshenv .zshrc .zshenv.zwc .zshrc.zwc mybin .commit_template .tmux.conf .xonshrc)
+DOTFILES=( .bash_profile .bashrc .vimrc .zshenv .zshrc .zshenv.zwc .zshrc.zwc mybin .commit_template .tmux.conf .xonshrc .zshrc.zwc .zshenv.zwc .zsh_history .zcompdump .zplugin )
 
 for f in ${DOTFILES[@]}
 do
-  if [ -h "$HOME"/"$f" ]; then
-    rm -rv "$HOME"/"$f"
+  if [ -d "${HOME}"/"${f}" ]; then
+    echo "${f}"
+    rm -rfv "${HOME}"/"${f}"
   else
-    echo "${f} is not symbolic link"
+    echo "${f}"
+    rm -fv "${HOME}"/"${f}"
   fi
 done

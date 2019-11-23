@@ -16,10 +16,8 @@ export LANG=ja_JP.UTF-8
   (( ${+_comps} )) && _comps[zplugin]=_zplugin
   ### End of Zplugin's installer chunk
 
-  zplugin load momo-lab/zsh-abbrev-alias # 略語を展開する
-  # zplugin ice wait'!0'; zplugin load zsh-users/zsh-syntax-highlighting # 実行可能なコマンドに色付け
-  zplugin ice wait'!0'; zplugin light zdharma/fast-syntax-highlighting
-  zplugin ice wait'!0'; zplugin load zsh-users/zsh-completions # 補完
+  zplugin light momo-lab/zsh-abbrev-alias # 略語を展開する
+  zplugin ice wait'!0' lucid; zplugin light zdharma/fast-syntax-highlighting
 }
 : "iyashi" && {
   if [ $((${RANDOM} % 2)) = 0 ]; then
@@ -143,26 +141,4 @@ export LANG=ja_JP.UTF-8
 mkcd () {
   mkdir "$@" && cd "$@"
 }
-
-# source: https://blog.wnotes.net/posts/completion-for-npm-rscripts/
-# This is bash-completion for 'npm run' command.
-# Find up package.json and completion 'npm scripts'.
-_npm_run_completion() {
-  CURRENT="${COMP_WORDS[COMP_CWORD]}"
-  SUBCOMMAND="${COMP_WORDS[COMP_CWORD-1]}"
-  if [ "${SUBCOMMAND}" != "run" ]; then
-    return
-  fi
-  DIR=$(pwd)
-  while [ ! -f "${DIR}/package.json" ]; do
-    if [ "${DIR}" = "/" ]; then
-      return
-    fi
-    DIR=$(cd $(dirname $(readlink $DIR || echo $DIR)) || exit;pwd)
-  done
-  SCRIPTS=$(cat "${DIR}/package.json" | jq '.scripts | keys[]' | sed -e 's/"//g')
-  COMPREPLY=( $(compgen -W "${SCRIPTS}" ${CURRENT}) )
-}
-
-complete -F _npm_run_completion npm
 # fin.
