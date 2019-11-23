@@ -1,7 +1,7 @@
 #!/bin/bash
-DOTFILES=( .bash_profile .bashrc .vimrc .zshenv .zshrc mybin .commit_template .tmux.conf .xonshrc )
+dotfiles=( .bash_profile .bashrc .vimrc .zshenv .zshrc mybin .commit_template .tmux.conf .xonshrc )
 
-for f in ${DOTFILES[@]}
+for f in ${dotfiles[@]}
 do
   if [ -d ${f} ]; then
     ln -sv "${HOME}/dotfiles/${f}" "${HOME}"
@@ -10,4 +10,10 @@ do
   fi
 done
 
-ln -sv "${HOME}/dotfiles/.vscode/snippets" "${HOME}/Library/Application Support/Code/User"
+# vscode
+vscode_files=( snippets keybindings.json settings.json )
+
+for f in ${vscode_files[@]}
+do
+  ln -sv "${HOME}/dotfiles/.vscode/${f}" "${HOME}/Library/Application Support/Code/User"
+done

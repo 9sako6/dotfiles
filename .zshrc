@@ -4,14 +4,14 @@ export LANG=ja_JP.UTF-8
 : "zcompile" && {
   # zshファイル更新したら自動でコンパイル
   function() {for arg; do
-    if [ ! -f "$HOME"/${arg}.zwc -o "$HOME"/${arg} -nt ${arg}.zwc ]; then
-      zcompile "$HOME"/${arg}
+    if [ ! -f "${HOME}"/${arg}.zwc -o "${HOME}"/${arg} -nt ${arg}.zwc ]; then
+      zcompile "${HOME}"/${arg}
     fi
   done} .zshrc .zshenv
 }
 : "zplugin" && {
   ### Added by Zplugin's installer
-  source "$HOME/.zplugin/bin/zplugin.zsh"
+  source "${HOME}/.zplugin/bin/zplugin.zsh"
   autoload -Uz _zplugin
   (( ${+_comps} )) && _comps[zplugin]=_zplugin
   ### End of Zplugin's installer chunk
@@ -47,7 +47,7 @@ export LANG=ja_JP.UTF-8
 #   zstyle ':completion:*' list-colors '' # 補完候補一覧をカラー表示
 # }
 : "history" && {
-  HISTFILE="$HOME"/.zsh_history
+  HISTFILE="${HOME}"/.zsh_history
   HISTSIZE=10000
   SAVEHIST=10000
   setopt hist_ignore_dups # 直前のコマンドの重複を削除
@@ -73,7 +73,7 @@ export LANG=ja_JP.UTF-8
     zstyle ':completion:*' recent-dirs-insert botho
     function fzf-cdr() {
       target_dir=`cdr -l | fzf | sed 's/^[^ ][^ ]*  *//'`
-      target_dir=`echo ${target_dir/\~/$HOME}`
+      target_dir=`echo ${target_dir/\~/${HOME}}`
       if [ -n "$target_dir" ]; then
         cd $target_dir
         BUFFER=""
@@ -139,6 +139,6 @@ export LANG=ja_JP.UTF-8
 # commands
 #
 mkcd () {
-  mkdir "$@" && cd "$@"
+  mkdir "${@}" && cd "${@}"
 }
 # fin.

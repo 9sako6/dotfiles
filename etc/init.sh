@@ -14,27 +14,27 @@ if ! $git_exists || ! $vim_exists || ! $zsh_exists; then
   exit
 fi
 
-if [ ! -d "$HOME"/dotfiles ]; then
-  cd "$HOME"
+if [ ! -d "${HOME}"/dotfiles ]; then
+  cd "${HOME}"
   git clone https://github.com/9sako6/dotfiles
 fi
 
 # zplugin
-if [ ! -d "$HOME"/.zplugin ]; then
+if [ ! -d "${HOME}"/.zplugin ]; then
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh)"
 fi
 
 # vim-plug
-if [ ! -e "$HOME"/.vim/autoload/plug.vim ]; then
-  curl -fLo "$HOME"/.vim/autoload/plug.vim --create-dirs \
+if [ ! -e "${HOME}"/.vim/autoload/plug.vim ]; then
+  curl -fLo "${HOME}"/.vim/autoload/plug.vim --create-dirs \
       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi
 
 # fzf
-if [ ! -d "$HOME"/.fzf ]; then
-  mkdir -p "$HOME"/.fzf
-  git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME"/.fzf
-  "$HOME"/.fzf/install
+if [ ! -d "${HOME}"/.fzf ]; then
+  mkdir -p "${HOME}"/.fzf
+  git clone --depth 1 https://github.com/junegunn/fzf.git "${HOME}"/.fzf
+  "${HOME}"/.fzf/install
 fi
 
 echo -e "\033[0;32mdotfiles are successfully initialized!\033[0m"
