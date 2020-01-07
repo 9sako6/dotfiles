@@ -15,5 +15,7 @@ vscode_files=( snippets keybindings.json settings.json )
 
 for f in ${vscode_files[@]}
 do
-  ln -sv "${HOME}/dotfiles/.vscode/${f}" "${HOME}/Library/Application Support/Code/User"
+  if [ -e "${HOME}/Library/Application Support/Code/User" ]; then
+    ln -sv "${HOME}/dotfiles/.vscode/${f}" "${HOME}/Library/Application Support/Code/User"
+  fi
 done
