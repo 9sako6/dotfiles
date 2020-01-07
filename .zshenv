@@ -45,3 +45,10 @@ export PATH="$HOME/.cargo/bin:$PATH"
 # go
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
+
+# goenv
+# export GOPATH=$HOME/go
+export GOENV_ROOT="$HOME/.goenv"
+export PATH="$GOENV_ROOT/bin:$PATH"
+eval "$(goenv init -)"
+export PATH="$PATH:$GOPATH/bin"
