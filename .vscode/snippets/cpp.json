@@ -49,7 +49,7 @@
 		]
 	},
 	"modpow": {
-		"prefix": "mod",
+		"prefix": "modp",
 		"body": [
 			"template <class T>",
 			"i64 mod_pow(i64 a, i64 n, T mod) {",
