@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# set -e
+
 echo '     _       _    __ _ _            '
 echo '    | |     | |  / _(_) |           '
 echo '  __| | ___ | |_| |_ _| | ___  ___  '
@@ -7,6 +9,17 @@ echo ' / _` |/ _ \| __|  _| | |/ _ \/ __| '
 echo '| (_| | (_) | |_| | | | |  __/\__ \ '
 echo ' \__,_|\___/ \__|_| |_|_|\___||___/ '
 echo ''
+
+# utils
+function print_error() {
+    echo -e "\033[0;31mERROR: ${1}\033[0m"
+}
+function print_success() {
+    echo -e "\033[0;32mSuccess: ${1}\033[0m"
+}
+function print_info() {
+    echo -e "\033[0;34mINFO: ${1}\033[0m"
+}
 
 if ! $git_exists || ! $vim_exists || ! $zsh_exists; then
   echo -e "\033[0;31mError: git or vim or zsh is not installed.\033[0m"
@@ -21,21 +34,34 @@ fi
 
 # zplugin
 if [ ! -d "${HOME}"/.zplugin ]; then
+  print_info "install zplugin"
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh)"
 fi
 
 # vim-plug
 if [ ! -e "${HOME}"/.vim/autoload/plug.vim ]; then
+  print_info "install vim-plug"
   curl -fLo "${HOME}"/.vim/autoload/plug.vim --create-dirs \
       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi
 
+# dein.vim (Neovim)
+if [ ! -d "${HOME}/.cache/dein/repos" ]; then
+  print_info "install dein.vim"
+  mkdir -p "${HOME}/.cache/dein"
+  sh <(curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh) "${HOME}/.cache/dein"
+fi
+
 # fzf
 if [ ! -d "${HOME}"/.fzf ]; then
+  print_info "install fzf"
   mkdir -p "${HOME}"/.fzf
   git clone --depth 1 https://github.com/junegunn/fzf.git "${HOME}"/.fzf
   "${HOME}"/.fzf/install
 fi
 
-echo -e "\033[0;32mdotfiles are successfully initialized!\033[0m"
-echo -e "To finish vim settings, do \033[0;32m:PlugInstall\033[0m in vim console"
+
+
+
+print_success "dotfiles are successfully initialized!"
+print_info "To finish vim settings, do :PlugInstall in vim console"
