@@ -12,11 +12,14 @@ set whichwrap=b,s,<,>,[,]
 " バックスペース有効
 set backspace=indent,eol,start
 
+" カーソル行を強調表示
+set cursorline
 " 縦棒カーソルを使用
 " カーソルの形状：https://ttssh2.osdn.jp/manual/ja/usage/tips/vim.html
 "
 if has('vim_starting')
   " 挿入モード時に点滅の縦棒タイプのカーソル
+  "let &t_SI .= "\e]5;CursorShape=1\x7"
   let &t_SI .= "\e[5 q"
   " ノーマルモード時に点滅のブロックタイプのカーソル
   let &t_EI .= "\e[1 q"
@@ -36,11 +39,11 @@ set visualbell
 " 括弧入力時の対応する括弧を表示
 " set showmatch
 " 括弧とくオーテーションの自動補完
-inoremap { {}<LEFT>
-inoremap [ []<LEFT>
-inoremap ( ()<LEFT>
-inoremap " ""<LEFT>
-inoremap ' ''<LEFT>
+"inoremap { {}<LEFT>
+"inoremap [ []<LEFT>
+"inoremap ( ()<LEFT>
+"inoremap " ""<LEFT>
+"inoremap ' ''<LEFT>
 
 "文字コードをUFT-8に設定
 set fenc=utf-8
@@ -123,12 +126,64 @@ let g:indent_guides_guide_size = 2
 "  - :AirlineTheme THEMENAME
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
+Plug 'jacoborus/tender.vim'
 "let g:airline_solarized_bg='light'
-let g:airline_theme = 'luna'
+let g:airline_theme = 'tender'
 
 call plug#end()
 
-colorscheme night-owl
+" If you have vim >=8.0 or Neovim >= 0.1.5
+if (has("termguicolors"))
+ set termguicolors
+endif
+
+" For Neovim 0.1.3 and 0.1.4
+let $NVIM_TUI_ENABLE_TRUE_COLOR=1
+
+" Theme
+syntax enable
+colorscheme tender
+
+" Powerline系フォントを利用する
+set laststatus=2
+let g:airline_powerline_fonts = 1
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#buffer_idx_mode = 1
+let g:airline#extensions#whitespace#mixed_indent_algo = 1
+"let g:airline_theme = 'tomorrow'
+if !exists('g:airline_symbols')
+  let g:airline_symbols = {}
+endif
+
+" unicode symbols
+let g:airline_left_sep = '»'
+let g:airline_left_sep = '▶'
+let g:airline_right_sep = '«'
+let g:airline_right_sep = '◀'
+let g:airline_symbols.crypt = '🔒'
+let g:airline_symbols.linenr = '☰'
+let g:airline_symbols.linenr = '␊'
+let g:airline_symbols.linenr = '␤'
+let g:airline_symbols.linenr = '¶'
+let g:airline_symbols.maxlinenr = ''
+let g:airline_symbols.maxlinenr = '㏑'
+let g:airline_symbols.branch = '⎇'
+let g:airline_symbols.paste = 'ρ'
+let g:airline_symbols.paste = 'Þ'
+let g:airline_symbols.paste = '∥'
+let g:airline_symbols.spell = 'Ꞩ'
+let g:airline_symbols.notexists = '∄'
+let g:airline_symbols.whitespace = 'Ξ'
+
+" powerline symbols
+let g:airline_left_sep = ''
+let g:airline_left_alt_sep = ''
+let g:airline_right_sep = ''
+let g:airline_right_alt_sep = ''
+let g:airline_symbols.branch = ''
+let g:airline_symbols.readonly = ''
+let g:airline_symbols.linenr = '☰'
+let g:airline_symbols.maxlinenr = ''
 
 " 入力補完メニューの色
 "   - ctermfg  : 文字の色
@@ -139,4 +194,4 @@ highlight Pmenu ctermfg=white ctermbg=darkgray
 highlight PmenuSel ctermfg=white ctermbg=blue
 
 " 括弧ハイライトの色
-highlight MatchParen ctermfg=LightGreen ctermbg=blue
+highlight MatchParen ctermfg=LightGreen ctermbg=black

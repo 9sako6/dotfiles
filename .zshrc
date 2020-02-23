@@ -135,6 +135,10 @@ export LANG=ja_JP.UTF-8
   abbrev-alias electron="~/node_modules/.bin/electron"
 }
 
+# neovim
+export XDG_CONFIG_HOME="${HOME}/.config"
+
+
 #
 # commands
 #
