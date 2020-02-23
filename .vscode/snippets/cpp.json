@@ -72,7 +72,7 @@
 			"\tusing i64 = int64_t;",
 			"\ti64 x;",
 			"\tModInt() : x(0) {}",
-			"\tModInt(i64 y) : x(y >= 0 ? y % mod : ((mod + y) % mod)) {}",
+			"\tModInt(i64 y) : x(y >= 0 ? y % mod : ((mod - (-y) % mod) % mod)) {}",
 			"\tModInt &operator+=(const ModInt &rhs) {",
 			"\t\tif ((x += rhs.x) >= mod) x -= mod;",
 			"\t\treturn *this;",
