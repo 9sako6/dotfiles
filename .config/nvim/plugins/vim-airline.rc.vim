@@ -57,14 +57,39 @@ set number
 set cursorline
 " 現在の行の下線を非表示
 hi clear CursorLine
-"autocmd ColorScheme * highlight CursorLineNr term=bold   cterm=NONE ctermfg=14 ctermbg=NONE
-"autocmd ColorScheme * highlight LineNr ctermfg=7 ctermbg=8
-"autocmd ColorScheme * highlight LineNr ctermfg=239
 
 "
 " original color setting
 "
 " コメント
-autocmd ColorScheme * highlight Comment ctermfg=102
+autocmd ColorScheme * highlight Comment ctermfg=103
 " ビジュアルモードの選択範囲
 autocmd ColorScheme * highlight Visual ctermbg=236
+" 対応括弧
+autocmd ColorScheme * highlight MatchParen ctermfg=208 ctermbg=233 cterm=bold
+
+
+""""""""""""""""""""""""""""""
+"全角スペースを表示
+""""""""""""""""""""""""""""""
+"コメント以外で全角スペースを指定しているので scriptencodingと、
+"このファイルのエンコードが一致するよう注意！
+"全角スペースが強調表示されない場合、ここでscriptencodingを指定すると良い。
+"scriptencoding cp932
+
+"デフォルトのZenkakuSpaceを定義
+function! ZenkakuSpace()
+  highlight ZenkakuSpace cterm=underline ctermfg=9 gui=underline guifg=darkgrey ctermbg=1
+endfunction
+
+if has('syntax')
+  augroup ZenkakuSpace
+    autocmd!
+    " ZenkakuSpaceをカラーファイルで設定するなら次の行は削除
+    autocmd ColorScheme       * call ZenkakuSpace()
+    " 全角スペースのハイライト指定
+    autocmd VimEnter,WinEnter * match ZenkakuSpace /　/
+    autocmd VimEnter,WinEnter * match ZenkakuSpace '\%u3000'
+  augroup END
+  call ZenkakuSpace()
+endif
