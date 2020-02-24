@@ -4,8 +4,8 @@ export LANG=ja_JP.UTF-8
 : "zcompile" && {
   # zshファイル更新したら自動でコンパイル
   function() {for arg; do
-    if [ ! -f "${HOME}"/${arg}.zwc -o "${HOME}"/${arg} -nt ${arg}.zwc ]; then
-      zcompile "${HOME}"/${arg}
+    if [ ! -f "${HOME}/${arg}.zwc" -o "${HOME}/${arg}" -nt "${arg}.zwc" ]; then
+      zcompile "${HOME}/${arg}"
     fi
   done} .zshrc .zshenv
 }
@@ -114,7 +114,9 @@ export LANG=ja_JP.UTF-8
   alias gpp="g++"
   abbrev-alias ls="ls -G"
   abbrev-alias cd-="cd -"
-  # alias vim="/usr/local/bin/vim" # 次善の策
+  # if [ -e /usr/local/bin/vim ]; then
+  #   alias vim="/usr/local/bin/vim"
+  # fi
   : "git" && {
     abbrev-alias gpl="git pull"
     abbrev-alias gps="git push"

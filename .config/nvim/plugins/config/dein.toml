@@ -1,12 +1,4 @@
 [[plugins]]
-repo = "neoclide/coc.nvim"
-merge = 0
-rev = "release"
-hook_add = """
-source ~/.config/nvim/plugins/coc.rc.vim
-"""
-
-[[plugins]]
 repo = "Shougo/defx.nvim"
 depends = ["defx-git"]
 hook_add = """
@@ -30,3 +22,15 @@ repo = "shougo/deol.nvim"
 hook_add = """
 source ~/.config/nvim/plugins/deol.rc.vim
 """
+
+[[plugins]]
+repo = "vim-airline/vim-airline"
+hook_add = """
+source ~/.config/nvim/plugins/vim-airline.rc.vim
+"""
+
+[[plugins]]
+repo = 'vim-airline/vim-airline-themes'
+
+[[plugins]]
+repo = 'tomasr/molokai'

@@ -8,5 +8,5 @@
     },
     "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, IndentWidth: 4 }",
     "C_Cpp.updateChannel": "Insiders",
-    "window.zoomLevel": 0,
+    "window.zoomLevel": 1,
 }
