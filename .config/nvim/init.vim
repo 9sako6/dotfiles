@@ -32,11 +32,11 @@ set virtualedit=onemore
 " 本当にこれでいいのだろうか
 set t_Co=256
 
-" dein.vim を使うために以下を記述
-runtime! plugins/dein.rc.vimj
-
 " ----------------
 " Key mapping
 " ----------------
 noremap <S-h> ^
 noremap <S-l> $
+
+" dein.vim を使うために以下を記述
+runtime! plugins/dein.rc.vim
