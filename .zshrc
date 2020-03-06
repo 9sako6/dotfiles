@@ -9,16 +9,27 @@ export LANG=ja_JP.UTF-8
     fi
   done} .zshrc .zshenv
 }
-: "zplugin" && {
-  ### Added by Zplugin's installer
-  source "${HOME}/.zplugin/bin/zplugin.zsh"
-  autoload -Uz _zplugin
-  (( ${+_comps} )) && _comps[zplugin]=_zplugin
-  ### End of Zplugin's installer chunk
+: "zinit" && {
+  ### Added by zinit's installer
+  source "${HOME}/.zinit/bin/zinit.zsh"
+  autoload -Uz _zinit
+  (( ${+_comps} )) && _comps[zinit]=_zinit
+  ### End of zinit's installer chunk
 
-  zplugin light momo-lab/zsh-abbrev-alias # 略語を展開する
-  zplugin ice wait'!0' lucid; zplugin light zdharma/fast-syntax-highlighting
+  zinit light momo-lab/zsh-abbrev-alias # 略語を展開する
+  # zinit ice wait'!0' lucid; zinit light zdharma/fast-syntax-highlighting
+  zinit ice wait'!0' lucid; zinit light zsh-users/zsh-syntax-highlighting
 }
+# : "zplugin" && {
+#   ### Added by Zplugin's installer
+#   source "${HOME}/.zplugin/bin/zplugin.zsh"
+#   autoload -Uz _zplugin
+#   (( ${+_comps} )) && _comps[zplugin]=_zplugin
+#   ### End of Zplugin's installer chunk
+
+#   zplugin light momo-lab/zsh-abbrev-alias # 略語を展開する
+#   zplugin ice wait'!0' lucid; zplugin light zdharma/fast-syntax-highlighting
+# }
 : "iyashi" && {
   if [ $((${RANDOM} % 2)) = 0 ]; then
     nonnonbiyori
@@ -148,3 +159,5 @@ mkcd () {
   mkdir "${@}" && cd "${@}"
 }
 # fin.
+### End of Zinit's installer chunk
+### End of Zinit's installer chunk

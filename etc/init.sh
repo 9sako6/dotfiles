@@ -33,9 +33,15 @@ if [ ! -d "${HOME}"/dotfiles ]; then
 fi
 
 # zplugin
-if [ ! -d "${HOME}"/.zplugin ]; then
-  print_info "install zplugin"
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh)"
+# if [ ! -d "${HOME}"/.zplugin ]; then
+#   print_info "install zplugin"
+#   sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh)"
+# fi
+
+# zinit
+if [ ! -d "${HOME}"/.zinit ]; then
+  print_info "install zinit"
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh)"
 fi
 
 # vim-plug
