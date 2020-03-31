@@ -53,6 +53,9 @@ export PATH="$GOENV_ROOT/bin:$PATH"
 eval "$(goenv init -)"
 export PATH="$PATH:$GOPATH/bin"
 
+# deno
+export DENO_INSTALL="$HOME/.local"
+export PATH="$DENO_INSTALL/bin:$PATH"
 
 # local bin
 export PATH="/usr/local/bin:${PATH}"
