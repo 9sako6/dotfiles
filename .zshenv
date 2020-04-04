@@ -50,9 +50,10 @@ export PATH="$GOPATH/bin:$PATH"
 # export GOPATH=$HOME/go
 export GOENV_ROOT="$HOME/.goenv"
 export PATH="$GOENV_ROOT/bin:$PATH"
-eval "$(goenv init -)"
-export PATH="$PATH:$GOPATH/bin"
-
+if type goenv > /dev/null 2>&1; then
+  eval "$(goenv init -)"
+  export PATH="$PATH:$GOPATH/bin"
+fi
 # deno
 export DENO_INSTALL="$HOME/.local"
 export PATH="$DENO_INSTALL/bin:$PATH"
