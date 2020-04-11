@@ -136,6 +136,7 @@
 			"using namespace std;",
 			"void main_sub(void);",
 			"int main(int argc, char* argv[]) {",
+			"\tcout << std::fixed << std::setprecision(10);",
 			"\tmain_sub();",
 			"\treturn 0;",
 			"}",
