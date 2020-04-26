@@ -1,4 +1,5 @@
 #!/bin/bash
+export DOTFILES_PATH="${HOME}/dotfiles"
 
 # set -e
 
@@ -66,6 +67,6 @@ if [ ! -e "${HOME}/.cache/powerline" ]; then
   sh "${HOME}/.cache/powerline/install.sh"
 fi
 
-
+# complete messages
 print_success "dotfiles are successfully initialized!"
 print_info "To finish vim settings, do :PlugInstall in vim console"

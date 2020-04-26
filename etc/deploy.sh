@@ -1,5 +1,5 @@
 #!/bin/bash
-DOTFILES_PATH="${HOME}/dotfiles"
+export DOTFILES_PATH="${HOME}/dotfiles"
 dotfiles=( .bash_profile .bashrc .vimrc .zshenv .zshrc mybin .commit_template .tmux.conf .xonshrc )
 
 for f in ${dotfiles[@]}
@@ -14,12 +14,7 @@ do
 done
 
 # nvim
-if [ ! -e "${HOME}/.config/nvim" ]; then
-  if [ ! -e "${HOME}/.config" ]; then
-    mkdir "${HOME}/.config"
-  fi
-  ln -sv "${DOTFILES_PATH}/.config/nvim" "${HOME}/.config"
-fi
+bash "${DOTFILES_PATH}/etc/nvim/init.sh"
 
 # vscode
 bash "${DOTFILES_PATH}/etc/vscode/init.sh"
