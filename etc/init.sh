@@ -32,12 +32,6 @@ if [ ! -d "${HOME}"/dotfiles ]; then
   git clone https://github.com/9sako6/dotfiles
 fi
 
-# zplugin
-# if [ ! -d "${HOME}"/.zplugin ]; then
-#   print_info "install zplugin"
-#   sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh)"
-# fi
-
 # zinit
 if [ ! -d "${HOME}"/.zinit ]; then
   print_info "install zinit"

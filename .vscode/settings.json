@@ -47,5 +47,10 @@
     },
     "[erb]": {
         "editor.defaultFormatter": "HookyQR.beautify"
-    }
+    },
+    "[scss]": {
+        "editor.defaultFormatter": "HookyQR.beautify"
+    },
+    "sqltools.useNodeRuntime": true,
+    "workbench.iconTheme": "vscode-icons"
 }
