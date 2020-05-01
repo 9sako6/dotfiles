@@ -1,19 +1,36 @@
 {
     "[ruby]": {
         "editor.tabSize": 2,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.defaultFormatter": "misogi.ruby-rubocop",
     },
+    "ruby.lint": {
+        "rubocop": true
+    },
+    "ruby.format": "rubocop",
+    // "ruby.rubocop.onSave": true,
     "[javascript]": {
         "editor.tabSize": 2,
         "editor.insertSpaces": true
     },
     "[typescript]": {
         "editor.tabSize": 2,
-        "editor.insertSpaces": true
+        "editor.insertSpaces": true,
+        "editor.defaultFormatter": "vscode.typescript-language-features"
     },
     "[html]": {
         "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.defaultFormatter": "HookyQR.beautify"
+    },
+    "[tsx]": {
+        "editor.tabSize": 2,
         "editor.insertSpaces": true
+    },
+    "[erb]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.defaultFormatter": "HookyQR.beautify"
     },
     "[cpp]": {
         "editor.tabSize": 4
@@ -45,12 +62,20 @@
             "erb"
         ]
     },
-    "[erb]": {
-        "editor.defaultFormatter": "HookyQR.beautify"
-    },
     "[scss]": {
         "editor.defaultFormatter": "HookyQR.beautify"
     },
     "sqltools.useNodeRuntime": true,
-    "workbench.iconTheme": "vscode-icons"
+    "[yaml]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "HookyQR.beautify"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "HookyQR.beautify"
+    }
 }
