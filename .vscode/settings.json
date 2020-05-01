@@ -77,5 +77,6 @@
     },
     "[jsonc]": {
         "editor.defaultFormatter": "HookyQR.beautify"
-    }
+    },
+    "editor.tabSize": 2
 }
