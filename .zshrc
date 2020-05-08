@@ -140,6 +140,9 @@ export LANG=ja_JP.UTF-8
     abbrev-alias glog="git log --decorate=full"
     abbrev-alias gst="git status"
     abbrev-alias gme="git merge"
+    abbrev-alias grb="git rebase"
+    abbrev-alias gre="git restore"
+    abbrev-alias gsw="git switch"
   }
   : "docker-compose" && {
     abbrev-alias dc="docker-compose"
@@ -158,6 +161,15 @@ export XDG_CONFIG_HOME="${HOME}/.config"
 mkcd () {
   mkdir "${@}" && cd "${@}"
 }
+
+change_branch() {
+  if type git switch >/dev/null 2>&1; then
+    git switch $(git branch | fzf)
+  else
+    git checkout $(git branch | fzf)
+  fi
+}
+alias cb=change_branch
+
 # fin.
-### End of Zinit's installer chunk
 ### End of Zinit's installer chunk
