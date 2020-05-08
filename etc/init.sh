@@ -13,13 +13,13 @@ echo ''
 
 # utils
 function print_error() {
-    echo -e "\033[0;31mERROR: ${1}\033[0m"
+  echo -e "\033[0;31mERROR: ${1}\033[0m"
 }
 function print_success() {
-    echo -e "\033[0;32mSuccess: ${1}\033[0m"
+  echo -e "\033[0;32mSuccess: ${1}\033[0m"
 }
 function print_info() {
-    echo -e "\033[0;34mINFO: ${1}\033[0m"
+  echo -e "\033[0;34mINFO: ${1}\033[0m"
 }
 
 if ! $git_exists || ! $vim_exists || ! $zsh_exists; then
@@ -43,7 +43,7 @@ fi
 if [ ! -e "${HOME}"/.vim/autoload/plug.vim ]; then
   print_info "install vim-plug"
   curl -fLo "${HOME}"/.vim/autoload/plug.vim --create-dirs \
-      https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi
 
 # dein.vim (Neovim)
