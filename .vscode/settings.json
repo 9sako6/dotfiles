@@ -80,5 +80,9 @@
         "editor.defaultFormatter": "HookyQR.beautify"
     },
     "editor.tabSize": 2,
-    "files.insertFinalNewline": true
+    "files.insertFinalNewline": true,
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "explorer.compactFolders": false
 }
