@@ -5,6 +5,9 @@
 # 勝手に読み込まれるとPATH先頭に/usr/binが来てanyenvで入れた*envのPATHが読み込まれない
 setopt no_global_rcs
 
+# local bin
+export PATH="/usr/local/bin:${PATH}"
+
 # Settings for rbenv
 export RBENV_ROOT="$HOME/.rbenv"
 if [ -d "$RBENV_ROOT" ]; then
@@ -58,5 +61,4 @@ fi
 export DENO_INSTALL="$HOME/.local"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
-# local bin
-export PATH="/usr/local/bin:${PATH}"
+
