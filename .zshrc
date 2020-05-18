@@ -20,16 +20,6 @@ export LANG=ja_JP.UTF-8
   # zinit ice wait'!0' lucid; zinit light zdharma/fast-syntax-highlighting
   zinit ice wait'!0' lucid; zinit light zsh-users/zsh-syntax-highlighting
 }
-# : "zplugin" && {
-#   ### Added by Zplugin's installer
-#   source "${HOME}/.zplugin/bin/zplugin.zsh"
-#   autoload -Uz _zplugin
-#   (( ${+_comps} )) && _comps[zplugin]=_zplugin
-#   ### End of Zplugin's installer chunk
-
-#   zplugin light momo-lab/zsh-abbrev-alias # 略語を展開する
-#   zplugin ice wait'!0' lucid; zplugin light zdharma/fast-syntax-highlighting
-# }
 : "iyashi" && {
   if [ $((${RANDOM} % 2)) = 0 ]; then
     nonnonbiyori
@@ -49,14 +39,6 @@ export LANG=ja_JP.UTF-8
   export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=46;34:cd=43;34:su=41;30:sg=46;30:tw=42;30:ow=43;30'
   zstyle ':completion:*' list-colors 'di=34' 'ln=35' 'so=32' 'ex=31' 'bd=46;34' 'cd=43;34'
 }
-# Unnecessary, maybe
-# source1: https://qiita.com/vintersnow/items/7343b9bf60ea468a4180#compinit
-# source2: https://github.com/zplug/zplug/issues/24
-# : "completion" && {
-#   autoload -Uz compinit && compinit -u # 補完機能強化
-#   setopt list_packed # 補完候補を詰めて表示
-#   zstyle ':completion:*' list-colors '' # 補完候補一覧をカラー表示
-# }
 : "history" && {
   HISTFILE="${HOME}"/.zsh_history
   HISTSIZE=10000
@@ -125,9 +107,6 @@ export LANG=ja_JP.UTF-8
   alias gpp="g++"
   abbrev-alias ls="ls -G"
   abbrev-alias cd-="cd -"
-  # if [ -e /usr/local/bin/vim ]; then
-  #   alias vim="/usr/local/bin/vim"
-  # fi
   : "git" && {
     abbrev-alias gpl="git pull"
     abbrev-alias gps="git push"
