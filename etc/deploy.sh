@@ -1,6 +1,6 @@
 #!/bin/bash
 export DOTFILES_PATH="${HOME}/dotfiles"
-dotfiles=(.bash_profile .bashrc .vimrc .zshenv .zshrc mybin .commit_template .tmux.conf .xonshrc)
+dotfiles=(.bash_profile .bashrc .vimrc .zshenv .zshrc mybin .commit_template .tmux.conf .xonshrc .gitignore_global)
 
 for f in ${dotfiles[@]}; do
   if [ -d ${f} ] && [ ! -e "${HOME}/${f}" ]; then
@@ -11,6 +11,9 @@ for f in ${dotfiles[@]}; do
     fi
   fi
 done
+
+# git
+bash "${DOTFILES_PATH}/etc/git/init.sh"
 
 # nvim
 bash "${DOTFILES_PATH}/etc/nvim/init.sh"
