@@ -116,12 +116,15 @@ export LANG=ja_JP.UTF-8
     abbrev-alias gcl="git clone"
     abbrev-alias gco="git commit"
     abbrev-alias gcm="git commit -m"
+    abbrev-alias gca="git commit -a"
+    abbrev-alias gcam="git commit -am"
     abbrev-alias glog="git log --decorate=full"
     abbrev-alias gst="git status"
     abbrev-alias gme="git merge"
     abbrev-alias grb="git rebase"
     abbrev-alias gre="git restore"
     abbrev-alias gsw="git switch"
+    abbrev-alias gdf="git diff"
   }
   : "docker-compose" && {
     abbrev-alias dc="docker-compose"
