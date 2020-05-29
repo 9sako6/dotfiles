@@ -1,16 +1,15 @@
 #!/bin/bash
 export DOTFILES_PATH="${HOME}/dotfiles"
-dotfiles=(.bash_profile .bashrc .vimrc .zshenv .zshrc mybin .commit_template .tmux.conf .xonshrc .gitignore_global)
 
-for f in ${dotfiles[@]}; do
-  if [ -d ${f} ] && [ ! -e "${HOME}/${f}" ]; then
-    ln -sv "${DOTFILES_PATH}/${f}" "${HOME}"
+while read file; do
+  if [ -d ${file} ] && [ ! -e "${HOME}/${file}" ]; then
+    ln -sv "${DOTFILES_PATH}/dist/${file}" "${HOME}"
   else
-    if [ ! -e "${HOME}/${f}" ]; then
-      ln -sv "${DOTFILES_PATH}/${f}" "${HOME}/${f}"
+    if [ ! -e "${HOME}/${file}" ]; then
+      ln -sv "${DOTFILES_PATH}/dist/${file}" "${HOME}/${file}"
     fi
   fi
-done
+done < <(ls -A -1 "${DOTFILES_PATH}/dist")
 
 # git
 bash "${DOTFILES_PATH}/etc/git/init.sh"
