@@ -154,5 +154,9 @@ change_branch() {
 }
 alias cb=change_branch
 
+diffcop () {
+  git diff --name-only | xargs rubocop
+}
+
 # fin.
 ### End of Zinit's installer chunk
