@@ -6,3 +6,4 @@ tmux-client*
 .chpwd-recent-dirs
 *.swp
 .netrwhist
+*/.config/configstore

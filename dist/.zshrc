@@ -108,7 +108,7 @@ export LANG=ja_JP.UTF-8
   abbrev-alias ls="ls -G"
   abbrev-alias cd-="cd -"
   : "git" && {
-    abbrev-alias gpl="git pull"
+    abbrev-alias gpl="git pull --ff-only"
     abbrev-alias gps="git push"
     abbrev-alias gad="git add"
     abbrev-alias gbr="git branch"
