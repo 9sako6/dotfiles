@@ -61,4 +61,5 @@ fi
 export DENO_INSTALL="$HOME/.local"
 export PATH="$DENO_INSTALL/bin:$PATH"
 
-
+# gnu-getopt
+export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"
