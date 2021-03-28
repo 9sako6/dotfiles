@@ -1,6 +1,6 @@
 # dotfiles🐱
 
-zsh, bash
+zsh
 
 ## Set Up
 
