@@ -46,13 +46,6 @@ if [ ! -e "${HOME}"/.vim/autoload/plug.vim ]; then
     https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi
 
-# dein.vim (Neovim)
-if [ ! -d "${HOME}/.cache/dein/repos" ]; then
-  print_info "install dein.vim"
-  mkdir -p "${HOME}/.cache/dein"
-  sh <(curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh) "${HOME}/.cache/dein"
-fi
-
 # fzf
 if [ ! -d "${HOME}"/.fzf ]; then
   print_info "install fzf"
