@@ -39,13 +39,6 @@ if [ ! -d "${HOME}"/.zinit ]; then
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh)"
 fi
 
-# vim-plug
-if [ ! -e "${HOME}"/.vim/autoload/plug.vim ]; then
-  print_info "install vim-plug"
-  curl -fLo "${HOME}"/.vim/autoload/plug.vim --create-dirs \
-    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-fi
-
 # fzf
 if [ ! -d "${HOME}"/.fzf ]; then
   print_info "install fzf"

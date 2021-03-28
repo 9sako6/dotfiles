@@ -1,6 +1,6 @@
 # dotfiles🐱
 
-zsh, bash, vim
+zsh, bash
 
 ## Set Up
 
