@@ -47,12 +47,6 @@ if [ ! -d "${HOME}"/.fzf ]; then
   "${HOME}"/.fzf/install
 fi
 
-# PowerLine font
-if [ ! -e "${HOME}/.cache/powerline" ]; then
-  git clone https://github.com/powerline/fonts.git "${HOME}/.cache/powerline"
-  sh "${HOME}/.cache/powerline/install.sh"
-fi
-
 # complete messages
 print_success "dotfiles are successfully initialized!"
 print_info "To finish vim settings, do :PlugInstall in vim console"
