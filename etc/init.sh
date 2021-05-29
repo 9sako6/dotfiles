@@ -58,3 +58,5 @@ if type code >/dev/null 2>&1; then
   bash "${DOTFILES_PATH}/etc/vscode/init.sh"
   print_info "Finish to set configs for VSCode"
 fi
+
+exec ${SHELL} -l
