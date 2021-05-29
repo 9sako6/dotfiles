@@ -1,7 +1,4 @@
-all: ## Initialize settings and deploy dotfiles
-	@make init
-
-init: ## Initialize settings
+init: ## Initialize settings and deploy dotfiles
 	@bash etc/init.sh
 
 deploy: ## Deploy dotfiles

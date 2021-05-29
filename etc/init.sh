@@ -11,8 +11,6 @@ function print_info() {
   echo -e "\033[0;34mInfo: ${1}\033[0m"
 }
 
-print_info "Start to install dotfiles"
-
 export DOTFILES_PATH="${HOME}/dotfiles"
 
 if [ ! -d "${HOME}"/dotfiles ]; then
@@ -21,6 +19,11 @@ if [ ! -d "${HOME}"/dotfiles ]; then
   git clone https://github.com/9sako6/dotfiles
   print_info "Finish to clone dotfiles repository"
 fi
+
+# Change login shell to zsh
+print_info "Start to change login shell to zsh"
+chsh -s /bin/zsh
+print_info "Finish to change login shell to zsh"
 
 # Install zinit
 if [ ! -d "${HOME}"/.zinit ]; then
@@ -55,6 +58,3 @@ if type code >/dev/null 2>&1; then
   bash "${DOTFILES_PATH}/etc/vscode/init.sh"
   print_info "Finish to set configs for VSCode"
 fi
-
-# Complete
-print_info "Finish to install dotfiles"
