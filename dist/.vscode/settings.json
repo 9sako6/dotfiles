@@ -39,7 +39,7 @@
     "workbench.startupEditor": "newUntitledFile",
     "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, IndentWidth: 4 }",
     "C_Cpp.updateChannel": "Insiders",
-    "window.zoomLevel": 1,
+    "window.zoomLevel": 2,
     "beautify.language": {
         "js": {
             "type": [
