@@ -1,52 +1,60 @@
 #!/bin/bash
-export DOTFILES_PATH="${HOME}/dotfiles"
-
 # set -e
 
-echo '     _       _    __ _ _            '
-echo '    | |     | |  / _(_) |           '
-echo '  __| | ___ | |_| |_ _| | ___  ___  '
-echo ' / _` |/ _ \| __|  _| | |/ _ \/ __| '
-echo '| (_| | (_) | |_| | | | |  __/\__ \ '
-echo ' \__,_|\___/ \__|_| |_|_|\___||___/ '
-echo ''
-
-# utils
 function print_error() {
-  echo -e "\033[0;31mERROR: ${1}\033[0m"
+  echo -e "\033[0;31mError: ${1}\033[0m"
 }
 function print_success() {
   echo -e "\033[0;32mSuccess: ${1}\033[0m"
 }
 function print_info() {
-  echo -e "\033[0;34mINFO: ${1}\033[0m"
+  echo -e "\033[0;34mInfo: ${1}\033[0m"
 }
 
-if ! $git_exists || ! $vim_exists || ! $zsh_exists; then
-  echo -e "\033[0;31mError: git or vim or zsh is not installed.\033[0m"
-  echo -e "\033[0;31mPlease install them\033[0m"
-  exit
-fi
+print_info "Start to install dotfiles"
+
+export DOTFILES_PATH="${HOME}/dotfiles"
 
 if [ ! -d "${HOME}"/dotfiles ]; then
+  print_info "Start to clone dotfiles repository"
   cd "${HOME}"
   git clone https://github.com/9sako6/dotfiles
+  print_info "Finish to clone dotfiles repository"
 fi
 
-# zinit
+# Install zinit
 if [ ! -d "${HOME}"/.zinit ]; then
-  print_info "install zinit"
+  print_info "Start to install zinit"
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh)"
+  print_info "Finish to install zinit"
 fi
 
-# fzf
+# Install fzf
 if [ ! -d "${HOME}"/.fzf ]; then
-  print_info "install fzf"
+  print_info "Start to install fzf"
   mkdir -p "${HOME}"/.fzf
   git clone --depth 1 https://github.com/junegunn/fzf.git "${HOME}"/.fzf
   "${HOME}"/.fzf/install
+  print_info "Finish to install fzf"
 fi
 
-# complete messages
-print_success "dotfiles are successfully initialized!"
-print_info "To finish vim settings, do :PlugInstall in vim console"
+# Deploy dotfiles
+print_info "Start to deploy dotfiles"
+bash "${DOTFILES_PATH}/etc/deploy.sh"
+print_info "Finish to deploy dotfiles"
+
+# Settings for git
+print_info "Start to set configs for git"
+git config --global core.excludesfile ~/.gitignore_global
+git config --global core.commentchar '~'
+print_info "Finish to set configs for git"
+
+# Setting for VSCode
+if type code >/dev/null 2>&1; then
+  print_info "Start to set configs for VSCode"
+  bash "${DOTFILES_PATH}/etc/vscode/init.sh"
+  print_info "Finish to set configs for VSCode"
+fi
+
+# Complete
+print_info "Finish to install dotfiles"

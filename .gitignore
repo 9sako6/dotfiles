@@ -7,3 +7,4 @@ tmux-client*
 *.swp
 .netrwhist
 */.config/configstore
+tmp/

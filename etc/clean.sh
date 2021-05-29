@@ -1,12 +1,30 @@
 #!/bin/bash
-DOTFILES=(.zshenv .zshrc .zshenv.zwc .zshrc.zwc mybin .commit_template .zshrc.zwc .zshenv.zwc .zsh_history .zcompdump .zplugin .gitignore_global)
+# set -e
 
-for f in ${DOTFILES[@]}; do
-  if [ -d "${HOME}/${f}" ]; then
-    echo "${f}"
-    rm -rfv "${HOME}/${f}"
+function print_error() {
+  echo -e "\033[0;31mError: ${1}\033[0m"
+}
+function print_success() {
+  echo -e "\033[0;32mSuccess: ${1}\033[0m"
+}
+
+export DOTFILES_PATH="${HOME}/dotfiles"
+
+function unlink_symlink() {
+  fullpath="${DOTFILES_PATH}/dist/${1}"
+  filename=$(basename "${fullpath}")
+
+  if [ -L "${HOME}/${filename}" ]; then
+    unlink "${HOME}/${filename}"
+    print_success "${filename}: symlink was unlinked"
   else
-    echo "${f}"
-    rm -fv "${HOME}/${f}"
+    print_error "${filename}: can't delete it because it is not a symlink"
   fi
-done
+}
+
+# NOTE: xargs に関数を渡すために `export -f` が必要。
+export -f unlink_symlink
+export -f print_error
+export -f print_success
+
+ls -A -1 "${DOTFILES_PATH}/dist" | xargs -I{} bash -c "unlink_symlink {}"
