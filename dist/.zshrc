@@ -101,60 +101,10 @@ export LANG=ja_JP.UTF-8
   precmd () { vcs_info }
   RPROMPT=$RPROMPT'${vcs_info_msg_0_}'
 }
-: "alias" && {
-  alias tree="tree -NC" # N: 文字化け対策, C:色をつける
-  alias v="code"
-  alias gpp="g++"
-  alias cr='cd "$(ghq root)/$(ghq list | fzf)"'
-  abbrev-alias ls="ls -G"
-  abbrev-alias cd-="cd -"
-  : "git" && {
-    abbrev-alias gpl='git pull --ff-only'
-    abbrev-alias gps='git push'
-    abbrev-alias gad='git add'
-    abbrev-alias gbr='git branch'
-    abbrev-alias gch='git checkout'
-    abbrev-alias gcf='git checkout $(git branch | fzf)'
-    abbrev-alias gcl='git clone'
-    abbrev-alias gco='git commit'
-    abbrev-alias gcm='git commit -m'
-    abbrev-alias gca='git commit -a'
-    abbrev-alias gcam='git commit -am'
-    abbrev-alias gl='git log --decorate'
-    abbrev-alias glg='git log --oneline --decorate --graph --all'
-    abbrev-alias gst='git status'
-    abbrev-alias gme='git merge'
-    abbrev-alias grb='git rebase'
-    abbrev-alias gre='git restore'
-    abbrev-alias gsw='git switch'
-    abbrev-alias gdf='git diff'
-  }
-  : "docker-compose" && {
-    abbrev-alias dc="docker-compose"
-  }
-  # electron
-  abbrev-alias electron="~/node_modules/.bin/electron"
-}
 
-#
-# commands
-#
-mkcd () {
-  mkdir "${@}" && cd "${@}"
-}
-
-change_branch() {
-  if type git switch >/dev/null 2>&1; then
-    git switch $(git branch | fzf)
-  else
-    git checkout $(git branch | fzf)
-  fi
-}
-alias cb=change_branch
-
-diffcop () {
-  git diff --name-only | xargs rubocop
-}
+# alias
+[ -e "${HOME}/alias.sh" ] && source "${HOME}/alias.sh"
+[ -e "${HOME}/alias.zsh" ] && source "${HOME}/alias.zsh"
 
 # fin.
 ### End of Zinit's installer chunk
