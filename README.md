@@ -4,4 +4,4 @@ zsh, git settings.
 
 ## Set Up
 
-    $ cd && git clone https://github.com/9sako6/dotfiles && cd dotfiles && make
+    $ bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/etc/init.sh)"
