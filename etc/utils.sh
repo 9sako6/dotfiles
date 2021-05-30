@@ -1,21 +1,19 @@
+function is_exist() {
+  type code >/dev/null 2>&1;
+}
+
+function is_batch() {
+  [[ $- == *i* ]]
+}
+
 function print_error() {
-  tput setaf 1 && echo "Error: ${1}"
+  echo -e "\033[0;31mError: ${1}\033[0m"
 }
 
 function print_success() {
-  tput setaf 2 && echo "Success: ${1}"
+  echo -e "\033[0;32mSuccess: ${1}\033[0m"
 }
 
 function print_info() {
-  tput setaf 4 && echo "Info: ${1}"
-}
-
-function command_exists() {
-  command=${1}
-
-  if type ${command}; then
-    :
-  else
-    exit 1
-  fi
+  echo -e "\033[0;34mInfo: ${1}\033[0m"
 }

@@ -1,15 +1,21 @@
 #!/bin/bash
 # set -e
 
-source "${HOME}/dotfiles/etc/env.sh"
-source "${DOTFILES_PATH}/etc/utils.sh"
-
-if [ ! -d "${HOME}"/dotfiles ]; then
-  print_info "Start to clone dotfiles repository"
+if [ ! -d "${HOME}/dotfiles" ]; then
+  echo "Start to clone dotfiles repository"
   cd "${HOME}"
-  git clone https://github.com/9sako6/dotfiles
-  print_info "Finish to clone dotfiles repository"
+  if [ ${GITHUB_REF} ]; then
+    # in GitHub Actions
+    branch_name=$(echo "${GITHUB_REF##*/}")
+    git clone -b ${branch_name} https://github.com/9sako6/dotfiles
+  else
+    git clone https://github.com/9sako6/dotfiles
+  fi
+  echo "Finish to clone dotfiles repository"
 fi
+
+source "${HOME}/dotfiles/etc/env.sh"
+source "${HOME}/dotfiles/etc/utils.sh"
 
 # Change login shell to zsh
 print_info "Start to change login shell to zsh"
