@@ -49,14 +49,14 @@ export LANG=ja_JP.UTF-8
 }
 
 # prompt
-[ -e "${HOME}/prompt.zsh" ] && source "${HOME}/prompt.zsh"
+[ -e "${HOME}/.zsh.local/prompt.zsh" ] && source "${HOME}/.zsh.local/prompt.zsh"
 
 # alias
-[ -e "${HOME}/alias.sh" ] && source "${HOME}/alias.sh"
-[ -e "${HOME}/alias.zsh" ] && source "${HOME}/alias.zsh"
+[ -e "${HOME}/.zsh.local/alias.sh" ] && source "${HOME}/.zsh.local/alias.sh"
+[ -e "${HOME}/.zsh.local/alias.zsh" ] && source "${HOME}/.zsh.local/alias.zsh"
 
 # keybindings
-[ -e "${HOME}/keybindings.zsh" ] && source "${HOME}/keybindings.zsh"
+[ -e "${HOME}/.zsh.local/keybindings.zsh" ] && source "${HOME}/.zsh.local/keybindings.zsh"
 
 # fin.
 ### End of Zinit's installer chunk
