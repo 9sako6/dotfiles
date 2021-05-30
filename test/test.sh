@@ -1,11 +1,11 @@
 #!/bin/bash
 # set -e
 
-echo ${GITHUB_REF} # for debug
+echo "GITHUB_REF: ${GITHUB_REF}" # for debug
 
 [ ${GITHUB_REF} ] && branch_name=$(echo "${GITHUB_REF##*/}") || branch_name='master'
 
-echo ${branch_name} # for debug
+echo "branch_name: ${branch_name}" # for debug
 
 # Test for deploy scripts
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${branch_name}/etc/init.sh)"

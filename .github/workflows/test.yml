@@ -11,6 +11,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: run test
-      run: bash etc/test.sh
+      run: bash test/test.sh
     - name: run make
       run: make
