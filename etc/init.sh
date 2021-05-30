@@ -1,17 +1,8 @@
 #!/bin/bash
 # set -e
 
-function print_error() {
-  echo -e "\033[0;31mError: ${1}\033[0m"
-}
-function print_success() {
-  echo -e "\033[0;32mSuccess: ${1}\033[0m"
-}
-function print_info() {
-  echo -e "\033[0;34mInfo: ${1}\033[0m"
-}
-
-export DOTFILES_PATH="${HOME}/dotfiles"
+source "${HOME}/dotfiles/etc/env.sh"
+source "${DOTFILES_PATH}/etc/utils.sh"
 
 if [ ! -d "${HOME}"/dotfiles ]; then
   print_info "Start to clone dotfiles repository"

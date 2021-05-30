@@ -1,3 +1,6 @@
+source "${HOME}/dotfiles/etc/env.sh"
+source "${DOTFILES_PATH}/etc/utils.sh"
+
 vscode_files=(snippets keybindings.json settings.json)
 vscode_user_path="${HOME}/Library/Application Support/Code/User"
 for f in ${vscode_files[@]}; do
