@@ -52,7 +52,7 @@ export LANG=ja_JP.UTF-8
 [ -e "${HOME}/.zsh.local/prompt.zsh" ] && source "${HOME}/.zsh.local/prompt.zsh"
 
 # alias
-[ -e "${HOME}/.zsh.local/alias.sh" ] && source "${HOME}/.zsh.local/alias.sh"
+[ -e "${HOME}/alias.sh" ] && source "${HOME}/alias.sh"
 [ -e "${HOME}/.zsh.local/alias.zsh" ] && source "${HOME}/.zsh.local/alias.zsh"
 
 # keybindings
