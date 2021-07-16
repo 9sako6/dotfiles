@@ -58,5 +58,8 @@ export LANG=ja_JP.UTF-8
 # keybindings
 [ -e "${HOME}/.zsh.local/keybindings.zsh" ] && source "${HOME}/.zsh.local/keybindings.zsh"
 
+# functions
+[ -e "${HOME}/.zsh.local/functions.zsh" ] && source "${HOME}/.zsh.local/functions.zsh"
+
 # fin.
 ### End of Zinit's installer chunk
