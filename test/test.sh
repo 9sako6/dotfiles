@@ -22,7 +22,7 @@ function test_dist_files () {
     exit 1
   fi
 
-  fzf --version
+  # fzf --version
 }
 
 echo "GITHUB_REF: ${GITHUB_REF}" # for debug
