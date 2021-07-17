@@ -38,6 +38,13 @@ if [ ! -d "${HOME}"/.fzf ]; then
   print_info "Finish to install fzf"
 fi
 
+# Install vim-plug
+if [ ! -f "${HOME}"/.vim/autoload/plug.vim ]; then
+  print_info 'Start to install vim-plug'
+  sh "${DOTFILES_PATH}"/etc/installer/vim-plug.sh
+  print_info 'Please run `:PlugInstall` in vim'
+fi
+
 # Deploy dotfiles
 print_info "Start to deploy dotfiles"
 bash "${DOTFILES_PATH}/etc/deploy.sh"
