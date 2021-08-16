@@ -21,6 +21,7 @@ if [ -d "$PYENV_ROOT" ]; then
   export PATH="$PYENV_ROOT/bin:$PATH"
   eval "$(pyenv init - --no-rehash)"
 fi
+eval "$(pyenv init --path)"
 
 # Settings for Python
 #export PYTHONPATH="/usr/local/lib/python3.7/site-packages:$PYTHONPATH"
