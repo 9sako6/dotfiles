@@ -50,12 +50,6 @@ print_info "Start to deploy dotfiles"
 bash "${DOTFILES_PATH}/etc/deploy.sh"
 print_info "Finish to deploy dotfiles"
 
-# Settings for git
-print_info "Start to set configs for git"
-git config --global core.excludesfile ~/.gitignore_global
-git config --global core.commentchar '~'
-print_info "Finish to set configs for git"
-
 # Setting for VSCode
 if type code >/dev/null 2>&1; then
   print_info "Start to set configs for VSCode"
