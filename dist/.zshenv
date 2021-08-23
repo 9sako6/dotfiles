@@ -1,6 +1,3 @@
-# $HOME/.zsh/.zshrcを読み込む
-# export ZDOTDIR="$HOME"/.zsh
-
 # /etc/profile を読み込まない設定
 # 勝手に読み込まれるとPATH先頭に/usr/binが来てanyenvで入れた*envのPATHが読み込まれない
 setopt no_global_rcs
@@ -22,9 +19,6 @@ if [ -d "$PYENV_ROOT" ]; then
   eval "$(pyenv init - --no-rehash)"
 fi
 eval "$(pyenv init --path)"
-
-# Settings for Python
-#export PYTHONPATH="/usr/local/lib/python3.7/site-packages:$PYTHONPATH"
 
 # Settings for nodebrew
 export PATH="$PATH:$HOME/.nodebrew/current/bin"
@@ -51,13 +45,13 @@ export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
 
 # goenv
-# export GOPATH=$HOME/go
 export GOENV_ROOT="$HOME/.goenv"
 export PATH="$GOENV_ROOT/bin:$PATH"
 if type goenv > /dev/null 2>&1; then
   eval "$(goenv init -)"
   export PATH="$PATH:$GOPATH/bin"
 fi
+
 # deno
 export DENO_INSTALL="$HOME/.local"
 export PATH="$DENO_INSTALL/bin:$PATH"
