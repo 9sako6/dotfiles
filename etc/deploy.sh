@@ -8,6 +8,17 @@ function make_symlink() {
   fullpath="${DOTFILES_PATH}/dist/${1}"
   filename=$(basename "${fullpath}")
 
+  if [ ${filename} = '.vscode' ]; then
+    # VSCode インストール前に ~/.vscode ディレクトリを作成すると VSCode が起動しなかった。
+    # https://github.com/9sako6/dotfiles/issues/6
+    if type code >/dev/null 2>&1; then
+      :
+    else
+      print_info 'Please install VSCode and code command.'
+      exit
+    fi
+  fi
+
   if [ -e "${HOME}/${filename}" ]; then
     print_info "${filename}: directory already exists in ${HOME}"
   else
