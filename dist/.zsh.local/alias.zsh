@@ -3,6 +3,7 @@ abbrev-alias cd-="cd -"
 # Git
 abbrev-alias gpl='git pull --ff-only'
 abbrev-alias gps='git push'
+abbrev-alias gpf='git push --force-with-lease'
 abbrev-alias gad='git add'
 abbrev-alias gbr='git branch'
 abbrev-alias gch='git checkout'
