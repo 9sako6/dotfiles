@@ -25,7 +25,7 @@ print_info "Finish to change login shell to zsh"
 # Install zinit
 if [ ! -d "${HOME}"/.zinit ]; then
   print_info "Start to install zinit"
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh)"
+  bash -c "$(curl -fsSL https://git.io/zinit-install)"
   print_info "Finish to install zinit"
 fi
 
