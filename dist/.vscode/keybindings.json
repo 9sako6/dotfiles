@@ -17,5 +17,13 @@
     {
         "key": "cmd+1",
         "command": "-workbench.action.focusFirstEditorGroup"
+    },
+    {
+        "key": "cmd+k cmd+m",
+        "command": "workbench.action.closeEditorsToTheRight"
+    },
+    {
+        "key": "cmd+k cmd+h",
+        "command": "workbench.action.closeEditorsToTheLeft"
     }
 ]
