@@ -2,7 +2,7 @@
     "[ruby]": {
         "editor.tabSize": 2,
         "editor.insertSpaces": true,
-        "editor.defaultFormatter": "misogi.ruby-rubocop",
+        "editor.defaultFormatter": "rebornix.ruby",
     },
     "ruby.lint": {
         "rubocop": true
@@ -39,7 +39,6 @@
     "workbench.startupEditor": "newUntitledFile",
     "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, IndentWidth: 4 }",
     "C_Cpp.updateChannel": "Insiders",
-    "window.zoomLevel": 2,
     "beautify.language": {
         "js": {
             "type": [
@@ -77,7 +76,7 @@
         "editor.defaultFormatter": "HookyQR.beautify"
     },
     "[jsonc]": {
-        "editor.defaultFormatter": "HookyQR.beautify"
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "editor.tabSize": 2,
     "files.insertFinalNewline": true,
@@ -96,4 +95,14 @@
     "gitlens.gitCommands.closeOnFocusOut": true,
     "editor.minimap.enabled": false,
     "files.trimFinalNewlines": true,
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "window.zoomLevel": 2,
+    "[dockercompose]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "yzhang.markdown-all-in-one"
+    },
 }
