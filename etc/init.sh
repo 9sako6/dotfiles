@@ -18,9 +18,9 @@ source "${HOME}/dotfiles/etc/env.sh"
 source "${HOME}/dotfiles/etc/utils.sh"
 
 # Change login shell to zsh
-print_info "Start to change login shell to zsh"
-chsh -s /bin/zsh
-print_info "Finish to change login shell to zsh"
+# print_info "Start to change login shell to zsh"
+# chsh -s /bin/zsh
+# print_info "Finish to change login shell to zsh"
 
 # Install zinit
 if [ ! -d "${HOME}"/.zinit ]; then
