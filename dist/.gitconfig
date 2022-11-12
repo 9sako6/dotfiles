@@ -4,4 +4,4 @@
 [core]
 	excludesfile = ~/.gitignore_global
 	commentchar = ~
-	editor = vim
+	editor = vim -c \"set fenc=utf-8\"
