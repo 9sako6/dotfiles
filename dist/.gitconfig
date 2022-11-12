@@ -4,3 +4,4 @@
 [core]
 	excludesfile = ~/.gitignore_global
 	commentchar = ~
+	editor = vim
