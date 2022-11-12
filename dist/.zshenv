@@ -43,6 +43,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 # go
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
+export PATH="$PATH:/usr/local/go/bin"
 
 # goenv
 export GOENV_ROOT="$HOME/.goenv"
