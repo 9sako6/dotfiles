@@ -10,14 +10,14 @@ export LANG=ja_JP.UTF-8
   done} .zshrc .zshenv
 }
 : "zinit" && {
+  ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
   if command -v zinit > /dev/null 2>&1; then
     # zinit installation
     # https://github.com/zdharma-continuum/zinit#manual
-    ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
     mkdir -p "$(dirname $ZINIT_HOME)"
     git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
-    source "${ZINIT_HOME}/zinit.zsh"
   fi
+  source "${ZINIT_HOME}/zinit.zsh"
 
   zinit light momo-lab/zsh-abbrev-alias # 略語を展開する
   # zinit ice wait'!0' lucid; zinit light zdharma/fast-syntax-highlighting
