@@ -61,3 +61,10 @@ export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"
 
 # opam configuration
 test -r /Users/9sako6/.opam/opam-init/init.zsh && . /Users/9sako6/.opam/opam-init/init.zsh > /dev/null 2> /dev/null || true
+
+# depot_tools for Chromium
+# https://chromium.googlesource.com/chromium/src/+/main/docs/mac_build_instructions.md#install
+export PATH="$PATH:$HOME/ghq/chromium.googlesource.com/chromium/tools/depot_tools"
+
+# protobuf
+export PATH="$PATH:/usr/local/protobuf/bin"
