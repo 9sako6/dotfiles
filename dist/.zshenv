@@ -69,3 +69,7 @@ export PATH="$PATH:$HOME/ghq/chromium.googlesource.com/chromium/tools/depot_tool
 
 # protobuf
 export PATH="$PATH:/usr/local/protobuf/bin"
+
+# K8s auto-complete
+autoload -U +X compinit && compinit
+source <(kubectl completion zsh)
