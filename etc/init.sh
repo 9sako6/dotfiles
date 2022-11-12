@@ -22,12 +22,12 @@ print_info "Start to change login shell to zsh"
 chsh -s /bin/zsh
 print_info "Finish to change login shell to zsh"
 
-# Install zinit
-if [ ! -d "${HOME}"/.zinit ]; then
-  print_info "Start to install zinit"
-  bash -c "$(curl -fsSL https://git.io/zinit-install)"
-  print_info "Finish to install zinit"
-fi
+# # Install zinit
+# if [ ! -d "${HOME}"/.zinit ]; then
+#   print_info "Start to install zinit"
+#   bash -c "$(curl -fsSL https://git.io/zinit-install)"
+#   print_info "Finish to install zinit"
+# fi
 
 # Install fzf
 if [ ! -d "${HOME}"/.fzf ]; then
