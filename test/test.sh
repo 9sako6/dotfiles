@@ -12,7 +12,7 @@ function test_dist_files () {
     exit 1
   fi
 
-  if [ ! -d "${HOME}/.zinit" ]; then
+  if command -v zinit > /dev/null 2>&1; then
     echo "Error: ${HOME}/.zinit doesn't exist"
     exit 1
   fi
