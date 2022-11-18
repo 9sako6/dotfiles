@@ -1,0 +1,1 @@
+await Deno.symlink("dist/.zshrc", "./hoge")
