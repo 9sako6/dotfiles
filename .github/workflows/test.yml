@@ -3,14 +3,23 @@ name: test
 on: [push] # pull_request のとき、ブランチ名が取得できずテストを通せない。
 
 jobs:
-  test:
+  install:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v1
-    - name: Install
-      run: |
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
-        deno test --allow-write --allow-read
+      - uses: actions/checkout@v2
+      - name: Install
+        run: |
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: "1.8.2"
+      - uses: actions/checkout@v2
+      - name: Run tests
+        run: |
+          deno test --allow-write --allow-read
