@@ -25,5 +25,19 @@
     {
         "key": "cmd+k cmd+h",
         "command": "workbench.action.closeEditorsToTheLeft"
+    },
+    {
+        "key": "shift+space",
+        "command": "toggleSuggestionFocus",
+        "when": "suggestWidgetVisible && textInputFocus"
+    },
+    {
+        "key": "ctrl+alt+space",
+        "command": "-toggleSuggestionFocus",
+        "when": "suggestWidgetVisible && textInputFocus"
+    },
+    {
+        "key": "shift+space",
+        "command": "editor.action.inlineSuggest.trigger"
     }
 ]

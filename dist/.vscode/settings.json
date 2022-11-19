@@ -67,7 +67,7 @@
     },
     "sqltools.useNodeRuntime": true,
     "[yaml]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "redhat.vscode-yaml"
     },
     "[typescriptreact]": {
         "editor.defaultFormatter": "vscode.typescript-language-features"
@@ -108,4 +108,6 @@
     "window.newWindowDimensions": "maximized",
     "terminal.integrated.enableMultiLinePasteWarning": false,
     "githubPullRequests.pullBranch": "never",
+    "editor.formatOnSave": true,
+    "files.autoSave": "onFocusChange",
 }
