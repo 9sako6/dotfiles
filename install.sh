@@ -12,7 +12,7 @@ if [ ! -d "${HOME}/dotfiles" ]; then
 fi
 
 cd "${HOME}/dotfiles"
-
+git branch
 # Install Deno
 export DENO_INSTALL="${HOME/}.local"
 export PATH="${DENO_INSTALL}/bin:${PATH}"
