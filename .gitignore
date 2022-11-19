@@ -8,3 +8,6 @@ tmux-client*
 .netrwhist
 */.config/configstore
 tmp/
+
+# Deno
+deno.lock

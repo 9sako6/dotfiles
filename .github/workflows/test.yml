@@ -6,11 +6,11 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest] # TODO: support windows
+        os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
-    - name: run test
-      run: bash test/test.sh
-    - name: run make
-      run: make
+    - name: Install
+      run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/install.sh)"
+    - name: Run test
+      run: deno test --allow-write --allow-read
