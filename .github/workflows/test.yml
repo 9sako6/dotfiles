@@ -13,6 +13,8 @@ jobs:
       - name: Install
         run: |
           bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
+          # Reflesh
+          source ~/.bashrc
           # Check fzf
           fzf -h
   test:
