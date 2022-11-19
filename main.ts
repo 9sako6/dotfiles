@@ -1,4 +1,4 @@
-import { install } from "./etc/install.ts";
+import { install } from "./src/install.ts";
 
 const homeDir = Deno.env.get("HOME");
 if (!homeDir) {
