@@ -5,7 +5,6 @@ export const install = async (sourceDir: string, destDir: string) => {
   for await (const fileOrDir of Deno.readDir(sourceDir)) {
     sources.push(fileOrDir);
   }
-  console.log(sourceDir, destDir);
   const absoluteSourceDir = await Deno.realPath(sourceDir);
   const absoluteDestDir = await Deno.realPath(destDir);
 

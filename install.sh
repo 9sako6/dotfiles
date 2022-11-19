@@ -8,17 +8,14 @@ if [ ! -d "${HOME}/dotfiles" ]; then
   else
     git clone https://github.com/9sako6/dotfiles
   fi
-  ls
-  pwd
   echo "Finish to clone dotfiles repository"
 fi
 
 cd "${HOME}/dotfiles"
-git branch
+
 # Install Deno
 export DENO_INSTALL="${HOME}/.local"
 export PATH="${DENO_INSTALL}/bin:${PATH}"
-echo $DENO_INSTALL
 curl -fsSL https://deno.land/x/install/install.sh | sh
 
 deno run --allow-write --allow-read --allow-env main.ts

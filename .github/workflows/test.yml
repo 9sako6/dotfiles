@@ -14,3 +14,6 @@ jobs:
       run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
     - name: Run test
       run: deno test --allow-write --allow-read
+      env:
+        DENO_INSTALL: "${HOME}/.local"
+        PATH: "${DENO_INSTALL}/bin:${PATH}"
