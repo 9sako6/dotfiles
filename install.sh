@@ -13,11 +13,11 @@ fi
 
 # Install fzf
 if [ ! -d "${HOME}"/.fzf ]; then
-  print_info "Start to install fzf"
+  echo "Start to install fzf"
   mkdir -p "${HOME}"/.fzf
   git clone --depth 1 https://github.com/junegunn/fzf.git "${HOME}"/.fzf
   "${HOME}"/.fzf/install
-  print_info "Finish to install fzf"
+  echo "Finish to install fzf"
 fi
 
 cd "${HOME}/dotfiles"
@@ -28,4 +28,4 @@ export PATH="${DENO_INSTALL}/bin:${PATH}"
 curl -fsSL https://deno.land/x/install/install.sh | sh
 
 deno run --allow-write --allow-read --allow-env main.ts
-ls -la ~/
+bash
