@@ -16,7 +16,7 @@ fi
 cd "${HOME}/dotfiles"
 git branch
 # Install Deno
-export DENO_INSTALL="${HOME/}.local"
+export DENO_INSTALL="${HOME}/.local"
 export PATH="${DENO_INSTALL}/bin:${PATH}"
 curl -fsSL https://deno.land/x/install/install.sh | sh
 
