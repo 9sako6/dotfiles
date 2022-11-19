@@ -4,6 +4,6 @@ zsh, git settings.
 
 ## Set Up
 
-すでに dotfile が存在する場合はそちらを使用します。
+すでにホームディレクトリにファイルが存在する場合は削除して置き換えます。
 
-    bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/etc/init.sh)"
+    bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/install.sh)"
