@@ -11,6 +11,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install
-      run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/install.sh)"
+      run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
     - name: Run test
       run: deno test --allow-write --allow-read
