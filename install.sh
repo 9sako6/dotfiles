@@ -8,6 +8,8 @@ if [ ! -d "${HOME}/dotfiles" ]; then
   else
     git clone https://github.com/9sako6/dotfiles
   fi
+  ls
+  pwd
   echo "Finish to clone dotfiles repository"
 fi
 
