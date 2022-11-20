@@ -31,3 +31,6 @@ abbrev-alias electron="~/node_modules/.bin/electron"
 # zoi
 abbrev-alias zoit="date "+%Y%m%d.md" | EDITOR=code zoi open"
 abbrev-alias zoic='cd $(zoi list -d | fzf)'
+
+# InteliJ
+abbrev-alias idea="intellij-idea-community"
