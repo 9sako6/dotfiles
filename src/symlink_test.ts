@@ -55,6 +55,10 @@ Deno.test("setSymlink", async (t) => {
         assert((await Deno.lstat(srcFile)).isFile);
         assert((await Deno.lstat(destFile)).isSymlink);
         assertRejects(
+          async () => await Deno.lstat(`${srcFile}.old`),
+          Error,
+        );
+        assertRejects(
           async () => await Deno.lstat(`${destFile}.old`),
           Error,
         );
