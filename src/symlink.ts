@@ -13,7 +13,6 @@ export const setSymlink = async (srcPath: string, destPath: string) => {
   const { isDirectory, isFile } = await Deno.lstat(srcPath);
   const destExists = await exist(destPath);
   if (isFile) {
-    // if (destExists) console.log(await Deno.lstat(destPath))
     if (destExists && (await Deno.lstat(destPath)).isSymlink) return;
     if (destExists) await Deno.rename(destPath, `${destPath}.old`);
 
