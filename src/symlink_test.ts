@@ -37,6 +37,30 @@ Deno.test("setSymlink", async (t) => {
       },
     );
 
+    await t.step(
+      "すでにシンボリックリンクが存在する場合、何もしない",
+      async () => {
+        const srcFile = await Deno.makeTempFile({
+          suffix: ".txt",
+        });
+        const srcFileName = basename(srcFile);
+        const destDirPath = await Deno.makeTempDir();
+        const destFile = `${destDirPath}/${srcFileName}`;
+        await Deno.symlink(srcFile, destFile);
+
+        assert((await Deno.lstat(destFile)).isSymlink);
+
+        await setSymlink(srcFile, destFile);
+
+        assert((await Deno.lstat(srcFile)).isFile);
+        assert((await Deno.lstat(destFile)).isSymlink);
+        assertRejects(
+          async () => await Deno.lstat(`${destFile}.old`),
+          Error,
+        );
+      },
+    );
+
     await t.step("ディレクトリのシンボリックリンクが配置される", async () => {
       const srcDirPath = await Deno.makeTempDir();
       const srcDirName = basename(srcDirPath);
