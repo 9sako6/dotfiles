@@ -4,6 +4,8 @@ zsh, git settings.
 
 ## Set Up
 
-すでにホームディレクトリにファイルが存在する場合は削除して置き換えます。
+すでにファイルが存在する場合は `.old` 接尾辞を付与して退避してからシンボリックリンクを作成します。
 
-    bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/install.sh)"
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/install.sh)"
+```
