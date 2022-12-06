@@ -1,12 +1,11 @@
 import { basename } from "../deps.ts";
 import { exist } from "./exist.ts";
 
-export class NameMismatchError extends Error { }
+export class NameMismatchError extends Error {}
 
 export const setSymlink = async (srcPath: string, destPath: string) => {
   // Prevent to overwrite a wrong file.
   if (basename(srcPath) !== basename(destPath)) {
-    console.log(srcPath, destPath)
     throw new NameMismatchError(
       "the source file/dir name is different from the destination file/dir name.",
     );
