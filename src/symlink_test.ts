@@ -14,8 +14,8 @@ Deno.test("setSymlink", async (t) => {
 
       await setSymlink(srcFile, destFile);
 
-      const stat = await Deno.stat(destFile);
-      assert(stat.isFile);
+      const stat = await Deno.lstat(destFile);
+      assert(stat.isSymlink);
     });
 
     await t.step("ディレクトリのシンボリックリンクが配置される", async () => {
@@ -30,18 +30,26 @@ Deno.test("setSymlink", async (t) => {
       assert(stat.isDirectory);
     });
 
-    await t.step("すでに中身のあるディレクトリが存在する場合は削除して新たなシンボリックリンクが配置される", async () => {
-      const srcDir = await Deno.makeTempDir();
-      const destDir = await Deno.makeTempDir();
-      await Deno.mkdir(`${srcDir}/dir`);
-      await Deno.mkdir(`${destDir}/dir`);
-      await Deno.writeTextFile(`${destDir}/dir/dummy.txt`, "dummy");
+    await t.step(
+      "すでに中身のあるディレクトリが存在する場合は、ディレクトリはそのままにして、ディレクトリ内にファイルのシンボリックリンクが配置される",
+      async () => {
+        const srcDir = await Deno.makeTempDir();
+        const destDir = await Deno.makeTempDir();
+        // リンク元
+        await Deno.mkdir(`${srcDir}/dir`);
+        await Deno.writeTextFile(`${srcDir}/dir/.zshrc`, "");
+        // リンク先
+        await Deno.mkdir(`${destDir}/dir`);
+        await Deno.writeTextFile(`${destDir}/dir/dummy.txt`, "dummy");
 
-      await setSymlink(`${srcDir}/dir`, `${destDir}/dir`);
+        await setSymlink(`${srcDir}/dir`, `${destDir}/dir`);
 
-      const stat = await Deno.stat(`${destDir}/dir`);
-      assert(stat.isDirectory);
-    });
+        assert((await Deno.lstat(`${destDir}/dir`)).isDirectory);
+        assert((await Deno.lstat(`${destDir}/dir/.zshrc`)).isSymlink);
+        // 元々あったファイルは残る。
+        assert((await Deno.lstat(`${destDir}/dir/dummy.txt`)).isFile);
+      },
+    );
   });
 
   await t.step("異常系", async (t) => {

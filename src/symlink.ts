@@ -10,8 +10,28 @@ export const setSymlink = async (srcPath: string, destPath: string) => {
       "the source file/dir name is different from the destination file/dir name.",
     );
   }
-  if (await exist(destPath)) {
-    await Deno.remove(destPath, { recursive: true });
+  const { isDirectory, isFile } = await Deno.lstat(srcPath);
+  if (isFile) {
+    if (await exist(destPath)) await Deno.remove(destPath);
+
+    await Deno.symlink(srcPath, destPath);
+  } else if (isDirectory) {
+    if (!(await exist(destPath))) {
+      await Deno.mkdir(destPath);
+    }
+
+    const sources: Deno.DirEntry[] = [];
+    for await (const fileOrDir of Deno.readDir(srcPath)) {
+      sources.push(fileOrDir);
+    }
+
+    await Promise.all(
+      sources.map((source) =>
+        setSymlink(
+          `${srcPath}/${source.name}`,
+          `${destPath}/${source.name}`,
+        )
+      ),
+    );
   }
-  await Deno.symlink(srcPath, destPath);
 };
