@@ -8,12 +8,14 @@ export const install = async (sourceDir: string, destDir: string) => {
   const absoluteSourceDir = await Deno.realPath(sourceDir);
   const absoluteDestDir = await Deno.realPath(destDir);
 
-  await Promise.all(
-    sources.map((source) =>
-      setSymlink(
-        `${absoluteSourceDir}/${source.name}`,
-        `${absoluteDestDir}/${source.name}`,
-      )
-    ),
-  );
+  await setSymlink(absoluteSourceDir, absoluteDestDir);
+
+  // await Promise.all(
+  //   sources.map((source) =>
+  //     setSymlink(
+  //       `${absoluteSourceDir}/${source.name}`,
+  //       `${absoluteDestDir}/${source.name}`,
+  //     )
+  //   ),
+  // );
 };
