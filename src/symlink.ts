@@ -1,7 +1,7 @@
 import { basename } from "../deps.ts";
 import { exist } from "./exist.ts";
 
-export class NameMismatchError extends Error {}
+export class NameMismatchError extends Error { }
 
 export const setSymlink = async (srcPath: string, destPath: string) => {
   // Prevent to overwrite a wrong file.
@@ -12,7 +12,7 @@ export const setSymlink = async (srcPath: string, destPath: string) => {
   }
   const { isDirectory, isFile } = await Deno.lstat(srcPath);
   if (isFile) {
-    if (await exist(destPath)) await Deno.remove(destPath);
+    if (await exist(destPath)) await Deno.rename(destPath, `${destPath}.old`);
 
     await Deno.symlink(srcPath, destPath);
   } else if (isDirectory) {
