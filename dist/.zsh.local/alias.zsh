@@ -34,3 +34,6 @@ abbrev-alias zoic='cd $(zoi list -d | fzf)'
 
 # InteliJ
 abbrev-alias idea="intellij-idea-community"
+
+# Kubernetes
+abbrev-alias k="kubectl"
