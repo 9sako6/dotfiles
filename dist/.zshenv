@@ -9,7 +9,8 @@ export PATH="/usr/local/bin:${PATH}"
 export RBENV_ROOT="$HOME/.rbenv"
 if [ -d "$RBENV_ROOT" ]; then
   export PATH="$RBENV_ROOT/bin:$PATH"
-  eval "$(rbenv init - --no-rehash)"
+  # eval "$(rbenv init - --no-rehash)"
+  eval "$(~/.rbenv/bin/rbenv init - zsh)"
 fi
 
 # Settings for pyenv
@@ -73,3 +74,6 @@ export PATH="$PATH:/usr/local/protobuf/bin"
 # K8s auto-complete
 autoload -U +X compinit && compinit
 source <(kubectl completion zsh)
+
+# Dart
+export PATH="$PATH":"$HOME/.pub-cache/bin"
