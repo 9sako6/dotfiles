@@ -9,8 +9,11 @@ export PATH="/usr/local/bin:${PATH}"
 export RBENV_ROOT="$HOME/.rbenv"
 if [ -d "$RBENV_ROOT" ]; then
   export PATH="$RBENV_ROOT/bin:$PATH"
-  # eval "$(rbenv init - --no-rehash)"
-  eval "$(~/.rbenv/bin/rbenv init - zsh)"
+  if [ -d "${HOME}/.rbenv/bin/rbenv" ]; then
+    eval "$(~/.rbenv/bin/rbenv init - zsh)"
+  else
+    eval "$(rbenv init - --no-rehash)"
+  fi
 fi
 
 # Settings for pyenv
