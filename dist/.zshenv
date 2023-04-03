@@ -86,3 +86,6 @@ eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 # Cargo
 . "$HOME/.cargo/env"
+
+#minikube
+eval $(minikube -p minikube docker-env)
