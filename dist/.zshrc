@@ -66,3 +66,7 @@ export LANG=ja_JP.UTF-8
 
 # fin.
 ### End of Zinit's installer chunk
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
