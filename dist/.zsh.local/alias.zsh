@@ -41,3 +41,6 @@ fi
 
 # Kubernetes
 abbrev-alias k="kubectl"
+
+# cargo
+abbrev-alias crun='RUST_LOG=DEBUG cargo -vv watch -x run'

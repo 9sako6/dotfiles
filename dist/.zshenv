@@ -83,3 +83,6 @@ export PATH="$PATH":"$HOME/.pub-cache/bin"
 
 # Set PATH, MANPATH, etc., for Homebrew.
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+# Cargo
+. "$HOME/.cargo/env"
