@@ -1,17 +1,21 @@
+#!/bin/bash
+
 source ~/.zshenv
 source ~/.zshrc
 
-# Test installed deps
-if ! command -v fzf > /dev/null; then
-  echo "Error: fail to install fzf." >&2
-  exit 1
-else
-  fzf --version
-fi
+check_dependency() {
+  local cmd="$1"
+  local version_cmd="$2"
 
-if ! command -v deno > /dev/null; then
-  echo "Error: fail to install deno." >&2
-  exit 1
-else
-  deno --version
-fi
+  if ! command -v "$cmd" > /dev/null; then
+    echo "Error: fail to install $cmd." >&2
+    exit 1
+  else
+    echo "Success to install $cmd."
+    eval "$version_cmd"
+  fi
+}
+
+# Test installed deps
+check_dependency "fzf" "fzf --version"
+check_dependency "deno" "deno --version"
