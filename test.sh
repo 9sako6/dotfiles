@@ -19,3 +19,4 @@ check_dependency() {
 # Test installed deps
 check_dependency "fzf" "fzf --version"
 check_dependency "deno" "deno --version"
+check_dependency "kubectl" "kubectl version"
