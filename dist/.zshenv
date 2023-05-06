@@ -89,3 +89,6 @@ export PATH="$PATH":"$HOME/.pub-cache/bin"
 
 #minikube
 eval $(minikube -p minikube docker-env)
+
+# aqua
+export PATH="${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin:$PATH"
