@@ -4,9 +4,6 @@ on: [push] # pull_request のとき、ブランチ名が取得できずテスト
 
 jobs:
   install:
-    defaults:
-      run:
-        shell: zsh {0}
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
