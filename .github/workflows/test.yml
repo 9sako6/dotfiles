@@ -1,6 +1,9 @@
 name: test
 
-on: [push] # pull_request のとき、ブランチ名が取得できずテストを通せない。
+on:
+  # pull_request のとき、ブランチ名が取得できずテストを通せない。
+  push:
+  workflow_dispatch:
 
 jobs:
   install:
