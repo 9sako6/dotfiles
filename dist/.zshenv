@@ -85,7 +85,7 @@ source <(kubectl completion zsh)
 export PATH="$PATH":"$HOME/.pub-cache/bin"
 
 # Set PATH, MANPATH, etc., for Homebrew.
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+[ -f '/home/linuxbrew/.linuxbrew/bin/brew' ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 #minikube
 eval $(minikube -p minikube docker-env)
