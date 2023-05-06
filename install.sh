@@ -32,5 +32,6 @@ deno run --allow-write --allow-read --allow-env main.ts
 aqua i -a
 
 # Test installed deps
+source ~/.zshenv
 fzf --version
 deno --version
