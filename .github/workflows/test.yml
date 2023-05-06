@@ -4,6 +4,9 @@ on: [push] # pull_request のとき、ブランチ名が取得できずテスト
 
 jobs:
   install:
+    defaults:
+      run:
+        shell: zsh {0}
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
@@ -11,7 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install
-        shell: zsh
         run: |
           bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
   test:
