@@ -1,3 +1,6 @@
+source ~/.zshenv
+source ~/.zshrc
+
 # Test installed deps
 if ! command -v fzf > /dev/null; then
   echo "Error: fail to install fzf." >&2
