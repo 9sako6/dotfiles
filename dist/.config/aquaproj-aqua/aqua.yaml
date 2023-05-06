@@ -13,3 +13,4 @@ packages:
 - name: denoland/deno@v1.33.2
 - name: junegunn/fzf@0.40.0
 - name: kubernetes/kubectl@v1.27.1
+- name: kubernetes/minikube@v1.30.1
