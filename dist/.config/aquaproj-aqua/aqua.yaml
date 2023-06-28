@@ -11,6 +11,6 @@ registries:
   ref: v4.22.0 # renovate: depName=aquaproj/aqua-registry
 packages:
 - name: denoland/deno@v1.34.3
-- name: junegunn/fzf@0.40.0
+- name: junegunn/fzf@0.42.0
 - name: kubernetes/kubectl@v1.27.3
 - name: kubernetes/minikube@v1.30.1
