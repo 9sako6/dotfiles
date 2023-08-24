@@ -12,5 +12,5 @@ registries:
 packages:
 - name: denoland/deno@v1.35.0
 - name: junegunn/fzf@0.42.0
-- name: kubernetes/kubectl@v1.27.3
+- name: kubernetes/kubectl@v1.28.1
 - name: kubernetes/minikube@v1.30.1
