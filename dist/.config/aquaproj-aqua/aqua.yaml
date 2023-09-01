@@ -10,7 +10,7 @@ registries:
 - type: standard
   ref: v4.24.0 # renovate: depName=aquaproj/aqua-registry
 packages:
-- name: denoland/deno@v1.35.0
+- name: denoland/deno@v1.36.4
 - name: junegunn/fzf@0.42.0
 - name: kubernetes/kubectl@v1.27.3
 - name: kubernetes/minikube@v1.30.1
