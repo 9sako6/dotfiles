@@ -13,6 +13,11 @@ fi
 
 cd "${HOME}/dotfiles"
 
+# Install asdf
+git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.12.0
+source ~/.zshenv
+asdf --version
+
 # Install Deno
 export DENO_INSTALL="${HOME}/.local"
 export PATH="${DENO_INSTALL}/bin:${PATH}"
