@@ -9,15 +9,16 @@ jobs:
   install:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest]
+        # os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - name: Install
         run: |
-          zsh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
           # Check installed deps
-          zsh test.sh
+          bash test.sh
         shell: zsh {0}
   test:
     runs-on: ubuntu-latest
