@@ -16,14 +16,6 @@ if [ -d "$RBENV_ROOT" ]; then
   fi
 fi
 
-# Settings for pyenv
-export PYENV_ROOT="$HOME/.pyenv"
-if [ -d "$PYENV_ROOT" ]; then
-  export PATH="$PYENV_ROOT/bin:$PATH"
-  eval "$(pyenv init - --no-rehash)"
-fi
-eval "$(pyenv init --path)"
-
 # Settings for nodebrew
 export PATH="$PATH:$HOME/.nodebrew/current/bin"
 
@@ -80,9 +72,6 @@ export PATH="$PATH:/usr/local/protobuf/bin"
 # K8s auto-complete
 autoload -U +X compinit && compinit
 source <(kubectl completion zsh)
-
-# Dart
-export PATH="$PATH":"$HOME/.pub-cache/bin"
 
 # Set PATH, MANPATH, etc., for Homebrew.
 [ -f '/home/linuxbrew/.linuxbrew/bin/brew' ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
