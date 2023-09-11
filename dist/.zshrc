@@ -64,6 +64,9 @@ export LANG=ja_JP.UTF-8
 # functions
 [ -e "${HOME}/.zsh.local/functions.zsh" ] && source "${HOME}/.zsh.local/functions.zsh"
 
+# rtx
+eval "$(${HOME}/.local/share/rtx/bin/rtx activate zsh)"
+
 # fin.
 ### End of Zinit's installer chunk
 

@@ -33,12 +33,6 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# Rust
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# Cargo
-. "$HOME/.cargo/env"
-
 # go
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
@@ -51,10 +45,6 @@ if type goenv > /dev/null 2>&1; then
   eval "$(goenv init -)"
   export PATH="$PATH:$GOPATH/bin"
 fi
-
-# deno
-export DENO_INSTALL="$HOME/.local"
-export PATH="$DENO_INSTALL/bin:$PATH"
 
 # gnu-getopt
 export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"
@@ -82,7 +72,3 @@ eval $(minikube -p minikube docker-env)
 # aqua
 export PATH="${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin:$PATH"
 export AQUA_GLOBAL_CONFIG=${AQUA_GLOBAL_CONFIG:-}:${XDG_CONFIG_HOME:-$HOME/.config}/aquaproj-aqua/aqua.yaml
-
-# asdf
-. "$HOME/.asdf/asdf.sh"
-. "$HOME/.asdf/completions/asdf.bash"

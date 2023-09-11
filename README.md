@@ -9,3 +9,7 @@ zsh, git settings.
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/install.sh)"
 ```
+
+## Toolchain
+
+必要な言語、コマンドは [rtx](https://github.com/jdx/rtx) で入れましょう。

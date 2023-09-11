@@ -13,15 +13,12 @@ fi
 
 cd "${HOME}/dotfiles"
 
-# Install asdf
-git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.12.0
-source ~/.zshenv
-asdf --version
+# Install rtx
+curl https://rtx.pub/install.sh | sh
+source ~/.zshrc
 
 # Install Deno
-export DENO_INSTALL="${HOME}/.local"
-export PATH="${DENO_INSTALL}/bin:${PATH}"
-curl -fsSL https://deno.land/x/install/install.sh | sh
+rtx install deno -y
 
 deno run --allow-write --allow-read --allow-env main.ts
 
