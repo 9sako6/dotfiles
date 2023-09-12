@@ -1,10 +1,9 @@
 if [ ! -d "${HOME}/dotfiles" ]; then
   echo "Start to clone dotfiles repository"
   cd "${HOME}"
-  if [ ${GITHUB_REF} ]; then
+  if [ ${CI} ]; then
     # in GitHub Actions
-    branch_name=$(echo "${GITHUB_REF##*/}")
-    git clone -b ${branch_name} https://github.com/9sako6/dotfiles
+    git clone -b ${CURRENT_BRANCH_NAME} https://github.com/9sako6/dotfiles
   else
     git clone https://github.com/9sako6/dotfiles
   fi
@@ -13,14 +12,15 @@ fi
 
 cd "${HOME}/dotfiles"
 
-# Install rtx
-curl https://rtx.pub/install.sh | sh
-source ~/.zshrc
-
 # Install Deno
-rtx install deno -y
+export DENO_INSTALL="${HOME}/.local"
+export PATH="${DENO_INSTALL}/bin:${PATH}"
+curl -fsSL https://deno.land/x/install/install.sh | sh
 
 deno run --allow-write --allow-read --allow-env main.ts
+
+# Install rtx
+curl https://rtx.pub/install.sh | sh
 
 # Install aqua
 curl -sSfL -O https://raw.githubusercontent.com/aquaproj/aqua-installer/v2.1.1/aqua-installer

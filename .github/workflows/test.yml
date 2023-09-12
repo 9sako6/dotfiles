@@ -1,25 +1,39 @@
 name: test
 
 on:
-  # pull_request のとき、ブランチ名が取得できずテストを通せない。
   push:
+    branches:
+      - master
+  pull_request:
   workflow_dispatch:
 
 jobs:
   install:
     strategy:
       matrix:
-        os: [macos-latest]
-        # os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Install
+      - name: Get branch name
+        id: branch-name
+        uses: tj-actions/branch-names@v7
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install dependencies
         run: |
-          bash -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${{ github.ref_name }}/install.sh)"
+          export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
+          brew install --force --overwrite zsh
+
+      - uses: actions/checkout@v4
+      - name: Install dotfiles
+        run: |
+          zsh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${CURRENT_BRANCH_NAME}/install.sh)"
           # Check installed deps
-          bash test.sh
-        shell: zsh {0}
+          zsh test.sh
+        env:
+          CURRENT_BRANCH_NAME: ${{ steps.branch-name.outputs.current_branch }}
   test:
     runs-on: ubuntu-latest
     steps:
