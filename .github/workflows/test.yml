@@ -30,10 +30,9 @@ jobs:
       - name: Install dotfiles
         run: |
           zsh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${CURRENT_BRANCH_NAME}/install.sh)"
-          # Check installed deps
-          zsh test.sh
         env:
           CURRENT_BRANCH_NAME: ${{ steps.branch-name.outputs.current_branch }}
+
   test:
     runs-on: ubuntu-latest
     steps:

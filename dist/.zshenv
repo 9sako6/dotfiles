@@ -16,17 +16,11 @@ if [ -d "$RBENV_ROOT" ]; then
   fi
 fi
 
-# Settings for nodebrew
-export PATH="$PATH:$HOME/.nodebrew/current/bin"
-
 # PATH general
 export PATH="$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin"
 
 # Setting for original commands
 export PATH="$PATH:$HOME/mybin"
-
-# Setting for fzf
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # Setting for nvm
 export NVM_DIR="$HOME/.nvm"
@@ -52,13 +46,6 @@ export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"
 # opam configuration
 test -r /Users/9sako6/.opam/opam-init/init.zsh && . /Users/9sako6/.opam/opam-init/init.zsh > /dev/null 2> /dev/null || true
 
-# depot_tools for Chromium
-# https://chromium.googlesource.com/chromium/src/+/main/docs/mac_build_instructions.md#install
-export PATH="$PATH:$HOME/ghq/chromium.googlesource.com/chromium/tools/depot_tools"
-
-# protobuf
-export PATH="$PATH:/usr/local/protobuf/bin"
-
 # K8s auto-complete
 autoload -U +X compinit && compinit
 source <(kubectl completion zsh)
@@ -66,9 +53,6 @@ source <(kubectl completion zsh)
 # Set PATH, MANPATH, etc., for Homebrew.
 [ -f '/home/linuxbrew/.linuxbrew/bin/brew' ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-# minikube
-eval $(minikube -p minikube docker-env)
-
-# aqua
-export PATH="${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin:$PATH"
-export AQUA_GLOBAL_CONFIG=${AQUA_GLOBAL_CONFIG:-}:${XDG_CONFIG_HOME:-$HOME/.config}/aquaproj-aqua/aqua.yaml
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
