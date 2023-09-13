@@ -1,8 +1,16 @@
 [tools]
 # global tool versions go here
 # you can set these with `rtx use -g`
+
+# k8s
 kubectl = 'latest'
 minikube = 'latest'
 skaffold = ['latest']
+
+# 便利
 fzf = 'latest'
 ghq = 'latest'
+
+# Languages
+rust = 'latest'
+node = 'latest'
