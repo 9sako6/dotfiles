@@ -59,6 +59,9 @@ if [ -f '/home/yutaro_taira/google-cloud-sdk/path.zsh.inc' ]; then . '/home/yuta
 # The next line enables shell command completion for gcloud.
 if [ -f '/home/yutaro_taira/google-cloud-sdk/completion.zsh.inc' ]; then . '/home/yutaro_taira/google-cloud-sdk/completion.zsh.inc'; fi
 
+# krew (kubernetes plugin manager)
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"

@@ -14,3 +14,5 @@ ghq = 'latest'
 # Languages
 rust = 'latest'
 node = 'latest'
+go = "latest"
+k3d = "latest"
