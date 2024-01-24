@@ -19,10 +19,10 @@ curl -fsSL https://deno.land/x/install/install.sh | sh
 
 deno run --allow-write --allow-read --allow-env main.ts
 
-# Install rtx
-curl https://rtx.pub/install.sh | sh
+# Install mise
+curl https://mise.jdx.dev/install.sh | sh
 
 source ~/.zshenv
 source ~/.zshrc
 
-rtx install
+mise install

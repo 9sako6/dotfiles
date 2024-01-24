@@ -64,8 +64,9 @@ export LANG=ja_JP.UTF-8
 # functions
 [ -e "${HOME}/.zsh.local/functions.zsh" ] && source "${HOME}/.zsh.local/functions.zsh"
 
-# rtx
-eval "$(${HOME}/.local/share/rtx/bin/rtx activate zsh)"
+# note this assumes mise is located at ~/.local/bin/mise
+# which is what install.sh does by default
+echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc
 
 # fin.
 ### End of Zinit's installer chunk

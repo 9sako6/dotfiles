@@ -3,3 +3,5 @@ node_modules/
 *~
 .devcontainer
 .vscode
+.rtx.toml
+.mise.toml
