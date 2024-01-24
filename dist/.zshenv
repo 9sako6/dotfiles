@@ -28,17 +28,18 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 # go
-export GOPATH="$HOME/go"
-export PATH="$GOPATH/bin:$PATH"
-export PATH="$PATH:/usr/local/go/bin"
+export GOPATH=$(go env GOPATH)
+# export GOPATH="$HOME/go"
+export PATH="$PATH:$GOPATH/bin"
+# export PATH="$PATH:/usr/local/go/bin"
 
 # goenv
-export GOENV_ROOT="$HOME/.goenv"
-export PATH="$GOENV_ROOT/bin:$PATH"
-if type goenv > /dev/null 2>&1; then
-  eval "$(goenv init -)"
-  export PATH="$PATH:$GOPATH/bin"
-fi
+# export GOENV_ROOT="$HOME/.goenv"
+# export PATH="$GOENV_ROOT/bin:$PATH"
+# if type goenv > /dev/null 2>&1; then
+#   eval "$(goenv init -)"
+#   export PATH="$PATH:$GOPATH/bin"
+# fi
 
 # gnu-getopt
 export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"
