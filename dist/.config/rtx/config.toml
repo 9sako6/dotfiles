@@ -16,3 +16,4 @@ rust = 'latest'
 node = 'latest'
 go = "latest"
 k3d = "latest"
+argocd = "latest"
