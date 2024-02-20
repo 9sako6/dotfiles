@@ -66,7 +66,7 @@ export LANG=ja_JP.UTF-8
 
 # note this assumes mise is located at ~/.local/bin/mise
 # which is what install.sh does by default
-echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc
+eval "$(~/.local/bin/mise activate zsh)"
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f "${HOME}/google-cloud-sdk/path.zsh.inc" ]; then . "${HOME}/google-cloud-sdk/path.zsh.inc"; fi
