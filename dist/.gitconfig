@@ -7,7 +7,7 @@
 	editor = vim -c \"set fenc=utf-8\"
 [credential "https://github.com"]
 	helper = 
-	helper = !/home/linuxbrew/.linuxbrew/Cellar/gh/2.32.1/bin/gh auth git-credential
+	helper = !/usr/local/bin/gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !/home/linuxbrew/.linuxbrew/Cellar/gh/2.32.1/bin/gh auth git-credential
+	helper = !/usr/local/bin/gh auth git-credential

@@ -16,6 +16,6 @@ zstyle ':vcs_info:git:*' unstagedstr "%F{red}+"
 zstyle ':vcs_info:*' formats "%F{green}%c%u[%b]%f"
 zstyle ':vcs_info:*' actionformats '[%b|%a]'
 precmd () { vcs_info }
-RPROMPT=$RPROMPT'%F{cyan}。(｡>﹏<｡)'
+# RPROMPT=$RPROMPT'%F{cyan}。(｡>﹏<｡)'
 PROMPT="%F{cyan}%n@%d \${vcs_info_msg_0_} \$(kube_ps1)
 %F{cyan}( ;ᴗ;)っ%f "

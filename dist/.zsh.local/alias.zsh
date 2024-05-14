@@ -46,3 +46,6 @@ abbrev-alias kn="kubens"
 
 # cargo
 abbrev-alias crun='RUST_LOG=DEBUG cargo -vv watch -x run'
+
+# terraform
+abbrev-alias tf="terraform"
