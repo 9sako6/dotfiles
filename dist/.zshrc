@@ -75,5 +75,8 @@ if [ -f "${HOME}/google-cloud-sdk/path.zsh.inc" ]; then . "${HOME}/google-cloud-
 if [ -f "${HOME}/google-cloud-sdk/completion.zsh.inc" ]; then . "${HOME}/google-cloud-sdk/completion.zsh.inc"; fi
 export PATH="/usr/local/opt/sphinx-doc/bin:$PATH"
 
+eval "$(~/.local/bin/mise activate zsh)"
+
+alias redis-cli='docker run --rm -it --net=host redis:7.0.4-bullseye redis-cli'
 # fin.
 ### End of Zinit's installer chunk

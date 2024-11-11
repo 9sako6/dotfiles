@@ -49,3 +49,5 @@ abbrev-alias crun='RUST_LOG=DEBUG cargo -vv watch -x run'
 
 # terraform
 abbrev-alias tf="terraform"
+# snowflake
+abbrev-alias snow='snowsql'

@@ -63,6 +63,8 @@ if [ -f '/home/yutaro_taira/google-cloud-sdk/completion.zsh.inc' ]; then . '/hom
 # krew (kubernetes plugin manager)
 export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
+# snowflake
+
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
