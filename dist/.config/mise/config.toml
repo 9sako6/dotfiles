@@ -17,5 +17,5 @@ node = 'latest'
 go = "latest"
 k3d = "latest"
 argocd = "latest"
-terraform = "1.8.2"
+terraform = "1.10.5"
 sops = "3.8.1"
