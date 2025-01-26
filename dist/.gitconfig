@@ -5,6 +5,7 @@
 	excludesfile = ~/.gitignore_global
 	commentchar = ~
 	editor = vim -c \"set fenc=utf-8\"
+	ignorecase = false
 [credential "https://github.com"]
 	helper = 
 	helper = !/usr/local/bin/gh auth git-credential
