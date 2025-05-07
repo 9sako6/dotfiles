@@ -15,7 +15,7 @@ go = "latest"
 k3d = "latest"
 argocd = "latest"
 terraform = "1.8.2"
-sops = "3.8.1"
+sops = "3.10.2"
 rust = "latest"
 ruby = "latest"
 
