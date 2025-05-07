@@ -10,12 +10,14 @@ skaffold = ['latest', '1.39.4']
 # 便利
 fzf = 'latest'
 ghq = 'latest'
-
-# Languages
-rust = 'latest'
-node = 'latest'
+node = "latest"
 go = "latest"
 k3d = "latest"
 argocd = "latest"
 terraform = "1.8.2"
 sops = "3.8.1"
+rust = "latest"
+ruby = "latest"
+
+[settings]
+legacy_version_file_disable_tools = ["terraform"]
