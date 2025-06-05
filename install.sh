@@ -19,10 +19,13 @@ curl -fsSL https://deno.land/x/install/install.sh | sh
 
 deno run --allow-write --allow-read --allow-env main.ts
 
-# Install mise
-curl https://mise.jdx.dev/install.sh | sh
+# Install zinit
+bash -c "$(curl --fail --show-error --silent --location https://raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh)"
 
 source ~/.zshenv
 source ~/.zshrc
+
+# Install mise
+curl https://mise.jdx.dev/install.sh | sh
 
 mise install

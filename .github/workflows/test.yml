@@ -32,6 +32,7 @@ jobs:
           zsh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${CURRENT_BRANCH_NAME}/install.sh)"
         env:
           CURRENT_BRANCH_NAME: ${{ steps.branch-name.outputs.current_branch }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test:
     runs-on: ubuntu-latest
