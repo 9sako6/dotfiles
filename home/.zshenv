@@ -54,11 +54,5 @@ source <(kubectl completion zsh)
 # Set PATH, MANPATH, etc., for Homebrew.
 [ -f '/home/linuxbrew/.linuxbrew/bin/brew' ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/home/yutaro_taira/google-cloud-sdk/path.zsh.inc' ]; then . '/home/yutaro_taira/google-cloud-sdk/path.zsh.inc'; fi
-
-# The next line enables shell command completion for gcloud.
-if [ -f '/home/yutaro_taira/google-cloud-sdk/completion.zsh.inc' ]; then . '/home/yutaro_taira/google-cloud-sdk/completion.zsh.inc'; fi
-
 # krew (kubernetes plugin manager)
 export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"

@@ -81,7 +81,7 @@ eval "$(~/.local/bin/mise activate zsh)"
 alias redis-cli='docker run --rm -it --net=host redis:7.0.4-bullseye redis-cli'
 
 # Added by Antigravity
-export PATH="/Users/9sako6/.antigravity/antigravity/bin:$PATH"
+export PATH="${HOME}/.antigravity/antigravity/bin:$PATH"
 
 # fin.
 ### End of Zinit's installer chunk
