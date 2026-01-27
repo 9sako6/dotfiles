@@ -18,6 +18,7 @@ jobs:
       - name: Install chezmoi
         run: |
           sh -c "$(curl -fsLS get.chezmoi.io)"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Dry-run apply dotfiles
         run: |
           chezmoi -S "$GITHUB_WORKSPACE/home" apply --dry-run --verbose
