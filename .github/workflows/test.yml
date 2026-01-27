@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install chezmoi
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)"
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Dry-run apply dotfiles
         run: |
