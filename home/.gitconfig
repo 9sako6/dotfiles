@@ -1,0 +1,14 @@
+[user]
+	email = 9sako6@gmail.com
+	name = Yutaro Taira
+[core]
+	excludesfile = ~/.gitignore_global
+	commentchar = ~
+	editor = vim -c \"set fenc=utf-8\"
+	ignorecase = false
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/local/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/local/bin/gh auth git-credential

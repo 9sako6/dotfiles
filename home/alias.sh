@@ -1,0 +1,10 @@
+alias tree="tree -NC" # N: 文字化け対策, C:色をつける
+alias v="code"
+alias gpp="g++"
+alias cr='cd "$(ghq root)/$(ghq list | fzf)"'
+alias '$'='command'
+alias vi=nvim
+alias vim=nvim
+alias view="nvim -R"
+alias vimdiff="nvim -d"
+alias snowsql=/Applications/SnowSQL.app/Contents/MacOS/snowsql

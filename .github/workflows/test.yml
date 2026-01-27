@@ -8,37 +8,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  install:
+  chezmoi-apply:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Get branch name
-        id: branch-name
-        uses: tj-actions/branch-names@v9
-
-      - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@master
-
-      - name: Install dependencies
-        run: |
-          export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
-          brew install --force --overwrite zsh
-
       - uses: actions/checkout@v4
-      - name: Install dotfiles
+      - name: Install chezmoi
         run: |
-          zsh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/${CURRENT_BRANCH_NAME}/install.sh)"
-        env:
-          CURRENT_BRANCH_NAME: ${{ steps.branch-name.outputs.current_branch }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: denoland/setup-deno@v1
-      - uses: actions/checkout@v4
-      - name: Run tests
+          sh -c "$(curl -fsLS get.chezmoi.io)"
+      - name: Dry-run apply dotfiles
         run: |
-          deno test --allow-write --allow-read
+          chezmoi -S "$GITHUB_WORKSPACE/home" apply --dry-run --verbose

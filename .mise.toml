@@ -1,0 +1,14 @@
+[tools]
+go = "latest"
+
+[tasks.diff]
+run = "chezmoi diff"
+
+[tasks.apply]
+run = "chezmoi apply"
+
+[tasks.update]
+run = "chezmoi update"
+
+[tasks.doctor]
+run = "chezmoi doctor"
