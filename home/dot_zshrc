@@ -83,5 +83,20 @@ alias redis-cli='docker run --rm -it --net=host redis:7.0.4-bullseye redis-cli'
 # Added by Antigravity
 export PATH="${HOME}/.antigravity/antigravity/bin:$PATH"
 
+eval "$(direnv hook zsh)"
+
+## [Completion]
+## Completion scripts setup. Remove the following line to uninstall
+[[ -f "${HOME}/.dart-cli-completion/zsh-config.zsh" ]] && . "${HOME}/.dart-cli-completion/zsh-config.zsh" || true
+## [/Completion]
+
+# pnpm
+export PNPM_HOME="${HOME}/Library/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+
 # fin.
 ### End of Zinit's installer chunk

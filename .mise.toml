@@ -2,13 +2,32 @@
 go = "latest"
 
 [tasks.diff]
-run = "chezmoi diff"
+run = "chezmoi -S ~/dotfiles/home diff"
+description = "Show changes between source and destination"
 
 [tasks.apply]
-run = "chezmoi apply"
+run = "chezmoi -S ~/dotfiles/home apply -v"
+description = "Apply changes to home directory (verbose)"
+
+[tasks.status]
+run = "chezmoi -S ~/dotfiles/home status"
+description = "Show files that would be changed"
+
+[tasks.edit]
+run = '''
+if [ -z "$1" ]; then
+  echo "Usage: mise run edit <file>"
+  echo "Example: mise run edit ~/.zshrc"
+  exit 1
+fi
+chezmoi -S ~/dotfiles/home edit "$1"
+'''
+description = "Edit a file managed by chezmoi"
 
 [tasks.update]
-run = "chezmoi update"
+run = "chezmoi -S ~/dotfiles/home update"
+description = "Pull and apply changes from remote"
 
 [tasks.doctor]
-run = "chezmoi doctor"
+run = "chezmoi -S ~/dotfiles/home doctor"
+description = "Check for potential problems"
