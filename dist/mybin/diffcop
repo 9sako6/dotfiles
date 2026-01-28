@@ -1,5 +1,0 @@
-#!/bin/bash
-
-function diffcop () {
-  git diff --name-only | xargs rubocop
-}
