@@ -1,5 +1,7 @@
 [tools]
 go = "latest"
+ghq = "1.8.0"
+fzf = "0.62.0"
 
 [tasks.diff]
 run = "chezmoi -S ~/dotfiles/home diff"
