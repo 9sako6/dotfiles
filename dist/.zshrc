@@ -81,7 +81,9 @@ alias redis-cli='docker run --rm -it --net=host redis:7.0.4-bullseye redis-cli'
 # Added by Antigravity
 export PATH="${HOME}/.antigravity/antigravity/bin:$PATH"
 
-eval "$(direnv hook zsh)"
+if mise which direnv > /dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
 
 ## [Completion]
 ## Completion scripts setup. Remove the following line to uninstall

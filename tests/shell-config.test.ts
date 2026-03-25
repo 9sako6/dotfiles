@@ -16,4 +16,11 @@ describe("shell config", () => {
     expect(zshenv).toContain("if command -v kubectl > /dev/null 2>&1; then");
     expect(zshenv).toContain('source <(kubectl completion zsh)');
   });
+
+  test("zshrc guards direnv hook behind a resolvable mise tool", async () => {
+    const zshrc = await readFile("dist/.zshrc", "utf8");
+
+    expect(zshrc).toContain("if mise which direnv > /dev/null 2>&1; then");
+    expect(zshrc).toContain('eval "$(direnv hook zsh)"');
+  });
 });
