@@ -29,6 +29,14 @@ describe("shell config", () => {
     expect(zshenv).toContain('source <(kubectl completion zsh)');
   });
 
+  test("zshenv sets up Homebrew on macOS as well as Linuxbrew", async () => {
+    const zshenv = await readFile("dist/.zshenv", "utf8");
+
+    expect(zshenv).toContain("[ -f '/opt/homebrew/bin/brew' ]");
+    expect(zshenv).toContain("eval \"$(/opt/homebrew/bin/brew shellenv)\"");
+    expect(zshenv).toContain("[ -f '/home/linuxbrew/.linuxbrew/bin/brew' ]");
+  });
+
   test("zshrc guards direnv hook behind a resolvable mise tool", async () => {
     const zshrc = await readFile("dist/.zshrc", "utf8");
 
