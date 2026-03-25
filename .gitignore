@@ -9,6 +9,7 @@ tmux-client*
 */.config/configstore
 tmp/**
 !tmp/.keep
+.worktrees/
 *.old
 
 # Deno
