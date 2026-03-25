@@ -37,6 +37,15 @@
 eval "$(~/.local/bin/mise activate zsh)"
 export PATH="$HOME/.local/share/mise/shims:$PATH"
 
+if mise which zoxide > /dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+fi
+
+if mise which atuin > /dev/null 2>&1; then
+  export ATUIN_NOBIND="true"
+  eval "$(atuin init zsh)"
+fi
+
 : "zinit" && {
   ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
   if [ -f "${ZINIT_HOME}/zinit.zsh" ]; then

@@ -66,4 +66,17 @@ describe("bootstrap trust flow", () => {
     expect(readme).toContain("~/.zsh.d/secrets.zsh");
     expect(readme).toContain("dist/");
   });
+
+  test("README documents the managed modern CLI tools and local-only atuin usage", async () => {
+    const readme = await readFile("README.md", "utf8");
+
+    expect(readme).toContain("zoxide");
+    expect(readme).toContain("atuin");
+    expect(readme).toContain("delta");
+    expect(readme).toContain("fd");
+    expect(readme).toContain("bat");
+    expect(readme).toContain("eza");
+    expect(readme).toContain("sync");
+    expect(readme).toContain("Ctrl-R");
+  });
 });

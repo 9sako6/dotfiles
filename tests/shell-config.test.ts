@@ -15,10 +15,16 @@ describe("shell config", () => {
   test("managed global mise config contains user-wide tools", async () => {
     const globalMiseConfig = await readFile("dist/.config/mise/config.toml", "utf8");
 
+    expect(globalMiseConfig).toContain('atuin = ');
+    expect(globalMiseConfig).toContain('bat = ');
+    expect(globalMiseConfig).toContain('delta = ');
     expect(globalMiseConfig).toContain('direnv = "2.37.1"');
+    expect(globalMiseConfig).toContain('eza = ');
+    expect(globalMiseConfig).toContain('fd = ');
     expect(globalMiseConfig).toContain('ghq = "1.9.4"');
     expect(globalMiseConfig).toContain('fzf = "0.70.0"');
     expect(globalMiseConfig).toContain('ripgrep = "15.1.0"');
+    expect(globalMiseConfig).toContain('zoxide = ');
     expect(globalMiseConfig).toContain('zellij = "0.44.0"');
     expect(globalMiseConfig).not.toContain('\ngh = ');
   });
@@ -47,6 +53,8 @@ describe("shell config", () => {
     const zshrc = await readFile("dist/.zshrc", "utf8");
 
     expect(zshrc).toContain("[[ -o interactive ]] || return");
+    expect(zshrc).toContain('eval "$(zoxide init zsh)"');
+    expect(zshrc).toContain('eval "$(atuin init zsh');
     expect(zshrc).toContain("if mise which direnv > /dev/null 2>&1; then");
     expect(zshrc).toContain('eval "$(direnv hook zsh)"');
     expect(zshrc).not.toContain("google-cloud-sdk");
@@ -91,6 +99,8 @@ describe("shell config", () => {
     expect(gitconfig).not.toContain("gh auth git-credential");
     expect(gitconfig).not.toContain('[credential "https://github.com"]');
     expect(gitconfig).not.toContain('[credential "https://gist.github.com"]');
+    expect(gitconfig).toContain("pager = delta");
+    expect(gitconfig).toContain('diffFilter = delta --color-only');
   });
 
   test("shell aliases keep only currently supported tools", async () => {
