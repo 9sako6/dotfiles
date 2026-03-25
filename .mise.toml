@@ -1,35 +1,25 @@
 [tools]
+bun = "1.3.11"
 go = "latest"
 ghq = "latest"
 fzf = "latest"
 
-[tasks.diff]
-run = "chezmoi -S ~/dotfiles/home diff"
-description = "Show changes between source and destination"
+[tasks.setup]
+run = "bun run scripts/setup.ts"
+description = "Run dotfiles setup including symlink deployment and extra setup"
 
-[tasks.apply]
-run = "chezmoi -S ~/dotfiles/home apply -v"
-description = "Apply changes to home directory (verbose)"
+[tasks.link]
+run = "bun run scripts/link-dist.ts"
+description = "Deploy dist/ into the home directory using symlinks"
 
-[tasks.status]
-run = "chezmoi -S ~/dotfiles/home status"
-description = "Show files that would be changed"
-
-[tasks.edit]
-run = '''
-if [ -z "$1" ]; then
-  echo "Usage: mise run edit <file>"
-  echo "Example: mise run edit ~/.zshrc"
-  exit 1
-fi
-chezmoi -S ~/dotfiles/home edit "$1"
-'''
-description = "Edit a file managed by chezmoi"
-
-[tasks.update]
-run = "chezmoi -S ~/dotfiles/home update"
-description = "Pull and apply changes from remote"
+[tasks."link:check"]
+run = "bun run scripts/link-dist.ts --check"
+description = "Show planned backup and link actions without changing the filesystem"
 
 [tasks.doctor]
-run = "chezmoi -S ~/dotfiles/home doctor"
-description = "Check for potential problems"
+run = "bun run scripts/link-dist.ts --check"
+description = "Check the current link plan and backup targets"
+
+[tasks.test]
+run = "bun test"
+description = "Run the dotfiles test suite"

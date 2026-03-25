@@ -1,0 +1,41 @@
+import { expect, test } from "bun:test";
+import { access } from "node:fs/promises";
+import path from "node:path";
+
+const repoRoot = process.cwd();
+
+const expectedDistPaths = [
+  "dist/.gitconfig",
+  "dist/.gitignore_global",
+  "dist/.tmux.conf",
+  "dist/.zoirc.json",
+  "dist/.zshenv",
+  "dist/.zshrc",
+  "dist/.zsh.local/alias.zsh",
+  "dist/.zsh.local/functions.zsh",
+  "dist/.zsh.local/keybindings.zsh",
+  "dist/.zsh.local/prompt.zsh",
+  "dist/alias.sh",
+  "dist/mybin/diffcop",
+  "dist/mybin/gomi",
+  "dist/mybin/gppr",
+  "dist/mybin/lein",
+  "dist/mybin/lib/work_timer.rb",
+  "dist/mybin/nonnonbiyori",
+  "dist/mybin/nonnonbiyori.ascii",
+  "dist/mybin/renchon",
+  "dist/mybin/renchon.ascii",
+  "dist/mybin/timer",
+] as const;
+
+test("dist contains the managed dotfiles layout", async () => {
+  await Promise.all(
+    expectedDistPaths.map(async (relativePath) => {
+      await expect(access(path.join(repoRoot, relativePath))).resolves.toBeNull();
+    }),
+  );
+});
+
+test("legacy managed home source tree is gone", async () => {
+  await expect(access(path.join(repoRoot, "home"))).rejects.toThrow();
+});

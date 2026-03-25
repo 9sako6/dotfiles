@@ -1,55 +1,64 @@
 # dotfiles
 
-zsh, git settings.
+zsh, git, tmux, and helper scripts.
 
 ## セットアップ
 
-`curl` だけで chezmoi をインストールし、`home/` を配布元として適用します。
+買いたての macOS でも `sh` 1 発でセットアップを始められます。
 
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init 9sako6
-chezmoi -S ~/.local/share/chezmoi/home apply
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/install.sh)"
 ```
 
-- `~/.local/bin/chezmoi` にインストールされます。
-- 既存ファイルは chezmoi 側の挙動に従って退避/上書きされます。
+このスクリプトは次を行います。
+
+1. `~/dotfiles` にリポジトリを clone
+2. `mise` を `~/.local/bin/mise` にインストール
+3. `mise install` で必要なツールを導入
+4. `dist/` 配下を `~` にシンボリックリンクで配置
+5. 追加セットアップとして zinit をインストール
+
+既存ファイルや既存ディレクトリがある場合は、上書きせずに `~/.dotfiles-backups/<timestamp>/` へ退避してから新しい symlink を張ります。
 
 ## 運用
 
-dotfiles リポジトリをクローンした後は、[mise](https://github.com/jdx/mise) タスクで管理します。
+配布元は `dist/` です。`dist/.zshrc` は `~/.zshrc` に、`dist/mybin/timer` は `~/mybin/timer` に対応します。
+
+普段の操作は [mise](https://mise.jdx.dev/) タスクで行います。
 
 ```sh
-# miseのインストール（初回のみ）
+# 初回のみ
 mise install
 
-# 日常的な操作
-mise run status    # 未適用の変更を確認
-mise run diff      # 変更内容の詳細を確認
-mise run apply     # 変更を適用（ホームディレクトリに反映）
+# dry-run
+mise run link:check
 
-# ファイル編集
-mise run edit ~/.zshrc  # chezmoi経由で編集（推奨）
-# または直接編集: ~/dotfiles/home/dot_zshrc を編集 → mise run apply
+# 実際に反映
+mise run link
 
-# リモートとの同期
-mise run update    # リモートから更新を取得して適用
-mise run doctor    # 問題をチェック
+# テスト
+mise run test
+
+# 現在のリンク計画を確認
+mise run doctor
 ```
 
-**Tips:**
-- `mise run apply` は verbose モードで確実に変更を反映します
-- 直接 `~/dotfiles/home/dot_*` を編集した後も `mise run apply` で反映できます
-- `mise run status` で未適用の変更を確認できます
+## 配置ルール
 
-<details>
-<summary>生の chezmoi コマンドを使いたい場合</summary>
+- `dist/` のパスがそのまま `~` 配下へ対応する
+- 配布物は symlink で配置する
+- `dist/mybin` や `dist/.zsh.local` のようなディレクトリは、原則そのディレクトリごと symlink にする
+- `dist/.config` は共存しやすいようにコンテナとして扱い、その直下の管理対象ディレクトリ単位で symlink にする
+- 既存の通常ファイル、通常ディレクトリ、別ターゲットの symlink は `~/.dotfiles-backups/<timestamp>/` に退避する
+- すでに同じターゲットを指す symlink は変更しない
+
+## 編集
+
+`dist/` を直接編集して、`mise run link` で反映する。
+
+例:
 
 ```sh
-chezmoi -S ~/dotfiles/home diff
-chezmoi -S ~/dotfiles/home apply -v
-chezmoi -S ~/dotfiles/home edit ~/.zshrc
-chezmoi -S ~/dotfiles/home status
-chezmoi -S ~/dotfiles/home update
+$EDITOR dist/.zshrc
+mise run link
 ```
-
-</details>

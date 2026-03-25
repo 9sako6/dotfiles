@@ -8,17 +8,26 @@ on:
   workflow_dispatch:
 
 jobs:
-  chezmoi-apply:
+  test:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install chezmoi
+      - name: Install mise
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Dry-run apply dotfiles
+      - name: Trust repo
+        run: mise trust
+      - name: Install toolchain
+        run: mise install
+      - name: Run tests
+        run: mise run test
+      - name: Dry-run link deployment
         run: |
-          chezmoi -S "$GITHUB_WORKSPACE/home" apply --dry-run --verbose
+          export HOME="$RUNNER_TEMP/home"
+          mkdir -p "$HOME"
+          mise trust
+          mise run link:check

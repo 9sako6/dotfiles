@@ -1,0 +1,12 @@
+{
+  "name": "dotfiles",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "doctor": "bun run scripts/link-dist.ts --check",
+    "link": "bun run scripts/link-dist.ts",
+    "link:check": "bun run scripts/link-dist.ts --check",
+    "setup": "bun run scripts/setup.ts",
+    "test": "bun test"
+  }
+}
