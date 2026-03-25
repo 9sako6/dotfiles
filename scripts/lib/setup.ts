@@ -9,12 +9,18 @@ export type SetupStep =
       sourceRoot: string;
     }
   | {
+      brewfilePath: string;
+      kind: "install-homebrew-bundle";
+    }
+  | {
       homeDir: string;
       kind: "install-zinit";
     };
 
 type BuildSetupPlanOptions = {
+  brewInstalled: boolean;
   homeDir: string;
+  platform: NodeJS.Platform;
   repoRoot: string;
   skipExtraSetup: boolean;
   zinitInstalled: boolean;
@@ -27,7 +33,9 @@ type RunSetupOptions = {
 };
 
 export function buildSetupPlan({
+  brewInstalled,
   homeDir,
+  platform,
   repoRoot,
   skipExtraSetup,
   zinitInstalled,
@@ -38,6 +46,13 @@ export function buildSetupPlan({
       sourceRoot: path.join(repoRoot, "dist"),
     },
   ];
+
+  if (!skipExtraSetup && platform === "darwin" && brewInstalled) {
+    steps.push({
+      brewfilePath: path.join(repoRoot, "dist", ".Brewfile"),
+      kind: "install-homebrew-bundle",
+    });
+  }
 
   if (!skipExtraSetup && !zinitInstalled) {
     steps.push({
@@ -67,7 +82,9 @@ export async function runSetup({
   skipExtraSetup = process.env.DOTFILES_SKIP_EXTRA_SETUP === "1",
 }: RunSetupOptions) {
   const setupPlan = buildSetupPlan({
+    brewInstalled: await detectHomebrewInstalled(),
     homeDir,
+    platform: process.platform,
     repoRoot,
     skipExtraSetup,
     zinitInstalled: await detectZinitInstalled(homeDir),
@@ -83,14 +100,42 @@ export async function runSetup({
       continue;
     }
 
+    if (step.kind === "install-homebrew-bundle") {
+      await installHomebrewBundle(step.brewfilePath);
+      continue;
+    }
+
     await installZinit(step.homeDir);
   }
+}
+
+export async function detectHomebrewInstalled() {
+  for (const brewBin of ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"]) {
+    try {
+      await access(brewBin);
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+
+  return false;
 }
 
 async function installZinit(homeDir: string) {
   await runShellCommand(
     `HOME="${homeDir}" sh -c "$(curl --fail --show-error --silent --location https://raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh)"`,
   );
+}
+
+async function installHomebrewBundle(brewfilePath: string) {
+  await runShellCommand(`"${detectPreferredBrewPath()}" bundle --file="${brewfilePath}"`);
+}
+
+function detectPreferredBrewPath() {
+  return process.arch === "arm64" ? "/opt/homebrew/bin/brew" : "/usr/local/bin/brew";
 }
 
 async function runShellCommand(command: string) {

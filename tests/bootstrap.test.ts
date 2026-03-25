@@ -19,6 +19,8 @@ describe("bootstrap trust flow", () => {
     expect(installScript.indexOf("\"$MISE_BIN\" run setup")).toBeLessThan(
       installScript.lastIndexOf("\"$MISE_BIN\" install"),
     );
+    expect(installScript).not.toContain("brew install --cask");
+    expect(installScript).not.toContain("brew bundle");
   });
 
   test("CI trusts the repo before installing bun", async () => {
@@ -78,5 +80,14 @@ describe("bootstrap trust flow", () => {
     expect(readme).toContain("eza");
     expect(readme).toContain("sync");
     expect(readme).toContain("Ctrl-R");
+  });
+
+  test("README documents Brewfile-managed macOS apps", async () => {
+    const readme = await readFile("README.md", "utf8");
+
+    expect(readme).toContain("Brewfile");
+    expect(readme).toContain("ghostty");
+    expect(readme).toContain("raycast");
+    expect(readme).toContain("brew bundle");
   });
 });

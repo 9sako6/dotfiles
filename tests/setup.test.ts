@@ -21,7 +21,9 @@ describe("buildSetupPlan", () => {
   test("always includes the dist linking step", () => {
     expect(
       buildSetupPlan({
+        brewInstalled: false,
         homeDir: "/tmp/home",
+        platform: "linux",
         repoRoot: "/tmp/repo",
         skipExtraSetup: false,
         zinitInstalled: true,
@@ -37,7 +39,9 @@ describe("buildSetupPlan", () => {
   test("adds zinit installation when it is missing", () => {
     expect(
       buildSetupPlan({
+        brewInstalled: false,
         homeDir: "/tmp/home",
+        platform: "linux",
         repoRoot: "/tmp/repo",
         skipExtraSetup: false,
         zinitInstalled: false,
@@ -57,10 +61,52 @@ describe("buildSetupPlan", () => {
   test("can skip extra setup explicitly", () => {
     expect(
       buildSetupPlan({
+        brewInstalled: false,
         homeDir: "/tmp/home",
+        platform: "linux",
         repoRoot: "/tmp/repo",
         skipExtraSetup: true,
         zinitInstalled: false,
+      }),
+    ).toEqual([
+      {
+        kind: "link-dist",
+        sourceRoot: path.join("/tmp/repo", "dist"),
+      },
+    ]);
+  });
+
+  test("adds Homebrew bundle installation on macOS when brew is available", () => {
+    expect(
+      buildSetupPlan({
+        brewInstalled: true,
+        homeDir: "/tmp/home",
+        platform: "darwin",
+        repoRoot: "/tmp/repo",
+        skipExtraSetup: false,
+        zinitInstalled: true,
+      }),
+    ).toEqual([
+      {
+        kind: "link-dist",
+        sourceRoot: path.join("/tmp/repo", "dist"),
+      },
+      {
+        brewfilePath: path.join("/tmp/repo", "dist", ".Brewfile"),
+        kind: "install-homebrew-bundle",
+      },
+    ]);
+  });
+
+  test("skips Homebrew bundle installation when brew is unavailable", () => {
+    expect(
+      buildSetupPlan({
+        brewInstalled: false,
+        homeDir: "/tmp/home",
+        platform: "darwin",
+        repoRoot: "/tmp/repo",
+        skipExtraSetup: false,
+        zinitInstalled: true,
       }),
     ).toEqual([
       {

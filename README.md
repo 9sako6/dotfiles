@@ -22,6 +22,12 @@ mise run test        # テスト
 
 `atuin` は sync なしのローカル運用で有効化し、既存の `Ctrl-R` 履歴キーバインドはそのまま残します。`delta` は Git pager として使い、`fd`、`bat`、`eza` は alias の強制上書きなしで導入します。
 
+## Homebrewアプリ
+
+macOS の GUI アプリは `dist/.Brewfile` で管理します。`install.sh` から呼ばれる setup は macOS かつ Homebrew が使えるときだけ `brew bundle --file="$HOME/.Brewfile"` 相当の処理を実行します。
+
+現在は `ghostty` と `raycast` を `Brewfile` で管理しています。
+
 ## ローカル設定と秘密情報
 
 `dist/` には共有してよい設定だけを置きます。マシン固有の設定や秘密情報は `dist/` に入れず、未追跡の `~/.zsh.d/local.zsh` と `~/.zsh.d/secrets.zsh` に置きます。

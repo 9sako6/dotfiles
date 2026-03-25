@@ -5,6 +5,7 @@ import path from "node:path";
 const repoRoot = process.cwd();
 
 const expectedDistPaths = [
+  "dist/.Brewfile",
   "dist/.config/mise/config.toml",
   "dist/.gitconfig",
   "dist/.gitignore_global",
