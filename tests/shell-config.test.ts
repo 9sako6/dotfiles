@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readFile } from "node:fs/promises";
+import { chmod, readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import path from "node:path";
+import { withTempDir, writeTree } from "./test-helpers";
 
 function runCommand(
   command: string,
@@ -179,5 +181,55 @@ describe("shell config", () => {
     expect(tada).toContain("swift");
     expect(tada).toContain(" >/dev/null 2>&1 &");
     expect(tada).toContain("TADA_UNAME");
+  });
+
+  test("tada reaches the Swift launcher path on macOS when temp script creation succeeds", async () => {
+    await withTempDir("tada", async (tempDir) => {
+      const binDir = path.join(tempDir, "bin");
+      const scriptCapturePath = path.join(tempDir, "captured.swift");
+      const tempScriptPath = path.join(tempDir, "tada-script");
+
+      await writeTree(binDir, {
+        mktemp: `#!/bin/sh
+printf '%s\n' "${tempScriptPath}"
+: > "${tempScriptPath}"
+`,
+        nohup: `#!/bin/sh
+"$@"
+`,
+        swift: `#!/bin/sh
+cp "$1" "${scriptCapturePath}"
+`,
+      });
+
+      await Promise.all([
+        chmod(path.join(binDir, "mktemp"), 0o755),
+        chmod(path.join(binDir, "nohup"), 0o755),
+        chmod(path.join(binDir, "swift"), 0o755),
+      ]);
+
+      const result = await runCommand("sh", ["dist/mybin/tada"], {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        TADA_MKTEMP_BIN: path.join(binDir, "mktemp"),
+        TADA_NOHUP_BIN: path.join(binDir, "nohup"),
+        TADA_SWIFT_BIN: path.join(binDir, "swift"),
+        TADA_UNAME: "Darwin",
+      });
+
+      expect(result.code).toBe(0);
+      for (let attempts = 0; attempts < 50; attempts += 1) {
+        try {
+          expect(await readFile(scriptCapturePath, "utf8")).toContain("import AppKit");
+          return;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            throw error;
+          }
+          await Bun.sleep(20);
+        }
+      }
+      expect(await readFile(scriptCapturePath, "utf8")).toContain("import AppKit");
+    });
   });
 });

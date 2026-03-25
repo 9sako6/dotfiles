@@ -16,8 +16,12 @@ if [ -z "$nohup_bin" ]; then
   exit 0
 fi
 
-tmp_root="${TMPDIR:-/tmp}"
-script_path="$(mktemp "${tmp_root%/}/tada.XXXXXX.swift" 2>/dev/null || true)"
+mktemp_bin="${TADA_MKTEMP_BIN:-$(command -v mktemp 2>/dev/null || true)}"
+if [ -z "$mktemp_bin" ]; then
+  exit 0
+fi
+
+script_path="$("$mktemp_bin" -t tada.XXXXXX 2>/dev/null || true)"
 if [ -z "$script_path" ]; then
   exit 0
 fi
