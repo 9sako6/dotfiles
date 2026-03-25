@@ -6,6 +6,7 @@ describe("bootstrap trust flow", () => {
     const installScript = await readFile("install.sh", "utf8");
 
     expect(installScript).toContain("\"$MISE_BIN\" trust");
+    expect(installScript).toContain("\"$MISE_BIN\" use -g direnv@2.37.1");
     expect(installScript).toContain("\"$MISE_BIN\" run setup");
   });
 
