@@ -22,7 +22,7 @@ jobs:
       - name: Trust repo
         run: mise trust
       - name: Install toolchain
-        run: mise install
+        run: mise install bun
       - name: Run tests
         run: mise run test
       - name: Dry-run link deployment

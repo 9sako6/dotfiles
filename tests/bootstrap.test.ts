@@ -16,4 +16,11 @@ describe("bootstrap trust flow", () => {
     expect(workflow).toContain("mise run test");
     expect(workflow).toContain("mise run link:check");
   });
+
+  test("CI installs only bun for verification", async () => {
+    const workflow = await readFile(".github/workflows/test.yml", "utf8");
+
+    expect(workflow).toContain("mise install bun");
+    expect(workflow).not.toContain("run: mise install\n");
+  });
 });
