@@ -11,8 +11,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/ins
 ## 運用
 
 ```sh
-mise install
-mise run link:check
-mise run link
-mise run test
+mise run link:check  # 反映前に確認
+mise run link        # 反映
+mise run test        # テスト
 ```
