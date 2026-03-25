@@ -27,20 +27,6 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# go
-export GOPATH=$(go env GOPATH)
-# export GOPATH="$HOME/go"
-export PATH="$PATH:$GOPATH/bin"
-# export PATH="$PATH:/usr/local/go/bin"
-
-# goenv
-# export GOENV_ROOT="$HOME/.goenv"
-# export PATH="$GOENV_ROOT/bin:$PATH"
-# if type goenv > /dev/null 2>&1; then
-#   eval "$(goenv init -)"
-#   export PATH="$PATH:$GOPATH/bin"
-# fi
-
 # gnu-getopt
 export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"
 
@@ -49,7 +35,9 @@ test -r /Users/9sako6/.opam/opam-init/init.zsh && . /Users/9sako6/.opam/opam-ini
 
 # K8s auto-complete
 autoload -U +X compinit && compinit
-source <(kubectl completion zsh)
+if command -v kubectl > /dev/null 2>&1; then
+  source <(kubectl completion zsh)
+fi
 
 # Set PATH, MANPATH, etc., for Homebrew.
 [ -f '/home/linuxbrew/.linuxbrew/bin/brew' ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
