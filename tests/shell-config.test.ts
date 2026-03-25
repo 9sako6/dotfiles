@@ -19,6 +19,7 @@ describe("shell config", () => {
     expect(globalMiseConfig).toContain('ghq = "1.9.4"');
     expect(globalMiseConfig).toContain('fzf = "0.70.0"');
     expect(globalMiseConfig).toContain('ripgrep = "15.1.0"');
+    expect(globalMiseConfig).toContain('zellij = "0.44.0"');
   });
 
   test("zshenv does not require go and guards kubectl", async () => {
