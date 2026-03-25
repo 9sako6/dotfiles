@@ -9,12 +9,12 @@ describe("bootstrap trust flow", () => {
     expect(installScript).toContain("\"$MISE_BIN\" run setup");
   });
 
-  test("CI trusts the repo before invoking mise tasks", async () => {
+  test("CI trusts the repo before installing bun", async () => {
     const workflow = await readFile(".github/workflows/test.yml", "utf8");
 
     expect(workflow).toContain("mise trust");
-    expect(workflow).toContain("mise run test");
-    expect(workflow).toContain("mise run link:check");
+    expect(workflow).toContain("bun test");
+    expect(workflow).toContain("bun run scripts/link-dist.ts --check");
   });
 
   test("CI installs only bun for verification", async () => {
@@ -22,5 +22,7 @@ describe("bootstrap trust flow", () => {
 
     expect(workflow).toContain("mise install bun");
     expect(workflow).not.toContain("run: mise install\n");
+    expect(workflow).not.toContain("mise run test");
+    expect(workflow).not.toContain("mise run link:check");
   });
 });

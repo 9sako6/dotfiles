@@ -22,12 +22,13 @@ jobs:
       - name: Trust repo
         run: mise trust
       - name: Install toolchain
-        run: mise install bun
+        run: |
+          mise install bun
+          echo "$HOME/.local/share/mise/installs/bun/1.3.11/bin" >> "$GITHUB_PATH"
       - name: Run tests
-        run: mise run test
+        run: bun test
       - name: Dry-run link deployment
         run: |
           export HOME="$RUNNER_TEMP/home"
           mkdir -p "$HOME"
-          mise trust
-          mise run link:check
+          bun run scripts/link-dist.ts --check
