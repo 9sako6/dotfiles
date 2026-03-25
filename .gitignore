@@ -11,6 +11,13 @@ tmp/**
 !tmp/.keep
 .worktrees/
 *.old
+.env
+.env.*
+*.local
+*.pem
+*.key
+dist/.zsh.d/local.zsh
+dist/.zsh.d/secrets.zsh
 
 # Deno
 deno.lock

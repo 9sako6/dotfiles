@@ -37,4 +37,30 @@ describe("bootstrap trust flow", () => {
     expect(workflow).not.toContain("mise run test");
     expect(workflow).not.toContain("mise run link:check");
   });
+
+  test("CI runs a gitleaks secret scan", async () => {
+    const workflow = await readFile(".github/workflows/test.yml", "utf8");
+
+    expect(workflow).toContain("gitleaks/gitleaks-action@v2");
+    expect(workflow).toContain("GITHUB_TOKEN");
+    expect(workflow).toContain("fetch-depth: 0");
+  });
+
+  test("repo gitignore blocks tracked local shell overrides and secret-like files", async () => {
+    const gitignore = await readFile(".gitignore", "utf8");
+
+    expect(gitignore).toContain("dist/.zsh.d/local.zsh");
+    expect(gitignore).toContain("dist/.zsh.d/secrets.zsh");
+    expect(gitignore).toContain(".env");
+    expect(gitignore).toContain("*.pem");
+    expect(gitignore).toContain("*.key");
+  });
+
+  test("README documents where local zsh overrides and secrets belong", async () => {
+    const readme = await readFile("README.md", "utf8");
+
+    expect(readme).toContain("~/.zsh.d/local.zsh");
+    expect(readme).toContain("~/.zsh.d/secrets.zsh");
+    expect(readme).toContain("dist/");
+  });
 });
