@@ -41,6 +41,9 @@ describe("bootstrap trust flow", () => {
   test("CI runs a gitleaks secret scan", async () => {
     const workflow = await readFile(".github/workflows/test.yml", "utf8");
 
+    expect(workflow).toContain("secret-scan:");
+    expect(workflow).toContain("needs: secret-scan");
+    expect(workflow).toContain("runs-on: ubuntu-latest");
     expect(workflow).toContain("gitleaks/gitleaks-action@v2");
     expect(workflow).toContain("GITHUB_TOKEN");
     expect(workflow).toContain("fetch-depth: 0");
