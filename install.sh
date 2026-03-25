@@ -16,5 +16,5 @@ fi
 cd "$DOTFILES_DIR"
 "$MISE_BIN" trust
 "$MISE_BIN" install
-"$MISE_BIN" use -g direnv@2.37.1
 "$MISE_BIN" run setup
+"$MISE_BIN" install

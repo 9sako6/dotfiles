@@ -6,8 +6,19 @@ describe("bootstrap trust flow", () => {
     const installScript = await readFile("install.sh", "utf8");
 
     expect(installScript).toContain("\"$MISE_BIN\" trust");
-    expect(installScript).toContain("\"$MISE_BIN\" use -g direnv@2.37.1");
+    expect(installScript).not.toContain("\"$MISE_BIN\" use -g");
+    expect(installScript).toContain("\"$MISE_BIN\" install");
     expect(installScript).toContain("\"$MISE_BIN\" run setup");
+  });
+
+  test("install.sh installs global mise tools after dist is linked", async () => {
+    const installScript = await readFile("install.sh", "utf8");
+    const installCount = installScript.split("\"$MISE_BIN\" install").length - 1;
+
+    expect(installCount).toBe(2);
+    expect(installScript.indexOf("\"$MISE_BIN\" run setup")).toBeLessThan(
+      installScript.lastIndexOf("\"$MISE_BIN\" install"),
+    );
   });
 
   test("CI trusts the repo before installing bun", async () => {
