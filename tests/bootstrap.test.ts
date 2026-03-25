@@ -69,25 +69,20 @@ describe("bootstrap trust flow", () => {
     expect(readme).toContain("dist/");
   });
 
-  test("README documents the managed modern CLI tools and local-only atuin usage", async () => {
+  test("README documents the common mise operations without dev-only test commands", async () => {
     const readme = await readFile("README.md", "utf8");
 
-    expect(readme).toContain("zoxide");
-    expect(readme).toContain("atuin");
-    expect(readme).toContain("delta");
-    expect(readme).toContain("fd");
-    expect(readme).toContain("bat");
-    expect(readme).toContain("eza");
-    expect(readme).toContain("sync");
-    expect(readme).toContain("Ctrl-R");
+    expect(readme).toContain("mise link:check");
+    expect(readme).toContain("mise link");
+    expect(readme).not.toContain("mise run link:check");
+    expect(readme).not.toContain("mise run link");
+    expect(readme).not.toContain("mise test");
   });
 
   test("README documents Brewfile-managed macOS apps", async () => {
     const readme = await readFile("README.md", "utf8");
 
     expect(readme).toContain("Brewfile");
-    expect(readme).toContain("ghostty");
-    expect(readme).toContain("raycast");
     expect(readme).toContain("brew bundle");
   });
 });

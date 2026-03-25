@@ -11,22 +11,13 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/ins
 ## 運用
 
 ```sh
-mise run link:check  # 反映前に確認
-mise run link        # 反映
-mise run test        # テスト
+mise link:check  # 反映前に確認
+mise link        # 反映
 ```
-
-## 管理しているCLIツール
-
-グローバル `mise` 設定で `zoxide`、`atuin`、`delta`、`fd`、`bat`、`eza` を管理します。既存操作を急に置き換えない方針なので、まずは「使えるようにする」だけに留めています。
-
-`atuin` は sync なしのローカル運用で有効化し、既存の `Ctrl-R` 履歴キーバインドはそのまま残します。`delta` は Git pager として使い、`fd`、`bat`、`eza` は alias の強制上書きなしで導入します。
 
 ## Homebrewアプリ
 
-macOS の GUI アプリは `dist/.Brewfile` で管理します。`install.sh` から呼ばれる setup は macOS かつ Homebrew が使えるときだけ `brew bundle --file="$HOME/.Brewfile"` 相当の処理を実行します。
-
-現在は `ghostty` と `raycast` を `Brewfile` で管理しています。
+macOS のアプリは `dist/.Brewfile` で管理します。`install.sh` から呼ばれる setup は macOS かつ Homebrew が使えるときだけ `brew bundle` を実行します。
 
 ## ローカル設定と秘密情報
 
