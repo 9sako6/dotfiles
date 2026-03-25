@@ -11,17 +11,13 @@ export LANG=ja_JP.UTF-8
 }
 : "zinit" && {
   ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
-  if command -v zinit > /dev/null 2>&1; then
-    # zinit installation
-    # https://github.com/zdharma-continuum/zinit#manual
-    mkdir -p "$(dirname $ZINIT_HOME)"
-    git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
-  fi
-  source "${ZINIT_HOME}/zinit.zsh"
+  if [ -f "${ZINIT_HOME}/zinit.zsh" ]; then
+    source "${ZINIT_HOME}/zinit.zsh"
 
-  zinit light momo-lab/zsh-abbrev-alias # 略語を展開する
-  # zinit ice wait'!0' lucid; zinit light zdharma/fast-syntax-highlighting
-  zinit ice wait'!0' lucid; zinit light zsh-users/zsh-syntax-highlighting
+    zinit light momo-lab/zsh-abbrev-alias # 略語を展開する
+    # zinit ice wait'!0' lucid; zinit light zdharma/fast-syntax-highlighting
+    zinit ice wait'!0' lucid; zinit light zsh-users/zsh-syntax-highlighting
+  fi
 }
 : "iyashi" && {
   if [ $((${RANDOM} % 2)) = 0 ]; then
@@ -32,6 +28,7 @@ export LANG=ja_JP.UTF-8
 }
 # ref: https://suin.io/568
 : "general" && {
+  autoload -U +X compinit && compinit
   setopt correct # コマンドのスペルを訂正
   setopt no_beep # ビープ音を鳴らさない
   setopt print_eight_bit # 日本語ファイル名を表示可能にする

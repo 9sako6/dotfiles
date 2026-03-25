@@ -34,7 +34,6 @@ export PATH="/usr/local/opt/gnu-getopt/bin:$PATH"
 test -r /Users/9sako6/.opam/opam-init/init.zsh && . /Users/9sako6/.opam/opam-init/init.zsh > /dev/null 2> /dev/null || true
 
 # K8s auto-complete
-autoload -U +X compinit && compinit
 if command -v kubectl > /dev/null 2>&1; then
   source <(kubectl completion zsh)
 fi

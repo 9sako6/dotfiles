@@ -24,6 +24,7 @@ describe("shell config", () => {
     const zshenv = await readFile("dist/.zshenv", "utf8");
 
     expect(zshenv).not.toContain("go env GOPATH");
+    expect(zshenv).not.toContain("autoload -U +X compinit && compinit");
     expect(zshenv).toContain("if command -v kubectl > /dev/null 2>&1; then");
     expect(zshenv).toContain('source <(kubectl completion zsh)');
   });
@@ -33,5 +34,20 @@ describe("shell config", () => {
 
     expect(zshrc).toContain("if mise which direnv > /dev/null 2>&1; then");
     expect(zshrc).toContain('eval "$(direnv hook zsh)"');
+  });
+
+  test("zshrc only loads zinit when the installed file exists", async () => {
+    const zshrc = await readFile("dist/.zshrc", "utf8");
+
+    expect(zshrc).toContain('if [ -f "${ZINIT_HOME}/zinit.zsh" ]; then');
+    expect(zshrc).not.toContain("git clone https://github.com/zdharma-continuum/zinit.git");
+    expect(zshrc).toContain("autoload -U +X compinit && compinit");
+  });
+
+  test("git credential helper resolves gh via PATH", async () => {
+    const gitconfig = await readFile("dist/.gitconfig", "utf8");
+
+    expect(gitconfig).toContain("helper = !gh auth git-credential");
+    expect(gitconfig).not.toContain("/usr/local/bin/gh auth git-credential");
   });
 });
