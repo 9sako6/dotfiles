@@ -16,10 +16,3 @@ mise run link:check
 mise run link
 mise run test
 ```
-
-## 編集
-
-```sh
-$EDITOR dist/.zshrc
-mise run link
-```
