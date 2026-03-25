@@ -1,0 +1,143 @@
+#!/bin/sh
+set -eu
+
+platform_name="${TADA_UNAME:-$(uname -s 2>/dev/null || printf 'unknown')}"
+if [ "$platform_name" != "Darwin" ]; then
+  exit 0
+fi
+
+swift_bin="${TADA_SWIFT_BIN:-$(command -v swift 2>/dev/null || true)}"
+if [ -z "$swift_bin" ]; then
+  exit 0
+fi
+
+nohup_bin="${TADA_NOHUP_BIN:-$(command -v nohup 2>/dev/null || true)}"
+if [ -z "$nohup_bin" ]; then
+  exit 0
+fi
+
+tmp_root="${TMPDIR:-/tmp}"
+script_path="$(mktemp "${tmp_root%/}/tada.XXXXXX.swift" 2>/dev/null || true)"
+if [ -z "$script_path" ]; then
+  exit 0
+fi
+
+cat >"$script_path" <<'SWIFT'
+import AppKit
+import Foundation
+import QuartzCore
+
+if CommandLine.arguments.count > 1 {
+  try? FileManager.default.removeItem(atPath: CommandLine.arguments[1])
+}
+
+final class TadaApp: NSObject, NSApplicationDelegate {
+  private var windows: [NSWindow] = []
+
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    NSApp.setActivationPolicy(.accessory)
+
+    guard let screen = NSScreen.main else {
+      NSApp.terminate(nil)
+      return
+    }
+
+    let visible = screen.visibleFrame
+    let width: CGFloat = 240
+    let height: CGFloat = 220
+    let margin: CGFloat = 20
+    let y = visible.minY + 8
+
+    let leftWindow = makeWindow(x: visible.minX + margin, y: y, width: width, height: height)
+    let rightWindow = makeWindow(x: visible.maxX - width - margin, y: y, width: width, height: height)
+    windows = [leftWindow, rightWindow]
+    windows.forEach { $0.orderFrontRegardless() }
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+      self.windows.forEach { $0.close() }
+      NSApp.terminate(nil)
+    }
+  }
+
+  private func makeWindow(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat) -> NSWindow {
+    let frame = NSRect(x: x, y: y, width: width, height: height)
+    let window = NSWindow(
+      contentRect: frame,
+      styleMask: [.borderless],
+      backing: .buffered,
+      defer: false
+    )
+    window.isOpaque = false
+    window.backgroundColor = .clear
+    window.hasShadow = false
+    window.ignoresMouseEvents = true
+    window.level = .screenSaver
+    window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+
+    let view = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+    view.wantsLayer = true
+    view.layer = CALayer()
+    view.layer?.backgroundColor = NSColor.clear.cgColor
+    window.contentView = view
+
+    let emitter = CAEmitterLayer()
+    emitter.emitterPosition = CGPoint(x: width / 2, y: 6)
+    emitter.emitterSize = CGSize(width: width * 0.75, height: 1)
+    emitter.emitterShape = .line
+    emitter.renderMode = .unordered
+    emitter.birthRate = 1
+    emitter.emitterCells = palette().map(makeCell)
+    view.layer?.addSublayer(emitter)
+
+    return window
+  }
+
+  private func makeCell(color: NSColor) -> CAEmitterCell {
+    let cell = CAEmitterCell()
+    cell.birthRate = 18
+    cell.lifetime = 2.4
+    cell.lifetimeRange = 0.6
+    cell.velocity = 220
+    cell.velocityRange = 80
+    cell.emissionLongitude = .pi / 2
+    cell.emissionRange = .pi / 2.5
+    cell.yAcceleration = -240
+    cell.spin = 3.5
+    cell.spinRange = 2.5
+    cell.scale = 0.55
+    cell.scaleRange = 0.2
+    cell.contents = confettiImage(color: color).cgImage(forProposedRect: nil, context: nil, hints: nil)
+    return cell
+  }
+
+  private func palette() -> [NSColor] {
+    [
+      NSColor.systemPink,
+      NSColor.systemYellow,
+      NSColor.systemGreen,
+      NSColor.systemBlue,
+      NSColor.systemOrange,
+      NSColor.systemTeal,
+    ]
+  }
+
+  private func confettiImage(color: NSColor) -> NSImage {
+    let size = NSSize(width: 12, height: 18)
+    let image = NSImage(size: size)
+    image.lockFocus()
+    color.setFill()
+    let rect = NSRect(x: 0, y: 0, width: size.width, height: size.height)
+    NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
+    image.unlockFocus()
+    return image
+  }
+}
+
+let app = NSApplication.shared
+let delegate = TadaApp()
+app.delegate = delegate
+app.run()
+SWIFT
+
+"$nohup_bin" "$swift_bin" "$script_path" "$script_path" >/dev/null 2>&1 &
+exit 0

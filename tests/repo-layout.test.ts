@@ -25,6 +25,7 @@ const expectedDistPaths = [
   "dist/mybin/nonnonbiyori.ascii",
   "dist/mybin/renchon",
   "dist/mybin/renchon.ascii",
+  "dist/mybin/tada",
   "dist/mybin/timer",
 ] as const;
 

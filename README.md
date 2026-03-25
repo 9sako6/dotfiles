@@ -15,6 +15,8 @@ mise link:check  # 反映前に確認
 mise link        # 反映
 ```
 
+詳しい構成は `docs/repo-map.md`、運用ルールは `docs/operations.md` を見てください。
+
 ## Homebrewアプリ
 
 macOS のアプリは `dist/.Brewfile` で管理します。`install.sh` から呼ばれる setup は macOS かつ Homebrew が使えるときだけ `brew bundle` を実行します。

@@ -1,7 +1,7 @@
 # AGENTS.md
 
-## Working Notes
+## 作業メモ
 
-- Write execution plans, task breakdowns, and temporary working notes under `tmp/`.
-- Prefer `tmp/plans/` for implementation plans and `tmp/specs/` for design or spec notes.
-- Keep repository-tracked documentation focused on durable project docs; use `tmp/` for disposable planning artifacts.
+- 実行計画、タスク分解、一時的な作業メモは `tmp/` 配下に置きます。
+- 実装計画は `tmp/plans/`、設計メモや仕様メモは `tmp/specs/` を優先して使います。
+- リポジトリで追跡する文書は、長く残す価値のある恒久的なドキュメントに絞ります。使い捨ての計画やメモは `tmp/` に置きます。

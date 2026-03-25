@@ -1,5 +1,32 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+
+function runCommand(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  return new Promise<{ code: number | null; stderr: string; stdout: string }>((resolve, reject) => {
+    const child = spawn(command, args, {
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      resolve({ code, stderr, stdout });
+    });
+  });
+}
 
 describe("shell config", () => {
   test("repo-local mise tools stay minimal", async () => {
@@ -132,5 +159,25 @@ describe("shell config", () => {
     expect(gppr).not.toContain("/usr/local/bin/g++");
     expect(diffcop).not.toContain("function diffcop");
     expect(diffcop).toContain("rubocop");
+  });
+
+  test("tada stays quiet and exits successfully on unsupported environments", async () => {
+    const result = await runCommand("sh", ["dist/mybin/tada"], {
+      ...process.env,
+      TADA_UNAME: "Linux",
+    });
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("");
+  });
+
+  test("tada launches asynchronously on macOS via a detached helper", async () => {
+    const tada = await readFile("dist/mybin/tada", "utf8");
+
+    expect(tada).toContain("nohup");
+    expect(tada).toContain("swift");
+    expect(tada).toContain(" >/dev/null 2>&1 &");
+    expect(tada).toContain("TADA_UNAME");
   });
 });

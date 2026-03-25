@@ -85,4 +85,32 @@ describe("bootstrap trust flow", () => {
     expect(readme).toContain("Brewfile");
     expect(readme).toContain("brew bundle");
   });
+
+  test("README links to durable Japanese docs for repo guidance", async () => {
+    const readme = await readFile("README.md", "utf8");
+
+    expect(readme).toContain("docs/repo-map.md");
+    expect(readme).toContain("docs/operations.md");
+    expect(readme).toContain("詳しい構成");
+  });
+
+  test("repo map documents the managed surface in Japanese", async () => {
+    const repoMap = await readFile("docs/repo-map.md", "utf8");
+
+    expect(repoMap).toContain("このリポジトリ");
+    expect(repoMap).toContain("dist/");
+    expect(repoMap).toContain("scripts/");
+    expect(repoMap).toContain("tests/");
+    expect(repoMap).toContain("秘密情報");
+  });
+
+  test("operations guide documents safe commands and boundaries in Japanese", async () => {
+    const operations = await readFile("docs/operations.md", "utf8");
+
+    expect(operations).toContain("安全");
+    expect(operations).toContain("mise run doctor");
+    expect(operations).toContain("mise run link:check");
+    expect(operations).toContain("install.sh");
+    expect(operations).toContain("dist/");
+  });
 });
