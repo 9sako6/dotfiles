@@ -1,5 +1,11 @@
 #!/bin/bash
 
-function diffcop () {
-  git diff --name-only | xargs rubocop
-}
+set -eu
+
+files="$(git diff --name-only -- '*.rb')"
+
+if [ -z "$files" ]; then
+  exit 0
+fi
+
+printf '%s\n' "$files" | xargs rubocop

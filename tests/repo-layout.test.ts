@@ -8,8 +8,6 @@ const expectedDistPaths = [
   "dist/.config/mise/config.toml",
   "dist/.gitconfig",
   "dist/.gitignore_global",
-  "dist/.tmux.conf",
-  "dist/.zoirc.json",
   "dist/.zshenv",
   "dist/.zshrc",
   "dist/.zsh.local/alias.zsh",

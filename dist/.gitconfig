@@ -6,9 +6,3 @@
 	commentchar = ~
 	editor = vim -c \"set fenc=utf-8\"
 	ignorecase = false
-[credential "https://github.com"]
-	helper = 
-	helper = !gh auth git-credential
-[credential "https://gist.github.com"]
-	helper = 
-	helper = !gh auth git-credential

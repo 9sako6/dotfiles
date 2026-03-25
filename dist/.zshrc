@@ -15,7 +15,6 @@ export LANG=ja_JP.UTF-8
     source "${ZINIT_HOME}/zinit.zsh"
 
     zinit light momo-lab/zsh-abbrev-alias # 略語を展開する
-    # zinit ice wait'!0' lucid; zinit light zdharma/fast-syntax-highlighting
     zinit ice wait'!0' lucid; zinit light zsh-users/zsh-syntax-highlighting
   fi
 }
@@ -66,34 +65,6 @@ export PATH="$HOME/.local/share/mise/shims:$PATH"
 # functions
 [ -e "${HOME}/.zsh.local/functions.zsh" ] && source "${HOME}/.zsh.local/functions.zsh"
 
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f "${HOME}/google-cloud-sdk/path.zsh.inc" ]; then . "${HOME}/google-cloud-sdk/path.zsh.inc"; fi
-
-# The next line enables shell command completion for gcloud.
-if [ -f "${HOME}/google-cloud-sdk/completion.zsh.inc" ]; then . "${HOME}/google-cloud-sdk/completion.zsh.inc"; fi
-export PATH="/usr/local/opt/sphinx-doc/bin:$PATH"
-
-alias redis-cli='docker run --rm -it --net=host redis:7.0.4-bullseye redis-cli'
-
-# Added by Antigravity
-export PATH="${HOME}/.antigravity/antigravity/bin:$PATH"
-
 if mise which direnv > /dev/null 2>&1; then
   eval "$(direnv hook zsh)"
 fi
-
-## [Completion]
-## Completion scripts setup. Remove the following line to uninstall
-[[ -f "${HOME}/.dart-cli-completion/zsh-config.zsh" ]] && . "${HOME}/.dart-cli-completion/zsh-config.zsh" || true
-## [/Completion]
-
-# pnpm
-# export PNPM_HOME="${HOME}/Library/pnpm"
-# case ":$PATH:" in
-#   *":$PNPM_HOME:"*) ;;
-#   *) export PATH="$PNPM_HOME:$PATH" ;;
-# esac
-# pnpm end
-
-# fin.
-### End of Zinit's installer chunk

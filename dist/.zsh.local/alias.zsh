@@ -22,32 +22,5 @@ abbrev-alias gre='git restore'
 abbrev-alias gsw='git switch'
 abbrev-alias gdf='git diff'
 
-# Docker
-abbrev-alias dc="docker-compose"
-
-# Electron
-abbrev-alias electron="~/node_modules/.bin/electron"
-
-# zoi
-abbrev-alias zoit="date "+%Y%m%d.md" | EDITOR=code zoi open"
-abbrev-alias zoic='cd $(zoi list -d | fzf)'
-
-# InteliJ
-if [ -d "${HOME}/idea-IU-223.7571.182" ]; then
-  abbrev-alias idea="~/idea-IU-223.7571.182/bin/idea.sh"
-else
-  abbrev-alias idea="intellij-idea-community"
-fi
-
-# Kubernetes
-abbrev-alias k="kubectl"
-abbrev-alias kc="kubectx"
-abbrev-alias kn="kubens"
-
-# cargo
-abbrev-alias crun='RUST_LOG=DEBUG cargo -vv watch -x run'
-
 # terraform
 abbrev-alias tf="terraform"
-# snowflake
-abbrev-alias snow='snowsql'
