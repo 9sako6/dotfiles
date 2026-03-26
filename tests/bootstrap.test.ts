@@ -72,10 +72,8 @@ describe("bootstrap trust flow", () => {
   test("README documents the common mise operations without dev-only test commands", async () => {
     const readme = await readFile("README.md", "utf8");
 
-    expect(readme).toContain("mise link:check");
-    expect(readme).toContain("mise link");
-    expect(readme).not.toContain("mise run link:check");
-    expect(readme).not.toContain("mise run link");
+    expect(readme).toContain("mise run link:check");
+    expect(readme).toContain("mise run link");
     expect(readme).not.toContain("mise test");
   });
 

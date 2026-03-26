@@ -52,6 +52,7 @@ describe("shell config", () => {
     expect(globalMiseConfig).toContain('fd = ');
     expect(globalMiseConfig).toContain('ghq = "1.9.4"');
     expect(globalMiseConfig).toContain('fzf = "0.70.0"');
+    expect(globalMiseConfig).toContain('gitleaks = ');
     expect(globalMiseConfig).toContain('ripgrep = "15.1.0"');
     expect(globalMiseConfig).toContain('zoxide = ');
     expect(globalMiseConfig).toContain('zellij = "0.44.0"');
@@ -130,6 +131,7 @@ describe("shell config", () => {
     expect(gitconfig).not.toContain('[credential "https://gist.github.com"]');
     expect(gitconfig).toContain("pager = delta");
     expect(gitconfig).toContain('diffFilter = delta --color-only');
+    expect(gitconfig).toContain("hooksPath = ~/.config/git/hooks");
   });
 
   test("shell aliases keep only currently supported tools", async () => {

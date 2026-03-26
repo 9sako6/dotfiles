@@ -6,6 +6,7 @@ const repoRoot = process.cwd();
 
 const expectedDistPaths = [
   "dist/.Brewfile",
+  "dist/.config/git/hooks/pre-commit",
   "dist/.config/mise/config.toml",
   "dist/.gitconfig",
   "dist/.gitignore_global",
