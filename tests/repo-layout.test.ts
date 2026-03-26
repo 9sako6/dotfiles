@@ -26,6 +26,7 @@ const expectedDistPaths = [
   "dist/mybin/renchon.ascii",
   "dist/mybin/tada",
   "dist/mybin/timer",
+  "dist/mybin/vv",
 ] as const;
 
 test("dist contains the managed dotfiles layout", async () => {
