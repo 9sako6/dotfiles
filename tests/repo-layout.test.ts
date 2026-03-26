@@ -20,6 +20,7 @@ const expectedDistPaths = [
   "dist/mybin/gomi",
   "dist/mybin/gppr",
   "dist/mybin/lib/work_timer.rb",
+  "dist/mybin/nyanpasu",
   "dist/mybin/nonnonbiyori",
   "dist/mybin/nonnonbiyori.ascii",
   "dist/mybin/renchon",
