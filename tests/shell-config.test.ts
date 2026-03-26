@@ -133,14 +133,13 @@ describe("shell config", () => {
   });
 
   test("shell aliases keep only currently supported tools", async () => {
-    const aliases = await readFile("dist/alias.sh", "utf8");
     const abbrevAliases = await readFile("dist/.zsh.d/alias.zsh", "utf8");
     const prompt = await readFile("dist/.zsh.d/prompt.zsh", "utf8");
 
-    expect(aliases).not.toContain('alias tree=');
-    expect(aliases).not.toContain("alias vi=nvim");
-    expect(aliases).not.toContain('alias view="nvim -R"');
-    expect(aliases).not.toContain("alias snowsql=");
+    expect(abbrevAliases).not.toContain('alias tree=');
+    expect(abbrevAliases).not.toContain("alias vi=nvim");
+    expect(abbrevAliases).not.toContain('alias view="nvim -R"');
+    expect(abbrevAliases).not.toContain("alias snowsql=");
 
     expect(abbrevAliases).not.toContain('abbrev-alias dc="docker-compose"');
     expect(abbrevAliases).not.toContain('abbrev-alias zoit=');

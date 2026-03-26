@@ -32,13 +32,16 @@
   bindkey '^F' fzf-cdr
 }
 
-# Ctrl-R：fzfでコマンド履歴参照
+# Ctrl-R：atuin でコマンド履歴検索（フォールバック: fzf）
 {
-  # source: https://tech-blog.sgr-ksmt.org/2016/12/10/smart_fzf_history/
-  function select-history() {
-    BUFFER=$(history -n -r 1 | fzf --no-sort +m --query "$LBUFFER" --prompt="History > ")
-    CURSOR=$#BUFFER
-  }
-  zle -N select-history
-  bindkey '^r' select-history
+  if (( $+commands[atuin] )); then
+    bindkey '^r' atuin-search
+  else
+    function select-history() {
+      BUFFER=$(history -n -r 1 | fzf --no-sort +m --query "$LBUFFER" --prompt="History > ")
+      CURSOR=$#BUFFER
+    }
+    zle -N select-history
+    bindkey '^r' select-history
+  fi
 }

@@ -53,6 +53,7 @@ fi
 
     zinit light momo-lab/zsh-abbrev-alias # 略語を展開する
     zinit ice wait'!0' lucid; zinit light zsh-users/zsh-syntax-highlighting
+    zinit ice wait'!0' lucid; zinit light zsh-users/zsh-autosuggestions
   fi
 }
 
@@ -60,7 +61,6 @@ fi
 [ -e "${HOME}/.zsh.d/prompt.zsh" ] && source "${HOME}/.zsh.d/prompt.zsh"
 
 # alias
-[ -e "${HOME}/alias.sh" ] && source "${HOME}/alias.sh"
 [ -e "${HOME}/.zsh.d/alias.zsh" ] && source "${HOME}/.zsh.d/alias.zsh"
 
 # keybindings
