@@ -183,6 +183,26 @@ describe("shell config", () => {
     expect(tada).toContain("TADA_UNAME");
   });
 
+  test("tada targets all displays with a full-width lower burst", async () => {
+    const tada = await readFile("dist/mybin/tada", "utf8");
+
+    expect(tada).toContain("NSScreen.screens");
+    expect(tada).toContain("for screen in NSScreen.screens");
+    expect(tada).toContain("height: screenFrame.height");
+    expect(tada).toContain("width: screenFrame.width");
+    expect(tada).toContain("emitterPosition = CGPoint(x: width / 2, y:");
+    expect(tada).toContain("emitterSize = CGSize(width: width");
+  });
+
+  test("tada pushes confetti high before it falls across the screen", async () => {
+    const tada = await readFile("dist/mybin/tada", "utf8");
+
+    expect(tada).toContain("velocity = 420");
+    expect(tada).toContain("velocityRange = 180");
+    expect(tada).toContain("yAcceleration = 380");
+    expect(tada).toContain("emissionRange = .pi / 1.8");
+  });
+
   test("tada reaches the Swift launcher path on macOS when temp script creation succeeds", async () => {
     await withTempDir("tada", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");

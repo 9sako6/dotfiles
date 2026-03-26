@@ -41,32 +41,27 @@ final class TadaApp: NSObject, NSApplicationDelegate {
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.accessory)
 
-    guard let screen = NSScreen.main else {
+    let screens = NSScreen.screens
+    guard !screens.isEmpty else {
       NSApp.terminate(nil)
       return
     }
 
-    let visible = screen.visibleFrame
-    let width: CGFloat = 240
-    let height: CGFloat = 220
-    let margin: CGFloat = 20
-    let y = visible.minY + 8
-
-    let leftWindow = makeWindow(x: visible.minX + margin, y: y, width: width, height: height)
-    let rightWindow = makeWindow(x: visible.maxX - width - margin, y: y, width: width, height: height)
-    windows = [leftWindow, rightWindow]
+    for screen in NSScreen.screens {
+      let screenFrame = screen.frame
+      windows.append(makeWindow(screenFrame: screenFrame))
+    }
     windows.forEach { $0.orderFrontRegardless() }
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.35) {
       self.windows.forEach { $0.close() }
       NSApp.terminate(nil)
     }
   }
 
-  private func makeWindow(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat) -> NSWindow {
-    let frame = NSRect(x: x, y: y, width: width, height: height)
+  private func makeWindow(screenFrame: NSRect) -> NSWindow {
     let window = NSWindow(
-      contentRect: frame,
+      contentRect: screenFrame,
       styleMask: [.borderless],
       backing: .buffered,
       defer: false
@@ -78,15 +73,17 @@ final class TadaApp: NSObject, NSApplicationDelegate {
     window.level = .screenSaver
     window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
 
-    let view = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+    let width = screenFrame.width
+    let height = screenFrame.height
+    let view = NSView(frame: NSRect(x: 0, y: 0, width: screenFrame.width, height: screenFrame.height))
     view.wantsLayer = true
     view.layer = CALayer()
     view.layer?.backgroundColor = NSColor.clear.cgColor
     window.contentView = view
 
     let emitter = CAEmitterLayer()
-    emitter.emitterPosition = CGPoint(x: width / 2, y: 6)
-    emitter.emitterSize = CGSize(width: width * 0.75, height: 1)
+    emitter.emitterPosition = CGPoint(x: width / 2, y: 18)
+    emitter.emitterSize = CGSize(width: width, height: 2)
     emitter.emitterShape = .line
     emitter.renderMode = .unordered
     emitter.birthRate = 1
@@ -98,18 +95,19 @@ final class TadaApp: NSObject, NSApplicationDelegate {
 
   private func makeCell(color: NSColor) -> CAEmitterCell {
     let cell = CAEmitterCell()
-    cell.birthRate = 18
-    cell.lifetime = 2.4
-    cell.lifetimeRange = 0.6
-    cell.velocity = 220
-    cell.velocityRange = 80
+    cell.birthRate = 24
+    cell.lifetime = 3.0
+    cell.lifetimeRange = 0.8
+    cell.velocity = 420
+    cell.velocityRange = 180
     cell.emissionLongitude = .pi / 2
-    cell.emissionRange = .pi / 2.5
-    cell.yAcceleration = -240
+    cell.emissionRange = .pi / 1.8
+    cell.yAcceleration = 380
     cell.spin = 3.5
     cell.spinRange = 2.5
     cell.scale = 0.55
     cell.scaleRange = 0.2
+    cell.alphaSpeed = -0.35
     cell.contents = confettiImage(color: color).cgImage(forProposedRect: nil, context: nil, hints: nil)
     return cell
   }
