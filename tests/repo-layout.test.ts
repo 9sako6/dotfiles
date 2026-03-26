@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { access } from "node:fs/promises";
+import { constants } from "node:fs";
 import path from "node:path";
 
 const repoRoot = process.cwd();
@@ -19,6 +20,7 @@ const expectedDistPaths = [
   "dist/mybin/diffcop",
   "dist/mybin/gomi",
   "dist/mybin/gppr",
+  "dist/mybin/lib/tada-darwin-arm64",
   "dist/mybin/lib/work_timer.rb",
   "dist/mybin/nyanpasu",
   "dist/mybin/nonnonbiyori",
@@ -40,4 +42,9 @@ test("dist contains the managed dotfiles layout", async () => {
 
 test("legacy managed home source tree is gone", async () => {
   await expect(access(path.join(repoRoot, "home"))).rejects.toThrow();
+});
+
+test("tada launcher and bundled binary stay executable", async () => {
+  await expect(access(path.join(repoRoot, "dist/mybin/tada"), constants.X_OK)).resolves.toBeNull();
+  await expect(access(path.join(repoRoot, "dist/mybin/lib/tada-darwin-arm64"), constants.X_OK)).resolves.toBeNull();
 });

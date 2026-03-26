@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, readFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, symlink } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir, writeTree } from "./test-helpers";
@@ -179,13 +179,14 @@ describe("shell config", () => {
     const tada = await readFile("dist/mybin/tada", "utf8");
 
     expect(tada).toContain("nohup");
-    expect(tada).toContain("swift");
+    expect(tada).toContain("TADA_BIN_PATH");
+    expect(tada).toContain("lib/tada-darwin-arm64");
     expect(tada).toContain(" >/dev/null 2>&1 &");
     expect(tada).toContain("TADA_UNAME");
   });
 
   test("tada targets all displays with a full-width lower burst", async () => {
-    const tada = await readFile("dist/mybin/tada", "utf8");
+    const tada = await readFile("scripts/tada.swift", "utf8");
 
     expect(tada).toContain("NSScreen.screens");
     expect(tada).toContain("for screen in NSScreen.screens");
@@ -196,7 +197,7 @@ describe("shell config", () => {
   });
 
   test("tada pushes confetti high before it falls across the screen", async () => {
-    const tada = await readFile("dist/mybin/tada", "utf8");
+    const tada = await readFile("scripts/tada.swift", "utf8");
 
     expect(tada).toContain("velocity = 420");
     expect(tada).toContain("velocityRange = 180");
@@ -204,44 +205,41 @@ describe("shell config", () => {
     expect(tada).toContain("emissionRange = .pi / 1.8");
   });
 
-  test("tada reaches the Swift launcher path on macOS when temp script creation succeeds", async () => {
+  test("tada launches the bundled binary on macOS", async () => {
     await withTempDir("tada", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");
-      const scriptCapturePath = path.join(tempDir, "captured.swift");
-      const tempScriptPath = path.join(tempDir, "tada-script");
+      const launchCapturePath = path.join(tempDir, "launched");
+      const bundledBinaryPath = path.join(tempDir, "tada-darwin-arm64");
 
       await writeTree(binDir, {
-        mktemp: `#!/bin/sh
-printf '%s\n' "${tempScriptPath}"
-: > "${tempScriptPath}"
-`,
         nohup: `#!/bin/sh
 "$@"
 `,
-        swift: `#!/bin/sh
-cp "$1" "${scriptCapturePath}"
+      });
+
+      await writeTree(tempDir, {
+        "tada-darwin-arm64": `#!/bin/sh
+printf 'ok\n' > "${launchCapturePath}"
 `,
       });
 
       await Promise.all([
-        chmod(path.join(binDir, "mktemp"), 0o755),
         chmod(path.join(binDir, "nohup"), 0o755),
-        chmod(path.join(binDir, "swift"), 0o755),
+        chmod(bundledBinaryPath, 0o755),
       ]);
 
       const result = await runCommand("sh", ["dist/mybin/tada"], {
         ...process.env,
         PATH: `${binDir}:${process.env.PATH ?? ""}`,
-        TADA_MKTEMP_BIN: path.join(binDir, "mktemp"),
         TADA_NOHUP_BIN: path.join(binDir, "nohup"),
-        TADA_SWIFT_BIN: path.join(binDir, "swift"),
+        TADA_BIN_PATH: bundledBinaryPath,
         TADA_UNAME: "Darwin",
       });
 
       expect(result.code).toBe(0);
       for (let attempts = 0; attempts < 50; attempts += 1) {
         try {
-          expect(await readFile(scriptCapturePath, "utf8")).toContain("import AppKit");
+          expect(await readFile(launchCapturePath, "utf8")).toContain("ok");
           return;
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -250,7 +248,71 @@ cp "$1" "${scriptCapturePath}"
           await Bun.sleep(20);
         }
       }
-      expect(await readFile(scriptCapturePath, "utf8")).toContain("import AppKit");
+      expect(await readFile(launchCapturePath, "utf8")).toContain("ok");
     });
+  });
+
+  test("tada resolves a symlinked launcher before locating the bundled binary", async () => {
+    await withTempDir("tada", async (tempDir) => {
+      const binDir = path.join(tempDir, "bin");
+      const realLauncherDir = path.join(tempDir, "dist", "mybin");
+      const symlinkLauncherDir = path.join(tempDir, "home", "mybin");
+      const launchCapturePath = path.join(tempDir, "launched");
+      const realLauncherPath = path.join(realLauncherDir, "tada");
+      const symlinkLauncherPath = path.join(symlinkLauncherDir, "tada");
+      const bundledBinaryPath = path.join(realLauncherDir, "lib", "tada-darwin-arm64");
+
+      await writeTree(binDir, {
+        nohup: `#!/bin/sh
+"$@"
+`,
+      });
+      await Promise.all([
+        mkdir(path.join(realLauncherDir, "lib"), { recursive: true }),
+        mkdir(symlinkLauncherDir, { recursive: true }),
+      ]);
+      await copyFile("dist/mybin/tada", realLauncherPath);
+      await writeTree(realLauncherDir, {
+        "lib/tada-darwin-arm64": `#!/bin/sh
+printf 'ok\n' > "${launchCapturePath}"
+`,
+      });
+      await symlink(realLauncherPath, symlinkLauncherPath);
+      await Promise.all([
+        chmod(path.join(binDir, "nohup"), 0o755),
+        chmod(realLauncherPath, 0o755),
+        chmod(bundledBinaryPath, 0o755),
+      ]);
+
+      const result = await runCommand("sh", [symlinkLauncherPath], {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        TADA_NOHUP_BIN: path.join(binDir, "nohup"),
+        TADA_UNAME: "Darwin",
+      });
+
+      expect(result.code).toBe(0);
+      for (let attempts = 0; attempts < 50; attempts += 1) {
+        try {
+          expect(await readFile(launchCapturePath, "utf8")).toContain("ok");
+          return;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            throw error;
+          }
+          await Bun.sleep(20);
+        }
+      }
+      expect(await readFile(launchCapturePath, "utf8")).toContain("ok");
+    });
+  });
+
+  test("tada no longer generates temporary Swift source at runtime", async () => {
+    const tada = await readFile("dist/mybin/tada", "utf8");
+
+    expect(tada).not.toContain("mktemp");
+    expect(tada).not.toContain("cat >");
+    expect(tada).not.toContain("import AppKit");
+    expect(tada).not.toContain('command -v swift');
   });
 });
