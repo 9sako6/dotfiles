@@ -177,6 +177,24 @@ describe("runLinkPlan", () => {
     });
   });
 
+  test("creates codex config directories and symlinks AGENTS.md", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      await writeTree(sourceRoot, {
+        ".codex/AGENTS.md": "# general\n\n- 日本語で話す\n",
+      });
+      await mkdir(homeDir, { recursive: true });
+
+      const plan = await planLinkActions({ sourceRoot, homeDir });
+      await runLinkPlan(plan);
+
+      const linkedFile = path.join(homeDir, ".codex", "AGENTS.md");
+      await expect(access(linkedFile)).resolves.toBeNull();
+      expect(await readSymlinkTarget(linkedFile)).toBe(await realpath(path.join(sourceRoot, ".codex", "AGENTS.md")));
+    });
+  });
+
   test("moves conflicting files into the backup tree", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");

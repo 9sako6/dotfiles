@@ -164,6 +164,13 @@ describe("shell config", () => {
     expect(diffcop).toContain("rubocop");
   });
 
+  test("codex user AGENTS mirrors claude user instructions", async () => {
+    const claudeInstructions = await readFile("dist/.claude/CLAUDE.md", "utf8");
+    const codexInstructions = await readFile("dist/.codex/AGENTS.md", "utf8");
+
+    expect(codexInstructions).toBe(claudeInstructions);
+  });
+
   test("nyanpasu passes layout as a global zellij option", async () => {
     await withTempDir("nyanpasu", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");
