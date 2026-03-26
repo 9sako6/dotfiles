@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { access, mkdir, readFile, realpath } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { createSymlink, readSymlinkTarget, withTempDir, writeTree } from "./test-helpers";
 import { planLinkActions, runLinkPlan } from "../scripts/lib/link-dist";
@@ -129,6 +129,33 @@ describe("planLinkActions", () => {
       expect(plan.actions.every((a) => a.type === "link")).toBe(true);
     });
   });
+
+  test("backs up an old managed directory symlink once before relinking child files", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      const sourceDir = path.join(sourceRoot, ".zsh.d");
+      await writeTree(sourceRoot, {
+        ".zsh.d/alias.zsh": "alias ll='ls -la'\n",
+      });
+      await createSymlink(sourceDir, path.join(homeDir, ".zsh.d"));
+
+      const plan = await planLinkActions({ sourceRoot, homeDir, timestamp: "20260326T120000" });
+
+      expect(plan.actions).toHaveLength(2);
+      expect(plan.actions[0]).toMatchObject({
+        backupPath: path.join(homeDir, ".dotfiles-backups", "20260326T120000", ".zsh.d"),
+        destinationPath: path.join(homeDir, ".zsh.d"),
+        sourcePath: sourceDir,
+        type: "backup",
+      });
+      expect(plan.actions[1]).toMatchObject({
+        destinationPath: path.join(homeDir, ".zsh.d", "alias.zsh"),
+        sourcePath: path.join(sourceDir, "alias.zsh"),
+        type: "link",
+      });
+    });
+  });
 });
 
 describe("runLinkPlan", () => {
@@ -223,6 +250,31 @@ describe("runLinkPlan", () => {
 
       expect(await readSymlinkTarget(path.join(homeDir, "mybin", "tool"))).toBe(await realpath(path.join(sourceRoot, "mybin", "tool")));
       expect(await readSymlinkTarget(path.join(homeDir, "mybin", "lib", "helper.rb"))).toBe(await realpath(path.join(sourceRoot, "mybin", "lib", "helper.rb")));
+    });
+  });
+
+  test("migrates an old managed directory symlink without moving source files", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      const sourceDir = path.join(sourceRoot, ".zsh.d");
+      const sourceFile = path.join(sourceDir, "alias.zsh");
+      const destinationDir = path.join(homeDir, ".zsh.d");
+      const backupDir = path.join(homeDir, ".dotfiles-backups", "20260326T120000", ".zsh.d");
+      await writeTree(sourceRoot, {
+        ".zsh.d/alias.zsh": "alias ll='ls -la'\n",
+      });
+      await createSymlink(sourceDir, destinationDir);
+
+      const plan = await planLinkActions({ sourceRoot, homeDir, timestamp: "20260326T120000" });
+      await runLinkPlan(plan);
+
+      expect((await lstat(destinationDir)).isDirectory()).toBe(true);
+      expect((await lstat(destinationDir)).isSymbolicLink()).toBe(false);
+      expect(await readSymlinkTarget(path.join(destinationDir, "alias.zsh"))).toBe(await realpath(sourceFile));
+      expect(await readFile(sourceFile, "utf8")).toBe("alias ll='ls -la'\n");
+      expect((await lstat(backupDir)).isSymbolicLink()).toBe(true);
+      expect(await readSymlinkTarget(backupDir)).toBe(await realpath(sourceDir));
     });
   });
 });

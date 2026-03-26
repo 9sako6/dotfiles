@@ -103,16 +103,38 @@ async function planDirectory(
   sourcePath: string,
   actions: LinkAction[],
   options: Required<Pick<PlanOptions, "homeDir" | "sourceRoot" | "timestamp">>,
+  treatDescendantsAsMissing = false,
 ) {
+  let nextTreatDescendantsAsMissing = treatDescendantsAsMissing;
+  if (!treatDescendantsAsMissing && sourcePath !== options.sourceRoot) {
+    const destinationPath = sourceToDestinationPath(options.sourceRoot, sourcePath, options.homeDir);
+    const destinationStat = await lstatOrNull(destinationPath);
+    if (destinationStat && !destinationStat.isDirectory()) {
+      actions.push({
+        backupPath: backupPathFor(options.homeDir, destinationPath, options.timestamp),
+        destinationPath,
+        sourcePath,
+        type: "backup",
+      });
+      nextTreatDescendantsAsMissing = true;
+    }
+  }
+
   const entries = await readDirents(sourcePath);
 
   for (const entry of entries) {
     const childSourcePath = path.join(sourcePath, entry.name);
     if (entry.isDirectory()) {
-      await planDirectory(childSourcePath, actions, options);
+      await planDirectory(childSourcePath, actions, options, nextTreatDescendantsAsMissing);
       continue;
     }
-    await planManagedPath(childSourcePath, sourceToDestinationPath(options.sourceRoot, childSourcePath, options.homeDir), actions, options);
+    await planManagedPath(
+      childSourcePath,
+      sourceToDestinationPath(options.sourceRoot, childSourcePath, options.homeDir),
+      actions,
+      options,
+      nextTreatDescendantsAsMissing,
+    );
   }
 }
 
@@ -121,7 +143,17 @@ async function planManagedPath(
   destinationPath: string,
   actions: LinkAction[],
   options: Required<Pick<PlanOptions, "homeDir" | "sourceRoot" | "timestamp">>,
+  treatDestinationAsMissing = false,
 ) {
+  if (treatDestinationAsMissing) {
+    actions.push({
+      destinationPath,
+      sourcePath,
+      type: "link",
+    });
+    return;
+  }
+
   const destinationStat = await lstatOrNull(destinationPath);
   if (!destinationStat) {
     actions.push({
