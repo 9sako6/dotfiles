@@ -16,6 +16,7 @@ tmp/**
 *.local
 *.pem
 *.key
+.superpowers/
 dist/.zsh.d/local.zsh
 dist/.zsh.d/secrets.zsh
 

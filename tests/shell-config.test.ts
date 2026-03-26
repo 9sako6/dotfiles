@@ -185,24 +185,39 @@ describe("shell config", () => {
     expect(tada).toContain("TADA_UNAME");
   });
 
-  test("tada targets all displays with a full-width lower burst", async () => {
+  test("tada launches confetti from the bottom corners of each display", async () => {
     const tada = await readFile("scripts/tada.swift", "utf8");
 
     expect(tada).toContain("NSScreen.screens");
     expect(tada).toContain("for screen in NSScreen.screens");
     expect(tada).toContain("height: screenFrame.height");
     expect(tada).toContain("width: screenFrame.width");
-    expect(tada).toContain("emitterPosition = CGPoint(x: width / 2, y:");
-    expect(tada).toContain("emitterSize = CGSize(width: width");
+    expect(tada).toContain("makeEmitter(origin: CGPoint(x: 0, y: 0)");
+    expect(tada).toContain("makeEmitter(origin: CGPoint(x: width, y: 0)");
+    expect(tada).toContain("emitterShape = .point");
   });
 
-  test("tada pushes confetti high before it falls across the screen", async () => {
+  test("tada keeps emitting for about 1.2 seconds before particles fall out naturally", async () => {
     const tada = await readFile("scripts/tada.swift", "utf8");
 
-    expect(tada).toContain("velocity = 420");
-    expect(tada).toContain("velocityRange = 180");
-    expect(tada).toContain("yAcceleration = 380");
-    expect(tada).toContain("emissionRange = .pi / 1.8");
+    expect(tada).toContain("private var emitters: [CAEmitterLayer] = []");
+    expect(tada).toContain("DispatchQueue.main.asyncAfter(deadline: .now() + 1.2)");
+    expect(tada).toContain("self.emitters.forEach { $0.birthRate = 0 }");
+    expect(tada).toContain("DispatchQueue.main.asyncAfter(deadline: .now() + 5.8)");
+  });
+
+  test("tada lets confetti cross and fall under gravity instead of vanishing abruptly", async () => {
+    const tada = await readFile("scripts/tada.swift", "utf8");
+
+    expect(tada).toContain("velocity = 730");
+    expect(tada).toContain("velocityRange = 140");
+    expect(tada).toContain("yAcceleration = -260");
+    expect(tada).toContain("longitude: .pi / 4");
+    expect(tada).toContain("longitude: .pi * 3 / 4");
+    expect(tada).toContain("emissionRange = .pi / 2");
+    expect(tada).toContain("lifetime = 4.6");
+    expect(tada).toContain("lifetimeRange = 1.2");
+    expect(tada).toContain("alphaSpeed = -0.18");
   });
 
   test("tada launches the bundled binary on macOS", async () => {

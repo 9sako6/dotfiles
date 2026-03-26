@@ -3,6 +3,7 @@ import Foundation
 import QuartzCore
 
 final class TadaApp: NSObject, NSApplicationDelegate {
+  private var emitters: [CAEmitterLayer] = []
   private var windows: [NSWindow] = []
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -20,7 +21,11 @@ final class TadaApp: NSObject, NSApplicationDelegate {
     }
     windows.forEach { $0.orderFrontRegardless() }
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.35) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+      self.emitters.forEach { $0.birthRate = 0 }
+    }
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 5.8) {
       self.windows.forEach { $0.close() }
       NSApp.terminate(nil)
     }
@@ -47,33 +52,43 @@ final class TadaApp: NSObject, NSApplicationDelegate {
     view.layer?.backgroundColor = NSColor.clear.cgColor
     window.contentView = view
 
-    let emitter = CAEmitterLayer()
-    emitter.emitterPosition = CGPoint(x: width / 2, y: 18)
-    emitter.emitterSize = CGSize(width: width, height: 2)
-    emitter.emitterShape = .line
-    emitter.renderMode = .unordered
-    emitter.birthRate = 1
-    emitter.emitterCells = palette().map(makeCell)
-    view.layer?.addSublayer(emitter)
+    let leftEmitter = makeEmitter(origin: CGPoint(x: 0, y: 0), longitude: .pi / 4)
+    let rightEmitter = makeEmitter(origin: CGPoint(x: width, y: 0), longitude: .pi * 3 / 4)
+    view.layer?.addSublayer(leftEmitter)
+    view.layer?.addSublayer(rightEmitter)
+    emitters.append(contentsOf: [leftEmitter, rightEmitter])
 
     return window
   }
 
-  private func makeCell(color: NSColor) -> CAEmitterCell {
+  private func makeEmitter(origin: CGPoint, longitude: CGFloat) -> CAEmitterLayer {
+    let emitter = CAEmitterLayer()
+    emitter.emitterPosition = origin
+    emitter.emitterSize = .zero
+    emitter.emitterShape = .point
+    emitter.renderMode = .unordered
+    emitter.birthRate = 1
+    emitter.emitterCells = palette().map { color in
+      makeCell(color: color, longitude: longitude)
+    }
+    return emitter
+  }
+
+  private func makeCell(color: NSColor, longitude: CGFloat) -> CAEmitterCell {
     let cell = CAEmitterCell()
     cell.birthRate = 24
-    cell.lifetime = 3.0
-    cell.lifetimeRange = 0.8
-    cell.velocity = 420
-    cell.velocityRange = 180
-    cell.emissionLongitude = .pi / 2
-    cell.emissionRange = .pi / 1.8
-    cell.yAcceleration = 380
+    cell.lifetime = 4.6
+    cell.lifetimeRange = 1.2
+    cell.velocity = 730
+    cell.velocityRange = 140
+    cell.emissionLongitude = longitude
+    cell.emissionRange = .pi / 2
+    cell.yAcceleration = -260
     cell.spin = 3.5
     cell.spinRange = 2.5
     cell.scale = 0.55
     cell.scaleRange = 0.2
-    cell.alphaSpeed = -0.35
+    cell.alphaSpeed = -0.18
     cell.contents = confettiImage(color: color).cgImage(forProposedRect: nil, context: nil, hints: nil)
     return cell
   }
