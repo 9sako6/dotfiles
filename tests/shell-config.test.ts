@@ -164,6 +164,29 @@ describe("shell config", () => {
     expect(diffcop).toContain("rubocop");
   });
 
+  test("nyanpasu passes layout as a global zellij option", async () => {
+    await withTempDir("nyanpasu", async (tempDir) => {
+      const binDir = path.join(tempDir, "bin");
+      const capturePath = path.join(tempDir, "zellij-args");
+
+      await writeTree(binDir, {
+        zellij: `#!/bin/sh
+printf '%s\n' "$@" > "${capturePath}"
+`,
+      });
+      await chmod(path.join(binDir, "zellij"), 0o755);
+
+      const result = await runCommand("sh", ["dist/mybin/nyanpasu"], {
+        ...process.env,
+        ZELLIJ: "0",
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+      });
+
+      expect(result.code).toBe(0);
+      expect(await readFile(capturePath, "utf8")).toBe("--layout\nquad\nattach\nnyanpasu\n-c\n");
+    });
+  });
+
   test("tada stays quiet and exits successfully on unsupported environments", async () => {
     const result = await runCommand("sh", ["dist/mybin/tada"], {
       ...process.env,
