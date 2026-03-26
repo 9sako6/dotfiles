@@ -1,2 +1,6 @@
 #!/bin/sh
-zellij --layout quad
+if [ -n "$ZELLIJ" ]; then
+  echo "Already inside a zellij session" >&2
+  exit 1
+fi
+zellij attach nyanpasu -c --layout quad
