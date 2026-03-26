@@ -1,0 +1,52 @@
+{
+  "env": {
+    "ANTHROPIC_MODEL": "claude-opus-4.6"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(awk:*)",
+      "Bash(test:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)"
+    ],
+    "defaultMode": "plan"
+  },
+  "model": "opus[1m]",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ": zundamonotify ; curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://host.docker.internal:12378/notifications/stop || curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://localhost:12378/notifications/stop"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ": zundamonotify ; curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://host.docker.internal:12378/notifications/notification || curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://localhost:12378/notifications/notification"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "jq -r '\"[\\(.model.display_name)] \\(.context_window.used_percentage // 0)% context\"'"
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  }
+}
