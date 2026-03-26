@@ -50,7 +50,7 @@ export async function planLinkActions({
   }
 
   const actions: LinkAction[] = [];
-  await planDirectory(sourceRoot, homeDir, true, actions, { homeDir, sourceRoot, timestamp });
+  await planDirectory(sourceRoot, actions, { homeDir, sourceRoot, timestamp });
 
   return {
     actions,
@@ -101,32 +101,18 @@ export function summarizePlan(plan: LinkPlan) {
 
 async function planDirectory(
   sourcePath: string,
-  homeDir: string,
-  isTopLevel: boolean,
   actions: LinkAction[],
   options: Required<Pick<PlanOptions, "homeDir" | "sourceRoot" | "timestamp">>,
 ) {
   const entries = await readDirents(sourcePath);
-  const basename = path.basename(sourcePath);
-  const hasDirectoryChildren = entries.some((entry) => entry.isDirectory());
-
-  if (!isTopLevel && !hasDirectoryChildren) {
-    await planManagedPath(sourcePath, sourceToDestinationPath(options.sourceRoot, sourcePath, homeDir), actions, options);
-    return;
-  }
-
-  if (!isTopLevel && basename !== ".config") {
-    await planManagedPath(sourcePath, sourceToDestinationPath(options.sourceRoot, sourcePath, homeDir), actions, options);
-    return;
-  }
 
   for (const entry of entries) {
     const childSourcePath = path.join(sourcePath, entry.name);
     if (entry.isDirectory()) {
-      await planDirectory(childSourcePath, homeDir, false, actions, options);
+      await planDirectory(childSourcePath, actions, options);
       continue;
     }
-    await planManagedPath(childSourcePath, sourceToDestinationPath(options.sourceRoot, childSourcePath, homeDir), actions, options);
+    await planManagedPath(childSourcePath, sourceToDestinationPath(options.sourceRoot, childSourcePath, options.homeDir), actions, options);
   }
 }
 

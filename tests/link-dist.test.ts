@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { access, mkdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
-import { createSymlink, ensureDir, readSymlinkTarget, withTempDir, writeTree } from "./test-helpers";
+import { createSymlink, readSymlinkTarget, withTempDir, writeTree } from "./test-helpers";
 import { planLinkActions, runLinkPlan } from "../scripts/lib/link-dist";
 
 describe("planLinkActions", () => {
@@ -67,27 +67,21 @@ describe("planLinkActions", () => {
     });
   });
 
-  test("backs up a conflicting directory before relinking", async () => {
+  test("links files individually within nested directories", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".config/nvim/init.vim": "set number\n",
       });
-      await writeTree(homeDir, {
-        ".config/nvim/old.vim": "legacy\n",
-      });
+      await mkdir(homeDir, { recursive: true });
 
       const plan = await planLinkActions({ sourceRoot, homeDir });
 
-      expect(plan.actions).toHaveLength(2);
+      expect(plan.actions).toHaveLength(1);
       expect(plan.actions[0]).toMatchObject({
-        destinationPath: path.join(homeDir, ".config", "nvim"),
-        type: "backup",
-      });
-      expect(plan.actions[1]).toMatchObject({
-        destinationPath: path.join(homeDir, ".config", "nvim"),
-        sourcePath: path.join(sourceRoot, ".config", "nvim"),
+        destinationPath: path.join(homeDir, ".config", "nvim", "init.vim"),
+        sourcePath: path.join(sourceRoot, ".config", "nvim", "init.vim"),
         type: "link",
       });
     });
@@ -114,7 +108,7 @@ describe("planLinkActions", () => {
     });
   });
 
-  test("links top-level managed directories as a whole", async () => {
+  test("links files individually within directories with subdirectories", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -122,21 +116,23 @@ describe("planLinkActions", () => {
         "mybin/tool": "#!/bin/sh\n",
         "mybin/lib/helper.rb": "puts :ok\n",
       });
+      await mkdir(homeDir, { recursive: true });
 
       const plan = await planLinkActions({ sourceRoot, homeDir });
 
-      expect(plan.actions).toHaveLength(1);
-      expect(plan.actions[0]).toMatchObject({
-        destinationPath: path.join(homeDir, "mybin"),
-        sourcePath: path.join(sourceRoot, "mybin"),
-        type: "link",
-      });
+      expect(plan.actions).toHaveLength(2);
+      const paths = plan.actions.map((a) => a.destinationPath).sort();
+      expect(paths).toEqual([
+        path.join(homeDir, "mybin", "lib", "helper.rb"),
+        path.join(homeDir, "mybin", "tool"),
+      ]);
+      expect(plan.actions.every((a) => a.type === "link")).toBe(true);
     });
   });
 });
 
 describe("runLinkPlan", () => {
-  test("creates parent directories and symlinks managed leaf directories", async () => {
+  test("creates parent directories and symlinks individual files", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -148,10 +144,9 @@ describe("runLinkPlan", () => {
       const plan = await planLinkActions({ sourceRoot, homeDir });
       await runLinkPlan(plan);
 
-      const linkedDir = path.join(homeDir, ".config", "mise");
-      const linkedPath = path.join(linkedDir, "config.toml");
-      await expect(access(linkedPath)).resolves.toBeNull();
-      expect(await readSymlinkTarget(linkedDir)).toBe(await realpath(path.join(sourceRoot, ".config", "mise")));
+      const linkedFile = path.join(homeDir, ".config", "mise", "config.toml");
+      await expect(access(linkedFile)).resolves.toBeNull();
+      expect(await readSymlinkTarget(linkedFile)).toBe(await realpath(path.join(sourceRoot, ".config", "mise", "config.toml")));
     });
   });
 
@@ -194,7 +189,7 @@ describe("runLinkPlan", () => {
     });
   });
 
-  test("backs up directories before linking them", async () => {
+  test("creates symlinks alongside existing unmanaged files", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -204,17 +199,16 @@ describe("runLinkPlan", () => {
       await writeTree(homeDir, {
         ".config/nvim/old.vim": "legacy\n",
       });
-      await ensureDir(homeDir, ".config");
 
-      const plan = await planLinkActions({ sourceRoot, homeDir, timestamp: "20260325T120000" });
+      const plan = await planLinkActions({ sourceRoot, homeDir });
       await runLinkPlan(plan);
 
-      expect(await readFile(path.join(homeDir, ".dotfiles-backups", "20260325T120000", ".config", "nvim", "old.vim"), "utf8")).toBe("legacy\n");
-      expect(await readSymlinkTarget(path.join(homeDir, ".config", "nvim"))).toBe(await realpath(path.join(sourceRoot, ".config", "nvim")));
+      expect(await readSymlinkTarget(path.join(homeDir, ".config", "nvim", "init.vim"))).toBe(await realpath(path.join(sourceRoot, ".config", "nvim", "init.vim")));
+      expect(await readFile(path.join(homeDir, ".config", "nvim", "old.vim"), "utf8")).toBe("legacy\n");
     });
   });
 
-  test("replaces a conflicting top-level directory with a symlink", async () => {
+  test("links individual files within directories that have subdirectories", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -222,15 +216,13 @@ describe("runLinkPlan", () => {
         "mybin/tool": "#!/bin/sh\n",
         "mybin/lib/helper.rb": "puts :ok\n",
       });
-      await writeTree(homeDir, {
-        "mybin/legacy.txt": "legacy\n",
-      });
+      await mkdir(homeDir, { recursive: true });
 
-      const plan = await planLinkActions({ sourceRoot, homeDir, timestamp: "20260325T120000" });
+      const plan = await planLinkActions({ sourceRoot, homeDir });
       await runLinkPlan(plan);
 
-      expect(await readFile(path.join(homeDir, ".dotfiles-backups", "20260325T120000", "mybin", "legacy.txt"), "utf8")).toBe("legacy\n");
-      expect(await readSymlinkTarget(path.join(homeDir, "mybin"))).toBe(await realpath(path.join(sourceRoot, "mybin")));
+      expect(await readSymlinkTarget(path.join(homeDir, "mybin", "tool"))).toBe(await realpath(path.join(sourceRoot, "mybin", "tool")));
+      expect(await readSymlinkTarget(path.join(homeDir, "mybin", "lib", "helper.rb"))).toBe(await realpath(path.join(sourceRoot, "mybin", "lib", "helper.rb")));
     });
   });
 });
