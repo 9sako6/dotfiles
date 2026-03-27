@@ -12,5 +12,6 @@ fi
 # --- chain: project-local hooks ---
 local_hook="$(git rev-parse --git-dir)/hooks/pre-commit"
 if [ -x "$local_hook" ]; then
-  exec "$local_hook" "$@"
+  "$local_hook" "$@"
+  exit $?
 fi
