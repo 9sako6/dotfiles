@@ -1,14 +1,24 @@
-import { mkdir, rename, symlink } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, symlink } from "node:fs/promises";
 import path from "node:path";
 import { backupPathFor, backupRootFor, createTimestamp } from "./backup";
 import { lstatOrNull, readDirents, realpathOrNull } from "./fs";
 import { sourceToDestinationPath } from "./paths";
+
+const COPY_INSTEAD_OF_LINK: ReadonlySet<string> = new Set([
+  ".claude/CLAUDE.md",
+  ".claude/settings.json",
+]);
 
 export type LinkAction =
   | {
       destinationPath: string;
       sourcePath: string;
       type: "link";
+    }
+  | {
+      destinationPath: string;
+      sourcePath: string;
+      type: "copy";
     }
   | {
       backupPath: string;
@@ -32,6 +42,7 @@ export type LinkPlan = {
 };
 
 type PlanOptions = {
+  copyPaths?: ReadonlySet<string>;
   dryRun?: boolean;
   homeDir: string;
   sourceRoot: string;
@@ -39,6 +50,7 @@ type PlanOptions = {
 };
 
 export async function planLinkActions({
+  copyPaths = COPY_INSTEAD_OF_LINK,
   dryRun = false,
   homeDir,
   sourceRoot,
@@ -50,7 +62,7 @@ export async function planLinkActions({
   }
 
   const actions: LinkAction[] = [];
-  await planDirectory(sourceRoot, actions, { homeDir, sourceRoot, timestamp });
+  await planDirectory(sourceRoot, actions, { copyPaths, homeDir, sourceRoot, timestamp });
 
   return {
     actions,
@@ -79,7 +91,11 @@ export async function runLinkPlan(plan: LinkPlan) {
     }
 
     await mkdir(path.dirname(action.destinationPath), { recursive: true });
-    await symlink(action.sourcePath, action.destinationPath);
+    if (action.type === "copy") {
+      await copyFile(action.sourcePath, action.destinationPath);
+    } else {
+      await symlink(action.sourcePath, action.destinationPath);
+    }
   }
 }
 
@@ -89,7 +105,7 @@ export function summarizePlan(plan: LinkPlan) {
       result[action.type] += 1;
       return result;
     },
-    { backup: 0, link: 0, noop: 0 },
+    { backup: 0, copy: 0, link: 0, noop: 0 },
   );
 
   return {
@@ -102,7 +118,7 @@ export function summarizePlan(plan: LinkPlan) {
 async function planDirectory(
   sourcePath: string,
   actions: LinkAction[],
-  options: Required<Pick<PlanOptions, "homeDir" | "sourceRoot" | "timestamp">>,
+  options: Required<Pick<PlanOptions, "copyPaths" | "homeDir" | "sourceRoot" | "timestamp">>,
   treatDescendantsAsMissing = false,
 ) {
   let nextTreatDescendantsAsMissing = treatDescendantsAsMissing;
@@ -128,12 +144,14 @@ async function planDirectory(
       await planDirectory(childSourcePath, actions, options, nextTreatDescendantsAsMissing);
       continue;
     }
+    const relativePath = path.relative(options.sourceRoot, childSourcePath);
     await planManagedPath(
       childSourcePath,
       sourceToDestinationPath(options.sourceRoot, childSourcePath, options.homeDir),
       actions,
       options,
       nextTreatDescendantsAsMissing,
+      options.copyPaths.has(relativePath),
     );
   }
 }
@@ -144,38 +162,39 @@ async function planManagedPath(
   actions: LinkAction[],
   options: Required<Pick<PlanOptions, "homeDir" | "sourceRoot" | "timestamp">>,
   treatDestinationAsMissing = false,
+  isCopyTarget = false,
 ) {
+  const actionType = isCopyTarget ? "copy" : "link";
+
   if (treatDestinationAsMissing) {
-    actions.push({
-      destinationPath,
-      sourcePath,
-      type: "link",
-    });
+    actions.push({ destinationPath, sourcePath, type: actionType });
     return;
   }
 
   const destinationStat = await lstatOrNull(destinationPath);
   if (!destinationStat) {
-    actions.push({
-      destinationPath,
-      sourcePath,
-      type: "link",
-    });
+    actions.push({ destinationPath, sourcePath, type: actionType });
     return;
   }
 
-  if (destinationStat.isSymbolicLink()) {
+  if (isCopyTarget) {
+    if (destinationStat.isFile() && !destinationStat.isSymbolicLink()) {
+      const [sourceContent, destContent] = await Promise.all([
+        readFile(sourcePath),
+        readFile(destinationPath),
+      ]);
+      if (sourceContent.equals(destContent)) {
+        actions.push({ destinationPath, sourcePath, type: "noop" });
+        return;
+      }
+    }
+  } else if (destinationStat.isSymbolicLink()) {
     const [resolvedSource, resolvedDestination] = await Promise.all([
       realpathOrNull(sourcePath),
       realpathOrNull(destinationPath),
     ]);
-
     if (resolvedSource && resolvedDestination && resolvedSource === resolvedDestination) {
-      actions.push({
-        destinationPath,
-        sourcePath,
-        type: "noop",
-      });
+      actions.push({ destinationPath, sourcePath, type: "noop" });
       return;
     }
   }
@@ -186,9 +205,5 @@ async function planManagedPath(
     sourcePath,
     type: "backup",
   });
-  actions.push({
-    destinationPath,
-    sourcePath,
-    type: "link",
-  });
+  actions.push({ destinationPath, sourcePath, type: actionType });
 }
