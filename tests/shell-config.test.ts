@@ -155,6 +155,12 @@ describe("shell config", () => {
     expect(prompt).not.toContain("kube_ps1");
   });
 
+  test("codex defaults to inline mode to preserve scrollback", async () => {
+    const abbrevAliases = await readFile("dist/.zsh.d/alias.zsh", "utf8");
+
+    expect(abbrevAliases).toContain("alias codex='command codex --no-alt-screen'");
+  });
+
   test("helper scripts avoid dead hardcoded paths", async () => {
     const gppr = await readFile("dist/mybin/gppr", "utf8");
     const diffcop = await readFile("dist/mybin/diffcop", "utf8");

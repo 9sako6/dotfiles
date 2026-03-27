@@ -30,6 +30,7 @@ alias v="code"
 alias gpp="g++"
 alias cr='cd "$(ghq root)/$(ghq list | fzf)"'
 alias '$'='command'
+alias codex='command codex --no-alt-screen'
 
 # Modern CLI replacements
 abbrev-alias ls='eza'
