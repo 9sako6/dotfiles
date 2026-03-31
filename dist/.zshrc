@@ -70,7 +70,6 @@ fi
 [ -e "${HOME}/.zsh.d/functions.zsh" ] && source "${HOME}/.zsh.d/functions.zsh"
 
 [ -e "${HOME}/.zsh.d/local.zsh" ] && source "${HOME}/.zsh.d/local.zsh"
-[ -e "${HOME}/.zsh.d/secrets.zsh" ] && source "${HOME}/.zsh.d/secrets.zsh"
 
 : "iyashi" && {
   if [ -z "${DOTFILES_NO_BANNER:-}" ] && [ -z "${CI:-}" ]; then
