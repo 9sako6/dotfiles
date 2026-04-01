@@ -1,0 +1,8 @@
+{
+  "name": "dotfiles",
+  "image": "mcr.microsoft.com/devcontainers/base:1.2.6-ubuntu-24.04",
+  "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash && curl -fsSL https://mise.run | sh && mise trust && mise install",
+  "remoteEnv": {
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  }
+}

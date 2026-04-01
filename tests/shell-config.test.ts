@@ -79,6 +79,12 @@ describe("shell config", () => {
     expect(zshenv).toContain("[ -f '/home/linuxbrew/.linuxbrew/bin/brew' ]");
   });
 
+  test("zshenv sources secrets before interactive shell config loads", async () => {
+    const zshenv = await readFile("dist/.zshenv", "utf8");
+
+    expect(zshenv).toContain('${HOME}/.zsh.d/secrets.zsh');
+  });
+
   test("zshrc guards direnv hook behind a resolvable mise tool", async () => {
     const zshrc = await readFile("dist/.zshrc", "utf8");
 
@@ -110,7 +116,6 @@ describe("shell config", () => {
     expect(zshrc).toContain('${HOME}/.zsh.d/keybindings.zsh');
     expect(zshrc).toContain('${HOME}/.zsh.d/functions.zsh');
     expect(zshrc).toContain('${HOME}/.zsh.d/local.zsh');
-    expect(zshrc).toContain('${HOME}/.zsh.d/secrets.zsh');
     expect(zshrc).not.toContain(".zsh.local");
   });
 
