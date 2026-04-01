@@ -134,8 +134,8 @@ describe("shell config", () => {
     expect(gitconfig).not.toContain("gh auth git-credential");
     expect(gitconfig).not.toContain('[credential "https://github.com"]');
     expect(gitconfig).not.toContain('[credential "https://gist.github.com"]');
-    expect(gitconfig).toContain("pager = delta");
-    expect(gitconfig).toContain('diffFilter = delta --color-only');
+    expect(gitconfig).not.toContain("pager = delta");
+    expect(gitconfig).not.toContain('diffFilter = delta --color-only');
     expect(gitconfig).toContain("hooksPath = ~/.config/git/hooks");
   });
 
