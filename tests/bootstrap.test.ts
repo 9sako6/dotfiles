@@ -61,35 +61,16 @@ describe("bootstrap trust flow", () => {
     expect(gitignore).toContain("*.key");
   });
 
-  test("README documents where local zsh overrides and secrets belong", async () => {
+  test("README stays minimal while linking to durable Japanese docs", async () => {
     const readme = await readFile("README.md", "utf8");
 
-    expect(readme).toContain("~/.zsh.d/local.zsh");
-    expect(readme).toContain("~/.zsh.d/secrets.zsh");
-    expect(readme).toContain("dist/");
-  });
-
-  test("README documents the common mise operations without dev-only test commands", async () => {
-    const readme = await readFile("README.md", "utf8");
-
-    expect(readme).toContain("mise run link:check");
-    expect(readme).toContain("mise run link");
-    expect(readme).not.toContain("mise test");
-  });
-
-  test("README documents Brewfile-managed macOS apps", async () => {
-    const readme = await readFile("README.md", "utf8");
-
-    expect(readme).toContain("Brewfile");
-    expect(readme).toContain("brew bundle");
-  });
-
-  test("README links to durable Japanese docs for repo guidance", async () => {
-    const readme = await readFile("README.md", "utf8");
-
+    expect(readme).toContain("curl -fsSL dot.9sako6.com | bash");
+    expect(readme).toContain("See:");
     expect(readme).toContain("docs/repo-map.md");
     expect(readme).toContain("docs/operations.md");
-    expect(readme).toContain("詳しい構成");
+    expect(readme).not.toContain("mise run link:check");
+    expect(readme).not.toContain("Brewfile");
+    expect(readme).not.toContain(".dotfiles-backups");
   });
 
   test("repo map documents the managed surface in Japanese", async () => {

@@ -5,7 +5,7 @@
 ## 初回セットアップ
 
 ```sh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/9sako6/dotfiles/master/install.sh)"
+curl -fsSL dot.9sako6.com | bash
 ```
 
 - `install.sh` は bootstrap 専用です。
