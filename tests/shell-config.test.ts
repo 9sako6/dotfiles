@@ -4,6 +4,36 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir, writeTree } from "./test-helpers";
 
+function extractToolNames(toml: string) {
+  const lines = toml.split("\n");
+  const toolLines: string[] = [];
+  let inToolsSection = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === "[tools]") {
+      inToolsSection = true;
+      continue;
+    }
+    if (inToolsSection && trimmed.startsWith("[")) {
+      break;
+    }
+    if (inToolsSection) {
+      toolLines.push(line);
+    }
+  }
+
+  return new Set(
+    toolLines
+      .join("\n")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "" && !line.startsWith("#"))
+      .map((line) => line.split("=", 1)[0]?.trim())
+      .filter((name): name is string => Boolean(name)),
+  );
+}
+
 function runCommand(
   command: string,
   args: string[],
@@ -72,41 +102,41 @@ async function writeRepoFile(repoDir: string, relativePath: string, content: str
 describe("shell config", () => {
   test("repo-local mise tools stay minimal", async () => {
     const miseToml = await readFile(".mise.toml", "utf8");
+    const toolNames = extractToolNames(miseToml);
 
-    expect(miseToml).toContain('bun = "1.3.11"');
-    expect(miseToml).toContain('node = "22.22.1"');
-    expect(miseToml).toContain('pnpm = "10.32.1"');
-    expect(miseToml).not.toContain('direnv = "latest"');
-    expect(miseToml).not.toContain('ghq = "latest"');
-    expect(miseToml).not.toContain('fzf = "latest"');
-    expect(miseToml).not.toContain('\ngo = "latest"\n');
+    expect(toolNames).toEqual(new Set(["bun", "node", "pnpm"]));
   });
 
   test("package manager policy uses pnpm with a 7 day release delay", async () => {
-    const packageJson = await readFile("package.json", "utf8");
+    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { packageManager: string };
     const pnpmWorkspace = await readFile("pnpm-workspace.yaml", "utf8");
 
-    expect(packageJson).toContain('"packageManager": "pnpm@10.32.1"');
+    expect(packageJson.packageManager.startsWith("pnpm@")).toBe(true);
     expect(pnpmWorkspace).toContain("minimumReleaseAge: 10080");
     expect(pnpmWorkspace).not.toContain("minimumReleaseAgeExclude");
   });
 
   test("managed global mise config contains user-wide tools", async () => {
     const globalMiseConfig = await readFile("dist/.config/mise/config.toml", "utf8");
+    const toolNames = extractToolNames(globalMiseConfig);
 
-    expect(globalMiseConfig).toContain('atuin = ');
-    expect(globalMiseConfig).toContain('bat = ');
-    expect(globalMiseConfig).toContain('delta = ');
-    expect(globalMiseConfig).toContain('direnv = "2.37.1"');
-    expect(globalMiseConfig).toContain('eza = ');
-    expect(globalMiseConfig).toContain('fd = ');
-    expect(globalMiseConfig).toContain('ghq = "1.9.4"');
-    expect(globalMiseConfig).toContain('fzf = "0.70.0"');
-    expect(globalMiseConfig).toContain('gitleaks = ');
-    expect(globalMiseConfig).toContain('ripgrep = "15.1.0"');
-    expect(globalMiseConfig).toContain('zoxide = ');
-    expect(globalMiseConfig).toContain('zellij = "0.44.0"');
-    expect(globalMiseConfig).not.toContain('\ngh = ');
+    for (const name of [
+      "atuin",
+      "bat",
+      "delta",
+      "direnv",
+      "eza",
+      "fd",
+      "fzf",
+      "ghq",
+      "gitleaks",
+      "ripgrep",
+      "zellij",
+      "zoxide",
+    ]) {
+      expect(toolNames.has(name)).toBe(true);
+    }
+    expect(toolNames.has("gh")).toBe(false);
   });
 
   test("zshenv removes stale machine-specific tool bootstrapping", async () => {

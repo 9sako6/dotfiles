@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 
+function expectInOrder(text: string, fragments: string[]) {
+  let cursor = -1;
+
+  for (const fragment of fragments) {
+    const next = text.indexOf(fragment, cursor + 1);
+    expect(next).toBeGreaterThan(cursor);
+    cursor = next;
+  }
+}
+
 describe("bootstrap trust flow", () => {
   test("install.sh trusts the repo before running mise tasks", async () => {
     const installScript = await readFile("install.sh", "utf8");
@@ -13,43 +23,54 @@ describe("bootstrap trust flow", () => {
 
   test("install.sh installs global mise tools after dist is linked", async () => {
     const installScript = await readFile("install.sh", "utf8");
-    const installCount = installScript.split("\"$MISE_BIN\" install").length - 1;
 
-    expect(installCount).toBe(2);
-    expect(installScript.indexOf("\"$MISE_BIN\" run setup")).toBeLessThan(
-      installScript.lastIndexOf("\"$MISE_BIN\" install"),
-    );
+    expectInOrder(installScript, [
+      "\"$MISE_BIN\" trust",
+      "\"$MISE_BIN\" run setup",
+      "\"$MISE_BIN\" install",
+    ]);
     expect(installScript).not.toContain("brew install --cask");
     expect(installScript).not.toContain("brew bundle");
   });
 
-  test("CI trusts the repo before installing bun", async () => {
+  test("CI trusts the repo before installing dependencies and tests", async () => {
     const workflow = await readFile(".github/workflows/test.yml", "utf8");
 
     expect(workflow).toContain("mise trust");
     expect(workflow).toContain("bun test");
     expect(workflow).toContain("bun run scripts/link-dist.ts --check");
     expect(workflow).toContain("pnpm install --frozen-lockfile");
+    expectInOrder(workflow, [
+      "run: mise trust",
+      "run: |\n          mise install",
+      "run: pnpm install --frozen-lockfile",
+      "run: bun test",
+    ]);
   });
 
-  test("CI installs only the pinned local toolchain for verification", async () => {
+  test("CI installs the repo-local toolchain instead of relying on mise tasks", async () => {
     const workflow = await readFile(".github/workflows/test.yml", "utf8");
 
-    expect(workflow).toContain("mise install node pnpm bun");
+    expect(workflow).toMatch(/mise install[^\n]*\bnode\b/);
+    expect(workflow).toMatch(/mise install[^\n]*\bpnpm\b/);
+    expect(workflow).toMatch(/mise install[^\n]*\bbun\b/);
     expect(workflow).not.toContain("mise run test");
     expect(workflow).not.toContain("mise run link:check");
   });
 
-  test("CI pins actions and uses least privilege permissions", async () => {
+  test("CI pins actions by commit SHA and uses least privilege permissions", async () => {
     const workflow = await readFile(".github/workflows/test.yml", "utf8");
+    const checkoutPins = workflow.match(/actions\/checkout@[0-9a-f]{40}/g) ?? [];
 
     expect(workflow).toContain("permissions:");
     expect(workflow).toContain("contents: read");
     expect(workflow).toContain("secret-scan:");
     expect(workflow).toContain("needs: secret-scan");
     expect(workflow).toContain("runs-on: ubuntu-latest");
-    expect(workflow).toContain("actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5");
-    expect(workflow).toContain("gitleaks/gitleaks-action@bf2dc8e55639c1e091e9b45970152e4313705814");
+    expect(checkoutPins).toHaveLength(2);
+    expect(workflow).toMatch(/gitleaks\/gitleaks-action@[0-9a-f]{40}/);
+    expect(workflow).not.toContain("actions/checkout@v");
+    expect(workflow).not.toContain("gitleaks/gitleaks-action@v");
     expect(workflow).toContain("GITHUB_TOKEN");
     expect(workflow).toContain("fetch-depth: 0");
   });

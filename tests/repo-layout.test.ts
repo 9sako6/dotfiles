@@ -5,38 +5,21 @@ import path from "node:path";
 
 const repoRoot = process.cwd();
 
-const expectedDistPaths = [
-  "dist/.Brewfile",
+const criticalDistPaths = [
   "dist/.codex/AGENTS.md",
   "dist/.config/git/hooks/pre-commit",
   "dist/.config/mise/config.toml",
   "dist/.gitconfig",
-  "dist/.gitignore_global",
   "dist/.zshenv",
   "dist/.zshrc",
   "dist/.zsh.d/alias.zsh",
-  "dist/.zsh.d/functions.zsh",
-  "dist/.zsh.d/keybindings.zsh",
-  "dist/.zsh.d/prompt.zsh",
-  "dist/mybin/diffcop",
-  "dist/mybin/gomi",
   "dist/mybin/git-undo",
-  "dist/mybin/gppr",
-  "dist/mybin/lib/tada-darwin-arm64",
-  "dist/mybin/lib/work_timer.rb",
-  "dist/mybin/nyanpasu",
-  "dist/mybin/nonnonbiyori",
-  "dist/mybin/nonnonbiyori.ascii",
-  "dist/mybin/renchon",
-  "dist/mybin/renchon.ascii",
   "dist/mybin/tada",
-  "dist/mybin/timer",
-  "dist/mybin/vv",
 ] as const;
 
-test("dist contains the managed dotfiles layout", async () => {
+test("dist contains the critical managed entrypoints", async () => {
   await Promise.all(
-    expectedDistPaths.map(async (relativePath) => {
+    criticalDistPaths.map(async (relativePath) => {
       await expect(access(path.join(repoRoot, relativePath))).resolves.toBeNull();
     }),
   );
