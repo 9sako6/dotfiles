@@ -139,6 +139,14 @@ describe("shell config", () => {
     expect(gitconfig).toContain("hooksPath = ~/.config/git/hooks");
   });
 
+  test("git config adds readable undo aliases", async () => {
+    const gitconfig = await readFile("dist/.gitconfig", "utf8");
+
+    expect(gitconfig).toContain("[alias]");
+    expect(gitconfig).toContain("commit-to-add = reset --soft HEAD~1");
+    expect(gitconfig).toContain('add-to-diff = "!f() { if [ \\"$#\\" -eq 0 ]; then git restore --staged .; else git restore --staged -- \\"$@\\"; fi; }; f"');
+  });
+
   test("shell aliases keep only currently supported tools", async () => {
     const abbrevAliases = await readFile("dist/.zsh.d/alias.zsh", "utf8");
     const prompt = await readFile("dist/.zsh.d/prompt.zsh", "utf8");
