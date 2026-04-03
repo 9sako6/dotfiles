@@ -1,7 +1,10 @@
-import { access } from "node:fs/promises";
+import { access, mkdir } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { planLinkActions, runLinkPlan } from "./link-dist";
+
+const ZINIT_REPO_URL = "https://github.com/zdharma-continuum/zinit.git";
+const ZINIT_REF = "55d19f8";
 
 export type SetupStep =
   | {
@@ -125,22 +128,23 @@ export async function detectHomebrewInstalled() {
 }
 
 async function installZinit(homeDir: string) {
-  await runShellCommand(
-    `HOME="${homeDir}" sh -c "$(curl --fail --show-error --silent --location https://raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh)"`,
-  );
+  const zinitDir = path.join(homeDir, ".local", "share", "zinit", "zinit.git");
+  await mkdir(path.dirname(zinitDir), { recursive: true });
+  await runProcess("git", ["clone", ZINIT_REPO_URL, zinitDir]);
+  await runProcess("git", ["-C", zinitDir, "checkout", "--detach", ZINIT_REF]);
 }
 
 async function installHomebrewBundle(brewfilePath: string) {
-  await runShellCommand(`"${detectPreferredBrewPath()}" bundle --file="${brewfilePath}"`);
+  await runProcess(detectPreferredBrewPath(), ["bundle", `--file=${brewfilePath}`]);
 }
 
 function detectPreferredBrewPath() {
   return process.arch === "arm64" ? "/opt/homebrew/bin/brew" : "/usr/local/bin/brew";
 }
 
-async function runShellCommand(command: string) {
+async function runProcess(command: string, args: string[]) {
   await new Promise<void>((resolve, reject) => {
-    const child = spawn("/bin/sh", ["-c", command], {
+    const child = spawn(command, args, {
       stdio: "inherit",
     });
 

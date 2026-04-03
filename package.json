@@ -2,6 +2,7 @@
   "name": "dotfiles",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "doctor": "bun run scripts/link-dist.ts --check",
     "link": "bun run scripts/link-dist.ts",

@@ -7,6 +7,8 @@ if command -v gitleaks >/dev/null 2>&1; then
     echo "gitleaks: secrets detected. Commit aborted."
     exit 1
   fi
+else
+  echo "gitleaks: not installed, skipping local secret scan." >&2
 fi
 
 # --- chain: project-local hooks ---

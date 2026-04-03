@@ -8,9 +8,11 @@ function runCommand(
   command: string,
   args: string[],
   env: NodeJS.ProcessEnv = process.env,
+  options: { cwd?: string } = {},
 ) {
   return new Promise<{ code: number | null; stderr: string; stdout: string }>((resolve, reject) => {
     const child = spawn(command, args, {
+      cwd: options.cwd,
       env,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -72,10 +74,21 @@ describe("shell config", () => {
     const miseToml = await readFile(".mise.toml", "utf8");
 
     expect(miseToml).toContain('bun = "1.3.11"');
+    expect(miseToml).toContain('node = "22.22.1"');
+    expect(miseToml).toContain('pnpm = "10.32.1"');
     expect(miseToml).not.toContain('direnv = "latest"');
     expect(miseToml).not.toContain('ghq = "latest"');
     expect(miseToml).not.toContain('fzf = "latest"');
     expect(miseToml).not.toContain('\ngo = "latest"\n');
+  });
+
+  test("package manager policy uses pnpm with a 7 day release delay", async () => {
+    const packageJson = await readFile("package.json", "utf8");
+    const pnpmWorkspace = await readFile("pnpm-workspace.yaml", "utf8");
+
+    expect(packageJson).toContain('"packageManager": "pnpm@10.32.1"');
+    expect(pnpmWorkspace).toContain("minimumReleaseAge: 10080");
+    expect(pnpmWorkspace).not.toContain("minimumReleaseAgeExclude");
   });
 
   test("managed global mise config contains user-wide tools", async () => {
@@ -145,6 +158,17 @@ describe("shell config", () => {
     expect(zshrc).not.toContain("fast-syntax-highlighting");
   });
 
+  test("setup installs zinit from a fixed git ref instead of a remote HEAD script", async () => {
+    const setupLib = await readFile("scripts/lib/setup.ts", "utf8");
+
+    expect(setupLib).not.toContain("raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh");
+    expect(setupLib).not.toContain('sh -c "$(curl');
+    expect(setupLib).toContain("https://github.com/zdharma-continuum/zinit.git");
+    expect(setupLib).toContain("git");
+    expect(setupLib).toContain("clone");
+    expect(setupLib).toContain("checkout");
+  });
+
   test("zshrc loads tracked and untracked zsh fragments from .zsh.d", async () => {
     const zshrc = await readFile("dist/.zshrc", "utf8");
 
@@ -174,6 +198,31 @@ describe("shell config", () => {
     expect(gitconfig).not.toContain("pager = delta");
     expect(gitconfig).not.toContain('diffFilter = delta --color-only');
     expect(gitconfig).toContain("hooksPath = ~/.config/git/hooks");
+  });
+
+  test("pre-commit hook warns when gitleaks is unavailable but does not block commits", async () => {
+    await withTempDir("pre-commit-warning", async (tempDir) => {
+      const repoDir = path.join(tempDir, "repo");
+      const hookPath = path.join(process.cwd(), "dist/.config/git/hooks/pre-commit");
+      const gitBinDirResult = await runCommand("/bin/sh", ["-c", "command -v git"]);
+
+      expect(gitBinDirResult.code).toBe(0);
+      const gitBin = gitBinDirResult.stdout.trim();
+      expect(gitBin).not.toBe("");
+
+      await mkdir(repoDir, { recursive: true });
+      expect((await runCommand("git", ["init", "-b", "master"], process.env, { cwd: repoDir })).code).toBe(0);
+
+      const hookResult = await runCommand(
+        "/bin/sh",
+        [hookPath],
+        { ...process.env, PATH: path.dirname(gitBin) },
+        { cwd: repoDir },
+      );
+
+      expect(hookResult.code).toBe(0);
+      expect(hookResult.stderr).toContain("gitleaks: not installed, skipping local secret scan.");
+    });
   });
 
   test("git config adds a single git undo alias", async () => {

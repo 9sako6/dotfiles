@@ -29,24 +29,27 @@ describe("bootstrap trust flow", () => {
     expect(workflow).toContain("mise trust");
     expect(workflow).toContain("bun test");
     expect(workflow).toContain("bun run scripts/link-dist.ts --check");
+    expect(workflow).toContain("pnpm install --frozen-lockfile");
   });
 
-  test("CI installs only bun for verification", async () => {
+  test("CI installs only the pinned local toolchain for verification", async () => {
     const workflow = await readFile(".github/workflows/test.yml", "utf8");
 
-    expect(workflow).toContain("mise install bun");
-    expect(workflow).not.toContain("run: mise install\n");
+    expect(workflow).toContain("mise install node pnpm bun");
     expect(workflow).not.toContain("mise run test");
     expect(workflow).not.toContain("mise run link:check");
   });
 
-  test("CI runs a gitleaks secret scan", async () => {
+  test("CI pins actions and uses least privilege permissions", async () => {
     const workflow = await readFile(".github/workflows/test.yml", "utf8");
 
+    expect(workflow).toContain("permissions:");
+    expect(workflow).toContain("contents: read");
     expect(workflow).toContain("secret-scan:");
     expect(workflow).toContain("needs: secret-scan");
     expect(workflow).toContain("runs-on: ubuntu-latest");
-    expect(workflow).toContain("gitleaks/gitleaks-action@v2");
+    expect(workflow).toContain("actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5");
+    expect(workflow).toContain("gitleaks/gitleaks-action@bf2dc8e55639c1e091e9b45970152e4313705814");
     expect(workflow).toContain("GITHUB_TOKEN");
     expect(workflow).toContain("fetch-depth: 0");
   });

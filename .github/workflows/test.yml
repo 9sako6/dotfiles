@@ -7,15 +7,18 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   secret-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@bf2dc8e55639c1e091e9b45970152e4313705814
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -26,7 +29,7 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Install mise
         run: |
           curl -fsSL https://mise.run | sh
@@ -35,8 +38,12 @@ jobs:
         run: mise trust
       - name: Install toolchain
         run: |
-          mise install bun
+          mise install node pnpm bun
+          echo "$HOME/.local/share/mise/installs/node/22.22.1/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/installs/pnpm/10.32.1/bin" >> "$GITHUB_PATH"
           echo "$HOME/.local/share/mise/installs/bun/1.3.11/bin" >> "$GITHUB_PATH"
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
       - name: Run tests
         run: bun test
       - name: Dry-run link deployment
