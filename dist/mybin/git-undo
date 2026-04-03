@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -gt 0 ]; then
+  if git diff --cached --quiet -- "$@"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$status" -eq 0 ]; then
+    echo "git undo: no staged changes for: $*" >&2
+    exit 1
+  fi
+  if [ "$status" -ne 1 ]; then
+    exit "$status"
+  fi
+  git restore --staged -- "$@"
+  exit $?
+fi
+
+if git diff --cached --quiet --ignore-submodules --; then
+  status=0
+else
+  status=$?
+fi
+if [ "$status" -eq 1 ]; then
+  git restore --staged .
+  exit $?
+fi
+if [ "$status" -ne 0 ]; then
+  exit "$status"
+fi
+
+if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+  git reset --soft HEAD^
+  exit $?
+fi
+
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  git update-ref -d HEAD
+  exit $?
+fi
+
+echo "git undo: nothing to undo" >&2
+exit 1

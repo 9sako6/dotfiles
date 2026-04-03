@@ -20,6 +20,7 @@ const expectedDistPaths = [
   "dist/.zsh.d/prompt.zsh",
   "dist/mybin/diffcop",
   "dist/mybin/gomi",
+  "dist/mybin/git-undo",
   "dist/mybin/gppr",
   "dist/mybin/lib/tada-darwin-arm64",
   "dist/mybin/lib/work_timer.rb",
@@ -45,7 +46,8 @@ test("legacy managed home source tree is gone", async () => {
   await expect(access(path.join(repoRoot, "home"))).rejects.toThrow();
 });
 
-test("tada launcher and bundled binary stay executable", async () => {
+test("git and tada helper binaries stay executable", async () => {
+  await expect(access(path.join(repoRoot, "dist/mybin/git-undo"), constants.X_OK)).resolves.toBeNull();
   await expect(access(path.join(repoRoot, "dist/mybin/tada"), constants.X_OK)).resolves.toBeNull();
   await expect(access(path.join(repoRoot, "dist/mybin/lib/tada-darwin-arm64"), constants.X_OK)).resolves.toBeNull();
 });

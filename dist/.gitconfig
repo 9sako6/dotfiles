@@ -8,5 +8,4 @@
 	editor = vim -c \"set fenc=utf-8\"
 	ignorecase = false
 [alias]
-	commit-to-add = reset --soft HEAD~1
-	add-to-diff = "!f() { if [ \"$#\" -eq 0 ]; then git restore --staged .; else git restore --staged -- \"$@\"; fi; }; f"
+	undo = "!f() { \"${HOME}/mybin/git-undo\" \"$@\"; }; f"

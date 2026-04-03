@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, copyFile, mkdir, readFile, symlink } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir, writeTree } from "./test-helpers";
@@ -28,6 +28,43 @@ function runCommand(
       resolve({ code, stderr, stdout });
     });
   });
+}
+
+async function initRepoWithManagedGitConfig(tempDir: string) {
+  const homeDir = path.join(tempDir, "home");
+  const repoDir = path.join(tempDir, "repo");
+  const hooksDir = path.join(homeDir, ".config", "git", "hooks");
+  const globalConfigPath = path.join(homeDir, ".gitconfig");
+  const mybinDir = path.join(homeDir, "mybin");
+  const undoScriptPath = path.join(mybinDir, "git-undo");
+  const env = {
+    ...process.env,
+    HOME: homeDir,
+    GIT_CONFIG_GLOBAL: globalConfigPath,
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+
+  await mkdir(hooksDir, { recursive: true });
+  await mkdir(repoDir, { recursive: true });
+  await mkdir(mybinDir, { recursive: true });
+  await copyFile("dist/.gitconfig", globalConfigPath);
+  await copyFile("dist/mybin/git-undo", undoScriptPath);
+  await chmod(undoScriptPath, 0o755);
+
+  const initResult = await runCommand("git", ["-C", repoDir, "init", "-b", "master"], env);
+  expect(initResult.code).toBe(0);
+
+  return { env, repoDir };
+}
+
+async function runGit(repoDir: string, env: NodeJS.ProcessEnv, ...args: string[]) {
+  return runCommand("git", ["-C", repoDir, ...args], env);
+}
+
+async function writeRepoFile(repoDir: string, relativePath: string, content: string) {
+  const filePath = path.join(repoDir, relativePath);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, content, "utf8");
 }
 
 describe("shell config", () => {
@@ -139,12 +176,126 @@ describe("shell config", () => {
     expect(gitconfig).toContain("hooksPath = ~/.config/git/hooks");
   });
 
-  test("git config adds readable undo aliases", async () => {
+  test("git config adds a single git undo alias", async () => {
     const gitconfig = await readFile("dist/.gitconfig", "utf8");
 
     expect(gitconfig).toContain("[alias]");
-    expect(gitconfig).toContain("commit-to-add = reset --soft HEAD~1");
-    expect(gitconfig).toContain('add-to-diff = "!f() { if [ \\"$#\\" -eq 0 ]; then git restore --staged .; else git restore --staged -- \\"$@\\"; fi; }; f"');
+    expect(gitconfig).toContain("undo = ");
+    expect(gitconfig).toContain("${HOME}/mybin/git-undo");
+    expect(gitconfig).not.toContain("commit-to-add =");
+    expect(gitconfig).not.toContain("add-to-diff =");
+  });
+
+  test("git undo unstages staged changes before touching commits", async () => {
+    await withTempDir("git-undo-unstage", async (tempDir) => {
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+
+      await writeRepoFile(repoDir, "note.txt", "before\n");
+      expect((await runGit(repoDir, env, "add", "note.txt")).code).toBe(0);
+      expect((await runGit(repoDir, env, "commit", "-m", "init")).code).toBe(0);
+
+      await writeRepoFile(repoDir, "note.txt", "after\n");
+      expect((await runGit(repoDir, env, "add", "note.txt")).code).toBe(0);
+
+      const undoResult = await runGit(repoDir, env, "undo");
+      expect(undoResult.code).toBe(0);
+
+      const stagedNames = await runGit(repoDir, env, "diff", "--cached", "--name-only");
+      const unstagedNames = await runGit(repoDir, env, "diff", "--name-only");
+      expect(stagedNames.stdout).toBe("");
+      expect(unstagedNames.stdout).toBe("note.txt\n");
+    });
+  });
+
+  test("git undo moves the latest commit back to staged changes", async () => {
+    await withTempDir("git-undo-commit", async (tempDir) => {
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+
+      await writeRepoFile(repoDir, "note.txt", "one\n");
+      expect((await runGit(repoDir, env, "add", "note.txt")).code).toBe(0);
+      expect((await runGit(repoDir, env, "commit", "-m", "init")).code).toBe(0);
+
+      await writeRepoFile(repoDir, "note.txt", "two\n");
+      expect((await runGit(repoDir, env, "add", "note.txt")).code).toBe(0);
+      expect((await runGit(repoDir, env, "commit", "-m", "second")).code).toBe(0);
+
+      const undoResult = await runGit(repoDir, env, "undo");
+      expect(undoResult.code).toBe(0);
+
+      const commitCount = await runGit(repoDir, env, "rev-list", "--count", "HEAD");
+      const latestSubject = await runGit(repoDir, env, "log", "-1", "--pretty=%s");
+      const stagedNames = await runGit(repoDir, env, "diff", "--cached", "--name-only");
+      expect(commitCount.stdout).toBe("1\n");
+      expect(latestSubject.stdout).toBe("init\n");
+      expect(stagedNames.stdout).toBe("note.txt\n");
+    });
+  });
+
+  test("git undo can uncommit the initial commit back to staged changes", async () => {
+    await withTempDir("git-undo-root", async (tempDir) => {
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+
+      await writeRepoFile(repoDir, "note.txt", "root\n");
+      expect((await runGit(repoDir, env, "add", "note.txt")).code).toBe(0);
+      expect((await runGit(repoDir, env, "commit", "-m", "root")).code).toBe(0);
+
+      const undoResult = await runGit(repoDir, env, "undo");
+      expect(undoResult.code).toBe(0);
+
+      const headResult = await runGit(repoDir, env, "rev-parse", "--verify", "HEAD");
+      const statusResult = await runGit(repoDir, env, "status", "--short");
+      expect(headResult.code).not.toBe(0);
+      expect(statusResult.stdout).toBe("A  note.txt\n");
+    });
+  });
+
+  test("git undo path only unstages the requested path", async () => {
+    await withTempDir("git-undo-path", async (tempDir) => {
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+
+      await writeRepoFile(repoDir, "a.txt", "one\n");
+      await writeRepoFile(repoDir, "b.txt", "one\n");
+      expect((await runGit(repoDir, env, "add", "a.txt", "b.txt")).code).toBe(0);
+      expect((await runGit(repoDir, env, "commit", "-m", "init")).code).toBe(0);
+
+      await writeRepoFile(repoDir, "a.txt", "two\n");
+      await writeRepoFile(repoDir, "b.txt", "two\n");
+      expect((await runGit(repoDir, env, "add", "a.txt", "b.txt")).code).toBe(0);
+
+      const undoResult = await runGit(repoDir, env, "undo", "a.txt");
+      expect(undoResult.code).toBe(0);
+
+      const stagedNames = await runGit(repoDir, env, "diff", "--cached", "--name-only");
+      const unstagedNames = await runGit(repoDir, env, "diff", "--name-only");
+      expect(stagedNames.stdout).toBe("b.txt\n");
+      expect(unstagedNames.stdout).toBe("a.txt\n");
+    });
+  });
+
+  test("git undo path fails when the requested path is not staged", async () => {
+    await withTempDir("git-undo-path-error", async (tempDir) => {
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+
+      await writeRepoFile(repoDir, "note.txt", "one\n");
+      expect((await runGit(repoDir, env, "add", "note.txt")).code).toBe(0);
+      expect((await runGit(repoDir, env, "commit", "-m", "init")).code).toBe(0);
+
+      await writeRepoFile(repoDir, "note.txt", "two\n");
+
+      const undoResult = await runGit(repoDir, env, "undo", "note.txt");
+      expect(undoResult.code).toBe(1);
+      expect(undoResult.stderr).toContain("git undo: no staged changes for: note.txt");
+    });
+  });
+
+  test("git undo fails when there is nothing to undo", async () => {
+    await withTempDir("git-undo-empty", async (tempDir) => {
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+
+      const undoResult = await runGit(repoDir, env, "undo");
+      expect(undoResult.code).toBe(1);
+      expect(undoResult.stderr).toContain("git undo: nothing to undo");
+    });
   });
 
   test("shell aliases keep only currently supported tools", async () => {
