@@ -22,32 +22,46 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  test:
+  e2e:
     needs: secret-scan
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - name: Install mise
+      - name: Verify secrets are absent before install
+        run: test ! -e "$HOME/.zsh.d/secrets.zsh"
+
+      - name: Run README install command
+        run: curl -fsSL dot.9sako6.com | bash
+
+      - name: Verify secrets are absent after install
+        run: test ! -e "$HOME/.zsh.d/secrets.zsh"
+
+      - name: Verify daily commands after install
         run: |
-          curl -fsSL https://mise.run | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Trust repo
-        run: mise trust
-      - name: Install toolchain
+          export PATH="$HOME/.local/bin:$PATH"
+          cd "$HOME/dotfiles"
+          mise run doctor
+          mise run link:check
+          mise run link
+          mise run setup
+          mise run test
+
+      - name: Verify installed toolchain and daily-use tools
         run: |
-          mise install node pnpm bun
-          echo "$(dirname "$(mise which node)")" >> "$GITHUB_PATH"
-          echo "$(dirname "$(mise which pnpm)")" >> "$GITHUB_PATH"
-          echo "$(dirname "$(mise which bun)")" >> "$GITHUB_PATH"
-      - name: Install locked dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Run tests
-        run: bun test
-      - name: Dry-run link deployment
-        run: |
-          export HOME="$RUNNER_TEMP/home"
-          mkdir -p "$HOME"
-          bun run scripts/link-dist.ts --check
+          export PATH="$HOME/.local/bin:$PATH"
+          cd "$HOME/dotfiles"
+          mise exec -- node --version
+          mise exec -- pnpm --version
+          mise exec -- bun --version
+          mise exec -- zoxide --version
+          mise exec -- atuin --version
+          mise exec -- eza --version
+          mise exec -- bat --version
+          mise exec -- fd --version
+          mise exec -- rg --version
+          mise exec -- fzf --version
+          mise exec -- gitleaks version
+          mise exec -- ghq --version
+          mise exec -- zellij --version

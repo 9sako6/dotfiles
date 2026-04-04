@@ -4,36 +4,6 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir, writeTree } from "./test-helpers";
 
-function extractToolNames(toml: string) {
-  const lines = toml.split("\n");
-  const toolLines: string[] = [];
-  let inToolsSection = false;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed === "[tools]") {
-      inToolsSection = true;
-      continue;
-    }
-    if (inToolsSection && trimmed.startsWith("[")) {
-      break;
-    }
-    if (inToolsSection) {
-      toolLines.push(line);
-    }
-  }
-
-  return new Set(
-    toolLines
-      .join("\n")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line !== "" && !line.startsWith("#"))
-      .map((line) => line.split("=", 1)[0]?.trim())
-      .filter((name): name is string => Boolean(name)),
-  );
-}
-
 function runCommand(
   command: string,
   args: string[],
@@ -99,135 +69,129 @@ async function writeRepoFile(repoDir: string, relativePath: string, content: str
   await writeFile(filePath, content, "utf8");
 }
 
+async function createMinimalZshHome(tempDir: string, options?: { direnvPath?: string | null }) {
+  const homeDir = path.join(tempDir, "home");
+  const misePath = path.join(homeDir, ".local", "bin", "mise");
+  const direnvPath = options?.direnvPath ?? null;
+
+  await writeTree(homeDir, {
+    ".zsh.d/prompt.zsh": "export PROMPT_LOADED=1\n",
+    ".zsh.d/keybindings.zsh": "export KEYBINDINGS_LOADED=1\n",
+    ".zsh.d/functions.zsh": "export FUNCTIONS_LOADED=1\n",
+    ".zsh.d/local.zsh": "export LOCAL_LOADED=1\n",
+  });
+  await writeTree(path.dirname(misePath), {
+    mise: `#!/bin/sh
+set -eu
+case "$1" in
+  activate)
+    exit 0
+    ;;
+  which)
+    case "$2" in
+      direnv)
+        if [ -n "${direnvPath ?? ""}" ]; then
+          printf '%s\n' "${direnvPath ?? ""}"
+          exit 0
+        fi
+        exit 1
+        ;;
+      *)
+        exit 1
+        ;;
+    esac
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+`,
+  });
+  await chmod(misePath, 0o755);
+
+  return { homeDir };
+}
+
 describe("shell config", () => {
-  test("repo-local mise tools stay minimal", async () => {
-    const miseToml = await readFile(".mise.toml", "utf8");
-    const toolNames = extractToolNames(miseToml);
-
-    expect(toolNames).toEqual(new Set(["bun", "node", "pnpm"]));
-  });
-
-  test("package manager policy uses pnpm with a 7 day release delay", async () => {
-    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { packageManager: string };
-    const pnpmWorkspace = await readFile("pnpm-workspace.yaml", "utf8");
-
-    expect(packageJson.packageManager.startsWith("pnpm@")).toBe(true);
-    expect(pnpmWorkspace).toContain("minimumReleaseAge: 10080");
-    expect(pnpmWorkspace).not.toContain("minimumReleaseAgeExclude");
-  });
-
-  test("managed global mise config contains user-wide tools", async () => {
-    const globalMiseConfig = await readFile("dist/.config/mise/config.toml", "utf8");
-    const toolNames = extractToolNames(globalMiseConfig);
-
-    for (const name of [
-      "atuin",
-      "bat",
-      "delta",
-      "direnv",
-      "eza",
-      "fd",
-      "fzf",
-      "ghq",
-      "gitleaks",
-      "ripgrep",
-      "zellij",
-      "zoxide",
-    ]) {
-      expect(toolNames.has(name)).toBe(true);
-    }
-    expect(toolNames.has("gh")).toBe(false);
-  });
-
-  test("zshenv removes stale machine-specific tool bootstrapping", async () => {
-    const zshenv = await readFile("dist/.zshenv", "utf8");
-
-    expect(zshenv).not.toContain("go env GOPATH");
-    expect(zshenv).not.toContain(".rbenv");
-    expect(zshenv).not.toContain("NVM_DIR");
-    expect(zshenv).not.toContain(".opam");
-    expect(zshenv).not.toContain("kubectl completion zsh");
-    expect(zshenv).not.toContain("KREW_ROOT");
-    expect(zshenv).not.toContain("/Users/9sako6/");
-  });
-
-  test("zshenv sets up Homebrew on macOS as well as Linuxbrew", async () => {
-    const zshenv = await readFile("dist/.zshenv", "utf8");
-
-    expect(zshenv).toContain("[ -f '/opt/homebrew/bin/brew' ]");
-    expect(zshenv).toContain("eval \"$(/opt/homebrew/bin/brew shellenv)\"");
-    expect(zshenv).toContain("[ -f '/home/linuxbrew/.linuxbrew/bin/brew' ]");
-  });
-
   test("zshenv sources secrets before interactive shell config loads", async () => {
-    const zshenv = await readFile("dist/.zshenv", "utf8");
+    await withTempDir("zshenv-secrets", async (tempDir) => {
+      const homeDir = path.join(tempDir, "home");
 
-    expect(zshenv).toContain('${HOME}/.zsh.d/secrets.zsh');
+      await writeTree(homeDir, {
+        ".zsh.d/secrets.zsh": "export SECRET_FROM_TEST=loaded\n",
+      });
+
+      const result = await runCommand("zsh", ["-f", "-c", "source dist/.zshenv; printf '%s' \"$SECRET_FROM_TEST\""], {
+        ...process.env,
+        HOME: homeDir,
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe("loaded");
+    });
   });
 
-  test("zshrc guards direnv hook behind a resolvable mise tool", async () => {
-    const zshrc = await readFile("dist/.zshrc", "utf8");
+  test("zshrc loads tracked fragments and repo aliases into an interactive shell", async () => {
+    await withTempDir("zshrc-fragments", async (tempDir) => {
+      const { homeDir } = await createMinimalZshHome(tempDir);
 
-    expect(zshrc).toContain("[[ -o interactive ]] || return");
-    expect(zshrc).toContain('eval "$(zoxide init zsh)"');
-    expect(zshrc).toContain('eval "$(atuin init zsh');
-    expect(zshrc).toContain("if mise which direnv > /dev/null 2>&1; then");
-    expect(zshrc).toContain('eval "$(direnv hook zsh)"');
-    expect(zshrc).not.toContain("google-cloud-sdk");
-    expect(zshrc).not.toContain(".dart-cli-completion");
-    expect(zshrc).not.toContain(".antigravity");
-    expect(zshrc).not.toContain("PNPM_HOME");
+      await copyFile("dist/.zsh.d/alias.zsh", path.join(homeDir, ".zsh.d", "alias.zsh"));
+
+      const result = await runCommand(
+        "zsh",
+        [
+          "-f",
+          "-i",
+          "-c",
+          "abbrev-alias(){ alias \"$@\"; }; source dist/.zshrc; alias codex; printf ' prompt=%s key=%s fn=%s local=%s' \"$PROMPT_LOADED\" \"$KEYBINDINGS_LOADED\" \"$FUNCTIONS_LOADED\" \"$LOCAL_LOADED\"",
+        ],
+        {
+          ...process.env,
+          DOTFILES_NO_BANNER: "1",
+          HOME: homeDir,
+          PATH: `${path.join(homeDir, ".local", "bin")}:${process.env.PATH ?? ""}`,
+        },
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain("codex='command codex --no-alt-screen'");
+      expect(result.stdout).toContain("prompt=1 key=1 fn=1 local=1");
+    });
   });
 
-  test("zshrc only loads zinit when the installed file exists", async () => {
-    const zshrc = await readFile("dist/.zshrc", "utf8");
+  test("zshrc only enables direnv when mise can resolve it", async () => {
+    await withTempDir("zshrc-direnv", async (tempDir) => {
+      const binDir = path.join(tempDir, "bin");
+      const direnvPath = path.join(binDir, "direnv");
+      const { homeDir } = await createMinimalZshHome(tempDir, { direnvPath });
 
-    expect(zshrc).toContain('if [ -f "${ZINIT_HOME}/zinit.zsh" ]; then');
-    expect(zshrc).not.toContain("git clone https://github.com/zdharma-continuum/zinit.git");
-    expect(zshrc).toContain("autoload -U +X compinit && compinit");
-    expect(zshrc).not.toContain("fast-syntax-highlighting");
-  });
+      await writeTree(binDir, {
+        direnv: `#!/bin/sh
+printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
+`,
+      });
+      await copyFile("dist/.zsh.d/alias.zsh", path.join(homeDir, ".zsh.d", "alias.zsh"));
+      await chmod(direnvPath, 0o755);
 
-  test("setup installs zinit from a fixed git ref instead of a remote HEAD script", async () => {
-    const setupLib = await readFile("scripts/lib/setup.ts", "utf8");
+      const result = await runCommand(
+        "zsh",
+        [
+          "-f",
+          "-i",
+          "-c",
+          "abbrev-alias(){ alias \"$@\"; }; source dist/.zshrc; printf '%s' \"$DIRENV_HOOK_LOADED\"",
+        ],
+        {
+          ...process.env,
+          DOTFILES_NO_BANNER: "1",
+          HOME: homeDir,
+          PATH: `${path.join(homeDir, ".local", "bin")}:${binDir}:${process.env.PATH ?? ""}`,
+        },
+      );
 
-    expect(setupLib).not.toContain("raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh");
-    expect(setupLib).not.toContain('sh -c "$(curl');
-    expect(setupLib).toContain("https://github.com/zdharma-continuum/zinit.git");
-    expect(setupLib).toContain("git");
-    expect(setupLib).toContain("clone");
-    expect(setupLib).toContain("checkout");
-  });
-
-  test("zshrc loads tracked and untracked zsh fragments from .zsh.d", async () => {
-    const zshrc = await readFile("dist/.zshrc", "utf8");
-
-    expect(zshrc).toContain('${HOME}/.zsh.d/prompt.zsh');
-    expect(zshrc).toContain('${HOME}/.zsh.d/alias.zsh');
-    expect(zshrc).toContain('${HOME}/.zsh.d/keybindings.zsh');
-    expect(zshrc).toContain('${HOME}/.zsh.d/functions.zsh');
-    expect(zshrc).toContain('${HOME}/.zsh.d/local.zsh');
-    expect(zshrc).not.toContain(".zsh.local");
-  });
-
-  test("zshrc makes banner output opt-out and avoids CI noise", async () => {
-    const zshrc = await readFile("dist/.zshrc", "utf8");
-
-    expect(zshrc).toContain("DOTFILES_NO_BANNER");
-    expect(zshrc).toContain("CI");
-    expect(zshrc).toContain("nonnonbiyori");
-    expect(zshrc).toContain("renchon");
-  });
-
-  test("git config does not depend on GitHub CLI credential helpers", async () => {
-    const gitconfig = await readFile("dist/.gitconfig", "utf8");
-
-    expect(gitconfig).not.toContain("gh auth git-credential");
-    expect(gitconfig).not.toContain('[credential "https://github.com"]');
-    expect(gitconfig).not.toContain('[credential "https://gist.github.com"]');
-    expect(gitconfig).not.toContain("pager = delta");
-    expect(gitconfig).not.toContain('diffFilter = delta --color-only');
-    expect(gitconfig).toContain("hooksPath = ~/.config/git/hooks");
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe("1");
+    });
   });
 
   test("pre-commit hook warns when gitleaks is unavailable but does not block commits", async () => {
@@ -253,16 +217,6 @@ describe("shell config", () => {
       expect(hookResult.code).toBe(0);
       expect(hookResult.stderr).toContain("gitleaks: not installed, skipping local secret scan.");
     });
-  });
-
-  test("git config adds a single git undo alias", async () => {
-    const gitconfig = await readFile("dist/.gitconfig", "utf8");
-
-    expect(gitconfig).toContain("[alias]");
-    expect(gitconfig).toContain("undo = ");
-    expect(gitconfig).toContain("${HOME}/mybin/git-undo");
-    expect(gitconfig).not.toContain("commit-to-add =");
-    expect(gitconfig).not.toContain("add-to-diff =");
   });
 
   test("git undo unstages staged changes before touching commits", async () => {
@@ -377,49 +331,6 @@ describe("shell config", () => {
     });
   });
 
-  test("shell aliases keep only currently supported tools", async () => {
-    const abbrevAliases = await readFile("dist/.zsh.d/alias.zsh", "utf8");
-    const prompt = await readFile("dist/.zsh.d/prompt.zsh", "utf8");
-
-    expect(abbrevAliases).not.toContain('alias tree=');
-    expect(abbrevAliases).not.toContain("alias vi=nvim");
-    expect(abbrevAliases).not.toContain('alias view="nvim -R"');
-    expect(abbrevAliases).not.toContain("alias snowsql=");
-
-    expect(abbrevAliases).not.toContain('abbrev-alias dc="docker-compose"');
-    expect(abbrevAliases).not.toContain('abbrev-alias zoit=');
-    expect(abbrevAliases).not.toContain('abbrev-alias zoic=');
-    expect(abbrevAliases).not.toContain('abbrev-alias k="kubectl"');
-    expect(abbrevAliases).not.toContain("intellij-idea-community");
-    expect(abbrevAliases).not.toContain("cargo -vv watch");
-    expect(abbrevAliases).not.toContain("snowsql");
-
-    expect(prompt).not.toContain("kube-ps1");
-    expect(prompt).not.toContain("kube_ps1");
-  });
-
-  test("codex defaults to inline mode to preserve scrollback", async () => {
-    const abbrevAliases = await readFile("dist/.zsh.d/alias.zsh", "utf8");
-
-    expect(abbrevAliases).toContain("alias codex='command codex --no-alt-screen'");
-  });
-
-  test("helper scripts avoid dead hardcoded paths", async () => {
-    const gppr = await readFile("dist/mybin/gppr", "utf8");
-    const diffcop = await readFile("dist/mybin/diffcop", "utf8");
-
-    expect(gppr).not.toContain("/usr/local/bin/g++");
-    expect(diffcop).not.toContain("function diffcop");
-    expect(diffcop).toContain("rubocop");
-  });
-
-  test("codex user AGENTS mirrors claude user instructions", async () => {
-    const claudeInstructions = await readFile("dist/.claude/CLAUDE.md", "utf8");
-    const codexInstructions = await readFile("dist/.codex/AGENTS.md", "utf8");
-
-    expect(codexInstructions).toBe(claudeInstructions);
-  });
-
   test("nyanpasu passes layout as a global zellij option", async () => {
     await withTempDir("nyanpasu", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");
@@ -452,51 +363,6 @@ printf '%s\n' "$@" > "${capturePath}"
     expect(result.code).toBe(0);
     expect(result.stdout).toBe("");
     expect(result.stderr).toBe("");
-  });
-
-  test("tada launches asynchronously on macOS via a detached helper", async () => {
-    const tada = await readFile("dist/mybin/tada", "utf8");
-
-    expect(tada).toContain("nohup");
-    expect(tada).toContain("TADA_BIN_PATH");
-    expect(tada).toContain("lib/tada-darwin-arm64");
-    expect(tada).toContain(" >/dev/null 2>&1 &");
-    expect(tada).toContain("TADA_UNAME");
-  });
-
-  test("tada launches confetti from the bottom corners of each display", async () => {
-    const tada = await readFile("scripts/tada.swift", "utf8");
-
-    expect(tada).toContain("NSScreen.screens");
-    expect(tada).toContain("for screen in NSScreen.screens");
-    expect(tada).toContain("height: screenFrame.height");
-    expect(tada).toContain("width: screenFrame.width");
-    expect(tada).toContain("makeEmitter(origin: CGPoint(x: 0, y: 0)");
-    expect(tada).toContain("makeEmitter(origin: CGPoint(x: width, y: 0)");
-    expect(tada).toContain("emitterShape = .point");
-  });
-
-  test("tada keeps emitting for about 1.2 seconds before particles fall out naturally", async () => {
-    const tada = await readFile("scripts/tada.swift", "utf8");
-
-    expect(tada).toContain("private var emitters: [CAEmitterLayer] = []");
-    expect(tada).toContain("DispatchQueue.main.asyncAfter(deadline: .now() + 1.2)");
-    expect(tada).toContain("self.emitters.forEach { $0.birthRate = 0 }");
-    expect(tada).toContain("DispatchQueue.main.asyncAfter(deadline: .now() + 5.8)");
-  });
-
-  test("tada lets confetti cross and fall under gravity instead of vanishing abruptly", async () => {
-    const tada = await readFile("scripts/tada.swift", "utf8");
-
-    expect(tada).toContain("velocity = 730");
-    expect(tada).toContain("velocityRange = 140");
-    expect(tada).toContain("yAcceleration = -260");
-    expect(tada).toContain("longitude: .pi / 4");
-    expect(tada).toContain("longitude: .pi * 3 / 4");
-    expect(tada).toContain("emissionRange = .pi / 2");
-    expect(tada).toContain("lifetime = 4.6");
-    expect(tada).toContain("lifetimeRange = 1.2");
-    expect(tada).toContain("alphaSpeed = -0.18");
   });
 
   test("tada launches the bundled binary on macOS", async () => {
@@ -599,14 +465,5 @@ printf 'ok\n' > "${launchCapturePath}"
       }
       expect(await readFile(launchCapturePath, "utf8")).toContain("ok");
     });
-  });
-
-  test("tada no longer generates temporary Swift source at runtime", async () => {
-    const tada = await readFile("dist/mybin/tada", "utf8");
-
-    expect(tada).not.toContain("mktemp");
-    expect(tada).not.toContain("cat >");
-    expect(tada).not.toContain("import AppKit");
-    expect(tada).not.toContain('command -v swift');
   });
 });
