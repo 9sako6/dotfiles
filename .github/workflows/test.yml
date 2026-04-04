@@ -39,6 +39,8 @@ jobs:
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
       - name: Run README install command
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: curl -fsSL dot.9sako6.com | bash
 
       - name: Verify secrets are absent after install
