@@ -58,6 +58,15 @@ describe("bootstrap trust flow", () => {
     expect(workflow).not.toContain("mise run link:check");
   });
 
+  test("CI resolves installed tool directories from mise instead of hardcoded layout assumptions", async () => {
+    const workflow = await readFile(".github/workflows/test.yml", "utf8");
+
+    expect(workflow).toContain('echo "$(dirname "$(mise which node)")" >> "$GITHUB_PATH"');
+    expect(workflow).toContain('echo "$(dirname "$(mise which pnpm)")" >> "$GITHUB_PATH"');
+    expect(workflow).toContain('echo "$(dirname "$(mise which bun)")" >> "$GITHUB_PATH"');
+    expect(workflow).not.toContain('echo "$HOME/.local/share/mise/installs/pnpm/10.32.1/bin" >> "$GITHUB_PATH"');
+  });
+
   test("CI pins actions by commit SHA and uses least privilege permissions", async () => {
     const workflow = await readFile(".github/workflows/test.yml", "utf8");
     const checkoutPins = workflow.match(/actions\/checkout@[0-9a-f]{40}/g) ?? [];
