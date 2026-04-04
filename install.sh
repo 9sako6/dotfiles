@@ -15,6 +15,8 @@ fi
 
 cd "$DOTFILES_DIR"
 "$MISE_BIN" trust
+# Install the repo's runtime tools first so `mise run setup` can execute.
 "$MISE_BIN" install
 "$MISE_BIN" run setup
+# setup links ~/.config/mise/config.toml, so install user-level tools afterwards.
 "$MISE_BIN" install

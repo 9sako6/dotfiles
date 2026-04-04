@@ -9,7 +9,7 @@ curl -fsSL dot.9sako6.com | bash
 ```
 
 - `install.sh` は bootstrap 専用です。
-- clone 後に `mise trust`、`mise install`、`mise run setup` を呼びます。
+- clone 後に `mise trust`、repo 実行用の `mise install`、`mise run setup`、ホームへ反映された `mise` 設定に対する `mise install` を順に呼びます。
 - 既存ファイルは `~/.dotfiles-backups/` に退避されます。
 
 ## 日常コマンド
