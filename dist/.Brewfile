@@ -1,4 +1,5 @@
 brew "devcontainer"
+brew "gh"
 brew "pnpm"
 
 cask "ghostty"
