@@ -1,5 +1,6 @@
 [tools]
 atuin = "18.13.5"
+aws-cli = "2.34.27"
 bat = "0.26.1"
 delta = "0.19.1"
 direnv = "2.37.1"
