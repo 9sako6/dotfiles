@@ -1,4 +1,4 @@
-brew "codex"
+cask "codex"
 brew "devcontainer"
 brew "gh"
 brew "pnpm"
