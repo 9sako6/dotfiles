@@ -41,4 +41,7 @@ abbrev-alias cat='bat --paging=never'
 abbrev-alias catp='bat'
 
 # Markdown preview
-abbrev-alias mdp='glow -p'
+mdp() {
+  setopt localoptions pipefail
+  command bun "$@" | command less -R
+}
