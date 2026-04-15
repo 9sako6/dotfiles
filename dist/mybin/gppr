@@ -1,4 +1,0 @@
-#!/bin/bash
-
-g++ -std=c++14 -Wall -ftrapv -D_GLIBCXX_DEBUG "$1"
-./a.out
