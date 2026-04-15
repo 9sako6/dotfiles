@@ -5,7 +5,7 @@
 
 ## ルール
 
-- ツールバージョンは必ず `major.minor.patch` 形式でピン留めする（`latest` や `1.3` などの曖昧な指定は禁止）
+- バージョンはすべて厳密にピン留めする。mise は `major.minor.patch`、package.json は範囲指定なし、GitHub Actions は commit SHA で固定（`latest`・`^x.y`・`~x.y`・`@v4` などの曖昧な指定は禁止。Homebrew Brewfile は例外）
 - `dist/` に秘密情報を入れない。秘密は `~/.zsh.d/secrets.zsh` に置く
 - 変更後は `mise run test` で契約テストを通す
 - テストが通らない変更を完了にしない

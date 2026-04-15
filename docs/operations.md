@@ -40,9 +40,13 @@ mise run test
 3. `mise run test` で回帰を確認する
 4. 最後に `mise run link` で反映する
 
-## ツールバージョン管理
+## バージョンピン留めルール
 
-`.mise.toml` と `dist/.config/mise/config.toml` に記載する全ツールのバージョンは `major.minor.patch` 形式でピン留めすること。
+**すべての依存関係・ツールのバージョンは厳密にピン留めすること。範囲指定・曖昧指定は禁止。**
+
+### mise（`.mise.toml`・`dist/.config/mise/config.toml`）
+
+`major.minor.patch` 形式で指定する。
 
 ```toml
 # 良い例
@@ -55,7 +59,37 @@ bun = "1.3"
 bun = "1"
 ```
 
-バージョンを更新する際は `mise ls-remote <tool>` で最新を確認し、フルバージョンで指定する。
+### package.json
+
+範囲指定プレフィックスを付けない。
+
+```json
+// 良い例
+"typescript": "5.8.3"
+
+// 禁止
+"typescript": "^5.8.3"
+"typescript": "~5.8.3"
+"typescript": "*"
+```
+
+### GitHub Actions
+
+commit SHA で固定する（semver タグより厳格で immutable）。
+
+```yaml
+# 良い例（commit SHA）
+uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+# 禁止
+uses: actions/checkout@v4
+uses: actions/checkout@v4.2.2
+uses: actions/checkout@main
+```
+
+### Homebrew（`.Brewfile`）
+
+Homebrew は Brewfile でのバージョン指定をサポートしていないため例外。バージョン管理が必要なツールは Brewfile ではなく mise で管理する。
 
 ## 守ること
 
