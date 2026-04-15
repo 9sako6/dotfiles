@@ -29,13 +29,15 @@
 - 「スタッフエンジニアはこれを承認するか？」と自問する
 - テストを実行し、ログを確認し、正しく動作することを示す
 
-# remote operations
+# elegance
 
 - 重要な変更の前に、もっとシンプルでエレガントな方法がないか一度立ち止まる
 - ハックに見える修正は避け、今ある情報を踏まえて最も自然な解決を選ぶ
 - シンプルで明白な修正では過剰設計しない
 - 洗練とは、少ない記号で、予測可能に、長く保てることだと考える
 - 時間が経つほど不利になる解決ではなく、時間が経つほど効いてくる解決を選ぶ
+
+# remote operations
 
 - Never run `git push` without the user's explicit confirmation
 - Never publish, sync, or upload changes to a remote without the user's explicit confirmation
