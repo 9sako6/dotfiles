@@ -56,7 +56,7 @@ jobs:
           mise run setup
           mise run test
 
-      - name: Verify installed toolchain and daily-use tools
+      - name: Verify dist-managed daily-use tools
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           cd "$HOME/dotfiles"

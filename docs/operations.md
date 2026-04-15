@@ -59,19 +59,7 @@ bun = "1.3"
 bun = "1"
 ```
 
-### package.json
-
-範囲指定プレフィックスを付けない。
-
-```json
-// 良い例
-"typescript": "5.8.3"
-
-// 禁止
-"typescript": "^5.8.3"
-"typescript": "~5.8.3"
-"typescript": "*"
-```
+repo の実行入口は `.mise.toml` の task と Bun script に寄せる。
 
 ### GitHub Actions
 

@@ -28,8 +28,7 @@
   - clone、`mise` の導入、`mise run setup` の起動までを担当します。
 - `.mise.toml`
   - この repo で必要な最小限の tool と task を定義します。
-- `package.json`
-  - Bun 実行用の script 名を揃えるための薄い入口です。
+  - repo 実行の標準入口です。task は Bun の TypeScript script を直接起動します。
 
 ## 変更時の目安
 
