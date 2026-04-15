@@ -5,7 +5,7 @@ import { lstatOrNull } from "./fs";
 import { planLinkActions, runLinkPlan } from "./link-dist";
 
 const ZINIT_REPO_URL = "https://github.com/zdharma-continuum/zinit.git";
-const ZINIT_REF = "55d19f8";
+const ZINIT_REF = "55d19f86f627c9995db9885d0971d9b6701fe0d3";
 
 export type ProcessRunner = (command: string, args: string[]) => Promise<void>;
 

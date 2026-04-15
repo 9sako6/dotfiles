@@ -82,7 +82,7 @@ fi
         [
           `init ${zinitDir}`,
           `-C ${zinitDir} remote add origin https://github.com/zdharma-continuum/zinit.git`,
-          `-C ${zinitDir} fetch --depth=1 origin 55d19f8`,
+          `-C ${zinitDir} fetch --depth=1 origin 55d19f86f627c9995db9885d0971d9b6701fe0d3`,
           `-C ${zinitDir} checkout --detach FETCH_HEAD`,
           "",
         ].join("\n"),
