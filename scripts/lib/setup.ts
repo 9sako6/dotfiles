@@ -1,10 +1,13 @@
 import { access, mkdir } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { lstatOrNull } from "./fs";
 import { planLinkActions, runLinkPlan } from "./link-dist";
 
 const ZINIT_REPO_URL = "https://github.com/zdharma-continuum/zinit.git";
 const ZINIT_REF = "55d19f8";
+
+export type ProcessRunner = (command: string, args: string[]) => Promise<void>;
 
 export type SetupStep =
   | {
@@ -127,11 +130,16 @@ export async function detectHomebrewInstalled() {
   return false;
 }
 
-async function installZinit(homeDir: string) {
+export async function installZinit(homeDir: string, runCommand: ProcessRunner = runProcess) {
   const zinitDir = path.join(homeDir, ".local", "share", "zinit", "zinit.git");
+  if (await lstatOrNull(zinitDir)) {
+    throw new Error(`zinit install target already exists: ${zinitDir}`);
+  }
   await mkdir(path.dirname(zinitDir), { recursive: true });
-  await runProcess("git", ["clone", ZINIT_REPO_URL, zinitDir]);
-  await runProcess("git", ["-C", zinitDir, "checkout", "--detach", ZINIT_REF]);
+  await runCommand("git", ["init", zinitDir]);
+  await runCommand("git", ["-C", zinitDir, "remote", "add", "origin", ZINIT_REPO_URL]);
+  await runCommand("git", ["-C", zinitDir, "fetch", "--depth=1", "origin", ZINIT_REF]);
+  await runCommand("git", ["-C", zinitDir, "checkout", "--detach", "FETCH_HEAD"]);
 }
 
 async function installHomebrewBundle(brewfilePath: string) {
@@ -153,7 +161,7 @@ async function runProcess(command: string, args: string[]) {
         resolve();
         return;
       }
-      reject(new Error(`command failed with exit code ${code ?? "unknown"}`));
+      reject(new Error(`command failed: ${command} ${args.join(" ")} (exit code ${code ?? "unknown"})`));
     });
     child.on("error", reject);
   });
