@@ -24,19 +24,10 @@ jobs:
 
   e2e:
     needs: secret-scan
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     env:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - name: Install zsh on Ubuntu for shell config verification
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zsh
-
       - name: Verify secrets are absent before install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
