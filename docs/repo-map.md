@@ -30,6 +30,34 @@
   - この repo で必要な最小限の tool と task を定義します。
   - repo 実行の標準入口です。task は Bun の TypeScript script を直接起動します。
 
+## 管理境界
+
+この repo では、ファイルを次の 4 区分に分けて扱います。
+
+- `repo runtime`
+  - この repo 自体を開発・検証・保守するためのファイルです。
+  - 例: `.mise.toml`, `scripts/`, `tests/`, `tsconfig.json`, `.github/`
+  - home directory へは配備しません。
+- `dist-managed user tools`
+  - home directory へ配備して、日常利用する設定や補助コマンドです。
+  - 例: `dist/.zshrc`, `dist/.config/mise/config.toml`, `dist/mybin/`
+  - 共有してよい内容だけを入れます。
+- `local-only`
+  - マシン固有で、repo には入れないローカル専用設定です。
+  - 例: `~/.zsh.d/local.zsh`
+  - 共有しない前提で各マシンに手で置きます。
+- `secrets`
+  - 認証情報、token、鍵、個人情報などの機密です。
+  - repo と `dist/` のどちらにも入れません。
+  - 推奨置き場の例として `~/.zsh.d/secrets.zsh` を使えますが、最終判断はユーザーに委ねます。
+
+### 置き場所の判断ルール
+
+- repo を動かすためだけに必要なら `repo runtime` に置きます。
+- home directory に配備して複数マシンで共有したいなら `dist-managed user tools` に置きます。
+- マシン固有なら `local-only` に置きます。
+- 機密は repo と `dist/` に入れず、置き場所の最終判断はユーザーが行います。
+
 ## 変更時の目安
 
 - dotfiles 自体を変えるなら `dist/` を触ります。
@@ -39,5 +67,5 @@
 ## 安全境界
 
 - `dist/` には共有してよい設定だけを入れます。
-- 秘密情報やマシン固有設定は `dist/` に入れません。
-- 秘密情報は未追跡の `~/.zsh.d/local.zsh` と `~/.zsh.d/secrets.zsh` に置きます。
+- マシン固有設定は `~/.zsh.d/local.zsh` に置きます。
+- 秘密情報は repo と `dist/` に入れません。`~/.zsh.d/secrets.zsh` は推奨置き場の例です。
