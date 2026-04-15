@@ -3,6 +3,14 @@ bun = "1.3.12"
 node = "24.14.1"
 pnpm = "10.33.0"
 
+[tasks.install]
+run = [
+  "brew bundle --file={{config_root}}/dist/.Brewfile",
+  "MISE_GLOBAL_CONFIG_FILE={{config_root}}/dist/.config/mise/config.toml mise install",
+  "mise install",
+]
+description = "Install all tools from dist/.Brewfile and mise configs"
+
 [tasks.setup]
 run = "bun run scripts/setup.ts"
 description = "Run dotfiles setup including symlink deployment and extra setup"
