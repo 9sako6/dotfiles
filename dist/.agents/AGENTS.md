@@ -41,3 +41,11 @@
 
 - Never run `git push` without the user's explicit confirmation
 - Never publish, sync, or upload changes to a remote without the user's explicit confirmation
+
+# sources
+
+- 可能な限り一次資料を優先する
+- 定義された挙動を引用したり、それに依拠したりする場合は、その時点で最も権威のある資料を参照し、引用する
+- 挙動を定義し、統治している文書を一次資料として扱う
+- 二次的な解説よりも、仕様書、標準規格、プロトコル定義、言語リファレンス、プラットフォーム文書、ベンダー公式ドキュメントを優先する
+- 一次資料で確認していない限り、その挙動を「仕様で定義されている」「標準である」「定義されている」と主張しない
