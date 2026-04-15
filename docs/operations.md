@@ -40,6 +40,23 @@ mise run test
 3. `mise run test` で回帰を確認する
 4. 最後に `mise run link` で反映する
 
+## ツールバージョン管理
+
+`.mise.toml` と `dist/.config/mise/config.toml` に記載する全ツールのバージョンは `major.minor.patch` 形式でピン留めすること。
+
+```toml
+# 良い例
+bun = "1.3.12"
+node = "24.14.1"
+
+# 禁止
+bun = "latest"
+bun = "1.3"
+bun = "1"
+```
+
+バージョンを更新する際は `mise ls-remote <tool>` で最新を確認し、フルバージョンで指定する。
+
 ## 守ること
 
 - `dist/` には共有してよい設定だけを置きます。
