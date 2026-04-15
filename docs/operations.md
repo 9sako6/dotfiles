@@ -78,8 +78,8 @@ bun = "1"
 commit SHA で固定する（semver タグより厳格で immutable）。
 
 ```yaml
-# 良い例（commit SHA）
-uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+# 良い例（commit SHA + バージョンコメント）
+uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
 # 禁止
 uses: actions/checkout@v4
