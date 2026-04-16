@@ -33,3 +33,8 @@ description = "Run the dotfiles test suite"
 [tasks."skills:sync"]
 run = "npx -y skills@1.5.0 add ./dist --copy --global --agent claude-code --agent codex --skill '*' --yes"
 description = "Distribute dist/.agents/skills as hard copies to Claude Code and Codex"
+
+[tasks."skills:add"]
+dir = "{{config_root}}/dist"
+run = "npx -y skills@1.5.0 add"
+description = "Add a skill into dist/.agents/skills/ (e.g. mise run skills:add obra/superpowers --skill '*' --yes)"
