@@ -29,3 +29,7 @@ description = "Check the current link plan and backup targets"
 [tasks.test]
 run = "bun test"
 description = "Run the dotfiles test suite"
+
+[tasks."skills:sync"]
+run = "npx -y skills@1.5.0 add dist --copy --global --agent claude-code --agent codex --skill '*' --yes"
+description = "Distribute dist/.agents/skills as hard copies to Claude Code and Codex"
