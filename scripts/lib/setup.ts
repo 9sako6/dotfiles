@@ -21,6 +21,10 @@ export type SetupStep =
   | {
       homeDir: string;
       kind: "install-zinit";
+    }
+  | {
+      distPath: string;
+      kind: "sync-skills";
     };
 
 type BuildSetupPlanOptions = {
@@ -46,16 +50,24 @@ export function buildSetupPlan({
   skipExtraSetup,
   zinitInstalled,
 }: BuildSetupPlanOptions): SetupStep[] {
+  const distRoot = path.join(repoRoot, "dist");
   const steps: SetupStep[] = [
     {
       kind: "link-dist",
-      sourceRoot: path.join(repoRoot, "dist"),
+      sourceRoot: distRoot,
     },
   ];
 
+  if (!skipExtraSetup) {
+    steps.push({
+      distPath: distRoot,
+      kind: "sync-skills",
+    });
+  }
+
   if (!skipExtraSetup && platform === "darwin" && brewInstalled) {
     steps.push({
-      brewfilePath: path.join(repoRoot, "dist", ".Brewfile"),
+      brewfilePath: path.join(distRoot, ".Brewfile"),
       kind: "install-homebrew-bundle",
     });
   }

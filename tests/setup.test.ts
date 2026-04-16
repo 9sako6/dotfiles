@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir } from "./test-helpers";
+import { buildSetupPlan } from "../scripts/lib/setup";
 
 function runCommand(
   command: string,
@@ -123,5 +124,42 @@ exit 0
       expect(result.stderr).toContain("zinit install target already exists");
       expect(await stat(commandLogPath, { throwIfNoEntry: false })).toBeUndefined();
     });
+  });
+});
+
+describe("buildSetupPlan", () => {
+  const baseOptions = {
+    brewInstalled: false,
+    homeDir: "/home/me",
+    platform: "linux" as NodeJS.Platform,
+    repoRoot: "/repo",
+    skipExtraSetup: false,
+    zinitInstalled: true,
+  };
+
+  test("inserts sync-skills immediately after link-dist", () => {
+    const steps = buildSetupPlan(baseOptions);
+    const kinds = steps.map((step) => step.kind);
+    const linkIndex = kinds.indexOf("link-dist");
+    const syncIndex = kinds.indexOf("sync-skills");
+
+    expect(linkIndex).toBeGreaterThanOrEqual(0);
+    expect(syncIndex).toBe(linkIndex + 1);
+  });
+
+  test("sync-skills carries the absolute dist path", () => {
+    const steps = buildSetupPlan(baseOptions);
+    const syncStep = steps.find((step) => step.kind === "sync-skills");
+
+    expect(syncStep).toBeDefined();
+    expect(syncStep).toMatchObject({
+      kind: "sync-skills",
+      distPath: "/repo/dist",
+    });
+  });
+
+  test("omits sync-skills when skipExtraSetup is true", () => {
+    const steps = buildSetupPlan({ ...baseOptions, skipExtraSetup: true });
+    expect(steps.map((step) => step.kind)).not.toContain("sync-skills");
   });
 });
