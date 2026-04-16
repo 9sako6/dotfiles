@@ -1,6 +1,7 @@
 [tools]
 bun = "1.3.12"
 node = "24.14.1"
+"npm:skills" = "1.5.0"
 
 [tasks.install]
 run = [
@@ -31,10 +32,10 @@ run = "bun test"
 description = "Run the dotfiles test suite"
 
 [tasks."skills:sync"]
-run = "npx -y skills@1.5.0 add ./dist --copy --global --agent claude-code --agent codex --skill '*' --yes"
+run = "skills add ./dist --copy --global --agent claude-code --agent codex --skill '*' --yes"
 description = "Distribute dist/.agents/skills as hard copies to Claude Code and Codex"
 
 [tasks."skills:add"]
 dir = "{{config_root}}/dist"
-run = "npx -y skills@1.5.0 add"
+run = "skills add"
 description = "Add a skill into dist/.agents/skills/ (e.g. mise run skills:add obra/superpowers --skill '*' --yes)"

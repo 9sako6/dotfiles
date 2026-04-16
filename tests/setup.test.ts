@@ -165,7 +165,7 @@ describe("buildSetupPlan", () => {
 });
 
 describe("syncSkills", () => {
-  test("invokes npx skills with the pinned version and expected arguments", async () => {
+  test("invokes the repo-managed skills CLI with expected arguments", async () => {
     const calls: { command: string; args: string[] }[] = [];
     const runner = async (command: string, args: string[]) => {
       calls.push({ command, args });
@@ -175,10 +175,8 @@ describe("syncSkills", () => {
 
     expect(calls).toEqual([
       {
-        command: "npx",
+        command: "skills",
         args: [
-          "-y",
-          "skills@1.5.0",
           "add",
           "/repo/dist",
           "--copy",
@@ -193,5 +191,24 @@ describe("syncSkills", () => {
         ],
       },
     ]);
+  });
+
+  test("repo mise config pins skills via the npm backend", async () => {
+    const result = await runCommand("mise", ["ls", "--json", "npm:skills"], process.env, {
+      cwd: process.cwd(),
+    });
+
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+    const [skillsTool] = JSON.parse(result.stdout);
+
+    expect(skillsTool).toMatchObject({
+      requested_version: "1.5.0",
+      source: {
+        path: path.join(process.cwd(), ".mise.toml"),
+        type: "mise.toml",
+      },
+      version: "1.5.0",
+    });
   });
 });

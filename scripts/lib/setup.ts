@@ -6,8 +6,6 @@ import { planLinkActions, runLinkPlan } from "./link-dist";
 
 const ZINIT_REPO_URL = "https://github.com/zdharma-continuum/zinit.git";
 const ZINIT_REF = "55d19f86f627c9995db9885d0971d9b6701fe0d3";
-const SKILLS_CLI_VERSION = "1.5.0";
-
 export type ProcessRunner = (command: string, args: string[]) => Promise<void>;
 
 export type SetupStep =
@@ -152,9 +150,7 @@ export async function syncSkills(
   distPath: string,
   runCommand: ProcessRunner = runProcess,
 ) {
-  await runCommand("npx", [
-    "-y",
-    `skills@${SKILLS_CLI_VERSION}`,
+  await runCommand("skills", [
     "add",
     distPath,
     "--copy",
