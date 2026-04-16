@@ -1,6 +1,6 @@
 ---
 name: rails-mysql-explain
-description: RailsアプリケーションでActiveRecordクエリを新規作成・変更したときに、MySQL EXPLAINでインデックスの必要性を検証するスキル。クエリを書いた/変えたときのセーフティネットとして使う。トリガー: Railsのwhere/joins/includes/exists?/pluck等を含むクエリの新規追加や変更時
+description: 'RailsアプリケーションでActiveRecordクエリを新規作成・変更したときに、MySQL EXPLAINでインデックスの必要性を検証するスキル。クエリを書いた/変えたときのセーフティネットとして使う。トリガー: Railsのwhere/joins/includes/exists?/pluck等を含むクエリの新規追加や変更時'
 ---
 
 # Rails MySQL EXPLAIN Check
