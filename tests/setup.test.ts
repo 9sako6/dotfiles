@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir } from "./test-helpers";
-import { buildSetupPlan } from "../scripts/lib/setup";
+import { buildSetupPlan, syncSkills } from "../scripts/lib/setup";
 
 function runCommand(
   command: string,
@@ -161,5 +161,37 @@ describe("buildSetupPlan", () => {
   test("omits sync-skills when skipExtraSetup is true", () => {
     const steps = buildSetupPlan({ ...baseOptions, skipExtraSetup: true });
     expect(steps.map((step) => step.kind)).not.toContain("sync-skills");
+  });
+});
+
+describe("syncSkills", () => {
+  test("invokes npx skills with the pinned version and expected arguments", async () => {
+    const calls: { command: string; args: string[] }[] = [];
+    const runner = async (command: string, args: string[]) => {
+      calls.push({ command, args });
+    };
+
+    await syncSkills("/repo/dist", runner);
+
+    expect(calls).toEqual([
+      {
+        command: "npx",
+        args: [
+          "-y",
+          "skills@1.5.0",
+          "add",
+          "/repo/dist",
+          "--copy",
+          "--global",
+          "--agent",
+          "claude-code",
+          "--agent",
+          "codex",
+          "--skill",
+          "*",
+          "--yes",
+        ],
+      },
+    ]);
   });
 });
