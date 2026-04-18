@@ -12,35 +12,42 @@ curl -fsSL dot.9sako6.com | bash
 
 - `install.sh` は bootstrap 専用です。
 - clone 後に `mise trust`、repo 実行用の `mise install`、`mise run setup`、ホームへ反映された `mise` 設定に対する `mise install` を順に呼びます。
+- `mise run setup` は `agents:build` に依存し、自動で先に実行されます。
 - 既存ファイルは `~/.dotfiles-backups/` に退避されます。
 
 ## 日常コマンド
 
 ```sh
-mise run doctor
-mise run link:check
-mise run link
-mise run setup
-mise run test
+mise run plan
+mise run apply
+mise run dev:test
 ```
 
-- `mise run doctor`
-  - 安全な確認用コマンドです。現在の配備計画を見る標準入口として使います。
-- `mise run link:check`
-  - filesystem を変更せず、バックアップと symlink の計画だけ確認します。
-- `mise run link`
+- `mise run plan`
+  - filesystem を変更せず、配備計画を一覧で確認します。
+- `mise run apply`
   - `dist/` の内容を home directory に反映します。
-- `mise run setup`
-  - 初回向けです。リンク反映に加えて追加セットアップも行います。
-- `mise run test`
+- `mise run dev:test`
   - repo の契約テストをまとめて実行します。
+
+## ツール管理
+
+```sh
+mise run install:user
+mise run agents:build
+```
+
+- `mise run install:user`
+  - Brewfile と dist/.config/mise/config.toml からユーザーツールをインストールします。
+- `mise run agents:build`
+  - apm で agents 用リソースをビルドします。
 
 ## 変更前後の基本手順
 
-1. まず `mise run doctor` か `mise run link:check` で確認する
+1. まず `mise run plan` で確認する
 2. 必要な変更を入れる
-3. `mise run test` で回帰を確認する
-4. 最後に `mise run link` で反映する
+3. `mise run dev:test` で回帰を確認する
+4. 最後に `mise run apply` で反映する
 
 ## バージョンピン留めルール
 

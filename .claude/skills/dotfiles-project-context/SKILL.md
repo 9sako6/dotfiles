@@ -27,11 +27,12 @@ tmp/            一時メモ（gitignore済み）
 ## 主要コマンド
 
 ```bash
-mise run doctor       # 現在の配備計画を確認（ドライラン）
-mise run link:check   # デプロイ前確認（ドライラン）
-mise run link         # dist/ をホームへ配備実行
-mise run setup        # 初回セットアップ（link + brew bundle + zinit）
-mise run test         # テスト実行（= bun test）
+mise run plan         # 配備計画を確認（ドライラン）
+mise run apply        # dist/ をホームへ配備実行
+mise run setup        # 初回セットアップ（agents:build + apply + brew bundle + zinit）
+mise run dev:test     # テスト実行（= bun test）
+mise run install:user # ユーザーツールをインストール
+mise run agents:build # agents リソースをビルド
 ```
 
 ## デプロイ戦略
@@ -44,14 +45,8 @@ mise run test         # テスト実行（= bun test）
 - `backup` — 既存ファイルを `~/.dotfiles-backups/TIMESTAMP/` に退避してから link/copy
 - `noop` — 既に正しい状態、何もしない
 
-**コピー対象** (`COPY_INSTEAD_OF_LINK`):
-```ts
-".claude/CLAUDE.md"
-".claude/settings.json"
-```
-これら以外はすべてシンボリックリンク。
-
-新たにコピー対象にする場合は `scripts/lib/link-dist.ts` の `COPY_INSTEAD_OF_LINK` に追記する。
+**コピー対象** (`.dotfiles.json`):
+リポジトリルートの `.dotfiles.json` の `copy` リストで指定する。ファイルパスもディレクトリパスも指定可能。
 
 ## テスト
 
@@ -67,17 +62,17 @@ bun test tests/foo.test.ts  # 特定ファイルのみ
 - `tests/shell-config.test.ts` — zsh設定の期待値
 - `tests/setup.test.ts` — セットアップロジック
 
-変更後は必ず `mise run test` で回帰確認すること。
+変更後は必ず `mise run dev:test` で回帰確認すること。
 
 ## 重要ファイル
 
 | ファイル | 用途 | 注意点 |
 |---------|------|--------|
-| `dist/.claude/CLAUDE.md` | AI Agentルール | デプロイ先にコピーされる |
 | `dist/.claude/settings.json` | Claude Code設定 | デプロイ先にコピーされる |
 | `dist/.config/mise/config.toml` | ツール管理（atuin, bat, eza等） | ツール追加時に編集 |
 | `dist/.config/git/hooks/pre-commit` | gitleaks + local hooks チェーン | |
-| `scripts/lib/link-dist.ts` | デプロイエンジン | `COPY_INSTEAD_OF_LINK` を管理 |
+| `scripts/lib/link-dist.ts` | デプロイエンジン | |
+| `.dotfiles.json` | コピー対象の定義 | ファイル・ディレクトリ指定可 |
 | `AGENTS.md` | AI Agent向け運用ルール | dist/ に秘密情報を入れない等 |
 
 ## セキュリティ

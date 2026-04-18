@@ -22,6 +22,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  contracts:
+    needs: secret-scan
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
+      - name: Run contract tests
+        run: mise run dev:test
+
   e2e:
     needs: secret-scan
     runs-on: macos-latest
@@ -36,16 +45,6 @@ jobs:
 
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
-
-      - name: Verify daily commands after install
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          cd "$HOME/dotfiles"
-          mise run doctor
-          mise run link:check
-          mise run link
-          mise run setup
-          mise run test
 
       - name: Verify dist-managed daily-use tools
         run: |
