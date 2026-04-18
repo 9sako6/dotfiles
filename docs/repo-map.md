@@ -1,77 +1,34 @@
-# リポジトリ構成
-
-このリポジトリは、macOS 上で `dist/` に置いた共有可能な dotfiles を home directory に安全に反映するためのものです。初回導線は `install.sh`、日常運用は `mise` の task と Bun の script が担当します。
+# 設計
 
 ## 管理境界
 
-この repo では、ファイルを次の 4 区分に分けて扱います。
+ファイルは次の 4 区分で扱う。共有してよい設定と共有してはいけない情報を同じ repo に混ぜないための境界。
 
-- `repo runtime`
-  - この repo 自体を開発・検証・保守するためのファイルです。
-  - 例: `.mise.toml`, `scripts/`, `tests/`, `tsconfig.json`, `.github/`
-  - home directory へは配備しません。
-- `dist-managed user tools`
-  - home directory へ配備して、日常利用する設定や補助コマンドです。
-  - 例: `dist/.zshrc`, `dist/.config/mise/config.toml`, `dist/mybin/`
-  - 共有してよい内容だけを入れます。
-- `local-only`
-  - マシン固有で、repo には入れないローカル専用設定です。
-  - 例: `~/.zsh.d/local.zsh`
-  - 共有しない前提で各マシンに手で置きます。
-- `secrets`
-  - 認証情報、token、鍵、個人情報などの機密です。
-  - repo と `dist/` のどちらにも入れません。
-  - 推奨置き場の例として `~/.zsh.d/secrets.zsh` を使えますが、最終判断はユーザーに委ねます。
+- `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
+- `dist-managed user tools` — home directory に配備して日常利用する設定。共有してよい内容だけを入れる。
+- `local-only` — マシン固有の設定。repo に入れず、各マシンに手で置く（例: `~/.zsh.d/local.zsh`）。
+- `secrets` — 認証情報や鍵などの機密。repo と `dist/` のどちらにも入れない（推奨置き場の例: `~/.zsh.d/secrets.zsh`）。
 
-### 置き場所の判断ルール
+### 置き場所の判断
 
-- repo を動かすためだけに必要なら `repo runtime` に置きます。
-- home directory に配備して複数マシンで共有したいなら `dist-managed user tools` に置きます。
-- マシン固有なら `local-only` に置きます。
-- 機密は repo と `dist/` に入れず、置き場所の最終判断はユーザーが行います。
+- repo の実行だけに必要 → `repo runtime`
+- 複数マシンで共有したい → `dist-managed user tools`
+- マシン固有 → `local-only`
+- 機密 → `secrets`（最終判断はユーザーが行う）
 
-### 具体例
+## Bootstrap の原則
 
-- `.claude/`, `.codex/`, `scripts/`, `tests/`, `.mise.toml` は `repo runtime`
-- `dist/.claude/`, `dist/.codex/`, `dist/.zshrc`, `dist/mybin/` は `dist-managed user tools`
+- `install.sh` は bootstrap に徹する。外部前提の導入と task の実行順制御だけを担当し、複数責務を 1 つの task に隠さない。
+- `.mise.toml` の task は 1 task 1 責務に保つ。依存関係がある処理も、観測可能な単位に分ける。
+- user 向け install task は `dist/` ではなく `~/` を入力にする。`apply` 後の home directory 上の設定を使って実行し、repo 内の配布元パスを直接参照しない。
+- 標準コマンドで足りる処理は shell で書き、薄いラッパーで包まない。TypeScript を使うのは repo 固有のロジックがあるときだけ。
+- bootstrap の正しさは e2e で確認する。shell の順序や導線の確認を、内部手順を固定する unit test に逃がさない。
 
-## 主要ディレクトリ
+## バージョンピン留め
 
-- `dist/`
-  - 実際に home directory へ配備する設定や補助コマンドを置きます。
-  - `dist/.Brewfile` は macOS アプリ管理用です。
-  - `dist/mybin/` は配備される自作コマンド置き場です。
-- `scripts/`
-  - `mise` task から呼ばれる TypeScript の入口です。
-  - `scripts/link-dist.ts` は `dist/` の反映を担当します。
-- `scripts/lib/`
-  - リンク計画やバックアップなどの実処理です。
-- `tests/`
-  - repo の契約テストです。
-  - 配備計画、repo layout、shell config など repo 固有ロジックの期待値を固定しています。
-- `docs/`
-  - 長く残す価値のある恒久的なドキュメントを置きます。
-- `tmp/`
-  - 実装計画、設計メモ、一時作業メモを置く場所です。永続化前提ではありません。
+依存はすべて厳密にピン留めする。同じ repo を別マシン・別時点で動かしても結果がずれないようにするため。
 
-## 入口と責務
-
-- `install.sh`
-  - ワンコマンド導線専用です。
-  - clone、必要なら Homebrew と `mise` の導入、`apply` 後の user install を含む細分化された `mise` task の順次実行までを担当します。
-- `.mise.toml`
-  - この repo で必要な最小限の tool と task を定義します。
-  - repo 実行の標準入口です。
-  - task は 1 つの責務だけを持たせ、標準コマンドで足りる処理は shell で表現します。
-
-## 変更時の目安
-
-- dotfiles 自体を変えるなら `dist/` を触ります。
-- 反映ロジックを変えるなら `scripts/` と `tests/` を一緒に見ます。
-- 導線や運用説明を変えるなら `README.md` と `docs/` を触ります。
-
-## 安全境界
-
-- `dist/` には共有してよい設定だけを入れます。
-- マシン固有設定は `~/.zsh.d/local.zsh` に置きます。
-- 秘密情報は repo と `dist/` に入れません。`~/.zsh.d/secrets.zsh` は推奨置き場の例です。
+- mise は `major.minor.patch`
+- GitHub Actions は commit SHA ＋ バージョンコメント（semver タグより immutable）
+- Homebrew Brewfile は例外（バージョン指定をサポートしていない）。バージョン管理が必要なものは mise で扱う
+- Bootstrap（`install.sh`）と devcontainer は例外。バージョン管理ツール導入前の環境なのでシンプルさを優先し、ユーザーの明示的な許可の上で緩和できる

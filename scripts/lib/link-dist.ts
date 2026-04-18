@@ -102,22 +102,6 @@ export async function runLinkPlan(plan: LinkPlan) {
   }
 }
 
-export function summarizePlan(plan: LinkPlan) {
-  const counts = plan.actions.reduce(
-    (result, action) => {
-      result[action.type] += 1;
-      return result;
-    },
-    { backup: 0, copy: 0, link: 0, noop: 0 },
-  );
-
-  return {
-    ...counts,
-    backupRoot: plan.backupRoot,
-    dryRun: plan.dryRun,
-  };
-}
-
 export function formatPlan(plan: LinkPlan): string {
   const lines: string[] = [];
   const counts = { backup: 0, copy: 0, link: 0, noop: 0 };
