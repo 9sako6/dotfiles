@@ -5,7 +5,6 @@ import { lstatOrNull, readDirents, realpathOrNull } from "./fs";
 import { sourceToDestinationPath } from "./paths";
 
 const COPY_INSTEAD_OF_LINK: ReadonlySet<string> = new Set([
-  ".claude/CLAUDE.md",
   ".claude/settings.json",
 ]);
 

@@ -20,10 +20,6 @@ export type SetupStep =
   | {
       homeDir: string;
       kind: "install-zinit";
-    }
-  | {
-      distPath: string;
-      kind: "sync-skills";
     };
 
 type BuildSetupPlanOptions = {
@@ -56,13 +52,6 @@ export function buildSetupPlan({
       sourceRoot: distRoot,
     },
   ];
-
-  if (!skipExtraSetup) {
-    steps.push({
-      distPath: distRoot,
-      kind: "sync-skills",
-    });
-  }
 
   if (!skipExtraSetup && platform === "darwin" && brewInstalled) {
     steps.push({
@@ -117,11 +106,6 @@ export async function runSetup({
       continue;
     }
 
-    if (step.kind === "sync-skills") {
-      await syncSkills(step.distPath);
-      continue;
-    }
-
     if (step.kind === "install-homebrew-bundle") {
       await installHomebrewBundle(step.brewfilePath);
       continue;
@@ -145,26 +129,6 @@ export async function detectHomebrewInstalled() {
 
   return false;
 }
-
-export async function syncSkills(
-  distPath: string,
-  runCommand: ProcessRunner = runProcess,
-) {
-  await runCommand("skills", [
-    "add",
-    distPath,
-    "--copy",
-    "--global",
-    "--agent",
-    "claude-code",
-    "--agent",
-    "codex",
-    "--skill",
-    "*",
-    "--yes",
-  ]);
-}
-
 export async function installZinit(homeDir: string, runCommand: ProcessRunner = runProcess) {
   const zinitDir = path.join(homeDir, ".local", "share", "zinit", "zinit.git");
   if (await lstatOrNull(zinitDir)) {

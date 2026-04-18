@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir } from "./test-helpers";
-import { buildSetupPlan, syncSkills } from "../scripts/lib/setup";
+import { buildSetupPlan } from "../scripts/lib/setup";
 
 function runCommand(
   command: string,
@@ -137,78 +137,28 @@ describe("buildSetupPlan", () => {
     zinitInstalled: true,
   };
 
-  test("inserts sync-skills immediately after link-dist", () => {
+  test("keeps link-dist as the first step", () => {
     const steps = buildSetupPlan(baseOptions);
-    const kinds = steps.map((step) => step.kind);
-    const linkIndex = kinds.indexOf("link-dist");
-    const syncIndex = kinds.indexOf("sync-skills");
-
-    expect(linkIndex).toBeGreaterThanOrEqual(0);
-    expect(syncIndex).toBe(linkIndex + 1);
+    expect(steps.map((step) => step.kind)).toEqual(["link-dist"]);
   });
 
-  test("sync-skills carries the absolute dist path", () => {
-    const steps = buildSetupPlan(baseOptions);
-    const syncStep = steps.find((step) => step.kind === "sync-skills");
-
-    expect(syncStep).toBeDefined();
-    expect(syncStep).toMatchObject({
-      kind: "sync-skills",
-      distPath: "/repo/dist",
+  test("adds extra setup steps without any skill sync", () => {
+    const steps = buildSetupPlan({
+      ...baseOptions,
+      brewInstalled: true,
+      platform: "darwin",
+      zinitInstalled: false,
     });
-  });
 
-  test("omits sync-skills when skipExtraSetup is true", () => {
-    const steps = buildSetupPlan({ ...baseOptions, skipExtraSetup: true });
-    expect(steps.map((step) => step.kind)).not.toContain("sync-skills");
-  });
-});
-
-describe("syncSkills", () => {
-  test("invokes the repo-managed skills CLI with expected arguments", async () => {
-    const calls: { command: string; args: string[] }[] = [];
-    const runner = async (command: string, args: string[]) => {
-      calls.push({ command, args });
-    };
-
-    await syncSkills("/repo/dist", runner);
-
-    expect(calls).toEqual([
-      {
-        command: "skills",
-        args: [
-          "add",
-          "/repo/dist",
-          "--copy",
-          "--global",
-          "--agent",
-          "claude-code",
-          "--agent",
-          "codex",
-          "--skill",
-          "*",
-          "--yes",
-        ],
-      },
+    expect(steps.map((step) => step.kind)).toEqual([
+      "link-dist",
+      "install-homebrew-bundle",
+      "install-zinit",
     ]);
   });
 
-  test("repo mise config pins skills via the npm backend", async () => {
-    const result = await runCommand("mise", ["ls", "--json", "npm:skills"], process.env, {
-      cwd: process.cwd(),
-    });
-
-    expect(result.code).toBe(0);
-    expect(result.stderr).toBe("");
-    const [skillsTool] = JSON.parse(result.stdout);
-
-    expect(skillsTool).toMatchObject({
-      requested_version: "1.5.0",
-      source: {
-        path: path.join(process.cwd(), ".mise.toml"),
-        type: "mise.toml",
-      },
-      version: "1.5.0",
-    });
+  test("omits extra setup when skipExtraSetup is true", () => {
+    const steps = buildSetupPlan({ ...baseOptions, skipExtraSetup: true });
+    expect(steps.map((step) => step.kind)).toEqual(["link-dist"]);
   });
 });
