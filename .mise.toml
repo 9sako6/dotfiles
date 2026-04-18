@@ -36,8 +36,8 @@ run = [
   "apm compile --clean",
   "apm install",
   "apm compile --target claude --target codex",
-  "mv CLAUDE.md .claude/CLAUDE.md",
   "mv AGENTS.md .codex/AGENTS.md",
+  "rm CLAUDE.md",
   "rm .gitignore"
 ]
 description = "Install all agents' resources"
