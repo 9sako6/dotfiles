@@ -2,34 +2,6 @@
 
 このリポジトリは、`dist/` に置いた共有可能な dotfiles を home directory に安全に反映するためのものです。初回導線は `install.sh`、日常運用は `mise` の task と Bun の script が担当します。
 
-## 主要ディレクトリ
-
-- `dist/`
-  - 実際に home directory へ配備する設定や補助コマンドを置きます。
-  - `dist/.Brewfile` は macOS アプリ管理用です。
-  - `dist/mybin/` は配備される自作コマンド置き場です。
-- `scripts/`
-  - `mise` task から呼ばれる TypeScript の入口です。
-  - `scripts/setup.ts` は初回セットアップ、`scripts/link-dist.ts` は `dist/` の反映を担当します。
-- `scripts/lib/`
-  - リンク計画、バックアップ、追加セットアップなどの実処理です。
-- `tests/`
-  - repo の契約テストです。
-  - bootstrap、配備計画、repo layout、shell config の期待値を固定しています。
-- `docs/`
-  - 長く残す価値のある恒久的なドキュメントを置きます。
-- `tmp/`
-  - 実装計画、設計メモ、一時作業メモを置く場所です。永続化前提ではありません。
-
-## 入口と責務
-
-- `install.sh`
-  - ワンコマンド導線専用です。
-  - clone、`mise` の導入、`mise run setup` の起動までを担当します。
-- `.mise.toml`
-  - この repo で必要な最小限の tool と task を定義します。
-  - repo 実行の標準入口です。task は Bun の TypeScript script を直接起動します。
-
 ## 管理境界
 
 この repo では、ファイルを次の 4 区分に分けて扱います。
@@ -57,6 +29,39 @@
 - home directory に配備して複数マシンで共有したいなら `dist-managed user tools` に置きます。
 - マシン固有なら `local-only` に置きます。
 - 機密は repo と `dist/` に入れず、置き場所の最終判断はユーザーが行います。
+
+### 具体例
+
+- `.claude/`, `.codex/`, `scripts/`, `tests/`, `.mise.toml` は `repo runtime`
+- `dist/.claude/`, `dist/.codex/`, `dist/.zshrc`, `dist/mybin/` は `dist-managed user tools`
+
+## 主要ディレクトリ
+
+- `dist/`
+  - 実際に home directory へ配備する設定や補助コマンドを置きます。
+  - `dist/.Brewfile` は macOS アプリ管理用です。
+  - `dist/mybin/` は配備される自作コマンド置き場です。
+- `scripts/`
+  - `mise` task から呼ばれる TypeScript の入口です。
+  - `scripts/setup.ts` は初回セットアップ、`scripts/link-dist.ts` は `dist/` の反映を担当します。
+- `scripts/lib/`
+  - リンク計画、バックアップ、追加セットアップなどの実処理です。
+- `tests/`
+  - repo の契約テストです。
+  - bootstrap、配備計画、repo layout、shell config の期待値を固定しています。
+- `docs/`
+  - 長く残す価値のある恒久的なドキュメントを置きます。
+- `tmp/`
+  - 実装計画、設計メモ、一時作業メモを置く場所です。永続化前提ではありません。
+
+## 入口と責務
+
+- `install.sh`
+  - ワンコマンド導線専用です。
+  - clone、`mise` の導入、`mise run setup` の起動までを担当します。
+- `.mise.toml`
+  - この repo で必要な最小限の tool と task を定義します。
+  - repo 実行の標準入口です。task は Bun の TypeScript script を直接起動します。
 
 ## 変更時の目安
 
