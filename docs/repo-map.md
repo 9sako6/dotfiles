@@ -58,7 +58,7 @@
 
 - `install.sh`
   - ワンコマンド導線専用です。
-  - clone、必要なら Homebrew と `mise` の導入、細分化された `mise` task の順次実行までを担当します。
+  - clone、必要なら Homebrew と `mise` の導入、`apply` 後の user install を含む細分化された `mise` task の順次実行までを担当します。
 - `.mise.toml`
   - この repo で必要な最小限の tool と task を定義します。
   - repo 実行の標準入口です。

@@ -13,9 +13,9 @@ curl -fsSL dot.9sako6.com | bash
 ```
 
 - `install.sh` は bootstrap 専用です。
-- clone 後に、必要なら Homebrew を導入し、その後 `mise trust`、repo 実行用の `mise install`、`mise run install:user`、`mise run agents:build`、`mise run apply` を順に呼びます。
-- 各 task は 1 つの責務だけを持ちます。`install:user` は Brewfile、dist の mise 設定、zinit を含む user tool 導入、`apply` は `dist/` の反映です。
-- `mise run agents:build` は `apm` 導入後に実行され、生成された agents 用ファイルは最後の `mise run apply` で home directory へ反映されます。
+- clone 後に、必要なら Homebrew を導入し、その後 `mise trust`、repo 実行用の `mise install`、`mise run apply`、`mise run install:user` を順に呼びます。
+- 各 task は 1 つの責務だけを持ちます。`apply` は `dist/` を home directory に反映し、`install:user` は反映後の `~/` 上の Brewfile、mise 設定、zinit を入力として user tool を導入します。
+- agents 用ファイルは `dist/` に生成物をコミットして配布します。初回セットアップでは再生成しません。
 - 既存ファイルは `~/.dotfiles-backups/` に退避されます。
 
 ## 日常コマンド
@@ -42,7 +42,7 @@ mise run agents:build
 ```
 
 - `mise run install:user`
-  - Brewfile、dist/.config/mise/config.toml、zinit をまとめて導入します。
+  - `~/.Brewfile`、`~/.config/mise/config.toml`、zinit を使って user tool を導入します。
 - `mise run install:user:zinit`
   - zinit が未導入のときだけ導入します。
 - `mise run agents:build`
@@ -54,6 +54,8 @@ mise run agents:build
   - 外部前提の導入と task の実行順制御だけを担当し、repo 内の複数責務を 1 つの `setup` に隠さない。
 - `.mise.toml` の task は 1 task 1責務に保つ。
   - 依存関係がある処理でも、`install:user`、`install:user:zinit`、`agents:build`、`apply` のように観測可能な単位へ分ける。
+- user 向け install task は `dist/` ではなく `~/` を入力にする。
+  - `install:user` は `apply` 後の home directory 上の設定を使って実行し、repo 内の配布元パスを直接参照しない。
 - 標準コマンドで足りる処理は shell で書く。
   - `brew`、`mise`、`git` などの既存コマンドを薄い TypeScript ラッパーで包まない。
 - TypeScript を使うのは repo 固有のロジックがあるときだけにする。

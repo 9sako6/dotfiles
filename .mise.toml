@@ -16,15 +16,15 @@ description = "Build agents resources via apm"
 
 [tasks."install:user"]
 depends = ["install:user:brew", "install:user:mise", "install:user:zinit"]
-description = "Install user tools from Brewfile and mise user config"
+description = "Install user tools from deployed home-directory config"
 
 [tasks."install:user:brew"]
-run = "brew bundle --file={{config_root}}/dist/.Brewfile"
-description = "Install user Homebrew packages from dist/.Brewfile"
+run = "brew bundle --file=$HOME/.Brewfile"
+description = "Install user Homebrew packages from ~/.Brewfile"
 
 [tasks."install:user:mise"]
-run = "MISE_GLOBAL_CONFIG_FILE={{config_root}}/dist/.config/mise/config.toml mise install"
-description = "Install user-level mise tools from dist/.config/mise/config.toml"
+run = "cd $HOME && mise install"
+description = "Install user-level mise tools from ~/.config/mise/config.toml"
 
 [tasks."install:user:zinit"]
 run = '''

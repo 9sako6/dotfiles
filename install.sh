@@ -35,6 +35,5 @@ cd "$DOTFILES_DIR"
 "$MISE_BIN" trust
 # Install the repo's runtime tools first so the repo tasks can execute.
 "$MISE_BIN" install
-"$MISE_BIN" run install:user
-"$MISE_BIN" run agents:build
 "$MISE_BIN" run apply
+"$MISE_BIN" run install:user
