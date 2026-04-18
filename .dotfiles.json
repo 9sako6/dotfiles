@@ -1,5 +1,7 @@
 {
   "copy": [
-    ".claude/settings.json"
+    ".agents",
+    ".claude",
+    ".codex"
   ]
 }
