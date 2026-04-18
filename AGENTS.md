@@ -12,5 +12,4 @@
 - テストは設定ファイルやソースの文面を直接検査しない。コマンドやスクリプトを実行して振る舞いを観測する
 - テストしにくければ、先にテスタブルな設計へ寄せる
 - 作業ブランチは作らない。変更は `master` に直接コミットし、`master` を push する
-- 作業者が Codex の場合、commit には必ず `Co-Authored-By: codex <codex@openai.com>` を含める
 - 一時的な作業メモは `tmp/` に置く（`tmp/plans/`, `tmp/specs/`）
