@@ -25,3 +25,4 @@ deno.lock
 
 # APM dependencies
 apm_modules/
+dist/.gitignore

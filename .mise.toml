@@ -3,21 +3,25 @@ bun = "1.3.12"
 node = "24.14.1"
 
 [tasks."agents:build"]
+depends = ["agents:install"]
 dir = "{{config_root}}/dist"
 run = [
   "apm compile --clean",
-  "apm install",
   "apm compile --target claude --target codex",
   "mv AGENTS.md .codex/AGENTS.md",
-  "rm CLAUDE.md",
-  "rm .gitignore"
+  "rm CLAUDE.md"
 ]
 description = "Build agents resources via apm"
 
 [tasks."agents:install"]
 dir = "{{config_root}}/dist"
-run = ["apm install", "rm .gitignore", "rm -rf apm_modules"]
+run = ["apm install"]
 description = "Install agents resources into the home directory"
+
+[tasks."agents:update"]
+dir = "{{config_root}}/dist"
+run = ["apm update"]
+description = "Update agents resources to the latest versions"
 
 [tasks."install:user"]
 depends = ["install:user:brew", "install:user:mise", "install:user:zinit"]

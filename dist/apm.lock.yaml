@@ -4,7 +4,7 @@ apm_version: 0.8.11
 dependencies:
 - repo_url: 9sako6/agents
   host: github.com
-  resolved_commit: e676d35f26aaed7718d073ac20c7c9402adfbf3c
+  resolved_commit: 70356bfd204edd38cdb8a9b591f3cfe6bfcd699a
   package_type: apm_package
   deployed_files:
   - .agents/skills/codex-review
@@ -12,7 +12,7 @@ dependencies:
   - .claude/rules/global.md
   - .claude/skills/codex-review
   - .claude/skills/rails-mysql-explain
-  content_hash: sha256:1e5848858afa72b3a383b59767ea38dd4bc25ebe624ada3d5f7a965fdbd639e3
+  content_hash: sha256:1729cd3aa782cd4b2f2702142ddaca8afed232f7e8d3a2d7d65b6bc2748814e6
 - repo_url: obra/superpowers
   host: github.com
   resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9

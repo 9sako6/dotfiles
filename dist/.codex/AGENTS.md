@@ -17,7 +17,7 @@
 - ツールや実装への依存を最小化し、長く読めて再利用しやすいフォーマットを優先する
 - シンプルで明白な修正では過剰設計せず、重要な変更ではより自然で長持ちする解決を選ぶ
 - 枯れた技術、標準、最小の労力で解決できることが望ましい。コードは書くほど悪い
-- 説明を記述するならば外延的定義より内包的定義を優先せよ
+- 一時凌ぎな対応は万死に値する。本当におまえがするべきはそれか？シンプルなインターフェイスになにしてくれてんだ
 
 # workflow
 
@@ -45,6 +45,9 @@
 
 - Never run `git push` without the user's explicit confirmation
 - Never publish, sync, or upload changes to a remote without the user's explicit confirmation
+- If the work is performed by an AI agent, include the appropriate `Co-Authored-By` trailer at the end of the commit message. For example:
+  - `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`
+  - `Co-Authored-By: codex <codex@openai.com>`
 
 # sources
 
