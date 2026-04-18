@@ -29,3 +29,15 @@ description = "Check the current link plan and backup targets"
 [tasks.test]
 run = "bun test"
 description = "Run the dotfiles test suite"
+
+[tasks.agents]
+dir = "{{config_root}}/dist"
+run = [
+  "apm compile --clean",
+  "apm install",
+  "apm compile --target all",
+  "mv CLAUDE.md .claude/CLAUDE.md",
+  "mv AGENTS.md .codex/AGENTS.md",
+  "rm .gitignore"
+]
+description = "Install all agents' resources"

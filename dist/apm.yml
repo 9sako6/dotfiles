@@ -1,0 +1,9 @@
+name: 9sako6
+version: 1.0.0
+description: APM project for 9sako6's all agents
+author: Yutaro Taira
+dependencies:
+  apm:
+  - 9sako6/agents
+  mcp: []
+scripts: {}

@@ -1,0 +1,15 @@
+lockfile_version: '1'
+generated_at: '2026-04-18T04:59:42.347399+00:00'
+apm_version: 0.8.11
+dependencies:
+- repo_url: 9sako6/agents
+  host: github.com
+  resolved_commit: e676d35f26aaed7718d073ac20c7c9402adfbf3c
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/codex-review
+  - .agents/skills/rails-mysql-explain
+  - .claude/rules/global.md
+  - .claude/skills/codex-review
+  - .claude/skills/rails-mysql-explain
+  content_hash: sha256:1e5848858afa72b3a383b59767ea38dd4bc25ebe624ada3d5f7a965fdbd639e3
