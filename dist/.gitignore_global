@@ -19,3 +19,4 @@ node_modules/
 # Tool-specific
 .act
 .claude/settings.local.json
+docs/superpowers

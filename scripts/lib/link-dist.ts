@@ -41,6 +41,7 @@ type PlanOptions = {
   dryRun?: boolean;
   homeDir: string;
   sourceRoot: string;
+  symlinkPaths: ReadonlySet<string>;
   timestamp?: string;
 };
 
@@ -49,6 +50,7 @@ export async function planLinkActions({
   dryRun = false,
   homeDir,
   sourceRoot,
+  symlinkPaths,
   timestamp = createTimestamp(),
 }: PlanOptions): Promise<LinkPlan> {
   const rootStat = await lstatOrNull(sourceRoot);
@@ -57,7 +59,13 @@ export async function planLinkActions({
   }
 
   const actions: LinkAction[] = [];
-  await planDirectory(sourceRoot, actions, { copyPaths, homeDir, sourceRoot, timestamp });
+  await planDirectory(sourceRoot, actions, {
+    copyPaths,
+    homeDir,
+    sourceRoot,
+    symlinkPaths,
+    timestamp,
+  });
 
   return {
     actions,
@@ -147,11 +155,11 @@ function tildefy(filePath: string, homeDir: string): string {
   return filePath;
 }
 
-function isCopyTarget(relativePath: string, copyPaths: ReadonlySet<string>): boolean {
-  if (copyPaths.has(relativePath)) return true;
+function isManagedTarget(relativePath: string, managedPaths: ReadonlySet<string>): boolean {
+  if (managedPaths.has(relativePath)) return true;
   let dir = path.dirname(relativePath);
   while (dir !== ".") {
-    if (copyPaths.has(dir)) return true;
+    if (managedPaths.has(dir)) return true;
     dir = path.dirname(dir);
   }
   return false;
@@ -160,7 +168,9 @@ function isCopyTarget(relativePath: string, copyPaths: ReadonlySet<string>): boo
 async function planDirectory(
   sourcePath: string,
   actions: LinkAction[],
-  options: Required<Pick<PlanOptions, "copyPaths" | "homeDir" | "sourceRoot" | "timestamp">>,
+  options: Required<
+    Pick<PlanOptions, "copyPaths" | "homeDir" | "sourceRoot" | "symlinkPaths" | "timestamp">
+  >,
   treatDescendantsAsMissing = false,
 ) {
   let nextTreatDescendantsAsMissing = treatDescendantsAsMissing;
@@ -187,13 +197,18 @@ async function planDirectory(
       continue;
     }
     const relativePath = path.relative(options.sourceRoot, childSourcePath);
+    const isCopyTargetFile = isManagedTarget(relativePath, options.copyPaths);
+    const isSymlinkTargetFile = isManagedTarget(relativePath, options.symlinkPaths);
+    if (!isCopyTargetFile && !isSymlinkTargetFile) {
+      continue;
+    }
     await planManagedPath(
       childSourcePath,
       sourceToDestinationPath(options.sourceRoot, childSourcePath, options.homeDir),
       actions,
       options,
       nextTreatDescendantsAsMissing,
-      isCopyTarget(relativePath, options.copyPaths),
+      isCopyTargetFile,
     );
   }
 }

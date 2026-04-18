@@ -16,7 +16,12 @@ describe("runLinkPlan", () => {
       });
       await createSymlink(sourcePath, destinationPath);
 
-      const plan = await planLinkActions({ sourceRoot, homeDir, timestamp: "20260325T120000" });
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        symlinkPaths: new Set([".zshrc"]),
+        timestamp: "20260325T120000",
+      });
       await runLinkPlan(plan);
 
       expect(await readSymlinkTarget(destinationPath)).toBe(await realpath(sourcePath));
@@ -33,7 +38,11 @@ describe("runLinkPlan", () => {
       });
       await mkdir(homeDir, { recursive: true });
 
-      const plan = await planLinkActions({ sourceRoot, homeDir });
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        symlinkPaths: new Set([".config/mise"]),
+      });
       await runLinkPlan(plan);
 
       const linkedFile = path.join(homeDir, ".config", "mise", "config.toml");
@@ -53,7 +62,12 @@ describe("runLinkPlan", () => {
         ".zshrc": "old\n",
       });
 
-      const plan = await planLinkActions({ sourceRoot, homeDir, timestamp: "20260325T120000" });
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        symlinkPaths: new Set([".zshrc"]),
+        timestamp: "20260325T120000",
+      });
       await runLinkPlan(plan);
 
       const backupPath = path.join(homeDir, ".dotfiles-backups", "20260325T120000", ".zshrc");
@@ -73,7 +87,13 @@ describe("runLinkPlan", () => {
         ".zshrc": "old\n",
       });
 
-      const plan = await planLinkActions({ dryRun: true, sourceRoot, homeDir, timestamp: "20260325T120000" });
+      const plan = await planLinkActions({
+        dryRun: true,
+        sourceRoot,
+        homeDir,
+        symlinkPaths: new Set([".zshrc"]),
+        timestamp: "20260325T120000",
+      });
       await runLinkPlan(plan);
 
       expect(await readFile(path.join(homeDir, ".zshrc"), "utf8")).toBe("old\n");
@@ -92,7 +112,11 @@ describe("runLinkPlan", () => {
         ".config/nvim/old.vim": "legacy\n",
       });
 
-      const plan = await planLinkActions({ sourceRoot, homeDir });
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        symlinkPaths: new Set([".config/nvim"]),
+      });
       await runLinkPlan(plan);
 
       expect(await readSymlinkTarget(path.join(homeDir, ".config", "nvim", "init.vim"))).toBe(await realpath(path.join(sourceRoot, ".config", "nvim", "init.vim")));
@@ -113,7 +137,12 @@ describe("runLinkPlan", () => {
       });
       await createSymlink(sourceDir, destinationDir);
 
-      const plan = await planLinkActions({ sourceRoot, homeDir, timestamp: "20260326T120000" });
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        symlinkPaths: new Set([".zsh.d"]),
+        timestamp: "20260326T120000",
+      });
       await runLinkPlan(plan);
 
       expect((await lstat(destinationDir)).isDirectory()).toBe(true);
@@ -140,6 +169,7 @@ describe("runLinkPlan with copy actions", () => {
         sourceRoot,
         homeDir,
         copyPaths: new Set([".claude/settings.json"]),
+        symlinkPaths: new Set(),
       });
       await runLinkPlan(plan);
 
@@ -166,6 +196,7 @@ describe("runLinkPlan with copy actions", () => {
         sourceRoot,
         homeDir,
         copyPaths: new Set([".claude/settings.json"]),
+        symlinkPaths: new Set(),
         timestamp: "20260327T120000",
       });
       await runLinkPlan(plan);
@@ -192,6 +223,7 @@ describe("runLinkPlan with copy actions", () => {
         sourceRoot,
         homeDir,
         copyPaths: new Set([".claude/skills"]),
+        symlinkPaths: new Set(),
       });
       await runLinkPlan(plan);
 
@@ -202,6 +234,29 @@ describe("runLinkPlan with copy actions", () => {
         expect(stat.isSymbolicLink()).toBe(false);
         expect(await readFile(copiedFile, "utf8")).toBe(`# ${name.replace(".md", "")}\n`);
       }
+    });
+  });
+
+  test("skips files that are not in symlinkPaths or copyPaths", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      await writeTree(sourceRoot, {
+        ".zshrc": "listed\n",
+        ".unlisted": "skip me\n",
+      });
+      await mkdir(homeDir, { recursive: true });
+
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        symlinkPaths: new Set([".zshrc"]),
+      });
+      await runLinkPlan(plan);
+
+      await expect(access(path.join(homeDir, ".zshrc"))).resolves.toBeNull();
+      await expect(access(path.join(homeDir, ".unlisted"))).rejects.toThrow();
+      expect(plan.actions.some((action) => action.sourcePath.endsWith(".unlisted"))).toBe(false);
     });
   });
 });

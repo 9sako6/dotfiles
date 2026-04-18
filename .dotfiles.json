@@ -1,4 +1,16 @@
 {
+  "symlink": [
+    ".config",
+    ".zsh.d",
+    "mybin",
+    ".Brewfile",
+    ".gitconfig",
+    ".gitignore_global",
+    ".zshenv",
+    ".zshrc",
+    "apm.lock.yaml",
+    "apm.yml"
+  ],
   "copy": [
     ".agents",
     ".claude",
