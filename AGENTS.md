@@ -6,7 +6,7 @@
 ## ルール
 
 - repo ルートと `dist/` は別物として扱う。repo ルートはこの repo 自体を開発・検証するための `repo runtime`、`dist/` は home directory に配備する `dist-managed user tools`
-- 「`dist/` への配布をやめる」変更では、原則として `dist/` とその配布ロジックだけを触る。repo ルート側のファイルは、repo runtime として必要なら残す
+- 変更前に、そのファイルが `repo runtime` と `dist-managed user tools` のどちらに属するかを先に判定する。片側の整理や削除を理由に、もう片側のファイルまで連鎖的に消さない
 - 具体例:
   - `.claude/`, `.codex/`, `scripts/`, `tests/`, `.mise.toml` は repo runtime。`dist/` の整理だけを理由に消さない
   - `dist/.claude/`, `dist/.codex/`, `dist/mybin/`, `dist/.zshrc` は配布物。home directory に配るのをやめるならこちらを触る
