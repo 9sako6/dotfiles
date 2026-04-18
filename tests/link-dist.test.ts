@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { access, lstat, mkdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { createSymlink, readSymlinkTarget, withTempDir, writeTree } from "./test-helpers";
-import { planLinkActions, runLinkPlan } from "../scripts/lib/link-dist";
+import { formatPlan, planLinkActions, runLinkPlan, type LinkPlan } from "../scripts/lib/link-dist";
 
 describe("runLinkPlan", () => {
   test("keeps a matching symlink unchanged", async () => {
@@ -203,5 +203,50 @@ describe("runLinkPlan with copy actions", () => {
         expect(await readFile(copiedFile, "utf8")).toBe(`# ${name.replace(".md", "")}\n`);
       }
     });
+  });
+});
+
+describe("formatPlan", () => {
+  test("formats actions as flat list with summary", () => {
+    const plan: LinkPlan = {
+      actions: [
+        { type: "backup", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc", backupPath: "/home/.dotfiles-backups/20260418T150000/.zshrc" },
+        { type: "link", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc" },
+        { type: "copy", sourcePath: "/repo/dist/.claude/settings.json", destinationPath: "/home/.claude/settings.json" },
+        { type: "noop", sourcePath: "/repo/dist/.gitconfig", destinationPath: "/home/.gitconfig" },
+      ],
+      backupRoot: "/home/.dotfiles-backups/20260418T150000",
+      dryRun: true,
+      homeDir: "/home",
+      sourceRoot: "/repo/dist",
+      timestamp: "20260418T150000",
+    };
+
+    const output = formatPlan(plan);
+    expect(output).toBe(
+      [
+        "  backup  ~/.zshrc → ~/.dotfiles-backups/20260418T150000/.zshrc",
+        "  link    dist/.zshrc → ~/.zshrc",
+        "  copy    dist/.claude/settings.json → ~/.claude/settings.json",
+        "",
+        "1 link, 1 copy, 1 backup, 1 unchanged",
+      ].join("\n"),
+    );
+  });
+
+  test("shows only summary when no changes", () => {
+    const plan: LinkPlan = {
+      actions: [
+        { type: "noop", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc" },
+      ],
+      backupRoot: "/home/.dotfiles-backups/20260418T150000",
+      dryRun: true,
+      homeDir: "/home",
+      sourceRoot: "/repo/dist",
+      timestamp: "20260418T150000",
+    };
+
+    const output = formatPlan(plan);
+    expect(output).toBe("1 unchanged");
   });
 });

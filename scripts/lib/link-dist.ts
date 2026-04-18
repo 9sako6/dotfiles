@@ -110,6 +110,43 @@ export function summarizePlan(plan: LinkPlan) {
   };
 }
 
+export function formatPlan(plan: LinkPlan): string {
+  const lines: string[] = [];
+  const counts = { backup: 0, copy: 0, link: 0, noop: 0 };
+  const repoRoot = path.dirname(plan.sourceRoot);
+
+  for (const action of plan.actions) {
+    counts[action.type] += 1;
+    if (action.type === "noop") continue;
+
+    if (action.type === "backup") {
+      lines.push(`  backup  ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
+    } else {
+      lines.push(`  ${action.type.padEnd(8)}${path.relative(repoRoot, action.sourcePath)} → ${tildefy(action.destinationPath, plan.homeDir)}`);
+    }
+  }
+
+  const parts: string[] = [];
+  if (counts.link > 0) parts.push(`${counts.link} link`);
+  if (counts.copy > 0) parts.push(`${counts.copy} copy`);
+  if (counts.backup > 0) parts.push(`${counts.backup} backup`);
+  if (counts.noop > 0) parts.push(`${counts.noop} unchanged`);
+
+  if (lines.length > 0) {
+    lines.push("");
+  }
+  lines.push(parts.join(", "));
+
+  return lines.join("\n");
+}
+
+function tildefy(filePath: string, homeDir: string): string {
+  if (filePath.startsWith(homeDir)) {
+    return "~" + filePath.slice(homeDir.length);
+  }
+  return filePath;
+}
+
 function isCopyTarget(relativePath: string, copyPaths: ReadonlySet<string>): boolean {
   if (copyPaths.has(relativePath)) return true;
   let dir = path.dirname(relativePath);
