@@ -36,6 +36,7 @@
 
 - Never run `git push` without the user's explicit confirmation
 - Never publish, sync, or upload changes to a remote without the user's explicit confirmation
+- 作業者が Codex の場合、commit には必ず `Co-Authored-By: codex <codex@openai.com>` を含める
 
 # sources
 
