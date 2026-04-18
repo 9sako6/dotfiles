@@ -1,6 +1,6 @@
 # リポジトリ構成
 
-このリポジトリは、`dist/` に置いた共有可能な dotfiles を home directory に安全に反映するためのものです。初回導線は `install.sh`、日常運用は `mise` の task と Bun の script が担当します。
+このリポジトリは、macOS 上で `dist/` に置いた共有可能な dotfiles を home directory に安全に反映するためのものです。初回導線は `install.sh`、日常運用は `mise` の task と Bun の script が担当します。
 
 ## 管理境界
 
@@ -43,12 +43,12 @@
   - `dist/mybin/` は配備される自作コマンド置き場です。
 - `scripts/`
   - `mise` task から呼ばれる TypeScript の入口です。
-  - `scripts/setup.ts` は初回セットアップ、`scripts/link-dist.ts` は `dist/` の反映を担当します。
+  - `scripts/link-dist.ts` は `dist/` の反映を担当します。
 - `scripts/lib/`
-  - リンク計画、バックアップ、追加セットアップなどの実処理です。
+  - リンク計画やバックアップなどの実処理です。
 - `tests/`
   - repo の契約テストです。
-  - bootstrap、配備計画、repo layout、shell config の期待値を固定しています。
+  - 配備計画、repo layout、shell config など repo 固有ロジックの期待値を固定しています。
 - `docs/`
   - 長く残す価値のある恒久的なドキュメントを置きます。
 - `tmp/`
@@ -58,10 +58,11 @@
 
 - `install.sh`
   - ワンコマンド導線専用です。
-  - clone、`mise` の導入、`mise run setup` の起動までを担当します。
+  - clone、必要なら Homebrew と `mise` の導入、細分化された `mise` task の順次実行までを担当します。
 - `.mise.toml`
   - この repo で必要な最小限の tool と task を定義します。
-  - repo 実行の標準入口です。task は Bun の TypeScript script を直接起動します。
+  - repo 実行の標準入口です。
+  - task は 1 つの責務だけを持たせ、標準コマンドで足りる処理は shell で表現します。
 
 ## 変更時の目安
 
