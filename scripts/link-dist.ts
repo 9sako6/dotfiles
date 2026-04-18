@@ -2,7 +2,7 @@
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { planLinkActions, runLinkPlan, summarizePlan } from "./lib/link-dist";
+import { formatPlan, planLinkActions, runLinkPlan } from "./lib/link-dist";
 import { parseCliArgs } from "./lib/paths";
 
 async function loadCopyPaths(repoRoot: string): Promise<Set<string>> {
@@ -32,18 +32,7 @@ async function main() {
   const plan = await planLinkActions({ dryRun, homeDir, sourceRoot, copyPaths });
   await runLinkPlan(plan);
 
-  const summary = summarizePlan(plan);
-  const mode = dryRun ? "dry-run" : "apply";
-  console.log(
-    JSON.stringify(
-      {
-        mode,
-        ...summary,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(formatPlan(plan));
 }
 
 main().catch((error) => {
