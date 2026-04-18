@@ -4,10 +4,6 @@ import { backupPathFor, backupRootFor, createTimestamp } from "./backup";
 import { lstatOrNull, readDirents, realpathOrNull } from "./fs";
 import { sourceToDestinationPath } from "./paths";
 
-const COPY_INSTEAD_OF_LINK: ReadonlySet<string> = new Set([
-  ".claude/settings.json",
-]);
-
 export type LinkAction =
   | {
       destinationPath: string;
@@ -49,7 +45,7 @@ type PlanOptions = {
 };
 
 export async function planLinkActions({
-  copyPaths = COPY_INSTEAD_OF_LINK,
+  copyPaths = new Set(),
   dryRun = false,
   homeDir,
   sourceRoot,
@@ -114,6 +110,16 @@ export function summarizePlan(plan: LinkPlan) {
   };
 }
 
+function isCopyTarget(relativePath: string, copyPaths: ReadonlySet<string>): boolean {
+  if (copyPaths.has(relativePath)) return true;
+  let dir = path.dirname(relativePath);
+  while (dir !== ".") {
+    if (copyPaths.has(dir)) return true;
+    dir = path.dirname(dir);
+  }
+  return false;
+}
+
 async function planDirectory(
   sourcePath: string,
   actions: LinkAction[],
@@ -150,7 +156,7 @@ async function planDirectory(
       actions,
       options,
       nextTreatDescendantsAsMissing,
-      options.copyPaths.has(relativePath),
+      isCopyTarget(relativePath, options.copyPaths),
     );
   }
 }
@@ -161,9 +167,9 @@ async function planManagedPath(
   actions: LinkAction[],
   options: Required<Pick<PlanOptions, "homeDir" | "sourceRoot" | "timestamp">>,
   treatDestinationAsMissing = false,
-  isCopyTarget = false,
+  isCopyTargetFile = false,
 ) {
-  const actionType = isCopyTarget ? "copy" : "link";
+  const actionType = isCopyTargetFile ? "copy" : "link";
 
   if (treatDestinationAsMissing) {
     actions.push({ destinationPath, sourcePath, type: actionType });
@@ -176,7 +182,7 @@ async function planManagedPath(
     return;
   }
 
-  if (isCopyTarget) {
+  if (isCopyTargetFile) {
     if (destinationStat.isFile() && !destinationStat.isSymbolicLink()) {
       const [sourceContent, destContent] = await Promise.all([
         readFile(sourcePath),

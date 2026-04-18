@@ -177,4 +177,31 @@ describe("runLinkPlan with copy actions", () => {
       expect(await readFile(backupFile, "utf8")).toBe('{"model":"sonnet"}');
     });
   });
+
+  test("copies all files under a directory when directory path is in copyPaths", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      await writeTree(sourceRoot, {
+        ".claude/skills/foo.md": "# foo\n",
+        ".claude/skills/bar.md": "# bar\n",
+      });
+      await mkdir(homeDir, { recursive: true });
+
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        copyPaths: new Set([".claude/skills"]),
+      });
+      await runLinkPlan(plan);
+
+      for (const name of ["foo.md", "bar.md"]) {
+        const copiedFile = path.join(homeDir, ".claude", "skills", name);
+        const stat = await lstat(copiedFile);
+        expect(stat.isFile()).toBe(true);
+        expect(stat.isSymbolicLink()).toBe(false);
+        expect(await readFile(copiedFile, "utf8")).toBe(`# ${name.replace(".md", "")}\n`);
+      }
+    });
+  });
 });
