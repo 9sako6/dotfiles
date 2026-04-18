@@ -22,3 +22,6 @@ dist/.zsh.d/secrets.zsh
 
 # Deno
 deno.lock
+
+# APM dependencies
+apm_modules/
