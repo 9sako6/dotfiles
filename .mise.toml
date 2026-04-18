@@ -35,7 +35,7 @@ dir = "{{config_root}}/dist"
 run = [
   "apm compile --clean",
   "apm install",
-  "apm compile --target all",
+  "apm compile --target claude --target codex",
   "mv CLAUDE.md .claude/CLAUDE.md",
   "mv AGENTS.md .codex/AGENTS.md",
   "rm .gitignore"
