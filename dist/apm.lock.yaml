@@ -13,3 +13,143 @@ dependencies:
   - .claude/skills/codex-review
   - .claude/skills/rails-mysql-explain
   content_hash: sha256:1e5848858afa72b3a383b59767ea38dd4bc25ebe624ada3d5f7a965fdbd639e3
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/brainstorming
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/brainstorming
+  - .claude/skills/brainstorming
+  content_hash: sha256:1518efecf35139a9a5b9e60906b71de874af08322200fab18a54848cea8c15fe
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/dispatching-parallel-agents
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/dispatching-parallel-agents
+  - .claude/skills/dispatching-parallel-agents
+  content_hash: sha256:e21044ae7496fc285f1df9ff3fb518a3a20bea6f5216c1f59f4987e12c769a0a
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/executing-plans
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/executing-plans
+  - .claude/skills/executing-plans
+  content_hash: sha256:2f709d1a2c7564f8ce6a9bb707e7f5451117ba80f8e8e2302662c29bc61246a6
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/finishing-a-development-branch
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/finishing-a-development-branch
+  - .claude/skills/finishing-a-development-branch
+  content_hash: sha256:9edba9a38684c060fdc38290f640e1dc0c37de286723ac9be73bacacf7cd6f3d
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/receiving-code-review
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/receiving-code-review
+  - .claude/skills/receiving-code-review
+  content_hash: sha256:2760c85d4f4117b0006e7ba755f4bbd61f8f4c185f347999763c97f507274e30
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/requesting-code-review
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/requesting-code-review
+  - .claude/skills/requesting-code-review
+  content_hash: sha256:046180bd8519589b176d575e32a720c43cf6834f2e4d182277faf8943fe03564
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/subagent-driven-development
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/subagent-driven-development
+  - .claude/skills/subagent-driven-development
+  content_hash: sha256:96697eb8dde8631ee7cd5e1cb29c6d7c0b8ef2869c0875dd2eedf07762e5feae
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/systematic-debugging
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/systematic-debugging
+  - .claude/skills/systematic-debugging
+  content_hash: sha256:6fddb1f3952f65f1f3a2ef267ae4ab6919ff70a8b36672ea908640ae21a34ea0
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/test-driven-development
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/test-driven-development
+  - .claude/skills/test-driven-development
+  content_hash: sha256:126f1ebf6ccd414f42544f6e83d8cc5adb089e1108eaffb7c400701e37eecd9f
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/using-git-worktrees
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/using-git-worktrees
+  - .claude/skills/using-git-worktrees
+  content_hash: sha256:52bbb4b6e80918e83e92a1514f3b3757712154c2a8a42de24919e48a794c54fc
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/using-superpowers
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/using-superpowers
+  - .claude/skills/using-superpowers
+  content_hash: sha256:8ae2ec915dd4b5e4b758ee8110190fd792e85eb05d670fece942a76603e31cb8
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/verification-before-completion
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/verification-before-completion
+  - .claude/skills/verification-before-completion
+  content_hash: sha256:9b446f0c7fe1cfb560b1d34439523b1a76d5f177290007b2c053a1c749a4a8ba
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/writing-plans
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/writing-plans
+  - .claude/skills/writing-plans
+  content_hash: sha256:90185bbb1bd9d4959826104c1c1900424180b8a4011f4432da886df599922788
+- repo_url: obra/superpowers
+  host: github.com
+  resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
+  virtual_path: skills/writing-skills
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/writing-skills
+  - .claude/skills/writing-skills
+  content_hash: sha256:272ccd701f41b94e1119aaa99455a52cdb8e07283cb6a6aab32a7722d96bef45
