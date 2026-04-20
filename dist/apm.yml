@@ -4,7 +4,6 @@ description: APM project for 9sako6's all agents
 author: Yutaro Taira (9sako6)
 dependencies:
   apm:
-  - 9sako6/agents
   - obra/superpowers/skills/brainstorming
   - obra/superpowers/skills/dispatching-parallel-agents
   - obra/superpowers/skills/executing-plans
@@ -20,5 +19,6 @@ dependencies:
   - obra/superpowers/skills/writing-plans
   - obra/superpowers/skills/writing-skills
   - mizchi/chezmoi-dotfiles/dot_claude/skills/empirical-prompt-tuning
+  - 9sako6/agents
   mcp: []
 scripts: {}
