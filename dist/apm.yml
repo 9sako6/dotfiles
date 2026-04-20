@@ -19,5 +19,6 @@ dependencies:
   - obra/superpowers/skills/verification-before-completion
   - obra/superpowers/skills/writing-plans
   - obra/superpowers/skills/writing-skills
+  - mizchi/chezmoi-dotfiles/dot_claude/skills/empirical-prompt-tuning
   mcp: []
 scripts: {}

@@ -13,6 +13,16 @@ dependencies:
   - .claude/skills/codex-review
   - .claude/skills/rails-mysql-explain
   content_hash: sha256:1729cd3aa782cd4b2f2702142ddaca8afed232f7e8d3a2d7d65b6bc2748814e6
+- repo_url: mizchi/chezmoi-dotfiles
+  host: github.com
+  resolved_commit: aa1638480f64b9d742cda267b71800b3c9da2ceb
+  virtual_path: dot_claude/skills/empirical-prompt-tuning
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/empirical-prompt-tuning
+  - .claude/skills/empirical-prompt-tuning
+  content_hash: sha256:70e5a20153bc46d173d91ef0f5786972427afb85c971329731711c814b9c9911
 - repo_url: obra/superpowers
   host: github.com
   resolved_commit: b55764852ac78870e65c6565fb585b6cd8b3c5c9
