@@ -4,15 +4,17 @@ apm_version: 0.8.11
 dependencies:
 - repo_url: 9sako6/agents
   host: github.com
-  resolved_commit: 70356bfd204edd38cdb8a9b591f3cfe6bfcd699a
+  resolved_commit: 4f5ab6e2d56516fc3d92bc5617b4b4e3f95d9927
   package_type: apm_package
   deployed_files:
+  - .agents/skills/capture-tacit-knowledge
   - .agents/skills/codex-review
   - .agents/skills/rails-mysql-explain
   - .claude/rules/global.md
+  - .claude/skills/capture-tacit-knowledge
   - .claude/skills/codex-review
   - .claude/skills/rails-mysql-explain
-  content_hash: sha256:1729cd3aa782cd4b2f2702142ddaca8afed232f7e8d3a2d7d65b6bc2748814e6
+  content_hash: sha256:538b5aa851bed7dede5cc8a7aed70252eb728c79d12abd38dd70d7b4d75a4e55
 - repo_url: mizchi/chezmoi-dotfiles
   host: github.com
   resolved_commit: aa1638480f64b9d742cda267b71800b3c9da2ceb
