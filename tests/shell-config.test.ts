@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, copyFile, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir, writeTree } from "./test-helpers";
@@ -239,9 +239,10 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
       expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
 
       const commitResult = await runGit(repoDir, { ...env, PATH: toolDirs.join(path.delimiter) }, "commit", "-m", "test");
+      const commitOutput = `${commitResult.stdout}${commitResult.stderr}`;
 
       expect(commitResult.code).toBe(0);
-      expect(commitResult.stderr).toContain("gitleaks: not installed, skipping local secret scan.");
+      expect(commitOutput).toContain("gitleaks: not installed, skipping local secret scan.");
     });
   });
 
@@ -296,10 +297,29 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
       expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
 
       const commitResult = await runGit(repoDir, env, "commit", "-m", "test");
+      const commitOutput = `${commitResult.stdout}${commitResult.stderr}`;
 
       expect(commitResult.code).toBe(1);
-      expect(commitResult.stderr).toContain("public document privacy issues detected in staged markdown:");
-      expect(commitResult.stderr).toContain("README.md:1:see file:///Users/example/private/project");
+      expect(commitOutput).toContain("public document privacy issues detected in staged markdown:");
+      expect(commitOutput).toContain("README.md:1:see file:///Users/example/private/project");
+    });
+  });
+
+  test("config-based pre-commit hooks fail closed when the public document privacy checker is unavailable", async () => {
+    await withTempDir("pre-commit-public-document-privacy-missing", async (tempDir) => {
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+      const checkerPath = path.join(env.HOME!, ".config", "git", "hooks", "check-public-document-privacy");
+
+      await rm(checkerPath);
+      await writeRepoFile(repoDir, "README.md", "safe markdown\n");
+      expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
+
+      const commitResult = await runGit(repoDir, env, "commit", "-m", "test");
+      const commitOutput = `${commitResult.stdout}${commitResult.stderr}`;
+
+      expect(commitResult.code).toBe(1);
+      expect(commitOutput).toContain("No such file or directory");
+      expect(commitOutput).toContain("check-public-document-privacy");
     });
   });
 
