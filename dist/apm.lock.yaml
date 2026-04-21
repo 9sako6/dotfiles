@@ -4,7 +4,7 @@ apm_version: 0.8.11
 dependencies:
 - repo_url: 9sako6/agents
   host: github.com
-  resolved_commit: ae61e294b950c8aa04333fdbde64e23aa85155f0
+  resolved_commit: 44e5f180d13860085d937d413af749628e6ab70f
   package_type: apm_package
   deployed_files:
   - .agents/skills/capture-tacit-knowledge
@@ -42,7 +42,9 @@ dependencies:
   - .claude/skills/superpowers-verification-before-completion
   - .claude/skills/superpowers-writing-plans
   - .claude/skills/superpowers-writing-skills
-  content_hash: sha256:4fe6f86cafcbe1b3dd63326ca4c9780f854f71f8c247068f45766e13167c2cdd
+  deployed_file_hashes:
+    .claude/rules/global.md: sha256:50a61260f759b20e9c3d4b0e8352be16d2c866a53c8086fa4182ac8dab306e49
+  content_hash: sha256:ad4a10f496b4ec8bb41b0da95d1c555893bb56ac9601f432150b3b7ef7c582d7
 - repo_url: mizchi/chezmoi-dotfiles
   host: github.com
   resolved_commit: aa1638480f64b9d742cda267b71800b3c9da2ceb
