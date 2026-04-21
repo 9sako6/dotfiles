@@ -69,6 +69,24 @@ async function runGit(repoDir: string, env: NodeJS.ProcessEnv, ...args: string[]
   return runCommand("git", ["-C", repoDir, ...args], env);
 }
 
+async function expectGitSupportsConfigBasedHooks(env: NodeJS.ProcessEnv = process.env) {
+  const versionResult = await runCommand("git", ["--version"], env);
+  expect(versionResult.code).toBe(0);
+
+  const version = versionResult.stdout.trim();
+  const match = version.match(/^git version (\d+)\.(\d+)\.(\d+)$/);
+  if (!match) {
+    throw new Error(`unable to parse git version: ${version || versionResult.stderr.trim()}`);
+  }
+
+  const [, majorText, minorText] = match;
+  const major = Number(majorText);
+  const minor = Number(minorText);
+  if (major < 2 || (major === 2 && minor < 54)) {
+    throw new Error(`config-based git hooks require git 2.54.0 or later, found ${version}`);
+  }
+}
+
 async function initPlainRepo(tempDir: string) {
   const repoDir = path.join(tempDir, "repo");
 
@@ -218,6 +236,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
   test("config-based pre-commit hooks warn when gitleaks is unavailable but do not block commits", async () => {
     await withTempDir("pre-commit-warning", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+      await expectGitSupportsConfigBasedHooks(env);
       const toolPathsResult = await runCommand(
         "/bin/sh",
         ["-c", "command -v git && command -v grep && command -v sed && command -v dirname && command -v rm"],
@@ -292,6 +311,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
   test("config-based pre-commit hooks reject commits when public document privacy checker fails", async () => {
     await withTempDir("pre-commit-public-document-privacy", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+      await expectGitSupportsConfigBasedHooks(env);
 
       await writeRepoFile(repoDir, "README.md", "see file:///Users/example/private/project\n");
       expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
@@ -308,6 +328,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
   test("config-based pre-commit hooks fail closed when the public document privacy checker is unavailable", async () => {
     await withTempDir("pre-commit-public-document-privacy-missing", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+      await expectGitSupportsConfigBasedHooks(env);
       const checkerPath = path.join(env.HOME!, ".config", "git", "hooks", "check-public-document-privacy");
 
       await rm(checkerPath);

@@ -34,7 +34,19 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Install pinned Git for config-based hooks
+        run: |
+          brew update
+          if brew list git >/dev/null 2>&1; then
+            brew upgrade git
+          else
+            brew install git
+          fi
+          echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
+          test "$(/opt/homebrew/bin/git --version)" = "git version 2.54.0"
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+      - name: Verify pinned Git is active
+        run: test "$(git --version)" = "git version 2.54.0"
       - name: Run contract tests
         run: mise run dev:test
 
