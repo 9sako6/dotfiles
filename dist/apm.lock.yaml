@@ -4,17 +4,45 @@ apm_version: 0.8.11
 dependencies:
 - repo_url: 9sako6/agents
   host: github.com
-  resolved_commit: 39934b24eb27fc22b3e9433cc4dee67767a70ed2
+  resolved_commit: ae61e294b950c8aa04333fdbde64e23aa85155f0
   package_type: apm_package
   deployed_files:
   - .agents/skills/capture-tacit-knowledge
   - .agents/skills/codex-review
   - .agents/skills/rails-mysql-explain
+  - .agents/skills/superpowers-brainstorming
+  - .agents/skills/superpowers-dispatching-parallel-agents
+  - .agents/skills/superpowers-executing-plans
+  - .agents/skills/superpowers-finishing-a-development-branch
+  - .agents/skills/superpowers-receiving-code-review
+  - .agents/skills/superpowers-requesting-code-review
+  - .agents/skills/superpowers-subagent-driven-development
+  - .agents/skills/superpowers-systematic-debugging
+  - .agents/skills/superpowers-test-driven-development
+  - .agents/skills/superpowers-using-git-worktrees
+  - .agents/skills/superpowers-using-superpowers
+  - .agents/skills/superpowers-verification-before-completion
+  - .agents/skills/superpowers-writing-plans
+  - .agents/skills/superpowers-writing-skills
   - .claude/rules/global.md
   - .claude/skills/capture-tacit-knowledge
   - .claude/skills/codex-review
   - .claude/skills/rails-mysql-explain
-  content_hash: sha256:77614043ce412bc3e8588430513590af926e7a5e0bb94ad85951f699b58bc90e
+  - .claude/skills/superpowers-brainstorming
+  - .claude/skills/superpowers-dispatching-parallel-agents
+  - .claude/skills/superpowers-executing-plans
+  - .claude/skills/superpowers-finishing-a-development-branch
+  - .claude/skills/superpowers-receiving-code-review
+  - .claude/skills/superpowers-requesting-code-review
+  - .claude/skills/superpowers-subagent-driven-development
+  - .claude/skills/superpowers-systematic-debugging
+  - .claude/skills/superpowers-test-driven-development
+  - .claude/skills/superpowers-using-git-worktrees
+  - .claude/skills/superpowers-using-superpowers
+  - .claude/skills/superpowers-verification-before-completion
+  - .claude/skills/superpowers-writing-plans
+  - .claude/skills/superpowers-writing-skills
+  content_hash: sha256:4fe6f86cafcbe1b3dd63326ca4c9780f854f71f8c247068f45766e13167c2cdd
 - repo_url: mizchi/chezmoi-dotfiles
   host: github.com
   resolved_commit: aa1638480f64b9d742cda267b71800b3c9da2ceb
