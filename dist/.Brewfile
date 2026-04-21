@@ -1,6 +1,7 @@
-cask "codex"
 brew "devcontainer"
 brew "gh"
+brew "git"
 brew "microsoft/apm/apm"
+cask "codex"
 cask "ghostty"
 cask "raycast"
