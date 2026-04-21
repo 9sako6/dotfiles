@@ -39,6 +39,8 @@ async function initRepoWithManagedGitConfig(tempDir: string) {
   const globalConfigPath = path.join(homeDir, ".gitconfig");
   const mybinDir = path.join(homeDir, "mybin");
   const undoScriptPath = path.join(mybinDir, "git-undo");
+  const publicDocumentPrivacyCheckerPath = path.join(hooksDir, "check-public-document-privacy");
+  const gitleaksHookPath = path.join(hooksDir, "run-gitleaks-pre-commit");
   const env = {
     ...process.env,
     HOME: homeDir,
@@ -51,7 +53,11 @@ async function initRepoWithManagedGitConfig(tempDir: string) {
   await mkdir(mybinDir, { recursive: true });
   await copyFile("dist/.gitconfig", globalConfigPath);
   await copyFile("dist/mybin/git-undo", undoScriptPath);
+  await copyFile("dist/.config/git/hooks/check-public-document-privacy", publicDocumentPrivacyCheckerPath);
+  await copyFile("dist/.config/git/hooks/run-gitleaks-pre-commit", gitleaksHookPath);
   await chmod(undoScriptPath, 0o755);
+  await chmod(publicDocumentPrivacyCheckerPath, 0o755);
+  await chmod(gitleaksHookPath, 0o755);
 
   const initResult = await runCommand("git", ["-C", repoDir, "init", "-b", "master"], env);
   expect(initResult.code).toBe(0);
@@ -63,10 +69,25 @@ async function runGit(repoDir: string, env: NodeJS.ProcessEnv, ...args: string[]
   return runCommand("git", ["-C", repoDir, ...args], env);
 }
 
+async function initPlainRepo(tempDir: string) {
+  const repoDir = path.join(tempDir, "repo");
+
+  await mkdir(repoDir, { recursive: true });
+  expect((await runCommand("git", ["init", "-b", "master"], process.env, { cwd: repoDir })).code).toBe(0);
+
+  return repoDir;
+}
+
 async function writeRepoFile(repoDir: string, relativePath: string, content: string) {
   const filePath = path.join(repoDir, relativePath);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, content, "utf8");
+}
+
+async function runPublicDocumentPrivacyChecker(repoDir: string, env: NodeJS.ProcessEnv = process.env) {
+  const checkerPath = path.join(process.cwd(), "dist/.config/git/hooks/check-public-document-privacy");
+
+  return runCommand("/bin/sh", [checkerPath], env, { cwd: repoDir });
 }
 
 async function createMinimalZshHome(tempDir: string, options?: { direnvPath?: string | null }) {
@@ -194,28 +215,91 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("pre-commit hook warns when gitleaks is unavailable but does not block commits", async () => {
+  test("config-based pre-commit hooks warn when gitleaks is unavailable but do not block commits", async () => {
     await withTempDir("pre-commit-warning", async (tempDir) => {
-      const repoDir = path.join(tempDir, "repo");
-      const hookPath = path.join(process.cwd(), "dist/.config/git/hooks/pre-commit");
-      const gitBinDirResult = await runCommand("/bin/sh", ["-c", "command -v git"]);
-
-      expect(gitBinDirResult.code).toBe(0);
-      const gitBin = gitBinDirResult.stdout.trim();
-      expect(gitBin).not.toBe("");
-
-      await mkdir(repoDir, { recursive: true });
-      expect((await runCommand("git", ["init", "-b", "master"], process.env, { cwd: repoDir })).code).toBe(0);
-
-      const hookResult = await runCommand(
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+      const toolPathsResult = await runCommand(
         "/bin/sh",
-        [hookPath],
-        { ...process.env, PATH: path.dirname(gitBin) },
-        { cwd: repoDir },
+        ["-c", "command -v git && command -v grep && command -v sed && command -v dirname && command -v rm"],
       );
 
-      expect(hookResult.code).toBe(0);
-      expect(hookResult.stderr).toContain("gitleaks: not installed, skipping local secret scan.");
+      expect(toolPathsResult.code).toBe(0);
+      const toolDirs = Array.from(
+        new Set(
+          toolPathsResult.stdout
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .map((toolPath) => path.dirname(toolPath)),
+        ),
+      );
+      expect(toolDirs.length).toBeGreaterThan(0);
+
+      await writeRepoFile(repoDir, "README.md", "safe markdown\n");
+      expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
+
+      const commitResult = await runGit(repoDir, { ...env, PATH: toolDirs.join(path.delimiter) }, "commit", "-m", "test");
+
+      expect(commitResult.code).toBe(0);
+      expect(commitResult.stderr).toContain("gitleaks: not installed, skipping local secret scan.");
+    });
+  });
+
+  test("public document privacy checker rejects staged markdown with environment-identifying paths", async () => {
+    await withTempDir("public-document-privacy-checker-leak", async (tempDir) => {
+      const repoDir = await initPlainRepo(tempDir);
+
+      await writeRepoFile(repoDir, "README.md", "/Users/example/private/project\n");
+      expect((await runCommand("git", ["add", "README.md"], process.env, { cwd: repoDir })).code).toBe(0);
+
+      const checkResult = await runPublicDocumentPrivacyChecker(repoDir);
+
+      expect(checkResult.code).toBe(1);
+      expect(checkResult.stderr).toContain("public document privacy issues detected in staged markdown:");
+      expect(checkResult.stderr).toContain("README.md:1:/Users/example/private/project");
+    });
+  });
+
+  test("public document privacy checker allows staged markdown without environment-identifying paths", async () => {
+    await withTempDir("public-document-privacy-checker-safe", async (tempDir) => {
+      const repoDir = await initPlainRepo(tempDir);
+
+      await writeRepoFile(repoDir, "docs/guide.md", "https://example.com/reference\n");
+      expect((await runCommand("git", ["add", "docs/guide.md"], process.env, { cwd: repoDir })).code).toBe(0);
+
+      const checkResult = await runPublicDocumentPrivacyChecker(repoDir);
+
+      expect(checkResult.code).toBe(0);
+      expect(checkResult.stderr).toBe("");
+    });
+  });
+
+  test("public document privacy checker ignores staged non-markdown files", async () => {
+    await withTempDir("public-document-privacy-checker-non-markdown", async (tempDir) => {
+      const repoDir = await initPlainRepo(tempDir);
+
+      await writeRepoFile(repoDir, "notes.txt", "/Users/example/private/project\n");
+      expect((await runCommand("git", ["add", "notes.txt"], process.env, { cwd: repoDir })).code).toBe(0);
+
+      const checkResult = await runPublicDocumentPrivacyChecker(repoDir);
+
+      expect(checkResult.code).toBe(0);
+      expect(checkResult.stderr).toBe("");
+    });
+  });
+
+  test("config-based pre-commit hooks reject commits when public document privacy checker fails", async () => {
+    await withTempDir("pre-commit-public-document-privacy", async (tempDir) => {
+      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+
+      await writeRepoFile(repoDir, "README.md", "see file:///Users/example/private/project\n");
+      expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
+
+      const commitResult = await runGit(repoDir, env, "commit", "-m", "test");
+
+      expect(commitResult.code).toBe(1);
+      expect(commitResult.stderr).toContain("public document privacy issues detected in staged markdown:");
+      expect(commitResult.stderr).toContain("README.md:1:see file:///Users/example/private/project");
     });
   });
 

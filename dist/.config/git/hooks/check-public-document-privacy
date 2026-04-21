@@ -1,0 +1,28 @@
+#!/bin/sh
+
+set -eu
+
+pattern='(/Users/[^[:space:]`)<"'"'"']*|/home/[^[:space:]`)<"'"'"']*|file://[^[:space:]`)<"'"'"']+|vscode://[^[:space:]`)<"'"'"']+)'
+report_file="${TMPDIR:-/tmp}/check-public-document-privacy.$$"
+
+trap 'rm -f "$report_file"' EXIT HUP INT TERM
+
+: >"$report_file"
+
+git diff --cached --name-only --diff-filter=ACMR -- '*.md' |
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+
+  matches="$(git show ":$path" | grep -nE "$pattern" || true)"
+  if [ -n "$matches" ]; then
+    printf '%s\n' "$matches" | sed "s|^|$path:|" >>"$report_file"
+  fi
+done
+
+if [ ! -s "$report_file" ]; then
+  exit 0
+fi
+
+echo "public document privacy issues detected in staged markdown:" >&2
+cat "$report_file" >&2
+exit 1

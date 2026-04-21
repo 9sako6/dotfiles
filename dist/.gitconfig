@@ -3,9 +3,14 @@
 	name = Yutaro Taira
 [core]
 	excludesfile = ~/.gitignore_global
-	hooksPath = ~/.config/git/hooks
 	commentchar = ~
 	editor = vim -c \"set fenc=utf-8\"
 	ignorecase = false
+[hook "public-document-privacy"]
+	event = pre-commit
+	command = \"$HOME/.config/git/hooks/check-public-document-privacy\"
+[hook "gitleaks"]
+	event = pre-commit
+	command = \"$HOME/.config/git/hooks/run-gitleaks-pre-commit\"
 [alias]
 	undo = "!f() { \"${HOME}/mybin/git-undo\" \"$@\"; }; f"
