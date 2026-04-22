@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-04-22T13:47:49.113429+00:00'
+generated_at: '2026-04-22T14:35:33.538821+00:00'
 apm_version: 0.8.12
 dependencies:
 - repo_url: _local/capture-tacit-knowledge
@@ -16,6 +16,13 @@ dependencies:
   - .claude/skills/codex-review
   source: local
   local_path: ./.apm/skills/codex-review
+- repo_url: _local/logging-agent
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/logging-agent
+  - .claude/skills/logging-agent
+  source: local
+  local_path: ./.apm/skills/logging-agent
 - repo_url: _local/rails-mysql-explain
   package_type: claude_skill
   deployed_files:
@@ -124,6 +131,7 @@ dependencies:
 local_deployed_files:
 - .agents/skills/capture-tacit-knowledge
 - .agents/skills/codex-review
+- .agents/skills/logging-agent
 - .agents/skills/rails-mysql-explain
 - .agents/skills/superpowers-brainstorming
 - .agents/skills/superpowers-dispatching-parallel-agents
@@ -142,6 +150,7 @@ local_deployed_files:
 - .claude/rules/global.md
 - .claude/skills/capture-tacit-knowledge
 - .claude/skills/codex-review
+- .claude/skills/logging-agent
 - .claude/skills/rails-mysql-explain
 - .claude/skills/superpowers-brainstorming
 - .claude/skills/superpowers-dispatching-parallel-agents

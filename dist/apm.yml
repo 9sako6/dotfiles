@@ -4,8 +4,9 @@ description: APM project for 9sako6
 author: 9sako6
 dependencies:
   apm:
-  - ./.apm/skills/codex-review
   - ./.apm/skills/capture-tacit-knowledge
+  - ./.apm/skills/codex-review
+  - ./.apm/skills/logging-agent
   - ./.apm/skills/rails-mysql-explain
   - ./.apm/skills/superpowers-brainstorming
   - ./.apm/skills/superpowers-dispatching-parallel-agents
