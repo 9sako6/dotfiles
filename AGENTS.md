@@ -6,6 +6,7 @@
 ## ルール
 
 - 変更前に、そのファイルが `repo runtime` と `dist-managed user tools` のどちらに属するかを判定する。迷ったら [docs/repo-map.md](docs/repo-map.md) を正本として確認する
+- `apm.lock.yaml` などの生成物は手で編集しない。まず生成元と再生成手順を project 内で確認し、その手順で更新する。生成方法が特定できなければユーザーに確認する
 - 自動生成ファイルの列挙順は生成器に委ね、手で整えない
 - 手書きで管理するリソース列挙はアルファベティカルに保つ
 - バージョンはすべて厳密にピン留めする。mise は `major.minor.patch`、GitHub Actions は commit SHA + バージョンコメントで固定（例: `@abc123 # v4.3.1`）（`latest`・`^x.y`・`~x.y`・`@v4` などの曖昧な指定は禁止。Homebrew Brewfile は例外）
