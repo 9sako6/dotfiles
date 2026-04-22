@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-04-22T15:35:55.773986+00:00'
+generated_at: '2026-04-22T15:53:55.133360+00:00'
 apm_version: 0.8.12
 dependencies:
 - repo_url: _local/codex-review

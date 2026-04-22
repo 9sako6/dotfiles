@@ -91,6 +91,24 @@ NO NEXT STEP WITHOUT A WRITTEN EVENT FILE
 - [ ] Step 5: その後にのみ作業を続ける
 ```
 
+## 推奨コマンド
+
+event file の作成には、この skill directory に置かれた `./write-event.sh` を優先して使う。
+
+例:
+
+```sh
+./write-event.sh \
+  --event user_correction_inferred \
+  --agent codex:main \
+  --skill logging-agents \
+  --field confidence=high \
+  --field correction_scope=example \
+  --summary "ユーザー訂正を記録した。" \
+  --evidence "明示的な訂正が入った。" \
+  --next-action "影響範囲を確認する。"
+```
+
 対象イベントかどうか迷う場合は、**記録する側に倒す**。誤記録より未記録のほうが分析上の損失が大きい。
 
 ## 保存先
