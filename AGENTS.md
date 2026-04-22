@@ -6,6 +6,7 @@
 ## ルール
 
 - 変更前に、そのファイルが `repo runtime` と `dist-managed user tools` のどちらに属するかを判定する。迷ったら [docs/repo-map.md](docs/repo-map.md) を正本として確認する
+- `repo runtime` 固有の運用手順や生成手順は `dist-managed user tools` として配布する skill に書かない。repo の運用ルールは `AGENTS.md` などの project rule に置き、skill には配布先でも成立する一般ルールだけを書く
 - `apm.lock.yaml` などの生成物は手で編集しない。まず生成元と再生成手順を project 内で確認し、その手順で更新する。生成方法が特定できなければユーザーに確認する
 - 自動生成ファイルの列挙順は生成器に委ね、手で整えない
 - 手書きで管理するリソース列挙はアルファベティカルに保つ
