@@ -1,6 +1,6 @@
 ---
 name: logging-agents
-description: Use when skills の発動、推定された軌道修正、再計画、実装・調査・テストなどの agent 行動イベントを会話中に逐次ログしたいとき、または観測・可視化・監査のためにログ書き込み完了を強いゲートにしたいときに使う。
+description: Use when agent が何らかの作業を進めるとき常に使う。特に commentary、tool 実行、調査、実装、再計画、テスト、skill 発動、ユーザー訂正の直後は default-on で有効にする。
 license: Apache-2.0
 metadata:
   author: 9sako6
@@ -34,11 +34,24 @@ metadata:
 
 ## いつ使うか
 
+- agent が何らかの作業を始める every turn
 - ユーザーが観測、可視化、監査、ログ、トレース、記録、メモ化を求めたとき
 - skill の発動や組み合わせを記録したいとき
 - ユーザーの明示的訂正だけでなく、agent が「これは軌道修正だ」と推定した瞬間も残したいとき
 - 再計画、実装、調査、テストなどの行動イベントを後から分析可能にしたいとき
 - 観測のために、ログ書き込み完了を progress gate にしたいとき
+
+## Default-On Rule
+
+この skill は opt-in ではなく **default-on** として扱う。
+
+- agent が commentary、調査、実装、テスト、再計画、tool 実行のいずれかを始めるなら、まず logging-agents を active にする
+- ユーザーが `logging-agents` や `logging-agent` を明示した場合は、問答無用でその turn の最初から active にする
+- ユーザーが観測・監査・可視化・記録を明示していなくても、作業するなら active にする
+- 「今回は軽いから外す」「単なる確認だから外す」は禁止する
+- 迷った場合は inactive ではなく active に倒す
+
+この default-on は、この skill を使うかどうかの判断を agent に委ねないための rule である。**何かをするなら、まず logging-agents を有効化する。**
 
 ## 指示の優先順位
 

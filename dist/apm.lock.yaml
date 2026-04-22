@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-04-22T15:15:47.984725+00:00'
+generated_at: '2026-04-22T15:22:31.128388+00:00'
 apm_version: 0.8.12
 dependencies:
 - repo_url: _local/capture-tacit-knowledge
@@ -147,6 +147,7 @@ local_deployed_files:
 - .agents/skills/superpowers-verification-before-completion
 - .agents/skills/superpowers-writing-plans
 - .agents/skills/superpowers-writing-skills
+- .claude/rules/global.md
 - .claude/skills/capture-tacit-knowledge
 - .claude/skills/codex-review
 - .claude/skills/logging-agents
@@ -165,3 +166,5 @@ local_deployed_files:
 - .claude/skills/superpowers-verification-before-completion
 - .claude/skills/superpowers-writing-plans
 - .claude/skills/superpowers-writing-skills
+local_deployed_file_hashes:
+  .claude/rules/global.md: sha256:cc2e7c5178429b1f98df5857132680bc169f795f4f729a288e6727974d937ffd
