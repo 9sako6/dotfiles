@@ -1,5 +1,5 @@
 ---
-name: capture-tacit-knowledge
+name: recording
 description: 'Use when 一連の作業の区切り（タスク完了、PR 作成前、セッション終了前）や、ユーザーから訂正・方針・前提・好み・判定基準が示された直後に、その学びを永続化すべきか見直すときに使う。'
 license: Apache-2.0
 metadata:

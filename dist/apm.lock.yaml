@@ -1,14 +1,7 @@
 lockfile_version: '1'
-generated_at: '2026-04-22T15:22:31.128388+00:00'
+generated_at: '2026-04-22T15:35:55.773986+00:00'
 apm_version: 0.8.12
 dependencies:
-- repo_url: _local/capture-tacit-knowledge
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/capture-tacit-knowledge
-  - .claude/skills/capture-tacit-knowledge
-  source: local
-  local_path: ./.apm/skills/capture-tacit-knowledge
 - repo_url: _local/codex-review
   package_type: claude_skill
   deployed_files:
@@ -30,6 +23,13 @@ dependencies:
   - .claude/skills/rails-mysql-explain
   source: local
   local_path: ./.apm/skills/rails-mysql-explain
+- repo_url: _local/recording
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/recording
+  - .claude/skills/recording
+  source: local
+  local_path: ./.apm/skills/recording
 - repo_url: _local/superpowers-brainstorming
   package_type: claude_skill
   deployed_files:
@@ -129,10 +129,10 @@ dependencies:
   source: local
   local_path: ./.apm/skills/superpowers-writing-skills
 local_deployed_files:
-- .agents/skills/capture-tacit-knowledge
 - .agents/skills/codex-review
 - .agents/skills/logging-agents
 - .agents/skills/rails-mysql-explain
+- .agents/skills/recording
 - .agents/skills/superpowers-brainstorming
 - .agents/skills/superpowers-dispatching-parallel-agents
 - .agents/skills/superpowers-executing-plans
@@ -148,10 +148,10 @@ local_deployed_files:
 - .agents/skills/superpowers-writing-plans
 - .agents/skills/superpowers-writing-skills
 - .claude/rules/global.md
-- .claude/skills/capture-tacit-knowledge
 - .claude/skills/codex-review
 - .claude/skills/logging-agents
 - .claude/skills/rails-mysql-explain
+- .claude/skills/recording
 - .claude/skills/superpowers-brainstorming
 - .claude/skills/superpowers-dispatching-parallel-agents
 - .claude/skills/superpowers-executing-plans
