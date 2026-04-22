@@ -1,5 +1,5 @@
 ---
-name: logging-agent
+name: logging-agents
 description: Use when skills の発動、推定された軌道修正、再計画、実装・調査・テストなどの agent 行動イベントを会話中に逐次ログしたいとき、または観測・可視化・監査のためにログ書き込み完了を強いゲートにしたいときに使う。
 license: Apache-2.0
 metadata:
@@ -7,7 +7,7 @@ metadata:
   version: "1.0.0"
 ---
 
-# Logging Agent
+# Logging Agents
 
 会話中の event を、あとから分析できる形で残すための rigid skill。
 
@@ -53,7 +53,7 @@ metadata:
 この skill が有効な間の progress update / commentary は、毎回の冒頭を必ず次の固定プレフィックスで始める:
 
 ```text
-[logging-agent]
+[logging-agents]
 ```
 
 final answer にはこのプレフィックスを付けなくてよい。
@@ -72,7 +72,7 @@ NO NEXT STEP WITHOUT A WRITTEN EVENT FILE
 
 ```
 - [ ] Step 1: 対象イベントか判定する
-- [ ] Step 2: 毎回の commentary に `[logging-agent]` を付ける
+- [ ] Step 2: 毎回の commentary に `[logging-agents]` を付ける
 - [ ] Step 3: event file を作成する
 - [ ] Step 4: 書き込み成功を確認する
 - [ ] Step 5: その後にのみ作業を続ける
@@ -82,15 +82,15 @@ NO NEXT STEP WITHOUT A WRITTEN EVENT FILE
 
 ## 保存先
 
-- Codex 系: `~/.codex/mylogs/logging-agent/`
-- Claude Code 系: `~/.claude/mylogs/logging-agent/`
+- Codex 系: `~/.codex/mylogs/logging-agents/`
+- Claude Code 系: `~/.claude/mylogs/logging-agents/`
 
 `agent` 値に応じて保存先を選ぶ:
 
 | `agent` prefix | 保存先 |
 |---|---|
-| `codex:` | `~/.codex/mylogs/logging-agent/` |
-| `claude-code:` | `~/.claude/mylogs/logging-agent/` |
+| `codex:` | `~/.codex/mylogs/logging-agents/` |
+| `claude-code:` | `~/.claude/mylogs/logging-agents/` |
 
 ## ファイル名
 
@@ -114,12 +114,12 @@ YYYYMMDDTHHMMSSmmmZ-<rand>.md
 
 ```md
 ---
-schema: logging-agent/v1
+schema: logging-agents/v1
 event: <event name>
 timestamp: 2026-04-22T12:34:56.789Z
 agent: codex:main
 skills_active:
-  - logging-agent
+  - logging-agents
 ---
 # Summary
 <1-3 sentences>
@@ -169,14 +169,14 @@ skill が新しく発動した瞬間に記録する。
 
 ```md
 ---
-schema: logging-agent/v1
+schema: logging-agents/v1
 event: skill_invoked
 timestamp: 2026-04-22T12:34:56.789Z
 agent: codex:main
 activated_skill: superpowers-brainstorming
 trigger: user_request
 skills_active:
-  - logging-agent
+  - logging-agents
   - superpowers-brainstorming
 ---
 # Summary
@@ -254,7 +254,7 @@ agent が方針・分解・手順を組み直した瞬間に記録する。
 
 `skills_active` には、その時点で有効な skill を **全部** 入れる。
 
-- `logging-agent` 自身を必ず含める
+- `logging-agents` 自身を必ず含める
 - 新しく発動した skill があるなら含める
 - 配列はその時点の active set を表す
 
@@ -308,7 +308,7 @@ agent が方針・分解・手順を組み直した瞬間に記録する。
 - confidence が low だから記録しない
 - commentary だけ先に出して、ログを後回しにする
 - event file は不要と自己判断して進む
-- `skills_active` から `logging-agent` 自身を落とす
+- `skills_active` から `logging-agents` 自身を落とす
 - サブエージェントを main と同一視して `agent` を潰す
 
 ## 要点

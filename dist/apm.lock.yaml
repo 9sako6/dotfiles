@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-04-22T14:35:33.538821+00:00'
+generated_at: '2026-04-22T15:15:47.984725+00:00'
 apm_version: 0.8.12
 dependencies:
 - repo_url: _local/capture-tacit-knowledge
@@ -16,13 +16,13 @@ dependencies:
   - .claude/skills/codex-review
   source: local
   local_path: ./.apm/skills/codex-review
-- repo_url: _local/logging-agent
+- repo_url: _local/logging-agents
   package_type: claude_skill
   deployed_files:
-  - .agents/skills/logging-agent
-  - .claude/skills/logging-agent
+  - .agents/skills/logging-agents
+  - .claude/skills/logging-agents
   source: local
-  local_path: ./.apm/skills/logging-agent
+  local_path: ./.apm/skills/logging-agents
 - repo_url: _local/rails-mysql-explain
   package_type: claude_skill
   deployed_files:
@@ -131,7 +131,7 @@ dependencies:
 local_deployed_files:
 - .agents/skills/capture-tacit-knowledge
 - .agents/skills/codex-review
-- .agents/skills/logging-agent
+- .agents/skills/logging-agents
 - .agents/skills/rails-mysql-explain
 - .agents/skills/superpowers-brainstorming
 - .agents/skills/superpowers-dispatching-parallel-agents
@@ -147,10 +147,9 @@ local_deployed_files:
 - .agents/skills/superpowers-verification-before-completion
 - .agents/skills/superpowers-writing-plans
 - .agents/skills/superpowers-writing-skills
-- .claude/rules/global.md
 - .claude/skills/capture-tacit-knowledge
 - .claude/skills/codex-review
-- .claude/skills/logging-agent
+- .claude/skills/logging-agents
 - .claude/skills/rails-mysql-explain
 - .claude/skills/superpowers-brainstorming
 - .claude/skills/superpowers-dispatching-parallel-agents
@@ -166,5 +165,3 @@ local_deployed_files:
 - .claude/skills/superpowers-verification-before-completion
 - .claude/skills/superpowers-writing-plans
 - .claude/skills/superpowers-writing-skills
-local_deployed_file_hashes:
-  .claude/rules/global.md: sha256:50a61260f759b20e9c3d4b0e8352be16d2c866a53c8086fa4182ac8dab306e49
