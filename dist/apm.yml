@@ -1,24 +1,25 @@
-name: 9sako6
+name: 9sako6-agents
 version: 1.0.0
-description: APM project for 9sako6's all agents
-author: Yutaro Taira (9sako6)
+description: APM project for 9sako6
+author: 9sako6
 dependencies:
   apm:
-  - obra/superpowers/skills/brainstorming
-  - obra/superpowers/skills/dispatching-parallel-agents
-  - obra/superpowers/skills/executing-plans
-  - obra/superpowers/skills/finishing-a-development-branch
-  - obra/superpowers/skills/receiving-code-review
-  - obra/superpowers/skills/requesting-code-review
-  - obra/superpowers/skills/subagent-driven-development
-  - obra/superpowers/skills/systematic-debugging
-  - obra/superpowers/skills/test-driven-development
-  - obra/superpowers/skills/using-git-worktrees
-  - obra/superpowers/skills/using-superpowers
-  - obra/superpowers/skills/verification-before-completion
-  - obra/superpowers/skills/writing-plans
-  - obra/superpowers/skills/writing-skills
-  - mizchi/chezmoi-dotfiles/dot_claude/skills/empirical-prompt-tuning
-  - 9sako6/agents
+  - ./.apm/skills/codex-review
+  - ./.apm/skills/capture-tacit-knowledge
+  - ./.apm/skills/rails-mysql-explain
+  - ./.apm/skills/superpowers-brainstorming
+  - ./.apm/skills/superpowers-dispatching-parallel-agents
+  - ./.apm/skills/superpowers-executing-plans
+  - ./.apm/skills/superpowers-finishing-a-development-branch
+  - ./.apm/skills/superpowers-receiving-code-review
+  - ./.apm/skills/superpowers-requesting-code-review
+  - ./.apm/skills/superpowers-subagent-driven-development
+  - ./.apm/skills/superpowers-systematic-debugging
+  - ./.apm/skills/superpowers-test-driven-development
+  - ./.apm/skills/superpowers-using-git-worktrees
+  - ./.apm/skills/superpowers-using-superpowers
+  - ./.apm/skills/superpowers-verification-before-completion
+  - ./.apm/skills/superpowers-writing-plans
+  - ./.apm/skills/superpowers-writing-skills
   mcp: []
 scripts: {}

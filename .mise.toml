@@ -18,11 +18,6 @@ dir = "{{config_root}}/dist"
 run = ["apm install"]
 description = "Install agents resources into the home directory"
 
-[tasks."agents:update:9sako6"]
-dir = "{{config_root}}/dist"
-run = ["apm uninstall 9sako6/agents", "apm install 9sako6/agents", "mise run agents:build"]
-description = "Update agents resources to the latest versions"
-
 [tasks."install:user"]
 depends = ["install:user:brew", "install:user:mise", "install:user:zinit"]
 description = "Install user tools from deployed home-directory config"
