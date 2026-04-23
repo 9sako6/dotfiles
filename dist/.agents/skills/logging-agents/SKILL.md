@@ -10,19 +10,19 @@ hooks:
     - matcher: Bash|Agent
       hooks:
         - type: command
-          command: ./check-logging-event.sh
+          command: ~/.agents/skills/logging-agents/check-logging-event.sh
           timeout: 5
           statusMessage: logging-agents gate check...
   Stop:
     - hooks:
         - type: command
-          command: ./check-logging-event.sh
+          command: ~/.agents/skills/logging-agents/check-logging-event.sh
           timeout: 5
           statusMessage: logging-agents stop gate check...
   SubagentStop:
     - hooks:
         - type: command
-          command: ./check-logging-event.sh
+          command: ~/.agents/skills/logging-agents/check-logging-event.sh
           timeout: 5
           statusMessage: logging-agents subagent gate check...
 ---
