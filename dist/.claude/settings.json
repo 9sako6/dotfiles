@@ -15,19 +15,6 @@
     "defaultMode": "plan"
   },
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/skills/logging-agents/check-logging-event.sh",
-            "timeout": 5,
-            "statusMessage": "logging-agents gate check..."
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "matcher": "",

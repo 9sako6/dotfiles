@@ -108,6 +108,31 @@ async function runPublicDocumentPrivacyChecker(repoDir: string, env: NodeJS.Proc
   return runCommand("/bin/sh", [checkerPath], env, { cwd: repoDir });
 }
 
+async function runLoggingAgentsGate(homeDir: string, input: unknown) {
+  const checkerPath = path.join(process.cwd(), "dist/.apm/skills/logging-agents/check-logging-event.sh");
+  const child = spawn("/bin/sh", [checkerPath], {
+    env: { ...process.env, HOME: homeDir },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk) => {
+    stdout += String(chunk);
+  });
+  child.stderr.on("data", (chunk) => {
+    stderr += String(chunk);
+  });
+  child.stdin.end(JSON.stringify(input));
+
+  return new Promise<{ code: number | null; stderr: string; stdout: string }>((resolve, reject) => {
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      resolve({ code, stderr, stdout });
+    });
+  });
+}
+
 async function createMinimalZshHome(tempDir: string, options?: { direnvPath?: string | null }) {
   const homeDir = path.join(tempDir, "home");
   const misePath = path.join(homeDir, ".local", "bin", "mise");
@@ -589,6 +614,54 @@ printf 'ok\n' > "${launchCapturePath}"
         }
       }
       expect(await readFile(launchCapturePath, "utf8")).toContain("ok");
+    });
+  });
+
+  test("logging-agents gate blocks PreToolUse with a generic skill reminder", async () => {
+    await withTempDir("logging-agents-pre-tool-use", async (tempDir) => {
+      const homeDir = path.join(tempDir, "home");
+
+      const result = await runLoggingAgentsGate(homeDir, {
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "mise run dev:test" },
+      });
+
+      expect(result.code).toBe(2);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("logging-agents skill");
+      expect(result.stderr).toContain("write-event.sh");
+    });
+  });
+
+  test("logging-agents gate blocks Stop with a generic skill reminder", async () => {
+    await withTempDir("logging-agents-stop", async (tempDir) => {
+      const homeDir = path.join(tempDir, "home");
+
+      const result = await runLoggingAgentsGate(homeDir, {
+        hook_event_name: "Stop",
+      });
+
+      expect(result.code).toBe(2);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("logging-agents skill");
+      expect(result.stderr).toContain("write-event.sh");
+    });
+  });
+
+  test("logging-agents gate blocks SubagentStop with a generic skill reminder", async () => {
+    await withTempDir("logging-agents-subagent-stop", async (tempDir) => {
+      const homeDir = path.join(tempDir, "home");
+
+      const result = await runLoggingAgentsGate(homeDir, {
+        hook_event_name: "SubagentStop",
+        agent_type: "Explore",
+      });
+
+      expect(result.code).toBe(2);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("logging-agents skill");
+      expect(result.stderr).toContain("write-event.sh");
     });
   });
 });

@@ -5,6 +5,26 @@ license: Apache-2.0
 metadata:
   author: 9sako6
   version: "1.0.0"
+hooks:
+  PreToolUse:
+    - matcher: Bash|Agent
+      hooks:
+        - type: command
+          command: ./check-logging-event.sh
+          timeout: 5
+          statusMessage: logging-agents gate check...
+  Stop:
+    - hooks:
+        - type: command
+          command: ./check-logging-event.sh
+          timeout: 5
+          statusMessage: logging-agents stop gate check...
+  SubagentStop:
+    - hooks:
+        - type: command
+          command: ./check-logging-event.sh
+          timeout: 5
+          statusMessage: logging-agents subagent gate check...
 ---
 
 # Logging Agents
