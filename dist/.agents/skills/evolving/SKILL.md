@@ -25,6 +25,9 @@ metadata:
 - `minimal diff`
 - `status`
 - `evidence`
+- `score`
+- `evaluation_trace`
+- `feedback_text`
 
 ## ワークフロー
 
@@ -43,6 +46,7 @@ metadata:
 - 1 回の更新で 1 module だけを重点的に改稿する
 - policy as code に落とせるものを skill 差分にしない
 - accepted / rejected / hold の根拠がない案は採用候補にしない
+- judge 依存の失敗で `feedback_text` または `evaluation_trace` が欠ける案は `hold` にする
 - 新しい保存層や新しい skill を増やして問題をごまかさない
 - 0 件は正常な結果である
 
@@ -57,6 +61,11 @@ metadata:
 - `expected effect`
 - `acceptance evidence`
 - `status: accepted / rejected / hold`
+
+`status=hold` の典型例:
+
+- score はあるが failure reason がない
+- target module を評価 trace から特定できない
 
 ## アンチパターン
 

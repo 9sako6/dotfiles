@@ -10,6 +10,7 @@ Usage:
     --agent <agent> \
     [--skill <skill>]... \
     [--field <key=value>]... \
+    [--field-file <key=path>]... \
     --summary <text> \
     --evidence <text> \
     --next-action <text>
@@ -31,6 +32,26 @@ yaml_quote() {
   printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\"'\"'/g")"
 }
 
+validate_key() {
+  key=$1
+  case "$key" in
+    ''|*[!A-Za-z0-9_-]*)
+      printf 'Invalid field key: %s\n' "$key" >&2
+      exit 1
+      ;;
+  esac
+}
+
+print_yaml_block() {
+  key=$1
+  value=$2
+
+  printf '%s: |-\n' "$key"
+  printf '%s' "$value" | while IFS= read -r line || [ -n "$line" ]; do
+    printf '  %s\n' "$line"
+  done
+}
+
 append_line() {
   current_value=$1
   new_value=$2
@@ -48,6 +69,7 @@ evidence=
 next_action=
 skills=
 extra_fields=
+extra_field_files=
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -65,6 +87,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --field)
       extra_fields=$(append_line "$extra_fields" "${2:?}")
+      shift 2
+      ;;
+    --field-file)
+      extra_field_files=$(append_line "$extra_field_files" "${2:?}")
       shift 2
       ;;
     --summary)
@@ -133,13 +159,23 @@ log_file=$log_dir/$stamp_file-$rand.md
       [ -n "$entry" ] || continue
       key=${entry%%=*}
       value=${entry#*=}
-      case "$key" in
-        ''|*[!A-Za-z0-9_-]*)
-          printf 'Invalid --field key: %s\n' "$key" >&2
-          exit 1
-          ;;
-      esac
+      validate_key "$key"
       printf '%s: %s\n' "$key" "$(yaml_quote "$value")"
+    done
+  fi
+
+  if [ -n "$extra_field_files" ]; then
+    printf '%s\n' "$extra_field_files" | while IFS= read -r entry; do
+      [ -n "$entry" ] || continue
+      key=${entry%%=*}
+      path=${entry#*=}
+      validate_key "$key"
+      [ -f "$path" ] || {
+        printf 'Missing --field-file path: %s\n' "$path" >&2
+        exit 1
+      }
+      value=$(cat "$path")
+      print_yaml_block "$key" "$value"
     done
   fi
 

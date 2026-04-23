@@ -97,6 +97,25 @@ event file の書き込み成功を確認するまでは:
   --next-action "影響範囲を確認する。"
 ```
 
+`μf` 相当の評価を残すときの例:
+
+```sh
+./write-event.sh \
+  --event artifact_change \
+  --agent codex:main \
+  --skill logging-agents \
+  --field phase=testing \
+  --field action=verify \
+  --field score=0.75 \
+  --field candidate_id=candidate-12 \
+  --field module_id=evaluation-feedback \
+  --field-file evaluation_trace=tmp/eval-trace.txt \
+  --field-file feedback_text=tmp/feedback-text.txt \
+  --summary "理由付き採点を記録する。" \
+  --evidence "judge が fail 理由を返した。" \
+  --next-action "recording に渡す。"
+```
+
 ## 保存先とファイル形式
 
 保存先:
@@ -111,8 +130,10 @@ event file の書き込み成功を確認するまでは:
 - `execution_trace`
 - `evaluation_trace`
 - `feedback_text`
+- `score`
 
 値がないなら空欄のままにせず、その event では不要だと分かる Summary/Evidence を書く。
+長い judge 出力や失敗理由は `--field-file` で block scalar として保存する。
 
 ファイル名:
 
@@ -218,6 +239,18 @@ agent が方針・分解・手順を組み直した瞬間に書く。
 - `action`
 - `skills_active`
 
+`μf` を使った評価イベントでは次も入れる:
+
+- `score`
+- `evaluation_trace`
+- `feedback_text`
+
+推奨 fields:
+
+- `candidate_id`
+- `module_id`
+- `module_feedback`
+
 `phase` の例:
 
 - `research`
@@ -244,6 +277,7 @@ agent が方針・分解・手順を組み直した瞬間に書く。
 
 - `skills_active` にはその時点で有効な skill を全部入れる。`logging-agents` 自身を必ず含める
 - `execution_trace` と `evaluation_trace` を混同しない。前者は system の実行痕跡、後者は採点・失敗理由・judge 出力である
+- `feedback_text` が長いときは `--field` に詰め込まず `--field-file` を使う
 - `commentary` を先に出してからログを書くのは gate 違反
 - `confidence=low` でも記録する
 - 「今回は小さいから記録しない」は禁止
@@ -255,6 +289,7 @@ agent が方針・分解・手順を組み直した瞬間に書く。
 - commentary だけ先に出す
 - event file を後回しにする
 - 反省で使わない微動を `artifact_change` として量産する
+- `score` だけ残して `feedback_text` を捨てる
 - `skills_active` から `logging-agents` を落とす
 - `user_correction_inferred` を「明示されていないから」で書かない
 - サブエージェントの event を main にまとめる
