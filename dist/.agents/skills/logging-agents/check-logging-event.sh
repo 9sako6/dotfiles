@@ -7,7 +7,10 @@
 
 set -e
 
-LOGDIR="$HOME/.claude/mylogs/logging-agents"
+LOGDIRS="
+$HOME/.codex/mylogs/logging-agents
+$HOME/.claude/mylogs/logging-agents
+"
 THRESHOLD_SECONDS=90
 
 input=$(cat)
@@ -25,17 +28,19 @@ file_mtime_epoch() {
 # 直近 THRESHOLD_SECONDS 秒以内の event file があるか
 recent=""
 now=$(date +%s)
-for file in "$LOGDIR"/*.md; do
-  [ -e "$file" ] || continue
-  mtime=$(file_mtime_epoch "$file") || continue
-  if [ $((now - mtime)) -le "$THRESHOLD_SECONDS" ]; then
-    recent=$file
-    break
-  fi
+for dir in $LOGDIRS; do
+  for file in "$dir"/*.md; do
+    [ -e "$file" ] || continue
+    mtime=$(file_mtime_epoch "$file") || continue
+    if [ $((now - mtime)) -le "$THRESHOLD_SECONDS" ]; then
+      recent=$file
+      break 2
+    fi
+  done
 done
 
 if [ -z "$recent" ]; then
-  printf '%s\n' "logging-agents: 直近${THRESHOLD_SECONDS}秒以内に event file がありません。logging-agents skill を発動し、~/.claude/skills/logging-agents/write-event.sh で summary、evidence、next action を自由記述してから続行してください。" >&2
+  printf '%s\n' "logging-agents: 直近${THRESHOLD_SECONDS}秒以内に event file がありません。logging-agents skill を発動し、write-event.sh で summary、evidence、next action を自由記述してから続行してください。" >&2
   exit 2
 fi
 exit 0

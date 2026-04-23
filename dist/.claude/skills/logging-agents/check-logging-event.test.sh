@@ -69,10 +69,26 @@ assert_allows_recent_event() {
   [ ! -s "$stderr" ] || fail "recent event: expected empty stderr"
 }
 
+assert_allows_recent_codex_event() {
+  home="$tmpdir/recent-codex-home"
+  stdout="$tmpdir/recent-codex.stdout"
+  stderr="$tmpdir/recent-codex.stderr"
+
+  mkdir -p "$home/.codex/mylogs/logging-agents"
+  : > "$home/.codex/mylogs/logging-agents/recent.md"
+
+  run_hook "$home" '{"hook_event_name":"Stop"}' "$stdout" "$stderr"
+  code=$?
+  [ "$code" -eq 0 ] || fail "recent codex event: expected exit 0, got $code"
+  [ ! -s "$stdout" ] || fail "recent codex event: expected empty stdout"
+  [ ! -s "$stderr" ] || fail "recent codex event: expected empty stderr"
+}
+
 assert_blocked_without_recent_event pre-tool-use '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"mise run dev:test"}}'
 assert_blocked_without_recent_event stop '{"hook_event_name":"Stop"}'
 assert_blocked_without_recent_event subagent-stop '{"hook_event_name":"SubagentStop"}'
 assert_allows_write_event_command
 assert_allows_recent_event
+assert_allows_recent_codex_event
 
 printf 'ok - check-logging-event\n'

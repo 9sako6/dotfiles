@@ -5,6 +5,7 @@ author: 9sako6
 dependencies:
   apm:
   - ./.apm/skills/codex-review
+  - ./.apm/skills/evolving
   - ./.apm/skills/logging-bash-commands
   - ./.apm/skills/logging-agents
   - ./.apm/skills/rails-mysql-explain

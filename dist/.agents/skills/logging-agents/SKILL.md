@@ -104,6 +104,16 @@ event file の書き込み成功を確認するまでは:
 - `codex:*` は `~/.codex/mylogs/logging-agents/`
 - `claude-code:*` は `~/.claude/mylogs/logging-agents/`
 
+後段 skill への handoff で最低限そろえる項目:
+
+- `candidate_id`
+- `module_id`
+- `execution_trace`
+- `evaluation_trace`
+- `feedback_text`
+
+値がないなら空欄のままにせず、その event では不要だと分かる Summary/Evidence を書く。
+
 ファイル名:
 
 ```text
@@ -195,7 +205,8 @@ agent が方針・分解・手順を組み直した瞬間に書く。
 
 ### `artifact_change`
 
-実装、調査、テスト、設計などの行動イベントを書く。
+成果物、方針、検証状態、またはユーザーに返す判断が変わる瞬間だけ書く。
+単なる read / edit / execute / verify の反復は書かない。
 
 必須 fields:
 
@@ -215,16 +226,24 @@ agent が方針・分解・手順を組み直した瞬間に書く。
 - `testing`
 - `review`
 
-`action` の例:
+書く例:
 
-- `read`
-- `edit`
-- `execute`
-- `verify`
+- patch を適用した
+- 検証が fail から pass に変わった
+- 返答方針を確定した
+- module 単位の改善候補を確定した
+
+書かない例:
+
+- 同じ目的の `rg` を追加で打った
+- 差分確認を細かく繰り返した
+- 1 ファイル読んだだけ
+- 途中で 1 回 shell を打っただけ
 
 ## Gotchas
 
 - `skills_active` にはその時点で有効な skill を全部入れる。`logging-agents` 自身を必ず含める
+- `execution_trace` と `evaluation_trace` を混同しない。前者は system の実行痕跡、後者は採点・失敗理由・judge 出力である
 - `commentary` を先に出してからログを書くのは gate 違反
 - `confidence=low` でも記録する
 - 「今回は小さいから記録しない」は禁止
@@ -235,6 +254,7 @@ agent が方針・分解・手順を組み直した瞬間に書く。
 
 - commentary だけ先に出す
 - event file を後回しにする
+- 反省で使わない微動を `artifact_change` として量産する
 - `skills_active` から `logging-agents` を落とす
 - `user_correction_inferred` を「明示されていないから」で書かない
 - サブエージェントの event を main にまとめる
