@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-04-23T10:53:21.475708+00:00'
+generated_at: '2026-04-23T11:39:17.454221+00:00'
 apm_version: 0.8.12
 dependencies:
 - repo_url: _local/codex-review
@@ -16,6 +16,13 @@ dependencies:
   - .claude/skills/logging-agents
   source: local
   local_path: ./.apm/skills/logging-agents
+- repo_url: _local/logging-bash-commands
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/logging-bash-commands
+  - .claude/skills/logging-bash-commands
+  source: local
+  local_path: ./.apm/skills/logging-bash-commands
 - repo_url: _local/rails-mysql-explain
   package_type: claude_skill
   deployed_files:
@@ -131,6 +138,7 @@ dependencies:
 local_deployed_files:
 - .agents/skills/codex-review
 - .agents/skills/logging-agents
+- .agents/skills/logging-bash-commands
 - .agents/skills/rails-mysql-explain
 - .agents/skills/recording
 - .agents/skills/superpowers-brainstorming
@@ -150,6 +158,7 @@ local_deployed_files:
 - .claude/rules/global.md
 - .claude/skills/codex-review
 - .claude/skills/logging-agents
+- .claude/skills/logging-bash-commands
 - .claude/skills/rails-mysql-explain
 - .claude/skills/recording
 - .claude/skills/superpowers-brainstorming

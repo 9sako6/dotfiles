@@ -4,10 +4,11 @@ description: APM project for 9sako6
 author: 9sako6
 dependencies:
   apm:
-  - ./.apm/skills/recording
   - ./.apm/skills/codex-review
+  - ./.apm/skills/logging-bash-commands
   - ./.apm/skills/logging-agents
   - ./.apm/skills/rails-mysql-explain
+  - ./.apm/skills/recording
   - ./.apm/skills/superpowers-brainstorming
   - ./.apm/skills/superpowers-dispatching-parallel-agents
   - ./.apm/skills/superpowers-executing-plans
