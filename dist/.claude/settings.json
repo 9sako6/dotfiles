@@ -14,41 +14,6 @@
     ],
     "defaultMode": "plan"
   },
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ": zundamonotify ; curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://host.docker.internal:12378/notifications/stop || curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://localhost:12378/notifications/stop"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ": zundamonotify ; curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://host.docker.internal:12378/notifications/notification || curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://localhost:12378/notifications/notification"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ": zundamonotify ; curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://host.docker.internal:12378/notifications/notification || curl -s --connect-timeout 1 -H \"Content-Type: application/json\" --data '{\"volume\":20}' -X POST http://localhost:12378/notifications/notification"
-          }
-        ]
-      }
-    ]
-  },
   "statusLine": {
     "type": "command",
     "command": "jq -r '\"[\\(.model.display_name)] \\(.context_window.used_percentage // 0)% context | session: $\\(.cost.total_cost_usd // 0)\"'"
