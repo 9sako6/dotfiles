@@ -1,6 +1,6 @@
 lockfile_version: '1'
-generated_at: '2026-04-24T01:54:07.637487+00:00'
-apm_version: 0.9.2
+generated_at: '2026-04-24T07:45:20.483418+00:00'
+apm_version: 0.8.12
 dependencies:
 - repo_url: _local/codex-review
   package_type: claude_skill
@@ -194,4 +194,4 @@ local_deployed_files:
 - .claude/skills/superpowers-writing-plans
 - .claude/skills/superpowers-writing-skills
 local_deployed_file_hashes:
-  .claude/rules/global.md: sha256:95a364a92c0ed754e0aff2ad17bc9ebc90e899c6398e76fe3721adcf49a190bc
+  .claude/rules/global.md: sha256:89155809d267366e4d635e480d36270535175cc1b0081fa78c98b27e29810a46
