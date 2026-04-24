@@ -4,6 +4,7 @@ description: APM project for 9sako6
 author: 9sako6
 dependencies:
   apm:
+  - ./.apm/skills/creating-feedback-evaluators
   - ./.apm/skills/codex-review
   - ./.apm/skills/evolving
   - ./.apm/skills/logging-bash-commands

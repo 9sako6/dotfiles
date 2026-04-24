@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-04-23T16:21:26.027241+00:00'
+generated_at: '2026-04-24T01:54:07.637487+00:00'
 apm_version: 0.9.2
 dependencies:
 - repo_url: _local/codex-review
@@ -9,6 +9,13 @@ dependencies:
   - .claude/skills/codex-review
   source: local
   local_path: ./.apm/skills/codex-review
+- repo_url: _local/creating-feedback-evaluators
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/creating-feedback-evaluators
+  - .claude/skills/creating-feedback-evaluators
+  source: local
+  local_path: ./.apm/skills/creating-feedback-evaluators
 - repo_url: _local/evolving
   package_type: claude_skill
   deployed_files:
@@ -144,6 +151,7 @@ dependencies:
   local_path: ./.apm/skills/superpowers-writing-skills
 local_deployed_files:
 - .agents/skills/codex-review
+- .agents/skills/creating-feedback-evaluators
 - .agents/skills/evolving
 - .agents/skills/logging-agents
 - .agents/skills/logging-bash-commands
@@ -165,6 +173,7 @@ local_deployed_files:
 - .agents/skills/superpowers-writing-skills
 - .claude/rules/global.md
 - .claude/skills/codex-review
+- .claude/skills/creating-feedback-evaluators
 - .claude/skills/evolving
 - .claude/skills/logging-agents
 - .claude/skills/logging-bash-commands
