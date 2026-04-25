@@ -1,6 +1,6 @@
 lockfile_version: '1'
-generated_at: '2026-04-24T07:45:20.483418+00:00'
-apm_version: 0.8.12
+generated_at: '2026-04-25T02:06:05.838214+00:00'
+apm_version: 0.9.2
 dependencies:
 - repo_url: _local/codex-review
   package_type: claude_skill
@@ -149,6 +149,17 @@ dependencies:
   - .claude/skills/superpowers-writing-skills
   source: local
   local_path: ./.apm/skills/superpowers-writing-skills
+mcp_servers:
+- playwright
+mcp_configs:
+  playwright:
+    name: playwright
+    transport: stdio
+    args:
+    - -y
+    - '@playwright/mcp@0.0.70'
+    registry: false
+    command: npx
 local_deployed_files:
 - .agents/skills/codex-review
 - .agents/skills/creating-feedback-evaluators

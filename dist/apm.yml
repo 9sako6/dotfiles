@@ -25,5 +25,12 @@ dependencies:
   - ./.apm/skills/superpowers-verification-before-completion
   - ./.apm/skills/superpowers-writing-plans
   - ./.apm/skills/superpowers-writing-skills
-  mcp: []
+  mcp:
+  - name: playwright
+    registry: false
+    transport: stdio
+    command: npx
+    args:
+    - -y
+    - '@playwright/mcp@0.0.70'
 scripts: {}
