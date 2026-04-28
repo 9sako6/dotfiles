@@ -37,8 +37,6 @@ abbrev-alias ls='eza'
 abbrev-alias ll='eza -l --git'
 abbrev-alias la='eza -la --git'
 abbrev-alias lt='eza --tree --level=2'
-abbrev-alias cat='bat --paging=never'
-abbrev-alias catp='bat'
 
 # Markdown preview
 mdp() {

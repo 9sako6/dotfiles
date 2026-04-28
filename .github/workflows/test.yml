@@ -75,7 +75,6 @@ jobs:
           mise exec -- zoxide --version
           mise exec -- atuin --version
           mise exec -- eza --version
-          mise exec -- bat --version
           mise exec -- fd --version
           mise exec -- rg --version
           mise exec -- fzf --version
