@@ -25,6 +25,7 @@ dependencies:
   - ./.apm/skills/superpowers-verification-before-completion
   - ./.apm/skills/superpowers-writing-plans
   - ./.apm/skills/superpowers-writing-skills
+  - mattpocock/skills/skills/productivity/grill-me
   mcp:
   - name: playwright
     registry: false
