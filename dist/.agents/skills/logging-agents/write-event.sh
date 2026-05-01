@@ -146,8 +146,9 @@ stamp_file=$(date -u +"%Y%m%dT%H%M%S000Z")
 stamp_iso=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
 rand=$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 6)
 log_file=$log_dir/$stamp_file-$rand.md
+tmp_file=$log_file.tmp.$$
 
-{
+if {
   printf -- '---\n'
   printf 'schema: logging-agents/v1\n'
   printf 'event: %s\n' "$(yaml_quote "$event")"
@@ -189,6 +190,12 @@ log_file=$log_dir/$stamp_file-$rand.md
   printf '# Summary\n%s\n\n' "$summary"
   printf '# Evidence\n%s\n\n' "$evidence"
   printf '# Next Action\n%s\n' "$next_action"
-} > "$log_file"
+} > "$tmp_file"; then
+  mv "$tmp_file" "$log_file"
+else
+  status=$?
+  rm -f "$tmp_file" 2>/dev/null || true
+  exit "$status"
+fi
 
 printf '%s\n' "$log_file"

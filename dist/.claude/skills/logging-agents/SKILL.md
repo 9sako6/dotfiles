@@ -1,18 +1,11 @@
 ---
 name: logging-agents
-description: Use when agent が何らかの作業を進めるとき常に使う。特に commentary、tool 実行、調査、実装、再計画、テスト、skill 発動、ユーザー訂正の直後は default-on で有効にする。
+description: Use when agent が何らかの作業を進めるとき default-on で使う。ただし hard gate はユーザー訂正、方針変更、実装開始、再計画、テスト失敗、外部公開、完了前検証などの重要イベントに限定する。
 license: Apache-2.0
 metadata:
   author: 9sako6
   version: "1.0.0"
 hooks:
-  PreToolUse:
-    - matcher: Bash|Agent
-      hooks:
-        - type: command
-          command: ~/.agents/skills/logging-agents/check-logging-event.sh
-          timeout: 5
-          statusMessage: logging-agents gate check...
   Stop:
     - hooks:
         - type: command
@@ -29,39 +22,53 @@ hooks:
 
 # Logging Agents
 
-この skill は logging gate である。対象イベントが起きたら event file を書き終えて成功確認するまで次に進んではならない。
+この skill は agent の判断が変わった点を残すための logging gate である。全アクションを記録するものではない。
 
 <EXTREMELY-IMPORTANT>
-必ず event file を先に書く。
+logging-agents は default-on だが、hard gate は重要イベントに限定する。
 
-「あとでまとめて書く」「commentary だけ先に出す」「軽微だから省略する」は禁止。
+重要イベントとは、ユーザー訂正、方針変更、実装開始、再計画、テスト失敗、外部公開、完了前検証である。
+
+単なる調査、status 確認、連続する git 操作、短い progress commentary は、直近 event に含められるなら新規 event を作らない。
 </EXTREMELY-IMPORTANT>
 
 <HARD-GATE>
-event file の書き込み成功を確認するまでは:
+重要イベントが起きたら event file を書き終えて成功確認するまで、次の状態遷移に進んではならない。
 
-- 次の思考に進んではならない
-- 追加の commentary を出してはならない
+hard gate の対象:
+
 - ファイル編集をしてはならない
-- コマンドを実行してはならない
+- テストや検証の次段階に進んではならない
+- 完了報告をしてはならない
+- 外部公開や同期をしてはならない
 
-失敗したら再試行する。再試行しても失敗するなら停止してユーザーに報告する。
+`write-event.sh` が失敗したら 1 回だけ再試行する。再試行しても失敗した場合、完了前検証と外部公開では停止してユーザーに報告する。それ以外の通常作業では warning として扱い、次に成功した event に失敗事実を含めて進める。
 </HARD-GATE>
+
+<SOFT-GATE>
+以下は新規 event を必須にしない。直近または次の重要 event に含められるなら、そこでまとめる。
+
+- 単なる status 確認
+- `git status` や差分確認だけの操作
+- `push` や `finish` workflow の途中経過
+- 同一目的の read / search / execute の反復
+- 短い progress commentary
+</SOFT-GATE>
 
 ## 最初に守ること
 
-- commentary は毎回 `[logging-agents]` で始める
 - event file 作成には同じ skill directory の `./write-event.sh` を優先して使う
-- `NO NEXT STEP WITHOUT A WRITTEN EVENT FILE` を守る
+- 重要イベントでは、次の状態遷移より先に event file を書く
+- 同一フェーズの連続 event は 1 つにまとめる
 
 ## いつ有効化するか
 
 この skill は opt-in ではなく default-on として扱う。
 
-- agent が commentary、調査、実装、テスト、再計画、tool 実行のいずれかを始めるとき
+- ユーザー訂正、方針変更、実装開始、再計画、テスト失敗、外部公開、完了前検証が起きたとき
 - ユーザーが `logging-agents` または `logging-agent` を明示したとき
 - ユーザーが観測、監査、可視化、ログ、トレース、記録、メモ化を求めたとき
-- skill の発動、ユーザー訂正、agent の軌道修正、実装・調査・テストの進行を残したいとき
+- skill の発動、ユーザー訂正、agent の軌道修正、実装・調査・テストの重要な状態遷移を残したいとき
 
 迷ったら inactive ではなく active に倒す。
 
@@ -71,16 +78,16 @@ event file の書き込み成功を確認するまでは:
 2. この skill
 3. デフォルトの system behavior
 
-ユーザーがログ対象、保存先、表示方法を指定したら従う。ただし、明示的に解除されない限り gate は維持する。
+ユーザーがログ対象、保存先、表示方法、gate 粒度を指定したら従う。ただし、完了前検証の event は削らない。
 
 ## ワークフロー
 
 ```text
-- [ ] Step 1: 対象イベントか判定する
-- [ ] Step 2: commentary を `[logging-agents]` で始める
-- [ ] Step 3: `./write-event.sh` で event file を作成する
-- [ ] Step 4: 書き込み成功を確認する
-- [ ] Step 5: その後にのみ次の思考・編集・実行に進む
+- [ ] Step 1: 重要イベントか soft event かを判定する
+- [ ] Step 2: soft event なら直近または次の event に統合できるか判定する
+- [ ] Step 3: 重要イベントなら `./write-event.sh` で event file を作成する
+- [ ] Step 4: 書き込み成功を確認する。失敗したら 1 回だけ再試行する
+- [ ] Step 5: 成功後、または soft failure の warning 記録方針を決めた後に次へ進む
 ```
 
 例:
@@ -171,12 +178,13 @@ skills_active:
 
 ## イベント種別
 
-最初に扱う event は次の 4 種:
+最初に扱う event は次の 5 種:
 
 - `skill_invoked`
 - `user_correction_inferred`
 - `agent_replan`
 - `artifact_change`
+- `finish_workflow`
 
 ### `skill_invoked`
 
@@ -273,27 +281,54 @@ agent が方針・分解・手順を組み直した瞬間に書く。
 - 1 ファイル読んだだけ
 - 途中で 1 回 shell を打っただけ
 
+### `finish_workflow`
+
+同一フェーズの finish / commit / worktree finish / post-finish verify は 1 つにまとめる。
+
+まとめる例:
+
+- `finish_start`
+- `commit_start`
+- `worktree_finish_start`
+- `post_finish_verify`
+
+必須 fields:
+
+- `schema`
+- `event`
+- `timestamp`
+- `agent`
+- `phase`
+- `skills_active`
+
+推奨 fields:
+
+- `included_steps`
+- `verification_status`
+- `publication_status`
+
 ## Gotchas
 
 - `skills_active` にはその時点で有効な skill を全部入れる。`logging-agents` 自身を必ず含める
 - `execution_trace` と `evaluation_trace` を混同しない。前者は system の実行痕跡、後者は採点・失敗理由・judge 出力である
 - `feedback_text` が長いときは `--field` に詰め込まず `--field-file` を使う
-- `commentary` を先に出してからログを書くのは gate 違反
-- `confidence=low` でも記録する
-- 「今回は小さいから記録しない」は禁止
+- commentary ごとの hard gate は作らない。重要な状態遷移ごとに記録する
+- `confidence=low` のユーザー訂正でも、作業方針に影響するなら記録する
+- 「今回は小さいから記録しない」ではなく「重要イベントか、直近 event に統合できる soft event か」で判定する
+- `finish_workflow` の途中経過を細かい event に分けない
 - サブエージェントは main と分けて `agent` を書く
-- `write-event.sh` で失敗したら再試行する。再試行しても失敗したら止まってユーザーに報告する
+- `write-event.sh` で失敗したら 1 回だけ再試行する。完了前検証と外部公開以外は warning で進めてよい
 
 ## アンチパターン
 
-- commentary だけ先に出す
-- event file を後回しにする
+- commentary、status 確認、単発 tool 実行ごとに event を量産する
+- 重要イベントの event file を後回しにする
 - 反省で使わない微動を `artifact_change` として量産する
 - `score` だけ残して `feedback_text` を捨てる
 - `skills_active` から `logging-agents` を落とす
-- `user_correction_inferred` を「明示されていないから」で書かない
+- 作業方針に影響する `user_correction_inferred` を「明示されていないから」で書かない
 - サブエージェントの event を main にまとめる
 
 ## 要点
 
-この skill の責務は、対象イベントを event file として残し、残すまで前に進ませないことだけである。
+この skill の責務は、判断が変わった重要イベントを event file として残すことである。全アクションの記録ではなく、後から意思決定を追える粒度を守る。

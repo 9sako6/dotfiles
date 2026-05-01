@@ -45,6 +45,35 @@ EOF
   grep -q "^  line 2$" "$log_file" || fail "missing second multiline line"
 }
 
+assert_reports_write_failure() {
+  home="$tmpdir/unwritable-home"
+  log_dir="$home/.codex/mylogs/logging-agents"
+  stdout="$tmpdir/write-failure.stdout"
+  stderr="$tmpdir/write-failure.stderr"
+
+  mkdir -p "$log_dir"
+  chmod 500 "$log_dir"
+
+  set +e
+  HOME="$home" "$WRITER" \
+    --event artifact_change \
+    --agent codex:main \
+    --skill logging-agents \
+    --summary "失敗を検証する。" \
+    --evidence "出力先を書き込み不可にする。" \
+    --next-action "非 0 exit を確認する。" \
+    >"$stdout" 2>"$stderr"
+  code=$?
+  set -e
+
+  chmod 700 "$log_dir"
+
+  [ "$code" -ne 0 ] || fail "write failure: expected non-zero exit"
+  [ ! -s "$stdout" ] || fail "write failure: expected empty stdout"
+  [ -s "$stderr" ] || fail "write failure: expected stderr"
+}
+
 assert_multiline_field_file
+assert_reports_write_failure
 
 printf 'ok - write-event\n'

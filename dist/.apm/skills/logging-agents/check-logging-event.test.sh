@@ -36,8 +36,22 @@ assert_blocked_without_recent_event() {
   set -e
   [ "$code" -eq 2 ] || fail "$name: expected exit 2, got $code"
   [ ! -s "$stdout" ] || fail "$name: expected empty stdout"
-  grep -q 'logging-agents skill' "$stderr" || fail "$name: missing skill reminder"
+  grep -q '完了前検証用の event file' "$stderr" || fail "$name: missing completion event reminder"
   grep -q 'write-event.sh' "$stderr" || fail "$name: missing write-event.sh reminder"
+}
+
+assert_allows_pre_tool_use_without_recent_event() {
+  home="$tmpdir/pre-tool-use-home"
+  stdout="$tmpdir/pre-tool-use.stdout"
+  stderr="$tmpdir/pre-tool-use.stderr"
+
+  mkdir -p "$home"
+
+  run_hook "$home" '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"mise run dev:test"}}' "$stdout" "$stderr"
+  code=$?
+  [ "$code" -eq 0 ] || fail "pre-tool-use: expected exit 0, got $code"
+  [ ! -s "$stdout" ] || fail "pre-tool-use: expected empty stdout"
+  [ ! -s "$stderr" ] || fail "pre-tool-use: expected empty stderr"
 }
 
 assert_allows_write_event_command() {
@@ -84,7 +98,7 @@ assert_allows_recent_codex_event() {
   [ ! -s "$stderr" ] || fail "recent codex event: expected empty stderr"
 }
 
-assert_blocked_without_recent_event pre-tool-use '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"mise run dev:test"}}'
+assert_allows_pre_tool_use_without_recent_event
 assert_blocked_without_recent_event stop '{"hook_event_name":"Stop"}'
 assert_blocked_without_recent_event subagent-stop '{"hook_event_name":"SubagentStop"}'
 assert_allows_write_event_command
