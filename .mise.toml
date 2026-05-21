@@ -9,13 +9,14 @@ run = [
   "apm compile --clean",
   "apm compile --target claude --target codex",
   "mv AGENTS.md .codex/AGENTS.md",
-  "rm CLAUDE.md"
+  "rm CLAUDE.md",
+  "rm GEMINI.md"
 ]
 description = "Build agents resources via apm"
 
 [tasks."agents:install"]
 dir = "{{config_root}}/dist"
-run = ["apm install"]
+run = ["apm install .apm"]
 description = "Install agents resources into the home directory"
 
 [tasks."install:user"]

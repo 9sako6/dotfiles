@@ -2,41 +2,6 @@ lockfile_version: '1'
 generated_at: '2026-04-25T02:06:05.838214+00:00'
 apm_version: 0.9.2
 dependencies:
-- repo_url: _local/codex-review
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/codex-review
-  - .claude/skills/codex-review
-  source: local
-  local_path: ./.apm/skills/codex-review
-- repo_url: _local/creating-feedback-evaluators
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/creating-feedback-evaluators
-  - .claude/skills/creating-feedback-evaluators
-  source: local
-  local_path: ./.apm/skills/creating-feedback-evaluators
-- repo_url: _local/evolving
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/evolving
-  - .claude/skills/evolving
-  source: local
-  local_path: ./.apm/skills/evolving
-- repo_url: _local/logging-agents
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/logging-agents
-  - .claude/skills/logging-agents
-  source: local
-  local_path: ./.apm/skills/logging-agents
-- repo_url: _local/logging-bash-commands
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/logging-bash-commands
-  - .claude/skills/logging-bash-commands
-  source: local
-  local_path: ./.apm/skills/logging-bash-commands
 - repo_url: _local/rails-mysql-explain
   package_type: claude_skill
   deployed_files:
@@ -44,13 +9,6 @@ dependencies:
   - .claude/skills/rails-mysql-explain
   source: local
   local_path: ./.apm/skills/rails-mysql-explain
-- repo_url: _local/recording
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/recording
-  - .claude/skills/recording
-  source: local
-  local_path: ./.apm/skills/recording
 - repo_url: _local/superpowers-brainstorming
   package_type: claude_skill
   deployed_files:
@@ -58,41 +16,6 @@ dependencies:
   - .claude/skills/superpowers-brainstorming
   source: local
   local_path: ./.apm/skills/superpowers-brainstorming
-- repo_url: _local/superpowers-dispatching-parallel-agents
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-dispatching-parallel-agents
-  - .claude/skills/superpowers-dispatching-parallel-agents
-  source: local
-  local_path: ./.apm/skills/superpowers-dispatching-parallel-agents
-- repo_url: _local/superpowers-executing-plans
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-executing-plans
-  - .claude/skills/superpowers-executing-plans
-  source: local
-  local_path: ./.apm/skills/superpowers-executing-plans
-- repo_url: _local/superpowers-finishing-a-development-branch
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-finishing-a-development-branch
-  - .claude/skills/superpowers-finishing-a-development-branch
-  source: local
-  local_path: ./.apm/skills/superpowers-finishing-a-development-branch
-- repo_url: _local/superpowers-receiving-code-review
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-receiving-code-review
-  - .claude/skills/superpowers-receiving-code-review
-  source: local
-  local_path: ./.apm/skills/superpowers-receiving-code-review
-- repo_url: _local/superpowers-requesting-code-review
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-requesting-code-review
-  - .claude/skills/superpowers-requesting-code-review
-  source: local
-  local_path: ./.apm/skills/superpowers-requesting-code-review
 - repo_url: _local/superpowers-subagent-driven-development
   package_type: claude_skill
   deployed_files:
@@ -100,13 +23,6 @@ dependencies:
   - .claude/skills/superpowers-subagent-driven-development
   source: local
   local_path: ./.apm/skills/superpowers-subagent-driven-development
-- repo_url: _local/superpowers-systematic-debugging
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-systematic-debugging
-  - .claude/skills/superpowers-systematic-debugging
-  source: local
-  local_path: ./.apm/skills/superpowers-systematic-debugging
 - repo_url: _local/superpowers-test-driven-development
   package_type: claude_skill
   deployed_files:
@@ -114,41 +30,6 @@ dependencies:
   - .claude/skills/superpowers-test-driven-development
   source: local
   local_path: ./.apm/skills/superpowers-test-driven-development
-- repo_url: _local/superpowers-using-git-worktrees
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-using-git-worktrees
-  - .claude/skills/superpowers-using-git-worktrees
-  source: local
-  local_path: ./.apm/skills/superpowers-using-git-worktrees
-- repo_url: _local/superpowers-using-superpowers
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-using-superpowers
-  - .claude/skills/superpowers-using-superpowers
-  source: local
-  local_path: ./.apm/skills/superpowers-using-superpowers
-- repo_url: _local/superpowers-verification-before-completion
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-verification-before-completion
-  - .claude/skills/superpowers-verification-before-completion
-  source: local
-  local_path: ./.apm/skills/superpowers-verification-before-completion
-- repo_url: _local/superpowers-writing-plans
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-writing-plans
-  - .claude/skills/superpowers-writing-plans
-  source: local
-  local_path: ./.apm/skills/superpowers-writing-plans
-- repo_url: _local/superpowers-writing-skills
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/superpowers-writing-skills
-  - .claude/skills/superpowers-writing-skills
-  source: local
-  local_path: ./.apm/skills/superpowers-writing-skills
 - repo_url: mattpocock/skills
   host: github.com
   resolved_commit: b843cb5ea74b1fe5e58a0fc23cddef9e66076fb8
