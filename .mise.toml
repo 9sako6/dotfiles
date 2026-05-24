@@ -16,7 +16,7 @@ description = "Build agents resources via apm"
 
 [tasks."agents:install"]
 dir = "{{config_root}}/dist"
-run = ["apm install .apm"]
+run = ["apm install --target claude --target codex"]
 description = "Install agents resources into the home directory"
 
 [tasks."install:user"]

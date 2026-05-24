@@ -9,6 +9,7 @@ dependencies:
   - ./.apm/skills/superpowers-subagent-driven-development
   - ./.apm/skills/superpowers-test-driven-development
   - mattpocock/skills/skills/productivity/grill-me
+  - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
   mcp:
   - name: playwright
     registry: false
