@@ -1,6 +1,0 @@
-[mcp_servers.playwright]
-command = "npx"
-args = [ "-y", "@playwright/mcp@0.0.70",]
-id = ""
-
-[mcp_servers.playwright.env]
