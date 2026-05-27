@@ -3,21 +3,13 @@ bun = "1.3.12"
 node = "24.14.1"
 
 [tasks."agents:build"]
-depends = ["agents:install"]
 dir = "{{config_root}}/dist"
-run = [
-  "apm compile --clean --target claude,codex",
-  "mv AGENTS.md .codex/AGENTS.md",
-  "rm -f CLAUDE.md",
-  "rm -f GEMINI.md",
-  "rm -f .codex/config.toml",
-  "rm -f .mcp.json"
-]
+run = "bun run ../scripts/build-agents.ts"
 description = "Build agents resources via apm"
 
 [tasks."agents:install"]
 dir = "{{config_root}}/dist"
-run = ["apm install --only apm --target claude,codex"]
+run = ["apm install --frozen --only apm --target claude,codex"]
 description = "Install agents resources into the home directory"
 
 [tasks."agents:uninstall"]

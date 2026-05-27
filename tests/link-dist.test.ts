@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { access, lstat, mkdir, readFile, realpath } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import { createSymlink, readSymlinkTarget, withTempDir, writeTree } from "./test-helpers";
 import { formatPlan, planLinkActions, runLinkPlan, type LinkPlan } from "../scripts/lib/link-dist";
@@ -206,6 +206,34 @@ describe("runLinkPlan with copy actions", () => {
 
       const backupFile = path.join(homeDir, ".dotfiles-backups", "20260327T120000", ".claude", "settings.json");
       expect(await readFile(backupFile, "utf8")).toBe('{"model":"sonnet"}');
+    });
+  });
+
+  test("keeps the existing destination when replacement copy fails", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      const sourceFile = path.join(sourceRoot, ".claude", "settings.json");
+      const destinationFile = path.join(homeDir, ".claude", "settings.json");
+      await writeTree(sourceRoot, {
+        ".claude/settings.json": '{"model":"opus"}',
+      });
+      await writeTree(homeDir, {
+        ".claude/settings.json": '{"model":"sonnet"}',
+      });
+
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        copyPaths: new Set([".claude/settings.json"]),
+        symlinkPaths: new Set(),
+        timestamp: "20260327T130000",
+      });
+      await rm(sourceFile);
+
+      await expect(runLinkPlan(plan)).rejects.toThrow();
+      expect(await readFile(destinationFile, "utf8")).toBe('{"model":"sonnet"}');
+      await expect(access(path.join(homeDir, ".dotfiles-backups", "20260327T130000", ".claude", "settings.json"))).rejects.toThrow();
     });
   });
 

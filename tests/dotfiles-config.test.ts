@@ -69,6 +69,22 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
+  test("throws when a managed path escapes the dist tree", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      await writeTree(sourceRoot, { ".keep": "" });
+
+      for (const config of [
+        { symlink: ["../outside"] },
+        { copy: ["/absolute"] },
+        { prune: [""] },
+      ]) {
+        await writeFile(path.join(tempDir, ".dotfiles.json"), JSON.stringify(config));
+        await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/path/);
+      }
+    });
+  });
+
   test("throws when prune is not a string array", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");

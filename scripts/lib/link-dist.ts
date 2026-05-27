@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, rename, symlink } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, rm, symlink } from "node:fs/promises";
 import path from "node:path";
 import { backupPathFor, backupRootFor, createTimestamp } from "./backup";
 import { lstatOrNull, readDirents, realpathOrNull } from "./fs";
@@ -95,12 +95,25 @@ export async function runLinkPlan(plan: LinkPlan) {
     return;
   }
 
-  for (const action of plan.actions) {
+  for (let index = 0; index < plan.actions.length; index += 1) {
+    const action = plan.actions[index];
     if (action.type === "noop") {
       continue;
     }
 
-    if (action.type === "backup" || action.type === "prune") {
+    if (action.type === "backup") {
+      const replacement = plan.actions[index + 1];
+      if (isReplacementForBackup(action, replacement)) {
+        await replaceWithBackup(action, replacement);
+        index += 1;
+        continue;
+      }
+      await mkdir(path.dirname(action.backupPath), { recursive: true });
+      await rename(action.destinationPath, action.backupPath);
+      continue;
+    }
+
+    if (action.type === "prune") {
       await mkdir(path.dirname(action.backupPath), { recursive: true });
       await rename(action.destinationPath, action.backupPath);
       continue;
@@ -112,6 +125,49 @@ export async function runLinkPlan(plan: LinkPlan) {
     } else {
       await symlink(action.sourcePath, action.destinationPath);
     }
+  }
+}
+
+type ReplacementAction = Extract<LinkAction, { type: "copy" | "link" }>;
+type BackupAction = Extract<LinkAction, { type: "backup" }>;
+
+function isReplacementForBackup(
+  backup: BackupAction,
+  replacement: LinkAction | undefined,
+): replacement is ReplacementAction {
+  return (
+    !!replacement &&
+    (replacement.type === "copy" || replacement.type === "link") &&
+    replacement.destinationPath === backup.destinationPath
+  );
+}
+
+async function replaceWithBackup(backup: BackupAction, replacement: ReplacementAction) {
+  const destinationDir = path.dirname(replacement.destinationPath);
+  const tempPath = path.join(
+    destinationDir,
+    `.dotfiles-${path.basename(replacement.destinationPath)}.${process.pid}.${Date.now()}.tmp`,
+  );
+
+  await mkdir(destinationDir, { recursive: true });
+  await mkdir(path.dirname(backup.backupPath), { recursive: true });
+  try {
+    if (replacement.type === "copy") {
+      await copyFile(replacement.sourcePath, tempPath);
+    } else {
+      await symlink(replacement.sourcePath, tempPath);
+    }
+    await rename(backup.destinationPath, backup.backupPath);
+    try {
+      await rename(tempPath, replacement.destinationPath);
+    } catch (error) {
+      if (!(await lstatOrNull(replacement.destinationPath))) {
+        await rename(backup.backupPath, backup.destinationPath);
+      }
+      throw error;
+    }
+  } finally {
+    await rm(tempPath, { force: true, recursive: true });
   }
 }
 

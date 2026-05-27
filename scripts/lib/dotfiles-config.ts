@@ -15,9 +15,9 @@ export async function loadDotfilesConfig(
   const configPath = path.join(repoRoot, ".dotfiles.json");
   const raw = await readFile(configPath, "utf8");
   const parsed = JSON.parse(raw) as { symlink?: unknown; copy?: unknown; prune?: unknown };
-  const symlinkPaths = new Set(parseStringArray(parsed.symlink, "symlink"));
-  const copyPaths = new Set(parseStringArray(parsed.copy, "copy"));
-  const prunePaths = new Set(parseStringArray(parsed.prune, "prune"));
+  const symlinkPaths = new Set(parseManagedPaths(parsed.symlink, "symlink"));
+  const copyPaths = new Set(parseManagedPaths(parsed.copy, "copy"));
+  const prunePaths = new Set(parseManagedPaths(parsed.prune, "prune"));
   validateNoConflicts(symlinkPaths, copyPaths);
   validatePrunePaths(copyPaths, prunePaths);
   await validatePathsExist(sourceRoot, symlinkPaths, "symlink");
@@ -26,14 +26,26 @@ export async function loadDotfilesConfig(
   return { symlinkPaths, copyPaths, prunePaths };
 }
 
-function parseStringArray(value: unknown, fieldName: string): string[] {
+function parseManagedPaths(value: unknown, fieldName: string): string[] {
   if (value === undefined) {
     return [];
   }
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
     throw new Error(`.dotfiles.json: "${fieldName}" must be an array of strings`);
   }
+  for (const entry of value) {
+    validateManagedPath(entry, fieldName);
+  }
   return value;
+}
+
+function validateManagedPath(relativePath: string, fieldName: string): void {
+  if (relativePath === "" || relativePath === "." || path.isAbsolute(relativePath)) {
+    throw new Error(`.dotfiles.json: "${fieldName}" contains invalid path "${relativePath}"`);
+  }
+  if (relativePath.split(/[\\/]/).includes("..")) {
+    throw new Error(`.dotfiles.json: "${fieldName}" contains invalid path "${relativePath}"`);
+  }
 }
 
 function validateNoConflicts(
