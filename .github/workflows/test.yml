@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-  pull_request:
   workflow_dispatch:
 
 env:
@@ -50,7 +49,7 @@ jobs:
       - name: Run contract tests
         run: mise run dev:test
 
-  e2e:
+  public-install-smoke:
     needs: secret-scan
     runs-on: macos-latest
     env:
