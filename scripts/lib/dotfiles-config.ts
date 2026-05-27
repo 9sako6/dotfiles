@@ -5,6 +5,7 @@ import { lstatOrNull } from "./fs";
 export type DotfilesConfig = {
   symlinkPaths: ReadonlySet<string>;
   copyPaths: ReadonlySet<string>;
+  prunePaths: ReadonlySet<string>;
 };
 
 export async function loadDotfilesConfig(
@@ -13,13 +14,16 @@ export async function loadDotfilesConfig(
 ): Promise<DotfilesConfig> {
   const configPath = path.join(repoRoot, ".dotfiles.json");
   const raw = await readFile(configPath, "utf8");
-  const parsed = JSON.parse(raw) as { symlink?: unknown; copy?: unknown };
+  const parsed = JSON.parse(raw) as { symlink?: unknown; copy?: unknown; prune?: unknown };
   const symlinkPaths = new Set(parseStringArray(parsed.symlink, "symlink"));
   const copyPaths = new Set(parseStringArray(parsed.copy, "copy"));
+  const prunePaths = new Set(parseStringArray(parsed.prune, "prune"));
   validateNoConflicts(symlinkPaths, copyPaths);
+  validatePrunePaths(copyPaths, prunePaths);
   await validatePathsExist(sourceRoot, symlinkPaths, "symlink");
   await validatePathsExist(sourceRoot, copyPaths, "copy");
-  return { symlinkPaths, copyPaths };
+  await validatePathsExist(sourceRoot, prunePaths, "prune");
+  return { symlinkPaths, copyPaths, prunePaths };
 }
 
 function parseStringArray(value: unknown, fieldName: string): string[] {
@@ -55,6 +59,20 @@ function validateNoConflicts(
 function isDescendant(ancestor: string, descendant: string): boolean {
   const relativePath = path.relative(ancestor, descendant);
   return relativePath !== "" && !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
+}
+
+function validatePrunePaths(
+  copyPaths: ReadonlySet<string>,
+  prunePaths: ReadonlySet<string>,
+): void {
+  for (const prunePath of prunePaths) {
+    const isCoveredByCopyPath = [...copyPaths].some(
+      (copyPath) => prunePath === copyPath || isDescendant(copyPath, prunePath),
+    );
+    if (!isCoveredByCopyPath) {
+      throw new Error(`.dotfiles.json: prune path "${prunePath}" must be covered by copy paths`);
+    }
+  }
 }
 
 async function validatePathsExist(

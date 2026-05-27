@@ -261,6 +261,61 @@ describe("runLinkPlan with copy actions", () => {
   });
 });
 
+describe("runLinkPlan with prune actions", () => {
+  test("backs up files under prune paths when they no longer exist in sourceRoot", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      await writeTree(sourceRoot, {
+        ".agents/skills/current/SKILL.md": "# current\n",
+      });
+      await writeTree(homeDir, {
+        ".agents/skills/current/SKILL.md": "# current\n",
+        ".agents/skills/removed/SKILL.md": "# removed\n",
+      });
+
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        copyPaths: new Set([".agents"]),
+        prunePaths: new Set([".agents/skills"]),
+        symlinkPaths: new Set(),
+        timestamp: "20260328T120000",
+      });
+      await runLinkPlan(plan);
+
+      await expect(access(path.join(homeDir, ".agents", "skills", "removed", "SKILL.md"))).rejects.toThrow();
+      expect(await readFile(path.join(homeDir, ".dotfiles-backups", "20260328T120000", ".agents", "skills", "removed", "SKILL.md"), "utf8")).toBe("# removed\n");
+      expect(await readFile(path.join(homeDir, ".agents", "skills", "current", "SKILL.md"), "utf8")).toBe("# current\n");
+    });
+  });
+
+  test("does not prune unmanaged sibling files outside declared prune paths", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      await writeTree(sourceRoot, {
+        ".agents/skills/current/SKILL.md": "# current\n",
+      });
+      await writeTree(homeDir, {
+        ".agents/local.txt": "keep\n",
+      });
+
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        copyPaths: new Set([".agents"]),
+        prunePaths: new Set([".agents/skills"]),
+        symlinkPaths: new Set(),
+        timestamp: "20260328T120000",
+      });
+      await runLinkPlan(plan);
+
+      expect(await readFile(path.join(homeDir, ".agents", "local.txt"), "utf8")).toBe("keep\n");
+    });
+  });
+});
+
 describe("formatPlan", () => {
   test("formats actions as flat list with summary", () => {
     const plan: LinkPlan = {
@@ -268,6 +323,7 @@ describe("formatPlan", () => {
         { type: "backup", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc", backupPath: "/home/.dotfiles-backups/20260418T150000/.zshrc" },
         { type: "link", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc" },
         { type: "copy", sourcePath: "/repo/dist/.claude/settings.json", destinationPath: "/home/.claude/settings.json" },
+        { type: "prune", destinationPath: "/home/.agents/skills/removed/SKILL.md", backupPath: "/home/.dotfiles-backups/20260418T150000/.agents/skills/removed/SKILL.md" },
         { type: "noop", sourcePath: "/repo/dist/.gitconfig", destinationPath: "/home/.gitconfig" },
       ],
       backupRoot: "/home/.dotfiles-backups/20260418T150000",
@@ -283,8 +339,9 @@ describe("formatPlan", () => {
         "  backup  ~/.zshrc → ~/.dotfiles-backups/20260418T150000/.zshrc",
         "  link    dist/.zshrc → ~/.zshrc",
         "  copy    dist/.claude/settings.json → ~/.claude/settings.json",
+        "  prune   ~/.agents/skills/removed/SKILL.md → ~/.dotfiles-backups/20260418T150000/.agents/skills/removed/SKILL.md",
         "",
-        "1 link, 1 copy, 1 backup, 1 unchanged",
+        "1 link, 1 copy, 1 prune, 1 backup, 1 unchanged",
       ].join("\n"),
     );
   });

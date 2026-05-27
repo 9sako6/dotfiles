@@ -14,11 +14,12 @@ async function main() {
 
   const repoRoot = process.cwd();
   const sourceRoot = path.resolve(repoRoot, "dist");
-  const { copyPaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
+  const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
   const plan = await planLinkActions({
     copyPaths,
     dryRun,
     homeDir,
+    prunePaths,
     sourceRoot,
     symlinkPaths,
   });

@@ -6,18 +6,24 @@ node = "24.14.1"
 depends = ["agents:install"]
 dir = "{{config_root}}/dist"
 run = [
-  "apm compile --clean",
-  "apm compile --target claude --target codex",
+  "apm compile --clean --target claude,codex",
   "mv AGENTS.md .codex/AGENTS.md",
-  "rm CLAUDE.md",
-  "rm GEMINI.md"
+  "rm -f CLAUDE.md",
+  "rm -f GEMINI.md",
+  "rm -f .codex/config.toml",
+  "rm -f .mcp.json"
 ]
 description = "Build agents resources via apm"
 
 [tasks."agents:install"]
 dir = "{{config_root}}/dist"
-run = ["apm install --target claude --target codex"]
+run = ["apm install --only apm --target claude,codex"]
 description = "Install agents resources into the home directory"
+
+[tasks."agents:uninstall"]
+dir = "{{config_root}}/dist"
+run = "apm uninstall"
+description = "Uninstall agents resources via apm"
 
 [tasks."install:user"]
 depends = ["install:user:brew", "install:user:mise", "install:user:zinit"]

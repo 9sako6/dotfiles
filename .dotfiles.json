@@ -15,5 +15,9 @@
     ".agents",
     ".claude",
     ".codex"
+  ],
+  "prune": [
+    ".agents/skills",
+    ".claude/skills"
   ]
 }

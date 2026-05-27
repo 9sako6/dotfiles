@@ -25,6 +25,11 @@ export type LinkAction =
       destinationPath: string;
       sourcePath: string;
       type: "noop";
+    }
+  | {
+      backupPath: string;
+      destinationPath: string;
+      type: "prune";
     };
 
 export type LinkPlan = {
@@ -40,6 +45,7 @@ type PlanOptions = {
   copyPaths?: ReadonlySet<string>;
   dryRun?: boolean;
   homeDir: string;
+  prunePaths?: ReadonlySet<string>;
   sourceRoot: string;
   symlinkPaths: ReadonlySet<string>;
   timestamp?: string;
@@ -49,6 +55,7 @@ export async function planLinkActions({
   copyPaths = new Set(),
   dryRun = false,
   homeDir,
+  prunePaths = new Set(),
   sourceRoot,
   symlinkPaths,
   timestamp = createTimestamp(),
@@ -64,6 +71,12 @@ export async function planLinkActions({
     homeDir,
     sourceRoot,
     symlinkPaths,
+    timestamp,
+  });
+  await planPruneActions(actions, {
+    homeDir,
+    prunePaths,
+    sourceRoot,
     timestamp,
   });
 
@@ -87,7 +100,7 @@ export async function runLinkPlan(plan: LinkPlan) {
       continue;
     }
 
-    if (action.type === "backup") {
+    if (action.type === "backup" || action.type === "prune") {
       await mkdir(path.dirname(action.backupPath), { recursive: true });
       await rename(action.destinationPath, action.backupPath);
       continue;
@@ -104,7 +117,7 @@ export async function runLinkPlan(plan: LinkPlan) {
 
 export function formatPlan(plan: LinkPlan): string {
   const lines: string[] = [];
-  const counts = { backup: 0, copy: 0, link: 0, noop: 0 };
+  const counts = { backup: 0, copy: 0, link: 0, noop: 0, prune: 0 };
   const repoRoot = path.dirname(plan.sourceRoot);
 
   for (const action of plan.actions) {
@@ -113,6 +126,8 @@ export function formatPlan(plan: LinkPlan): string {
 
     if (action.type === "backup") {
       lines.push(`  backup  ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
+    } else if (action.type === "prune") {
+      lines.push(`  prune   ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
     } else {
       lines.push(`  ${action.type.padEnd(8)}${path.relative(repoRoot, action.sourcePath)} → ${tildefy(action.destinationPath, plan.homeDir)}`);
     }
@@ -121,6 +136,7 @@ export function formatPlan(plan: LinkPlan): string {
   const parts: string[] = [];
   if (counts.link > 0) parts.push(`${counts.link} link`);
   if (counts.copy > 0) parts.push(`${counts.copy} copy`);
+  if (counts.prune > 0) parts.push(`${counts.prune} prune`);
   if (counts.backup > 0) parts.push(`${counts.backup} backup`);
   if (counts.noop > 0) parts.push(`${counts.noop} unchanged`);
 
@@ -130,6 +146,53 @@ export function formatPlan(plan: LinkPlan): string {
   lines.push(parts.join(", "));
 
   return lines.join("\n");
+}
+
+async function planPruneActions(
+  actions: LinkAction[],
+  options: Required<Pick<PlanOptions, "homeDir" | "prunePaths" | "sourceRoot" | "timestamp">>,
+) {
+  for (const relativePath of options.prunePaths) {
+    const sourcePath = path.join(options.sourceRoot, relativePath);
+    const destinationPath = sourceToDestinationPath(options.sourceRoot, sourcePath, options.homeDir);
+    await planPrunePath(sourcePath, destinationPath, actions, options);
+  }
+}
+
+async function planPrunePath(
+  sourcePath: string,
+  destinationPath: string,
+  actions: LinkAction[],
+  options: Required<Pick<PlanOptions, "homeDir" | "timestamp">>,
+) {
+  const destinationStat = await lstatOrNull(destinationPath);
+  if (!destinationStat) {
+    return;
+  }
+
+  const sourceStat = await lstatOrNull(sourcePath);
+  if (!sourceStat) {
+    actions.push({
+      backupPath: backupPathFor(options.homeDir, destinationPath, options.timestamp),
+      destinationPath,
+      type: "prune",
+    });
+    return;
+  }
+
+  if (!sourceStat.isDirectory() || !destinationStat.isDirectory()) {
+    return;
+  }
+
+  const entries = await readDirents(destinationPath);
+  for (const entry of entries) {
+    await planPrunePath(
+      path.join(sourcePath, entry.name),
+      path.join(destinationPath, entry.name),
+      actions,
+      options,
+    );
+  }
 }
 
 function tildefy(filePath: string, homeDir: string): string {

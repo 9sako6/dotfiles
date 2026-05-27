@@ -1,48 +1,54 @@
 lockfile_version: '1'
-generated_at: '2026-05-24T10:39:18.080586+00:00'
-apm_version: 0.14.0
+generated_at: '2026-05-27T10:55:28.469119+00:00'
+apm_version: 0.15.0
 dependencies:
 - repo_url: _local/rails-mysql-explain
   package_type: claude_skill
   deployed_files:
   - .agents/skills/rails-mysql-explain
+  - .claude/skills/rails-mysql-explain
   source: local
   local_path: ./.apm/skills/rails-mysql-explain
 - repo_url: _local/superpowers-brainstorming
   package_type: claude_skill
   deployed_files:
   - .agents/skills/superpowers-brainstorming
+  - .claude/skills/superpowers-brainstorming
   source: local
   local_path: ./.apm/skills/superpowers-brainstorming
 - repo_url: _local/superpowers-subagent-driven-development
   package_type: claude_skill
   deployed_files:
   - .agents/skills/superpowers-subagent-driven-development
+  - .claude/skills/superpowers-subagent-driven-development
   source: local
   local_path: ./.apm/skills/superpowers-subagent-driven-development
 - repo_url: _local/superpowers-test-driven-development
   package_type: claude_skill
   deployed_files:
   - .agents/skills/superpowers-test-driven-development
+  - .claude/skills/superpowers-test-driven-development
   source: local
   local_path: ./.apm/skills/superpowers-test-driven-development
 - repo_url: cursor/plugins
   host: github.com
-  resolved_commit: b8f2564c2e8da66b331c1dd63c2a2925d6739961
+  resolved_commit: 6f2e0c63189ce3b661040153d82a32a2038560ba
   virtual_path: cursor-team-kit/skills/thermo-nuclear-code-quality-review
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/thermo-nuclear-code-quality-review
+  - .claude/skills/thermo-nuclear-code-quality-review
   content_hash: sha256:9052b01b46b1d8dbf94c45f9313ec1983443f9a460e83d49cdc7fe0f640ca476
 - repo_url: mattpocock/skills
   host: github.com
-  resolved_commit: b843cb5ea74b1fe5e58a0fc23cddef9e66076fb8
+  resolved_commit: b8be62ffacb0118fa3eaa29a0923c87c8c11985c
   virtual_path: skills/productivity/grill-me
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/grill-me
+  - .claude/skills/grill-me
   content_hash: sha256:784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea
 mcp_servers:
 - playwright
@@ -60,3 +66,7 @@ local_deployed_files:
 - .agents/skills/superpowers-brainstorming
 - .agents/skills/superpowers-subagent-driven-development
 - .agents/skills/superpowers-test-driven-development
+- .claude/skills/rails-mysql-explain
+- .claude/skills/superpowers-brainstorming
+- .claude/skills/superpowers-subagent-driven-development
+- .claude/skills/superpowers-test-driven-development

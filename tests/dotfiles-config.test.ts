@@ -5,27 +5,29 @@ import { withTempDir, writeTree } from "./test-helpers";
 import { loadDotfilesConfig } from "../scripts/lib/dotfiles-config";
 
 describe("loadDotfilesConfig", () => {
-  test("returns symlinkPaths and copyPaths from .dotfiles.json", async () => {
+  test("returns symlinkPaths, copyPaths, and prunePaths from .dotfiles.json", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const repoRoot = tempDir;
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, {
         ".zshrc": "",
         ".claude/settings.json": "{}",
+        ".agents/skills/foo/SKILL.md": "# foo\n",
       });
       await writeFile(
         path.join(repoRoot, ".dotfiles.json"),
-        JSON.stringify({ symlink: [".zshrc"], copy: [".claude"] }),
+        JSON.stringify({ symlink: [".zshrc"], copy: [".agents", ".claude"], prune: [".agents/skills"] }),
       );
 
       const config = await loadDotfilesConfig(repoRoot, sourceRoot);
 
       expect(config.symlinkPaths).toEqual(new Set([".zshrc"]));
-      expect(config.copyPaths).toEqual(new Set([".claude"]));
+      expect(config.copyPaths).toEqual(new Set([".agents", ".claude"]));
+      expect(config.prunePaths).toEqual(new Set([".agents/skills"]));
     });
   });
 
-  test("treats missing symlink and copy fields as empty sets", async () => {
+  test("treats missing symlink, copy, and prune fields as empty sets", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".keep": "" });
@@ -34,6 +36,7 @@ describe("loadDotfilesConfig", () => {
       const config = await loadDotfilesConfig(tempDir, sourceRoot);
       expect(config.symlinkPaths.size).toBe(0);
       expect(config.copyPaths.size).toBe(0);
+      expect(config.prunePaths.size).toBe(0);
     });
   });
 
@@ -63,6 +66,18 @@ describe("loadDotfilesConfig", () => {
         JSON.stringify({ symlink: [1, 2] }),
       );
       await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/symlink/);
+    });
+  });
+
+  test("throws when prune is not a string array", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      await writeTree(sourceRoot, { ".keep": "" });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        JSON.stringify({ prune: [1, 2] }),
+      );
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/prune/);
     });
   });
 
@@ -102,6 +117,20 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
+  test("throws when a prune path is outside copy paths", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      await writeTree(sourceRoot, {
+        ".agents/skills/foo/SKILL.md": "",
+      });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        JSON.stringify({ copy: [".claude"], prune: [".agents/skills"] }),
+      );
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/prune/);
+    });
+  });
+
   test("throws when a listed path does not exist under sourceRoot", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
@@ -111,6 +140,18 @@ describe("loadDotfilesConfig", () => {
         JSON.stringify({ symlink: [".zshrc", ".not-there"] }),
       );
       await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/\.not-there/);
+    });
+  });
+
+  test("throws when a prune path does not exist under sourceRoot", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      await writeTree(sourceRoot, { ".zshrc": "" });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        JSON.stringify({ prune: [".agents/skills"] }),
+      );
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/\.agents\/skills/);
     });
   });
 
