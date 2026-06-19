@@ -1,7 +1,17 @@
 lockfile_version: '1'
-generated_at: '2026-05-27T10:55:28.469119+00:00'
+generated_at: '2026-06-19T14:58:43.727117+00:00'
 apm_version: 0.15.0
 dependencies:
+- repo_url: 9sako6/-
+  host: github.com
+  resolved_commit: e5a6ee97726daf71847617e1dd5226dc2c4a29d9
+  virtual_path: skills/minus
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/minus
+  - .claude/skills/minus
+  content_hash: sha256:14f9f31b809f4f5723bd8580ec26e0f1966e5ea1259f4f772e62b1557565937d
 - repo_url: _local/rails-mysql-explain
   package_type: claude_skill
   deployed_files:
