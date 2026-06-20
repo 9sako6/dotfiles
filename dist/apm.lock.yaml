@@ -4,14 +4,14 @@ apm_version: 0.15.0
 dependencies:
 - repo_url: 9sako6/-
   host: github.com
-  resolved_commit: e5a6ee97726daf71847617e1dd5226dc2c4a29d9
+  resolved_commit: 57ea40323b813642d5ae6b3dd69834b5311cfccd
   virtual_path: skills/minus
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/minus
   - .claude/skills/minus
-  content_hash: sha256:14f9f31b809f4f5723bd8580ec26e0f1966e5ea1259f4f772e62b1557565937d
+  content_hash: sha256:b8b3e28b6408b8820bc64bf74b4444320e21a373acc10200225f175373281fed
 - repo_url: _local/rails-mysql-explain
   package_type: claude_skill
   deployed_files:
