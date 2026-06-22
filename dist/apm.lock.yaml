@@ -1,6 +1,6 @@
 lockfile_version: '1'
-generated_at: '2026-06-19T14:58:43.727117+00:00'
-apm_version: 0.15.0
+generated_at: '2026-06-22T02:19:20.431007+00:00'
+apm_version: 0.14.0
 dependencies:
 - repo_url: 9sako6/-
   host: github.com
