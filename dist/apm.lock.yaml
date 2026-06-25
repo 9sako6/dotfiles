@@ -1,6 +1,6 @@
 lockfile_version: '1'
-generated_at: '2026-06-22T02:19:20.431007+00:00'
-apm_version: 0.14.0
+generated_at: '2026-06-25T12:21:14.617008+00:00'
+apm_version: 0.15.0
 dependencies:
 - repo_url: 9sako6/-
   host: github.com
@@ -50,6 +50,15 @@ dependencies:
   - .agents/skills/thermo-nuclear-code-quality-review
   - .claude/skills/thermo-nuclear-code-quality-review
   content_hash: sha256:9052b01b46b1d8dbf94c45f9313ec1983443f9a460e83d49cdc7fe0f640ca476
+- repo_url: iKora128/stop-ai-slop-jp
+  host: github.com
+  resolved_commit: e09d32796f253a62693885757cea484c275d06f2
+  resolved_ref: e09d32796f253a62693885757cea484c275d06f2
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/stop-ai-slop-jp
+  - .claude/skills/stop-ai-slop-jp
+  content_hash: sha256:2e81e3a96cd7e5eaaf6fae3a597a76c8538c027a3ec86b8643cb454dc231f8ff
 - repo_url: mattpocock/skills
   host: github.com
   resolved_commit: b8be62ffacb0118fa3eaa29a0923c87c8c11985c

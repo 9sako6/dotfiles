@@ -11,6 +11,7 @@ dependencies:
   - mattpocock/skills/skills/productivity/grill-me
   - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
   - 9sako6/-/skills/minus
+  - iKora128/stop-ai-slop-jp#e09d32796f253a62693885757cea484c275d06f2
   mcp:
   - name: playwright
     registry: false

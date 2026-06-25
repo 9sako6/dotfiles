@@ -21,7 +21,7 @@ export function createAgentsBuildPlan(operation: AgentsBuildOperation, args: str
         compileCommand,
       ];
     case "install":
-      return [{ command: "apm", args: ["install", ...args] }, compileCommand];
+      return [{ command: "apm", args: ["install", ...args, "--target", "claude,codex"] }, compileCommand];
     case "update":
       return [{ command: "apm", args: ["deps", "update", ...args] }, compileCommand];
     case "uninstall":

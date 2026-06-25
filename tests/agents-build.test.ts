@@ -66,7 +66,7 @@ describe("createAgentsBuildPlan", () => {
 
   test("installs the requested package before compiling agents", () => {
     expect(createAgentsBuildPlan("install", ["mattpocock/skills/foo"])).toEqual([
-      { command: "apm", args: ["install", "mattpocock/skills/foo"] },
+      { command: "apm", args: ["install", "mattpocock/skills/foo", "--target", "claude,codex"] },
       { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
     ]);
   });
@@ -87,7 +87,7 @@ describe("createAgentsBuildPlan", () => {
 
   test("falls back to the apm command behavior when no package is specified", () => {
     expect(createAgentsBuildPlan("install", [])).toEqual([
-      { command: "apm", args: ["install"] },
+      { command: "apm", args: ["install", "--target", "claude,codex"] },
       { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
     ]);
   });
