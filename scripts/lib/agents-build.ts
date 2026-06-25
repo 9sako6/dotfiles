@@ -1,6 +1,34 @@
 import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+export type AgentsBuildOperation = "build" | "install" | "update" | "uninstall";
+
+export type CommandPlan = {
+  command: string;
+  args: string[];
+};
+
+const compileCommand: CommandPlan = {
+  command: "apm",
+  args: ["compile", "--clean", "--target", "claude,codex"],
+};
+
+export function createAgentsBuildPlan(operation: AgentsBuildOperation, args: string[]): CommandPlan[] {
+  switch (operation) {
+    case "build":
+      return [
+        { command: "apm", args: ["install", "--frozen", "--only", "apm", "--target", "claude,codex"] },
+        compileCommand,
+      ];
+    case "install":
+      return [{ command: "apm", args: ["install", ...args] }, compileCommand];
+    case "update":
+      return [{ command: "apm", args: ["deps", "update", ...args] }, compileCommand];
+    case "uninstall":
+      return [{ command: "apm", args: ["uninstall", ...args] }, compileCommand];
+  }
+}
+
 export async function finalizeCompiledAgents(rootDir: string) {
   const sourceAgentsPath = path.join(rootDir, "AGENTS.md");
   const codexDir = path.join(rootDir, ".codex");

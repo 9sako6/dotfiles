@@ -9,13 +9,18 @@ description = "Build agents resources via apm"
 
 [tasks."agents:install"]
 dir = "{{config_root}}/dist"
-run = ["apm install --frozen --only apm --target claude,codex"]
-description = "Install agents resources into the home directory"
+run = "bun run ../scripts/build-agents.ts install"
+description = "Install an agents skill via apm, then build agents resources"
+
+[tasks."agents:update"]
+dir = "{{config_root}}/dist"
+run = "bun run ../scripts/build-agents.ts update"
+description = "Update an agents skill via apm, then build agents resources"
 
 [tasks."agents:uninstall"]
 dir = "{{config_root}}/dist"
-run = "apm uninstall"
-description = "Uninstall agents resources via apm"
+run = "bun run ../scripts/build-agents.ts uninstall"
+description = "Uninstall an agents skill via apm, then build agents resources"
 
 [tasks."install:user"]
 depends = ["install:user:brew", "install:user:mise", "install:user:zinit"]

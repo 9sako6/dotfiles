@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { access, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { finalizeCompiledAgents, restoreLockfileIfOnlyGeneratedAtChanged } from "../scripts/lib/agents-build";
+import { createAgentsBuildPlan, finalizeCompiledAgents, restoreLockfileIfOnlyGeneratedAtChanged } from "../scripts/lib/agents-build";
 import { withTempDir, writeTree } from "./test-helpers";
 
 describe("finalizeCompiledAgents", () => {
@@ -53,5 +53,42 @@ describe("finalizeCompiledAgents", () => {
 
       expect(await readFile(lockPath, "utf8")).toBe(changed);
     });
+  });
+});
+
+describe("createAgentsBuildPlan", () => {
+  test("keeps the existing frozen install plan for the build task", () => {
+    expect(createAgentsBuildPlan("build", [])).toEqual([
+      { command: "apm", args: ["install", "--frozen", "--only", "apm", "--target", "claude,codex"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+    ]);
+  });
+
+  test("installs the requested package before compiling agents", () => {
+    expect(createAgentsBuildPlan("install", ["mattpocock/skills/foo"])).toEqual([
+      { command: "apm", args: ["install", "mattpocock/skills/foo"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+    ]);
+  });
+
+  test("updates the requested package before compiling agents", () => {
+    expect(createAgentsBuildPlan("update", ["mattpocock/skills/foo"])).toEqual([
+      { command: "apm", args: ["deps", "update", "mattpocock/skills/foo"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+    ]);
+  });
+
+  test("uninstalls the requested package before compiling agents", () => {
+    expect(createAgentsBuildPlan("uninstall", ["mattpocock/skills/foo"])).toEqual([
+      { command: "apm", args: ["uninstall", "mattpocock/skills/foo"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+    ]);
+  });
+
+  test("falls back to the apm command behavior when no package is specified", () => {
+    expect(createAgentsBuildPlan("install", [])).toEqual([
+      { command: "apm", args: ["install"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+    ]);
   });
 });

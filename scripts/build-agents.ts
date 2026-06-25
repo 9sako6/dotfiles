@@ -2,6 +2,8 @@
 
 import path from "node:path";
 import {
+  type AgentsBuildOperation,
+  createAgentsBuildPlan,
   finalizeCompiledAgents,
   readFileIfExists,
   restoreLockfileIfOnlyGeneratedAtChanged,
@@ -9,13 +11,23 @@ import {
 
 async function main() {
   const cwd = process.cwd();
+  const [operationArg = "build", ...operationArgs] = process.argv.slice(2);
+  if (!isAgentsBuildOperation(operationArg)) {
+    throw new Error(`Unknown agents operation: ${operationArg}`);
+  }
+
   const lockPath = path.join(cwd, "apm.lock.yaml");
   const originalLockfile = await readFileIfExists(lockPath);
 
-  await run("apm", ["install", "--frozen", "--only", "apm", "--target", "claude,codex"], cwd);
-  await run("apm", ["compile", "--clean", "--target", "claude,codex"], cwd);
+  for (const commandPlan of createAgentsBuildPlan(operationArg, operationArgs)) {
+    await run(commandPlan.command, commandPlan.args, cwd);
+  }
   await finalizeCompiledAgents(cwd);
   await restoreLockfileIfOnlyGeneratedAtChanged(lockPath, originalLockfile);
+}
+
+function isAgentsBuildOperation(value: string): value is AgentsBuildOperation {
+  return ["build", "install", "update", "uninstall"].includes(value);
 }
 
 async function run(command: string, args: string[], cwd: string) {
