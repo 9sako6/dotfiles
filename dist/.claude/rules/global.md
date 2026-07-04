@@ -16,6 +16,7 @@ paths:
 - 明白な修正では過剰設計を避け、重要な変更では自然で長持ちする解決を選ぶ
 - 枯れた技術、標準、最小の労力で解ける手段を優先する
 - 一時しのぎで整合性を崩さない
+- ラッパーに切り出して名前だけ付ける抽象化を禁止する。薄い委譲は保守コストだけを増やし、意味がない限り直呼び出しを選ぶ
 
 # execution
 
@@ -37,12 +38,13 @@ paths:
 - 必要に応じて main ブランチとの差分を確認する
 - 変更の根拠、影響範囲、保守性を説明できる状態で終える
 
-# boundaries
+# remote collaboration
 
 - ユーザーの明示的な確認なしに、`git push` を含む公開・同期・アップロードを行わない
 - AI エージェントが行ったコミットには、適切な `Co-Authored-By` trailer を付ける。例:
   - `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`
   - `Co-Authored-By: codex <codex@openai.com>`
+- コミットメッセージには、変更の理由を記載する
 
 # sources
 

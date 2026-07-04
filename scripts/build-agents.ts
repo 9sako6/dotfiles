@@ -31,7 +31,8 @@ function isAgentsBuildOperation(value: string): value is AgentsBuildOperation {
 }
 
 async function run(command: string, args: string[], cwd: string) {
-  const proc = Bun.spawn([command, ...args], {
+  const commandPath = await resolveCommand(command, cwd);
+  const proc = Bun.spawn([commandPath, ...args], {
     cwd,
     stderr: "inherit",
     stdout: "inherit",
@@ -40,6 +41,28 @@ async function run(command: string, args: string[], cwd: string) {
   if (exitCode !== 0) {
     throw new Error(`${command} ${args.join(" ")} failed with exit code ${exitCode}`);
   }
+}
+
+async function resolveCommand(command: string, cwd: string) {
+  if (command !== "apm") {
+    return command;
+  }
+  const miseConfigCwd = Bun.env.HOME ?? cwd;
+  const proc = Bun.spawn(["mise", "which", command], {
+    cwd: miseConfigCwd,
+    stderr: "inherit",
+    stdout: "pipe",
+  });
+  const output = await new Response(proc.stdout).text();
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    throw new Error(`mise which ${command} failed with exit code ${exitCode}`);
+  }
+  const commandPath = output.trim();
+  if (commandPath === "") {
+    throw new Error(`mise which ${command} did not return a command path`);
+  }
+  return commandPath;
 }
 
 main().catch((error) => {
