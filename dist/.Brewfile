@@ -1,5 +1,4 @@
 brew "devcontainer"
-brew "dlvhdr/formulae/diffnav"
 brew "gh"
 brew "git"
 brew "herdr"
