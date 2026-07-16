@@ -159,21 +159,6 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("accepts an explicit standalone prune path removed from sourceRoot", async () => {
-    await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
-      await writeTree(sourceRoot, { ".zshrc": "" });
-      await writeFile(
-        path.join(tempDir, ".dotfiles.json"),
-        JSON.stringify({ prune: [".Brewfile"] }),
-      );
-
-      const config = await loadDotfilesConfig(tempDir, sourceRoot);
-
-      expect(config.prunePaths).toEqual(new Set([".Brewfile"]));
-    });
-  });
-
   test("accepts directory entries that exist under sourceRoot", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");

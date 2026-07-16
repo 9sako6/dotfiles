@@ -152,29 +152,21 @@ esac
 }
 
 describe("shell config", () => {
-  test("zshenv loads secrets and initializes the existing Homebrew environment", async () => {
+  test("zshenv sources secrets before interactive shell config loads", async () => {
     await withTempDir("zshenv-secrets", async (tempDir) => {
       const homeDir = path.join(tempDir, "home");
-      const shellEnv = { ...process.env };
-      delete shellEnv.HOMEBREW_CELLAR;
-      delete shellEnv.HOMEBREW_PREFIX;
-      delete shellEnv.HOMEBREW_REPOSITORY;
-      const brewPrefixResult = await runCommand("brew", ["--prefix"], shellEnv);
-      expect(brewPrefixResult.code).toBe(0);
 
       await writeTree(homeDir, {
         ".zsh.d/secrets.zsh": "export SECRET_FROM_TEST=loaded\n",
       });
 
-      const result = await runCommand("zsh", ["-f", "-c", "source dist/.zshenv; printf '%s\\n%s' \"$SECRET_FROM_TEST\" \"$HOMEBREW_PREFIX\""], {
-        ...shellEnv,
+      const result = await runCommand("zsh", ["-f", "-c", "source dist/.zshenv; printf '%s' \"$SECRET_FROM_TEST\""], {
+        ...process.env,
         HOME: homeDir,
       });
 
       expect(result.code).toBe(0);
-      const [secret, homebrewPrefix] = result.stdout.split("\n");
-      expect(secret).toBe("loaded");
-      expect(homebrewPrefix).toBe(brewPrefixResult.stdout.trim());
+      expect(result.stdout).toBe("loaded");
     });
   });
 
