@@ -290,6 +290,29 @@ describe("runLinkPlan with copy actions", () => {
 });
 
 describe("runLinkPlan with prune actions", () => {
+  test("backs up an explicitly pruned top-level path absent from sourceRoot", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "dist");
+      const homeDir = path.join(tempDir, "home");
+      await mkdir(sourceRoot, { recursive: true });
+      await writeTree(homeDir, {
+        ".Brewfile": "brew \"git\"\n",
+      });
+
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        prunePaths: new Set([".Brewfile"]),
+        symlinkPaths: new Set(),
+        timestamp: "20260328T110000",
+      });
+      await runLinkPlan(plan);
+
+      await expect(access(path.join(homeDir, ".Brewfile"))).rejects.toThrow();
+      expect(await readFile(path.join(homeDir, ".dotfiles-backups", "20260328T110000", ".Brewfile"), "utf8")).toBe('brew "git"\n');
+    });
+  });
+
   test("backs up files under prune paths when they no longer exist in sourceRoot", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");

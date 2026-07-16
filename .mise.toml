@@ -23,33 +23,13 @@ run = "bun run ../scripts/build-agents.ts uninstall"
 description = "Uninstall an agents skill via apm, then build agents resources"
 
 [tasks."install:user"]
-depends = ["install:user:brew", "install:user:mise", "install:user:zinit"]
-description = "Install user tools from deployed home-directory config"
+depends = ["apply"]
+run = "cd $HOME && mise bootstrap --yes"
+description = "Converge user tools from deployed home-directory config"
 
-[tasks."install:user:brew"]
-run = "brew bundle --file=$HOME/.Brewfile"
-description = "Install user Homebrew packages from ~/.Brewfile"
-
-[tasks."install:user:mise"]
-run = "cd $HOME && mise install"
-description = "Install user-level mise tools from ~/.config/mise/config.toml"
-
-[tasks."install:user:zinit"]
-run = '''
-set -eu
-
-ZINIT_DIR="$HOME/.local/share/zinit/zinit.git"
-if [ -e "$ZINIT_DIR/zinit.zsh" ]; then
-  exit 0
-fi
-
-mkdir -p "$(dirname "$ZINIT_DIR")"
-git init "$ZINIT_DIR"
-git -C "$ZINIT_DIR" remote add origin https://github.com/zdharma-continuum/zinit.git
-git -C "$ZINIT_DIR" fetch --depth=1 origin 55d19f86f627c9995db9885d0971d9b6701fe0d3
-git -C "$ZINIT_DIR" checkout --detach FETCH_HEAD
-'''
-description = "Install zinit when it is not already present"
+[tasks.bootstrap]
+depends = ["install:user"]
+description = "Deploy dotfiles and converge the user environment"
 
 [tasks.apply]
 run = "bun run scripts/link-dist.ts"

@@ -33,16 +33,11 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Install current Git for config-based hooks
-        run: |
-          brew update
-          if brew list git >/dev/null 2>&1; then
-            brew upgrade git
-          else
-            brew install git
-          fi
-          echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          version: 2026.7.7
+      - name: Install current Git for config-based hooks
+        run: mise bootstrap packages apply --yes brew:git
       - name: Run contract tests
         run: mise run dev:test
 
@@ -65,15 +60,20 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           cd "$HOME/dotfiles"
-          mise exec -- node --version
-          mise exec -- pnpm --version
-          mise exec -- bun --version
-          mise exec -- zoxide --version
           mise exec -- atuin --version
+          mise exec -- bun --version
+          mise exec -- codex --version
+          mise exec -- devcontainer --version
           mise exec -- eza --version
           mise exec -- fd --version
-          mise exec -- rg --version
           mise exec -- fzf --version
-          mise exec -- gitleaks version
+          mise exec -- gh --version
           mise exec -- ghq --version
+          mise exec -- gitleaks version
+          git --version
+          mise exec -- herdr --version
+          mise exec -- node --version
+          mise exec -- pnpm --version
+          mise exec -- rg --version
           mise exec -- zellij --version
+          mise exec -- zoxide --version

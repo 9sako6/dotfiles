@@ -1,7 +1,0 @@
-brew "devcontainer"
-brew "gh"
-brew "git"
-brew "herdr"
-cask "codex"
-cask "ghostty"
-cask "raycast"

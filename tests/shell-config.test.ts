@@ -160,13 +160,15 @@ describe("shell config", () => {
         ".zsh.d/secrets.zsh": "export SECRET_FROM_TEST=loaded\n",
       });
 
-      const result = await runCommand("zsh", ["-f", "-c", "source dist/.zshenv; printf '%s' \"$SECRET_FROM_TEST\""], {
+      const result = await runCommand("zsh", ["-f", "-c", "source dist/.zshenv; printf '%s\\n%s' \"$SECRET_FROM_TEST\" \"$PATH\""], {
         ...process.env,
         HOME: homeDir,
       });
 
       expect(result.code).toBe(0);
-      expect(result.stdout).toBe("loaded");
+      const [secret, shellPath] = result.stdout.split("\n");
+      expect(secret).toBe("loaded");
+      expect(shellPath?.split(":")).toContain("/opt/homebrew/bin");
     });
   });
 

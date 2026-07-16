@@ -3,7 +3,6 @@
     ".config",
     ".zsh.d",
     "mybin",
-    ".Brewfile",
     ".gitconfig",
     ".gitignore_global",
     ".zshenv",
@@ -17,6 +16,7 @@
     ".codex"
   ],
   "prune": [
+    ".Brewfile",
     ".agents/skills",
     ".claude/skills"
   ]

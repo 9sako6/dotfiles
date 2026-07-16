@@ -19,10 +19,9 @@ export async function loadDotfilesConfig(
   const copyPaths = new Set(parseManagedPaths(parsed.copy, "copy"));
   const prunePaths = new Set(parseManagedPaths(parsed.prune, "prune"));
   validateNoConflicts(symlinkPaths, copyPaths);
-  validatePrunePaths(copyPaths, prunePaths);
+  await validatePrunePaths(sourceRoot, copyPaths, prunePaths);
   await validatePathsExist(sourceRoot, symlinkPaths, "symlink");
   await validatePathsExist(sourceRoot, copyPaths, "copy");
-  await validatePathsExist(sourceRoot, prunePaths, "prune");
   return { symlinkPaths, copyPaths, prunePaths };
 }
 
@@ -73,17 +72,19 @@ function isDescendant(ancestor: string, descendant: string): boolean {
   return relativePath !== "" && !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
 }
 
-function validatePrunePaths(
+async function validatePrunePaths(
+  sourceRoot: string,
   copyPaths: ReadonlySet<string>,
   prunePaths: ReadonlySet<string>,
-): void {
+): Promise<void> {
   for (const prunePath of prunePaths) {
     const isCoveredByCopyPath = [...copyPaths].some(
       (copyPath) => prunePath === copyPath || isDescendant(copyPath, prunePath),
     );
-    if (!isCoveredByCopyPath) {
-      throw new Error(`.dotfiles.json: prune path "${prunePath}" must be covered by copy paths`);
+    if (isCoveredByCopyPath || !(await lstatOrNull(path.join(sourceRoot, prunePath)))) {
+      continue;
     }
+    throw new Error(`.dotfiles.json: prune path "${prunePath}" must be covered by copy paths`);
   }
 }
 
