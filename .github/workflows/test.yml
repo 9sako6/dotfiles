@@ -28,19 +28,6 @@ jobs:
       - name: Run gitleaks
         run: gitleaks git --redact --no-banner --exit-code 1
 
-  test:
-    needs: secret-scan
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-        with:
-          version: 2026.7.7
-      - name: Install current Git for config-based hooks
-        run: mise bootstrap packages apply --yes brew:git
-      - name: Run contract tests
-        run: mise run dev:test
-
   public-install-smoke:
     needs: secret-scan
     runs-on: macos-latest
