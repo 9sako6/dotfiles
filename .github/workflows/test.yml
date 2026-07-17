@@ -75,5 +75,6 @@ jobs:
           mise exec -- node --version
           mise exec -- pnpm --version
           mise exec -- rg --version
+          test -d /Applications/Raycast.app
           mise exec -- zellij --version
           mise exec -- zoxide --version

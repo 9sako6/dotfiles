@@ -20,15 +20,18 @@ lefthook = "2.1.4"
 "npm:@devcontainers/cli" = "0.87.0"
 pnpm = "10.33.0"
 "pipx:apm-cli" = "0.23.1"
+"raycast:app" = "latest"
 ripgrep = "15.1.0"
 uv = "0.11.26"
 "github:9sako6/zundamonotify" = "0.1.6"
 zellij = "0.44.0"
 zoxide = "0.9.9"
 
+[plugins]
+"vfox-backend:raycast" = "https://github.com/9sako6/mise-raycast.git#v0.1.0"
+
 [bootstrap.packages]
 "brew-cask:ghostty" = "latest"
-"brew-cask:raycast" = "latest"
 "brew:git" = "latest"
 
 [bootstrap.repos]
