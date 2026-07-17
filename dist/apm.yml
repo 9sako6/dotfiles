@@ -13,12 +13,4 @@ dependencies:
   - 9sako6/-/skills/minus
   - iKora128/stop-ai-slop-jp#e09d32796f253a62693885757cea484c275d06f2
   - Leonxlnx/taste-skill
-  mcp:
-  - name: playwright
-    registry: false
-    transport: stdio
-    command: npx
-    args:
-    - -y
-    - '@playwright/mcp@0.0.70'
 scripts: {}

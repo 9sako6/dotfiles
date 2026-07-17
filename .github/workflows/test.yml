@@ -28,7 +28,7 @@ jobs:
       - name: Run gitleaks
         run: gitleaks git --redact --no-banner --exit-code 1
 
-  contracts:
+  test:
     needs: secret-scan
     runs-on: macos-latest
     steps:
@@ -71,7 +71,6 @@ jobs:
           mise exec -- gitleaks version
           git --version
           mise exec -- herdr --version
-          mise exec -- node --version
           mise exec -- pnpm --version
           mise exec -- rg --version
           test -d /Applications/Raycast.app

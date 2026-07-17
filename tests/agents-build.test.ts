@@ -11,7 +11,7 @@ describe("finalizeCompiledAgents", () => {
         "AGENTS.md": "# agents\n",
         "CLAUDE.md": "# claude\n",
         "GEMINI.md": "# gemini\n",
-        ".codex/config.toml": "[mcp_servers.playwright]\n",
+        ".codex/config.toml": "[mcp_servers.example]\n",
         ".mcp.json": "{}\n",
       });
 

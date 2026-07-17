@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-07-04T05:43:09.534732+00:00'
+generated_at: '2026-07-17T01:03:04.427450+00:00'
 apm_version: 0.23.1
 dependencies:
 - repo_url: 9sako6/-
@@ -297,17 +297,6 @@ dependencies:
     .agents/skills/grill-me/SKILL.md: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
     .claude/skills/grill-me/SKILL.md: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
   content_hash: sha256:784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea
-mcp_servers:
-- playwright
-mcp_configs:
-  playwright:
-    name: playwright
-    transport: stdio
-    args:
-    - -y
-    - '@playwright/mcp@0.0.70'
-    registry: false
-    command: npx
 local_deployed_files:
 - .agents/skills/rails-mysql-explain
 - .agents/skills/rails-mysql-explain/SKILL.md
