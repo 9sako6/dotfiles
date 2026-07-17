@@ -64,7 +64,6 @@ jobs:
           mise exec -- bun --version
           mise exec -- codex --version
           mise exec -- devcontainer --version
-          mise exec -- eza --version
           mise exec -- fd --version
           mise exec -- fzf --version
           mise exec -- gh --version

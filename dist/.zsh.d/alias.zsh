@@ -33,10 +33,6 @@ alias '$'='command'
 alias codex='command codex --no-alt-screen'
 
 # Modern CLI replacements
-abbrev-alias ls='eza'
-abbrev-alias ll='eza -l --git'
-abbrev-alias la='eza -la --git'
-abbrev-alias lt='eza --tree --level=2'
 
 # Markdown preview
 mdp() {
