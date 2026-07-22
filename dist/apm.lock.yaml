@@ -356,7 +356,7 @@ local_deployed_file_hashes:
   .agents/skills/superpowers-subagent-driven-development/spec-reviewer-prompt.md: sha256:4f7576999d093aa37e6ecd4c87ce36e6c5af798ccebc54e322be30e254082a84
   .agents/skills/superpowers-test-driven-development/SKILL.md: sha256:48252ea4cc1fd8a7b4f196f11ab9375ab9e9c9ca548bb7b5f7f266f55156856d
   .agents/skills/superpowers-test-driven-development/testing-anti-patterns.md: sha256:315b6a3c8530ebfd5adf0d9fae663d8f456ca76a15bb10987f3b0abc9b0a40bd
-  .claude/rules/global.md: sha256:02893ef2f681ae32a3891e14ec8249b989284638e00e31e016ae9245565b1287
+  .claude/rules/global.md: sha256:5c3b63b98c3a3a3408419d66fa841b6bfb13460ea752ad98fb2f094a236e4d08
   .claude/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
   .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
   .claude/skills/superpowers-brainstorming/SKILL.md: sha256:e7fa559af408ab83719aae1223dc4f2e696b009016054ec3a672fd571a9fe8fe
