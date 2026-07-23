@@ -4,6 +4,7 @@ description: APM project for 9sako6
 author: 9sako6
 dependencies:
   apm:
+  - ./.apm/skills/create-anki-cards
   - ./.apm/skills/rails-mysql-explain
   - ./.apm/skills/superpowers-brainstorming
   - ./.apm/skills/superpowers-subagent-driven-development

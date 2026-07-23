@@ -16,6 +16,7 @@ dist/.apm/skills/create-anki-cards/
 ├── references/
 │   └── card-design.md
 └── tools/
+    ├── anki-cards.test.ts
     └── anki-cards.ts
 ```
 
