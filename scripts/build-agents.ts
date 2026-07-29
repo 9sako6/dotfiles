@@ -2,10 +2,12 @@
 
 import path from "node:path";
 import {
-  type AgentsBuildOperation,
+  type AgentsOperation,
+  assertRemoteUninstallTargets,
   createAgentsBuildPlan,
   finalizeCompiledAgents,
   readFileIfExists,
+  removeLocalSkill,
   restoreLockfileIfOnlyGeneratedAtChanged,
 } from "./lib/agents-build";
 
@@ -19,15 +21,22 @@ async function main() {
   const lockPath = path.join(cwd, "apm.lock.yaml");
   const originalLockfile = await readFileIfExists(lockPath);
 
-  for (const commandPlan of createAgentsBuildPlan(operationArg, operationArgs)) {
-    await run(commandPlan.command, commandPlan.args, cwd);
+  if (operationArg === "remove-local") {
+    await removeLocalSkill(cwd, operationArgs, run);
+  } else {
+    if (operationArg === "uninstall") {
+      await assertRemoteUninstallTargets(cwd, operationArgs);
+    }
+    for (const commandPlan of createAgentsBuildPlan(operationArg, operationArgs)) {
+      await run(commandPlan.command, commandPlan.args, cwd);
+    }
   }
   await finalizeCompiledAgents(cwd);
   await restoreLockfileIfOnlyGeneratedAtChanged(lockPath, originalLockfile);
 }
 
-function isAgentsBuildOperation(value: string): value is AgentsBuildOperation {
-  return ["build", "install", "update", "uninstall"].includes(value);
+function isAgentsBuildOperation(value: string): value is AgentsOperation {
+  return ["build", "install", "remove-local", "update", "uninstall"].includes(value);
 }
 
 async function run(command: string, args: string[], cwd: string) {

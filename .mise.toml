@@ -11,6 +11,11 @@ dir = "{{config_root}}/dist"
 run = "bun run ../scripts/build-agents.ts install"
 description = "Install an agents skill via apm, then build agents resources"
 
+[tasks."agents:remove-local"]
+dir = "{{config_root}}/dist"
+run = "bun run ../scripts/build-agents.ts remove-local"
+description = "Remove a repository-owned local agents skill, then build agents resources"
+
 [tasks."agents:update"]
 dir = "{{config_root}}/dist"
 run = "bun run ../scripts/build-agents.ts update"
