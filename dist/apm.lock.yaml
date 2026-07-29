@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-07-23T11:28:43.218682+00:00'
+generated_at: '2026-07-29T14:13:36.214362+00:00'
 apm_version: 0.23.1
 dependencies:
 - repo_url: 9sako6/-
@@ -127,14 +127,14 @@ dependencies:
   - .claude/skills/create-anki-cards/tools/anki-cards.test.ts
   - .claude/skills/create-anki-cards/tools/anki-cards.ts
   deployed_file_hashes:
-    .agents/skills/create-anki-cards/SKILL.md: sha256:b21c4ce7cbf64c77a5c17a8596f976f3dc5ee3ab9fa7f1745a52741c2ee9b790
+    .agents/skills/create-anki-cards/SKILL.md: sha256:08bd9141707d1079a5a730a7fe112eb30ecd4fbbedb6f270a754e29613481e8a
     .agents/skills/create-anki-cards/references/card-design.md: sha256:4f2ad521f04dbe1ba0c405ddf8ce14e49c01c569a58ba46f54956ca20bebae34
-    .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:da2900f532fac9f05ce1d26713272aea242804fd0bcaba3f56cfc45f0ec7e9fd
-    .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:c1eae73f93b57ce1d47887fac590f1ba242236c5c002209d5fae8a1d5d3a8fc9
-    .claude/skills/create-anki-cards/SKILL.md: sha256:b21c4ce7cbf64c77a5c17a8596f976f3dc5ee3ab9fa7f1745a52741c2ee9b790
+    .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:16399a1cd01f98dac0cde11f37bd3a11a1199bdf9213aa6e210610105a9cf9d4
+    .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:0cb77d6538a074b6feaebceab1e607d8c72c94c76b1eb257f1794df7f8d77439
+    .claude/skills/create-anki-cards/SKILL.md: sha256:08bd9141707d1079a5a730a7fe112eb30ecd4fbbedb6f270a754e29613481e8a
     .claude/skills/create-anki-cards/references/card-design.md: sha256:4f2ad521f04dbe1ba0c405ddf8ce14e49c01c569a58ba46f54956ca20bebae34
-    .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:da2900f532fac9f05ce1d26713272aea242804fd0bcaba3f56cfc45f0ec7e9fd
-    .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:c1eae73f93b57ce1d47887fac590f1ba242236c5c002209d5fae8a1d5d3a8fc9
+    .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:16399a1cd01f98dac0cde11f37bd3a11a1199bdf9213aa6e210610105a9cf9d4
+    .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:0cb77d6538a074b6feaebceab1e607d8c72c94c76b1eb257f1794df7f8d77439
   source: local
   local_path: ./.apm/skills/create-anki-cards
 - repo_url: _local/rails-mysql-explain
@@ -256,16 +256,16 @@ local_deployed_files:
 - .claude/skills/rails-mysql-explain/SKILL.md
 - .claude/skills/rails-mysql-explain/references/explain-guide.md
 local_deployed_file_hashes:
-  .agents/skills/create-anki-cards/SKILL.md: sha256:b21c4ce7cbf64c77a5c17a8596f976f3dc5ee3ab9fa7f1745a52741c2ee9b790
+  .agents/skills/create-anki-cards/SKILL.md: sha256:08bd9141707d1079a5a730a7fe112eb30ecd4fbbedb6f270a754e29613481e8a
   .agents/skills/create-anki-cards/references/card-design.md: sha256:4f2ad521f04dbe1ba0c405ddf8ce14e49c01c569a58ba46f54956ca20bebae34
-  .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:da2900f532fac9f05ce1d26713272aea242804fd0bcaba3f56cfc45f0ec7e9fd
-  .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:c1eae73f93b57ce1d47887fac590f1ba242236c5c002209d5fae8a1d5d3a8fc9
+  .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:16399a1cd01f98dac0cde11f37bd3a11a1199bdf9213aa6e210610105a9cf9d4
+  .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:0cb77d6538a074b6feaebceab1e607d8c72c94c76b1eb257f1794df7f8d77439
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
   .claude/rules/global.md: sha256:a5209bcb60d283fc9dbda412511e769f5f1ebf69d33a8fa0af610143864c7a51
-  .claude/skills/create-anki-cards/SKILL.md: sha256:b21c4ce7cbf64c77a5c17a8596f976f3dc5ee3ab9fa7f1745a52741c2ee9b790
+  .claude/skills/create-anki-cards/SKILL.md: sha256:08bd9141707d1079a5a730a7fe112eb30ecd4fbbedb6f270a754e29613481e8a
   .claude/skills/create-anki-cards/references/card-design.md: sha256:4f2ad521f04dbe1ba0c405ddf8ce14e49c01c569a58ba46f54956ca20bebae34
-  .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:da2900f532fac9f05ce1d26713272aea242804fd0bcaba3f56cfc45f0ec7e9fd
-  .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:c1eae73f93b57ce1d47887fac590f1ba242236c5c002209d5fae8a1d5d3a8fc9
+  .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:16399a1cd01f98dac0cde11f37bd3a11a1199bdf9213aa6e210610105a9cf9d4
+  .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:0cb77d6538a074b6feaebceab1e607d8c72c94c76b1eb257f1794df7f8d77439
   .claude/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
   .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1

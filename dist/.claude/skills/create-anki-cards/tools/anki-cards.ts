@@ -2,7 +2,7 @@
 
 import { rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 type Field = {
   name: string;
@@ -12,6 +12,7 @@ type Field = {
 
 type Card = {
   id: string;
+  guid?: string;
   fields: Record<string, string>;
   tags: string[];
   sources: string[];
@@ -35,6 +36,7 @@ type Project = {
     deck: string;
     noteType: string;
     html: boolean;
+    guidPolicy?: "anki" | "generate";
     fields: Field[];
     tagPolicy: TagPolicy;
     identityField?: string;
@@ -86,6 +88,12 @@ function parseProject(raw: unknown): Project {
     }
     if (typeof contract.html !== "boolean") {
       errors.push("contract.html: booleanが必要です");
+    }
+    if (
+      contract.guidPolicy !== undefined &&
+      !["anki", "generate"].includes(String(contract.guidPolicy))
+    ) {
+      errors.push("contract.guidPolicy: ankiまたはgenerateが必要です");
     }
     if (!Array.isArray(contract.fields)) {
       errors.push("contract.fields: 配列が必要です");
@@ -157,6 +165,14 @@ function parseProject(raw: unknown): Project {
       if (typeof card.id !== "string" || card.id.length === 0) {
         errors.push(`cards[${index}].id: 空でない文字列が必要です`);
       }
+      if (
+        card.guid !== undefined &&
+        (typeof card.guid !== "string" || card.guid.length === 0)
+      ) {
+        errors.push(
+          `cards[${index}].guid: 指定する場合は空でない文字列が必要です`,
+        );
+      }
       if (!isRecord(card.fields)) {
         errors.push(`cards[${index}].fields: オブジェクトが必要です`);
       } else {
@@ -203,7 +219,9 @@ function renderTsv(
 ): string {
   const { contract, cards } = project;
   const fieldNames = contract.fields.map(({ name }) => name);
-  const hasGuid = guidsByIdentity !== undefined;
+  const hasGuid =
+    guidsByIdentity !== undefined ||
+    (contract.mode === "create" && contract.guidPolicy === "generate");
   const tagColumn = fieldNames.length + (hasGuid ? 2 : 1);
   const lines = [
     "#separator:tab",
@@ -221,7 +239,12 @@ function renderTsv(
         : undefined;
     lines.push(
       [
-        ...(hasGuid ? [guidsByIdentity.get(identity ?? "") ?? ""] : []),
+        ...(hasGuid
+          ? [
+              guidsByIdentity?.get(identity ?? "") ??
+                (contract.mode === "create" ? card.guid ?? "" : ""),
+            ]
+          : []),
         ...fieldNames.map((name) => encodeTsv(card.fields[name] ?? "")),
         encodeTsv(card.tags.join(" ")),
       ].join("\t"),
@@ -517,6 +540,12 @@ function validateProject(project: Project): QualityWarning[] {
   if (project.contract.mode === "create" && project.contract.identityField) {
     errors.push("contract.identityField: 新規作成モードでは指定できません");
   }
+  if (
+    project.contract.mode === "update" &&
+    project.contract.guidPolicy !== undefined
+  ) {
+    errors.push("contract.guidPolicy: 更新モードでは指定できません");
+  }
   const contractFields = new Map(
     project.contract.fields.map((field) => [field.name, field]),
   );
@@ -525,6 +554,7 @@ function validateProject(project: Project): QualityWarning[] {
       ? new Set(project.contract.tagPolicy.allowed)
       : undefined;
   const seenIdentities = new Set<string>();
+  const seenGuids = new Set<string>();
   for (let index = 0; index < project.cards.length; index += 1) {
     const card = project.cards[index];
     if (/\s/u.test(card.id) || UNSAFE_CONTROL_CHARACTERS.test(card.id)) {
@@ -536,6 +566,28 @@ function validateProject(project: Project): QualityWarning[] {
       );
     }
     seenIds.add(card.id);
+    if (card.guid !== undefined) {
+      if (
+        project.contract.mode !== "create" ||
+        project.contract.guidPolicy !== "generate"
+      ) {
+        errors.push(
+          `cards[${index}].guid: createモードかつguidPolicyがgenerateの場合だけ指定できます`,
+        );
+      } else if (
+        card.guid.length > 10 ||
+        [...card.guid].some(
+          (character) => !ANKI_BASE91_TABLE.includes(character),
+        )
+      ) {
+        errors.push(
+          `cards[${index}].guid: Anki互換のbase91 GUIDではありません`,
+        );
+      } else if (seenGuids.has(card.guid)) {
+        errors.push(`cards[${index}].guid: GUIDが重複しています: ${card.guid}`);
+      }
+      seenGuids.add(card.guid);
+    }
     for (const [name, field] of contractFields) {
       if (field.required && !card.fields[name]) {
         errors.push(`cards[${index}].fields.${name}: 必須フィールドがありません`);
@@ -637,6 +689,53 @@ async function readProject(
   return { project, warnings: validateProject(project) };
 }
 
+const ANKI_BASE91_TABLE =
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-./:;<=>?@[]^_`{|}~";
+
+export function ankiBase91(value: bigint): string {
+  let remaining = value;
+  let encoded = "";
+  const radix = BigInt(ANKI_BASE91_TABLE.length);
+  while (remaining > 0n) {
+    const remainder = Number(remaining % radix);
+    encoded = ANKI_BASE91_TABLE[remainder] + encoded;
+    remaining /= radix;
+  }
+  return encoded;
+}
+
+function newAnkiGuid(used: ReadonlySet<string>): string {
+  while (true) {
+    const candidate = ankiBase91(randomBytes(8).readBigUInt64BE());
+    if (candidate && !used.has(candidate)) {
+      return candidate;
+    }
+  }
+}
+
+function assignMissingGuids(project: Project): boolean {
+  if (
+    project.contract.mode !== "create" ||
+    project.contract.guidPolicy !== "generate"
+  ) {
+    return false;
+  }
+  const used = new Set(
+    project.cards
+      .map((card) => card.guid)
+      .filter((guid): guid is string => guid !== undefined),
+  );
+  let changed = false;
+  for (const card of project.cards) {
+    if (card.guid === undefined) {
+      card.guid = newAnkiGuid(used);
+      used.add(card.guid);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function printWarnings(warnings: QualityWarning[]): void {
   for (const warning of warnings) {
     process.stderr.write(
@@ -666,7 +765,17 @@ async function build(
   if ([outputPath, previewPath].includes(absoluteInputPath)) {
     throw new Error("正規データ自身を上書きできません");
   }
+  const assignedGuids = assignMissingGuids(project);
+  validateProject(project);
   await replaceOutputs([
+    ...(assignedGuids
+      ? [
+          {
+            destination: absoluteInputPath,
+            content: `${JSON.stringify(project, null, 2)}\n`,
+          },
+        ]
+      : []),
     {
       destination: outputPath,
       content: renderTsv(project, guidsByIdentity),

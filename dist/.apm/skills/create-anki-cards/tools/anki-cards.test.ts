@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { ankiBase91 } from "./anki-cards";
 
 const toolPath = path.join(import.meta.dir, "anki-cards.ts");
 const temporaryDirectories: string[] = [];
@@ -107,6 +108,34 @@ describe("build", () => {
     expect(preview).toContain("## market-001");
     expect(preview).toContain("### 表面");
     expect(preview).toContain("https://example.com/primary");
+  });
+
+  test("Anki互換GUIDを生成して正規データへ保存し、再生成でも維持する", async () => {
+    const project: any = validProject();
+    project.contract.guidPolicy = "generate";
+    const { directory, inputPath } = await createProject(project);
+
+    const first = await runTool(directory, "build", inputPath);
+
+    expect(first.exitCode).toBe(0);
+    const generated = JSON.parse(await readFile(inputPath, "utf8"));
+    const guid = generated.cards[0].guid;
+    const table =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-./:;<=>?@[]^_`{|}~";
+    expect(guid.length).toBeGreaterThan(0);
+    expect(guid.length).toBeLessThanOrEqual(10);
+    expect([...guid].every((character) => table.includes(character))).toBe(
+      true,
+    );
+    const firstTsv = await readFile(path.join(directory, "cards.tsv"), "utf8");
+    expect(firstTsv).toContain("#guid column:1\n");
+    expect(firstTsv).toContain(`${guid}\t`);
+
+    const second = await runTool(directory, "build", inputPath);
+
+    expect(second.exitCode).toBe(0);
+    const rebuilt = JSON.parse(await readFile(inputPath, "utf8"));
+    expect(rebuilt.cards[0].guid).toBe(guid);
   });
 
   test("Anki書き出しと完全照合し、Anki由来GUIDで更新TSVを作る", async () => {
@@ -274,6 +303,15 @@ describe("build", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("正規データ自身を上書きできません");
     expect(await readFile(inputPath, "utf8")).toBe(original);
+  });
+});
+
+describe("Anki GUID", () => {
+  test("Anki本体と同じbase91表現を生成する", () => {
+    expect(ankiBase91(0n)).toBe("");
+    expect(ankiBase91(1n)).toBe("b");
+    expect(ankiBase91(2n ** 64n - 1n)).toBe("Rj&Z5m[>Zp");
+    expect(ankiBase91(1234567890n)).toBe("saAKk");
   });
 });
 

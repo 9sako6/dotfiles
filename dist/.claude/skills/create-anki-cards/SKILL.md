@@ -30,7 +30,7 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
 3. 既存TSVまたはAnkiから書き出したテキスト
 4. 利用者の回答
 
-デッキ名、ノートタイプ、フィールド名と順序、各フィールドの役割、HTML、タグ規約、新規作成か既存更新かを確定する。資料同士が矛盾する場合は推測せず確認する。
+デッキ名、ノートタイプ、フィールド名と順序、各フィールドの役割、HTML、タグ規約、新規作成か既存更新か、GUIDをAnkiとリポジトリのどちらが所有するかを確定する。資料同士が矛盾する場合は推測せず確認する。
 
 複数回に分ける案件では `ANKI_PLAN.md` に到達目標、判断理由、未解決事項、弾ごとの進捗を記録する。CLIが読む契約は `anki.json` だけに置き、PLANへ複製しない。規約を変えたら、既存カードにも遡って適用する。
 
@@ -58,6 +58,7 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
     "deck": "学習対象",
     "noteType": "使用中のノートタイプ",
     "html": true,
+    "guidPolicy": "generate",
     "fields": [
       { "name": "問題", "role": "question", "required": true },
       { "name": "答え", "role": "answer", "required": true },
@@ -72,6 +73,7 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
   "cards": [
     {
       "id": "topic-001",
+      "guid": "Rj&Z5m[>Zp",
       "fields": {
         "問題": "具体的な条件を満たす仕組みを何と呼ぶ？",
         "答え": "用語",
@@ -95,6 +97,13 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
 
 カードの `id` はレビュー用であり、Ankiへ出力しない。一度付けたIDは文面を直しても変えない。
 
+`guidPolicy` は新規作成モードだけで使う。
+
+- `anki` または省略: GUID列を出力せず、インポート時にAnkiへ生成させる。
+- `generate`: Ankiと同じ64bit乱数のbase91表現をCLIで生成し、GUID列を出力する。
+
+`generate` では、カードの `guid` が空なら `build` が生成して `anki.json` へ保存する。一度保存したGUIDは再生成しない。GUIDを安定させるため、生成後の `anki.json` も必ず変更対象へ含める。
+
 ### 4. 検査と生成
 
 スキルディレクトリにあるBun CLIを使う。
@@ -110,9 +119,13 @@ bun <skill-directory>/tools/anki-cards.ts build <project>/anki.json
 
 カード本文は `stop-ai-slop-jp` が利用できる場合は、その基準で推敲してから最終生成する。
 
-### 5. 既存カードの更新
+### 5. GUIDと既存カードの更新
 
-Anki GUIDを独自に作らない。新規カードはGUID列なしで生成し、AnkiにGUIDを生成させる。この扱いは[Anki ManualのGUID Column](https://docs.ankiweb.net/importing/text-files.html#guid-column)に従う。
+GUIDの所有者をプロジェクトの契約に合わせる。
+
+Ankiを正本にする案件では `guidPolicy` を省略するか `anki` にし、新規カードをGUID列なしで生成する。この扱いは[Anki ManualのGUID Column](https://docs.ankiweb.net/importing/text-files.html#guid-column)に従う。
+
+テキストファイルを正本にし、インポート前から安定したGUIDが必要な案件では `guidPolicy` を `generate` にする。CLIは[Anki本体のGUID生成実装](https://github.com/ankitects/anki/blob/main/rslib/src/notes/mod.rs)と同じ文字表と変換方法でGUIDを生成し、`anki.json` とTSVの両方へ保存する。生成済みGUIDを手で変更しない。
 
 既存カードを更新する場合は、契約を `update` にして安定した識別フィールドを指定する。
 
@@ -142,4 +155,5 @@ Ankiの実データベースを直接編集しない。インポート前に復�
 - 生成したカード数とファイル
 - `check` のエラー数と警告数
 - 新規作成か既存更新か
+- GUIDの所有方針
 - Ankiで選ぶインポート方法と、更新後に確認する項目
