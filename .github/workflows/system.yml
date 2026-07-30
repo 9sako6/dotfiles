@@ -1,0 +1,29 @@
+name: system
+
+on:
+  push:
+    branches-ignore:
+      - master
+    paths:
+      - ".github/workflows/system.yml"
+      - ".mise.toml"
+      - "darwin/**"
+      - "scripts/install-system.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Converge system configuration
+        run: ./scripts/install-system.sh
+
+      - name: Verify declarative system
+        run: |
+          /nix/var/nix/profiles/default/bin/nix --version | grep 'Lix'
+          sudo /run/current-system/sw/bin/darwin-version

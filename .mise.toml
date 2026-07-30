@@ -31,9 +31,13 @@ depends = ["apply"]
 run = "cd $HOME && mise bootstrap --yes"
 description = "Converge user tools from deployed home-directory config"
 
+[tasks."install:system"]
+run = "./scripts/install-system.sh"
+description = "Converge the macOS system configuration"
+
 [tasks.bootstrap]
-depends = ["install:user"]
-description = "Deploy dotfiles and converge the user environment"
+depends = ["install:system", "install:user"]
+description = "Converge the macOS system and user environments"
 
 [tasks.apply]
 run = "bun run scripts/link-dist.ts"

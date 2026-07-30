@@ -43,6 +43,11 @@ jobs:
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
+      - name: Verify declarative system
+        run: |
+          /nix/var/nix/profiles/default/bin/nix --version | grep 'Lix'
+          sudo /run/current-system/sw/bin/darwin-version
+
       - name: Verify dist-managed daily-use tools
         run: |
           export PATH="$HOME/.local/bin:$PATH"
