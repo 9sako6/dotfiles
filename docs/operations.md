@@ -16,7 +16,7 @@ curl -fsSL dot.9sako6.com | bash
 mise run plan       # 配備計画を表示（filesystem は変更しない）
 mise run apply      # dist/ を home directory に反映
 mise run dev:test   # 契約テストを実行
-mise run install:system # Lix と nix-darwin で macOS system を収束
+mise run install:system # Lix と nix-darwin で macOS の設定を反映
 ```
 
 他の task は `mise tasks` で一覧できる。
@@ -28,6 +28,5 @@ mise run install:system # Lix と nix-darwin で macOS system を収束
 3. `mise run dev:test` で回帰を確認
 4. `mise run apply` で反映
 
-`darwin/` を変更した場合は、最後に `mise run install:system` を実行する。初回は
-Lix の導入と `sudo` 認証を行い、2 回目以降はロック済みの nix-darwin 設定を
-再適用する。
+`darwin/` を変更したら、`mise run install:system` で Mac に反映する。初回は
+Lix を導入するため、途中で `sudo` の認証を求められる。

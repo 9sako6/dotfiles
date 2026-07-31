@@ -6,7 +6,7 @@
 
 - `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
 - `dist-managed user tools` — home directory に配備して日常利用する設定。共有してよい内容だけを入れる。
-- `system configuration` — `darwin/` で宣言し、nix-darwin で macOS 全体へ適用する設定。home directory には配備しない。
+- `system configuration` — `darwin/` に置く macOS の設定。nix-darwin で Mac 全体へ反映し、home directory には配備しない。
 - `local-only` — マシン固有の設定。repo に入れず、各マシンに手で置く（例: `~/.zsh.d/local.zsh`）。
 - `secrets` — 認証情報や鍵などの機密。repo と `dist/` のどちらにも入れない（推奨置き場の例: `~/.zsh.d/secrets.zsh`）。
 
@@ -14,7 +14,7 @@
 
 - repo の実行だけに必要 → `repo runtime`
 - 複数マシンで共有したい → `dist-managed user tools`
-- macOS 全体へ適用したい → `system configuration`
+- Mac 全体へ反映したい → `system configuration`
 - マシン固有 → `local-only`
 - 機密 → `secrets`（最終判断はユーザーが行う）
 
@@ -22,7 +22,7 @@
 
 - `install.sh` は bootstrap に徹する。外部前提の導入と task の実行順制御だけを担当し、複数責務を 1 つの task に隠さない。
 - `.mise.toml` の task は 1 task 1 責務に保つ。依存関係がある処理も、観測可能な単位に分ける。
-- `install:system` は macOS system の収束を所有する。Lix の有無、固定済み Installer の検証、nix-darwin の適用順序は利用者へ露出せず、この境界内で強制する。
+- `install:system` が Lix の有無を確認し、Lix Installer のチェックサムを検証してから nix-darwin を適用する。利用者は実行順を指定しない。
 - user 向け install task は `dist/` ではなく `~/` を入力にする。`apply` 後の home directory 上の設定を使って実行し、repo 内の配布元パスを直接参照しない。
 - 標準コマンドで足りる処理は shell で書き、薄いラッパーで包まない。TypeScript を使うのは repo 固有のロジックがあるときだけ。
 - bootstrap の正しさは e2e で確認する。shell の順序や導線の確認を、内部手順を固定する unit test に逃がさない。

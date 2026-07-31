@@ -33,7 +33,7 @@ async function runInstallSystem(fakeBin: string, env: Record<string, string>) {
 }
 
 describe("install:system", () => {
-  test("applies the locked darwin configuration with runtime-local identity", async () => {
+  test("実行時に取得したユーザー名を nix-darwin へ渡す", async () => {
     await withTempDir("install-system", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const logPath = path.join(tempDir, "system.log");
@@ -89,7 +89,7 @@ exec "$@"
     });
   });
 
-  test("rejects unsupported architectures before downloading anything", async () => {
+  test("非対応の CPU ではダウンロード前に終了する", async () => {
     await withTempDir("install-system-arch", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const downloadMarker = path.join(tempDir, "downloaded");
@@ -120,7 +120,7 @@ touch "$SYSTEM_DOWNLOAD_MARKER"
     });
   });
 
-  test("does not execute a downloaded installer when its checksum differs", async () => {
+  test("チェックサムが一致しない Lix Installer を実行しない", async () => {
     await withTempDir("install-system-checksum", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const installerMarker = path.join(tempDir, "installer-ran");
