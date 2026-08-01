@@ -108,6 +108,19 @@ async function runPublicDocumentPrivacyChecker(repoDir: string, env: NodeJS.Proc
   return runCommand("/bin/sh", [checkerPath], env, { cwd: repoDir });
 }
 
+async function renderPrompt(repoDir: string) {
+  const promptPath = path.join(process.cwd(), "home/.zsh.d/prompt.zsh");
+
+  return runCommand("zsh", [
+    "-f",
+    "-c",
+    'source "$1"; cd "$2"; precmd; print -P -- "$PROMPT"',
+    "prompt-test",
+    promptPath,
+    repoDir,
+  ]);
+}
+
 async function createMinimalZshHome(tempDir: string, options?: { direnvPath?: string | null }) {
   const homeDir = path.join(tempDir, "home");
   const misePath = path.join(homeDir, ".local", "bin", "mise");
@@ -396,6 +409,75 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
       expect(loaded).toContain("momo-lab/zsh-abbrev-alias\n");
       expect(loaded).not.toContain("zsh-users/zsh-syntax-highlighting\n");
       expect(loaded).toContain("zsh-users/zsh-autosuggestions\n");
+    });
+  });
+
+  test("Git branch名のprompt escapeをliteralとして表示する", async () => {
+    await withTempDir("prompt-branch-escape", async (tempDir) => {
+      const repoDir = await initPlainRepo(tempDir);
+
+      await writeRepoFile(repoDir, "note.txt", "initial\n");
+      expect((await runCommand("git", ["add", "note.txt"], process.env, { cwd: repoDir })).code).toBe(0);
+      expect(
+        (
+          await runCommand(
+            "git",
+            ["-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "initial"],
+            process.env,
+            { cwd: repoDir },
+          )
+        ).code,
+      ).toBe(0);
+      expect(
+        (await runCommand("git", ["switch", "-c", "topic-%F{red}literal"], process.env, { cwd: repoDir })).code,
+      ).toBe(0);
+
+      const result = await renderPrompt(repoDir);
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain("[topic-%F{red}literal]");
+    });
+  });
+
+  test("VCS action値のprompt escapeもliteralへ変換する", async () => {
+    const promptPath = path.join(process.cwd(), "home/.zsh.d/prompt.zsh");
+    const result = await runCommand("zsh", [
+      "-f",
+      "-c",
+      'source "$1"; typeset -A hook_com; hook_com=(branch "safe" action "merge-%F{blue}literal"); +vi-escape-prompt; print -r -- "$hook_com[action]"',
+      "prompt-action-test",
+      promptPath,
+    ]);
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBe("merge-%%F{blue}literal\n");
+  });
+
+  test("promptの通常branchとstaged・unstaged表示を維持する", async () => {
+    await withTempDir("prompt-status", async (tempDir) => {
+      const repoDir = await initPlainRepo(tempDir);
+
+      await writeRepoFile(repoDir, "note.txt", "initial\n");
+      expect((await runCommand("git", ["add", "note.txt"], process.env, { cwd: repoDir })).code).toBe(0);
+      expect(
+        (
+          await runCommand(
+            "git",
+            ["-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "initial"],
+            process.env,
+            { cwd: repoDir },
+          )
+        ).code,
+      ).toBe(0);
+      await writeRepoFile(repoDir, "note.txt", "staged\n");
+      expect((await runCommand("git", ["add", "note.txt"], process.env, { cwd: repoDir })).code).toBe(0);
+      await writeRepoFile(repoDir, "note.txt", "unstaged\n");
+
+      const result = await renderPrompt(repoDir);
+      const rendered = result.stdout.replace(/\u001b\[[0-9;]*m/g, "");
+
+      expect(result.code).toBe(0);
+      expect(rendered).toContain("!+[master]");
     });
   });
 
