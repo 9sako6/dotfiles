@@ -54,7 +54,7 @@ curl -fsSL https://dot.9sako6.com | sh
 mise run plan       # 配備計画を表示（filesystem は変更しない）
 mise run apply      # home/ を home directory に反映
 mise run doctor     # 配備、mise、Homebrewのドリフトを診断
-mise run dev:test   # 契約テストを実行
+mise run test       # 契約テストを実行
 mise run install:system # Lix と nix-darwin で macOS の設定を反映
 ```
 
@@ -65,7 +65,7 @@ mise run install:system # Lix と nix-darwin で macOS の設定を反映
 1. 上の手順で管理区分を確定
 2. `home-managed user tools` を変更する場合は、`mise run plan` で配備状況を確認
 3. 必要な変更を入れる
-4. `mise run dev:test` で回帰を確認
+4. `mise run test` で回帰を確認
 5. 変更した管理区分に応じて反映
    - `home-managed user tools` — `mise run apply`
    - `system configuration` — `mise run install:system`

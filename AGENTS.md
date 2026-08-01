@@ -37,7 +37,7 @@ flowchart TD
     testable -->|"いいえ"| redesign["テストできる形へ直す"]
     redesign --> testable
     testable -->|"はい"| observe["コマンドやスクリプトを実行し、振る舞いを観測する"]
-    observe --> test["mise run dev:test"]
+    observe --> test["mise run test"]
     test --> passed{"成功したか"}
     passed -->|"いいえ"| change
     passed -->|"はい"| complete["完了"]

@@ -47,7 +47,7 @@ description = "Apply the managed home tree to the home directory"
 run = "bun run scripts/link-home.ts --check"
 description = "Show planned deploy actions without changing the filesystem"
 
-[tasks."dev:test"]
+[tasks.test]
 run = "bun test"
 description = "Run the dotfiles test suite"
 
