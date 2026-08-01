@@ -1,6 +1,12 @@
 import { copyFile, mkdir, readFile, rename, rm, symlink } from "node:fs/promises";
 import path from "node:path";
 import { backupPathFor, backupRootFor, createTimestamp } from "./backup";
+import {
+  findOrphanedDeployments,
+  writeDeploymentState,
+  type DeploymentEntry,
+  type ManagedDeployment,
+} from "./deployment-state";
 import { lstatOrNull, readDirents, realpathOrNull } from "./fs";
 import { sourceToDestinationPath } from "./paths";
 
@@ -32,13 +38,27 @@ export type LinkAction =
       type: "prune";
     };
 
+export type LinkDrift = {
+  destinationPath: string;
+  reason: string;
+};
+
 export type LinkPlan = {
   actions: LinkAction[];
   backupRoot: string;
+  drifts: LinkDrift[];
   dryRun: boolean;
   homeDir: string;
   sourceRoot: string;
   timestamp: string;
+};
+
+export type ManagedLinkPlan = LinkPlan & {
+  deploymentState: {
+    currentDeployments: ManagedDeployment[];
+    retainedEntries: DeploymentEntry[];
+    statePath: string;
+  };
 };
 
 type PlanOptions = {
@@ -47,6 +67,7 @@ type PlanOptions = {
   homeDir: string;
   prunePaths?: ReadonlySet<string>;
   sourceRoot: string;
+  statePath: string;
   symlinkPaths: ReadonlySet<string>;
   timestamp?: string;
 };
@@ -57,17 +78,21 @@ export async function planLinkActions({
   homeDir,
   prunePaths = new Set(),
   sourceRoot,
+  statePath,
   symlinkPaths,
   timestamp = createTimestamp(),
-}: PlanOptions): Promise<LinkPlan> {
+}: PlanOptions): Promise<ManagedLinkPlan> {
   const rootStat = await lstatOrNull(sourceRoot);
   if (!rootStat?.isDirectory()) {
     throw new Error(`dist directory does not exist: ${sourceRoot}`);
   }
 
   const actions: LinkAction[] = [];
+  const drifts: LinkDrift[] = [];
+  const currentDeployments: ManagedDeployment[] = [];
   await planDirectory(sourceRoot, actions, {
     copyPaths,
+    currentDeployments,
     homeDir,
     sourceRoot,
     symlinkPaths,
@@ -80,17 +105,63 @@ export async function planLinkActions({
     timestamp,
   });
 
+  const orphaned = await findOrphanedDeployments({
+    currentDeployments,
+    homeDir,
+    sourceRoot,
+    statePath,
+  });
+  for (const relativePath of orphaned.prunePaths) {
+    const destinationPath = path.join(homeDir, relativePath);
+    if (!actions.some((action) => pathsOverlap(action.destinationPath, destinationPath))) {
+      actions.push({
+        backupPath: backupPathFor(homeDir, destinationPath, timestamp),
+        destinationPath,
+        type: "prune",
+      });
+    }
+  }
+  for (const drift of orphaned.drifts) {
+    const destinationPath = path.join(homeDir, drift.path);
+    if (!actions.some((action) => pathsOverlap(action.destinationPath, destinationPath))) {
+      drifts.push({ destinationPath, reason: drift.reason });
+    }
+  }
+  const plannedRemovals = actions
+    .filter((action) => action.type === "prune")
+    .map((action) => action.destinationPath);
+  const deploymentState = {
+    currentDeployments,
+    retainedEntries: orphaned.retainedEntries.filter((entry) =>
+      !plannedRemovals.some((destinationPath) =>
+        pathsOverlap(destinationPath, path.join(homeDir, entry.path)),
+      )
+    ),
+    statePath,
+  };
+
   return {
     actions,
     backupRoot: backupRootFor(homeDir, timestamp),
+    drifts,
     dryRun,
     homeDir,
     sourceRoot,
     timestamp,
+    deploymentState,
   };
 }
 
-export async function runLinkPlan(plan: LinkPlan) {
+function pathsOverlap(left: string, right: string): boolean {
+  return isPathWithin(left, right) || isPathWithin(right, left);
+}
+
+function isPathWithin(ancestor: string, target: string): boolean {
+  const relativePath = path.relative(ancestor, target);
+  return relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
+}
+
+export async function runLinkPlan(plan: ManagedLinkPlan) {
   if (plan.dryRun) {
     return;
   }
@@ -126,6 +197,12 @@ export async function runLinkPlan(plan: LinkPlan) {
       await symlink(action.sourcePath, action.destinationPath);
     }
   }
+
+  await writeDeploymentState({
+    ...plan.deploymentState,
+    homeDir: plan.homeDir,
+    sourceRoot: plan.sourceRoot,
+  });
 }
 
 type ReplacementAction = Extract<LinkAction, { type: "copy" | "link" }>;
@@ -189,11 +266,16 @@ export function formatPlan(plan: LinkPlan): string {
     }
   }
 
+  for (const drift of plan.drifts) {
+    lines.push(`  drift   ${tildefy(drift.destinationPath, plan.homeDir)} (${drift.reason})`);
+  }
+
   const parts: string[] = [];
   if (counts.link > 0) parts.push(`${counts.link} link`);
   if (counts.copy > 0) parts.push(`${counts.copy} copy`);
   if (counts.prune > 0) parts.push(`${counts.prune} prune`);
   if (counts.backup > 0) parts.push(`${counts.backup} backup`);
+  if (plan.drifts.length > 0) parts.push(`${plan.drifts.length} drift`);
   if (counts.noop > 0) parts.push(`${counts.noop} unchanged`);
 
   if (lines.length > 0) {
@@ -272,7 +354,9 @@ async function planDirectory(
   sourcePath: string,
   actions: LinkAction[],
   options: Required<
-    Pick<PlanOptions, "copyPaths" | "homeDir" | "sourceRoot" | "symlinkPaths" | "timestamp">
+    Pick<PlanOptions, "copyPaths" | "homeDir" | "sourceRoot" | "symlinkPaths" | "timestamp"> & {
+      currentDeployments: ManagedDeployment[];
+    }
   >,
   treatDescendantsAsMissing = false,
 ) {
@@ -305,6 +389,10 @@ async function planDirectory(
     if (!isCopyTargetFile && !isSymlinkTargetFile) {
       continue;
     }
+    options.currentDeployments.push({
+      kind: isCopyTargetFile ? "copy" : "symlink",
+      path: relativePath,
+    });
     await planManagedPath(
       childSourcePath,
       sourceToDestinationPath(options.sourceRoot, childSourcePath, options.homeDir),

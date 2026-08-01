@@ -5,7 +5,7 @@ setopt no_global_rcs
 export LANG=ja_JP.UTF-8
 
 # PATH general
-export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:$PATH"
+export PATH="/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:$PATH"
 
 # Setting for original commands
 export PATH="$PATH:$HOME/mybin"

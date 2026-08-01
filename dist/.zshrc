@@ -3,7 +3,7 @@
 : "zcompile" && {
   # zshファイル更新したら自動でコンパイル
   function() {for arg; do
-    if [ ! -f "${HOME}/${arg}.zwc" -o "${HOME}/${arg}" -nt "${arg}.zwc" ]; then
+    if [ ! -f "${HOME}/${arg}.zwc" -o "${HOME}/${arg}" -nt "${HOME}/${arg}.zwc" ]; then
       zcompile "${HOME}/${arg}"
     fi
   done} .zshrc .zshenv
@@ -35,7 +35,7 @@
 # note this assumes mise is located at ~/.local/bin/mise
 # which is what install.sh does by default
 eval "$(~/.local/bin/mise activate zsh)"
-export PATH="$HOME/.local/share/mise/shims:$PATH"
+export PATH="/run/current-system/sw/bin:$HOME/.local/share/mise/shims:$PATH"
 
 if mise which zoxide > /dev/null 2>&1; then
   eval "$(zoxide init zsh)"

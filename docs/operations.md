@@ -53,6 +53,7 @@ curl -fsSL dot.9sako6.com | bash
 ```sh
 mise run plan       # 配備計画を表示（filesystem は変更しない）
 mise run apply      # dist/ を home directory に反映
+mise run doctor     # 配備、mise、Homebrewのドリフトを診断
 mise run dev:test   # 契約テストを実行
 mise run install:system # Lix と nix-darwin で macOS の設定を反映
 ```
@@ -71,3 +72,11 @@ mise run install:system # Lix と nix-darwin で macOS の設定を反映
 
 `repo runtime` の変更に反映コマンドはない。`install:system` の初回実行では、
 Lix を導入するため途中で `sudo` の認証を求められる。
+
+Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理する。
+既存 Homebrew の移行中は `autoMigrate = true`、`mutableTaps = true` にし、
+`install:system` の初回成功後は両方を `false` へ戻す。
+
+`apply` は配備したファイルを local state に記録する。後から配布元のファイルを削除すると、
+未変更の配備先は次回の `plan` に退避対象として現れ、`apply` でバックアップへ移る。
+配備後に差し替えたり編集したファイルは自動では移動せず、ドリフトとして報告される。

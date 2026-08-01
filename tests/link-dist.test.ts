@@ -1,9 +1,23 @@
 import { describe, expect, test } from "bun:test";
-import { access, lstat, mkdir, readFile, realpath, rm } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createSymlink, readSymlinkTarget, withTempDir, writeTree } from "./test-helpers";
 import { loadDotfilesConfig } from "../scripts/lib/dotfiles-config";
-import { formatPlan, planLinkActions, runLinkPlan, type LinkPlan } from "../scripts/lib/link-dist";
+import {
+  formatPlan,
+  planLinkActions as planTrackedLinkActions,
+  runLinkPlan,
+  type LinkPlan,
+} from "../scripts/lib/link-dist";
+
+type PlanOptions = Parameters<typeof planTrackedLinkActions>[0];
+
+function planLinkActions(options: Omit<PlanOptions, "statePath"> & { statePath?: string }) {
+  return planTrackedLinkActions({
+    ...options,
+    statePath: options.statePath ?? path.join(options.homeDir, ".local", "state", "dotfiles", "deployment.json"),
+  });
+}
 
 describe("配備計画の実行", () => {
   test("リンク先が一致するシンボリックリンクは変更しない", async () => {
@@ -291,6 +305,223 @@ describe("コピーによる配備", () => {
 });
 
 describe("不要になった配備先の退避", () => {
+  test("初回実行でもdistを指す孤児リンクを設定への列挙なしで検出する", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "dist");
+      const homeDir = path.join(tempDir, "home");
+      const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
+      const obsoletePath = path.join(homeDir, ".tmux.conf");
+      await writeTree(sourceRoot, {
+        ".zshrc": "export TEST=1\n",
+      });
+      await createSymlink(path.join(sourceRoot, ".tmux.conf"), obsoletePath);
+
+      const plan = await planLinkActions({
+        dryRun: true,
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set([".zshrc"]),
+        timestamp: "20260801T120000",
+      });
+
+      expect(plan.actions).toContainEqual({
+        backupPath: path.join(homeDir, ".dotfiles-backups", "20260801T120000", ".tmux.conf"),
+        destinationPath: obsoletePath,
+        type: "prune",
+      });
+      expect(formatPlan(plan)).toContain("prune   ~/.tmux.conf");
+      expect((await lstat(obsoletePath)).isSymbolicLink()).toBe(true);
+      await expect(access(statePath)).rejects.toThrow();
+    });
+  });
+
+  test("所有台帳にあるリンクが配布元から消えたら次のapplyで退避する", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "dist");
+      const homeDir = path.join(tempDir, "home");
+      const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
+      const removedSource = path.join(sourceRoot, ".tmux.conf");
+      const removedDestination = path.join(homeDir, ".tmux.conf");
+      await writeTree(sourceRoot, {
+        ".tmux.conf": "set -g mouse on\n",
+        ".zshrc": "export TEST=1\n",
+      });
+
+      const firstPlan = await planLinkActions({
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set([".tmux.conf", ".zshrc"]),
+      });
+      await runLinkPlan(firstPlan);
+      await unlink(removedSource);
+
+      const secondPlan = await planLinkActions({
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set([".zshrc"]),
+        timestamp: "20260801T121000",
+      });
+      await runLinkPlan(secondPlan);
+
+      await expect(lstat(removedDestination)).rejects.toThrow();
+      expect(
+        (await lstat(path.join(homeDir, ".dotfiles-backups", "20260801T121000", ".tmux.conf"))).isSymbolicLink(),
+      ).toBe(true);
+      const state = JSON.parse(await readFile(statePath, "utf8"));
+      expect(state.entries.map((entry: { path: string }) => entry.path)).toEqual([".zshrc"]);
+    });
+  });
+
+  test("所有台帳の作成後は台帳にないリンクを推測で退避しない", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "dist");
+      const homeDir = path.join(tempDir, "home");
+      const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
+      const unmanagedSource = path.join(sourceRoot, "unmanaged");
+      const unmanagedDestination = path.join(homeDir, ".unmanaged");
+      await writeTree(sourceRoot, {
+        ".zshrc": "export TEST=1\n",
+        unmanaged: "not configured\n",
+      });
+
+      await runLinkPlan(await planLinkActions({
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set([".zshrc"]),
+      }));
+      await createSymlink(unmanagedSource, unmanagedDestination);
+
+      const plan = await planLinkActions({
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set([".zshrc"]),
+      });
+
+      expect(plan.actions.some((action) => action.destinationPath === unmanagedDestination)).toBe(false);
+      expect(plan.drifts).toEqual([]);
+      expect((await lstat(unmanagedDestination)).isSymbolicLink()).toBe(true);
+    });
+  });
+
+  test("所有していたリンクが通常ファイルへ差し替えられていたら削除せずドリフトにする", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "dist");
+      const homeDir = path.join(tempDir, "home");
+      const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
+      const removedSource = path.join(sourceRoot, ".tmux.conf");
+      const removedDestination = path.join(homeDir, ".tmux.conf");
+      await writeTree(sourceRoot, {
+        ".tmux.conf": "set -g mouse on\n",
+        ".zshrc": "export TEST=1\n",
+      });
+
+      await runLinkPlan(await planLinkActions({
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set([".tmux.conf", ".zshrc"]),
+      }));
+      await unlink(removedDestination);
+      await writeFile(removedDestination, "locally owned\n");
+      await unlink(removedSource);
+
+      const plan = await planLinkActions({
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set([".zshrc"]),
+      });
+      await runLinkPlan(plan);
+
+      expect(await readFile(removedDestination, "utf8")).toBe("locally owned\n");
+      expect(plan.drifts).toContainEqual({
+        destinationPath: removedDestination,
+        reason: "previously managed symlink was replaced",
+      });
+      expect(formatPlan(plan)).toContain("drift   ~/.tmux.conf (previously managed symlink was replaced)");
+      const state = JSON.parse(await readFile(statePath, "utf8"));
+      expect(state.entries.map((entry: { path: string }) => entry.path)).toContain(".tmux.conf");
+    });
+  });
+
+  test("所有台帳にある未変更のコピーが配布元から消えたら退避する", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "dist");
+      const homeDir = path.join(tempDir, "home");
+      const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
+      const sourcePath = path.join(sourceRoot, ".claude", "settings.json");
+      const destinationPath = path.join(homeDir, ".claude", "settings.json");
+      await writeTree(sourceRoot, {
+        ".claude/settings.json": "{}\n",
+      });
+
+      await runLinkPlan(await planLinkActions({
+        copyPaths: new Set([".claude"]),
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set(),
+      }));
+      await unlink(sourcePath);
+
+      const plan = await planLinkActions({
+        copyPaths: new Set([".claude"]),
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set(),
+        timestamp: "20260801T122000",
+      });
+      await runLinkPlan(plan);
+
+      await expect(access(destinationPath)).rejects.toThrow();
+      expect(await readFile(path.join(homeDir, ".dotfiles-backups", "20260801T122000", ".claude", "settings.json"), "utf8")).toBe("{}\n");
+    });
+  });
+
+  test("所有していたコピーが編集されていたら削除せずドリフトにする", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "dist");
+      const homeDir = path.join(tempDir, "home");
+      const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
+      const sourcePath = path.join(sourceRoot, ".claude", "settings.json");
+      const destinationPath = path.join(homeDir, ".claude", "settings.json");
+      await writeTree(sourceRoot, {
+        ".claude/settings.json": "{}\n",
+      });
+
+      await runLinkPlan(await planLinkActions({
+        copyPaths: new Set([".claude"]),
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set(),
+      }));
+      await writeFile(destinationPath, "{\"local\":true}\n");
+      await unlink(sourcePath);
+
+      const plan = await planLinkActions({
+        copyPaths: new Set([".claude"]),
+        homeDir,
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set(),
+      });
+      await runLinkPlan(plan);
+
+      expect(await readFile(destinationPath, "utf8")).toBe("{\"local\":true}\n");
+      expect(plan.drifts).toContainEqual({
+        destinationPath,
+        reason: "previously managed copy was modified",
+      });
+    });
+  });
+
   test("リポジトリ設定に残る不要なリンク切れのシンボリックリンクを退避する", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const repoRoot = process.cwd();
@@ -423,6 +654,7 @@ describe("配備計画の表示", () => {
         { type: "noop", sourcePath: "/repo/dist/.gitconfig", destinationPath: "/home/.gitconfig" },
       ],
       backupRoot: "/home/.dotfiles-backups/20260418T150000",
+      drifts: [],
       dryRun: true,
       homeDir: "/home",
       sourceRoot: "/repo/dist",
@@ -448,6 +680,7 @@ describe("配備計画の表示", () => {
         { type: "noop", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc" },
       ],
       backupRoot: "/home/.dotfiles-backups/20260418T150000",
+      drifts: [],
       dryRun: true,
       homeDir: "/home",
       sourceRoot: "/repo/dist",
