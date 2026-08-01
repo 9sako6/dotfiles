@@ -19,6 +19,8 @@
     ".Brewfile",
     ".agents/AGENTS.md",
     ".agents/skills",
-    ".claude/skills"
+    ".claude/skills",
+    ".config/zellij",
+    "mybin/nyanpasu"
   ]
 }

@@ -79,7 +79,7 @@ function validProject() {
   };
 }
 
-describe("build", () => {
+describe("カードの生成", () => {
   test("任意のフィールド順を保ち、安全な新規作成TSVとプレビューを生成する", async () => {
     const { directory, inputPath } = await createProject(validProject());
 
@@ -306,7 +306,7 @@ describe("build", () => {
   });
 });
 
-describe("Anki GUID", () => {
+describe("Anki GUIDの生成", () => {
   test("Anki本体と同じbase91表現を生成する", () => {
     expect(ankiBase91(0n)).toBe("");
     expect(ankiBase91(1n)).toBe("b");
@@ -315,7 +315,7 @@ describe("Anki GUID", () => {
   });
 });
 
-describe("check", () => {
+describe("カードの検証", () => {
   test("レビューIDの重複を拒否する", async () => {
     const project = validProject();
     project.cards.push(structuredClone(project.cards[0]));

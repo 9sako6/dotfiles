@@ -10,8 +10,8 @@ import {
 } from "../scripts/lib/agents-build";
 import { withTempDir, writeTree } from "./test-helpers";
 
-describe("finalizeCompiledAgents", () => {
-  test("moves the generated AGENTS.md into the codex config and removes unsupported APM outputs", async () => {
+describe("生成したエージェント設定の後処理", () => {
+  test("生成したAGENTS.mdをCodex設定へ移し、APMの未対応出力を削除する", async () => {
     await withTempDir("agents-build", async (tempDir) => {
       await writeTree(tempDir, {
         "AGENTS.md": "# agents\n",
@@ -30,13 +30,13 @@ describe("finalizeCompiledAgents", () => {
     });
   });
 
-  test("fails when APM does not generate AGENTS.md", async () => {
+  test("APMがAGENTS.mdを生成しなければ失敗する", async () => {
     await withTempDir("agents-build", async (tempDir) => {
       await expect(finalizeCompiledAgents(tempDir)).rejects.toThrow(/AGENTS\.md/);
     });
   });
 
-  test("restores apm.lock.yaml when only generated_at changed", async () => {
+  test("generated_atだけが変わったapm.lock.yamlを元に戻す", async () => {
     await withTempDir("agents-build", async (tempDir) => {
       const lockPath = path.join(tempDir, "apm.lock.yaml");
       const original = "lockfile_version: '1'\ngenerated_at: 'old'\napm_version: 0.15.0\n";
@@ -48,7 +48,7 @@ describe("finalizeCompiledAgents", () => {
     });
   });
 
-  test("keeps apm.lock.yaml when dependency content changed", async () => {
+  test("依存関係が変わったapm.lock.yamlは残す", async () => {
     await withTempDir("agents-build", async (tempDir) => {
       const lockPath = path.join(tempDir, "apm.lock.yaml");
       const original = "lockfile_version: '1'\ngenerated_at: 'old'\napm_version: 0.15.0\n";
@@ -62,42 +62,42 @@ describe("finalizeCompiledAgents", () => {
   });
 });
 
-describe("createAgentsBuildPlan", () => {
-  test("keeps the existing frozen install plan for the build task", () => {
+describe("エージェント設定の生成手順", () => {
+  test("ビルド時は既存の固定インストール手順を使う", () => {
     expect(createAgentsBuildPlan("build", [])).toEqual([
       { command: "apm", args: ["install", "--frozen", "--only", "apm", "--target", "claude,codex"] },
       { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
     ]);
   });
 
-  test("installs the requested package before compiling agents", () => {
+  test("指定したパッケージをインストールしてからエージェント設定を生成する", () => {
     expect(createAgentsBuildPlan("install", ["mattpocock/skills/foo"])).toEqual([
       { command: "apm", args: ["install", "mattpocock/skills/foo", "--target", "claude,codex"] },
       { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
     ]);
   });
 
-  test("updates the requested package before compiling agents", () => {
+  test("指定したパッケージを更新してからエージェント設定を生成する", () => {
     expect(createAgentsBuildPlan("update", ["mattpocock/skills/foo"])).toEqual([
       { command: "apm", args: ["deps", "update", "mattpocock/skills/foo"] },
       { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
     ]);
   });
 
-  test("uninstalls the requested package before compiling agents", () => {
+  test("指定したパッケージをアンインストールしてからエージェント設定を生成する", () => {
     expect(createAgentsBuildPlan("uninstall", ["mattpocock/skills/foo"])).toEqual([
       { command: "apm", args: ["uninstall", "mattpocock/skills/foo"] },
       { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
     ]);
   });
 
-  test("rejects local skill sources from the remote uninstall operation", () => {
+  test("リモート用のアンインストール操作ではローカルスキルを拒否する", () => {
     expect(() =>
       createAgentsBuildPlan("uninstall", ["./.apm/skills/superpowers-test-driven-development"]),
     ).toThrow(/agents:remove-local superpowers-test-driven-development/);
   });
 
-  test("falls back to the apm command behavior when no package is specified", () => {
+  test("パッケージを指定しなくてもAPMのインストールと生成を実行する", () => {
     expect(createAgentsBuildPlan("install", [])).toEqual([
       { command: "apm", args: ["install", "--target", "claude,codex"] },
       { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
@@ -105,10 +105,10 @@ describe("createAgentsBuildPlan", () => {
   });
 });
 
-describe("removeLocalSkill", () => {
+describe("ローカルスキルの削除", () => {
   type RunCommand = (command: string, args: string[], cwd: string) => Promise<void>;
 
-  test("uninstalls a registered dependency before removing its source and compiling", async () => {
+  test("登録済みの依存を解除してからソースを削除し、エージェント設定を再生成する", async () => {
     await withTempDir("remove-local-skill", async (tempDir) => {
       await writeTree(tempDir, {
         "apm.yml": [
@@ -155,7 +155,7 @@ describe("removeLocalSkill", () => {
     });
   });
 
-  test("re-registers an already-unregistered local source so APM can clean its deployed files", async () => {
+  test("登録解除済みのローカルソースを再登録し、APMで配備済みファイルを削除する", async () => {
     await withTempDir("remove-local-skill", async (tempDir) => {
       await writeTree(tempDir, {
         "apm.yml": "dependencies:\n  apm:\n  - owner/remote-skill\n",
@@ -205,7 +205,7 @@ describe("removeLocalSkill", () => {
     });
   });
 
-  test("rejects unsafe names and missing local skills before running commands", async () => {
+  test("コマンド実行前に危険な名前と存在しないローカルスキルを拒否する", async () => {
     await withTempDir("remove-local-skill", async (tempDir) => {
       await writeTree(tempDir, { "apm.yml": "dependencies:\n  apm: []\n" });
       const commands: string[] = [];
@@ -218,7 +218,7 @@ describe("removeLocalSkill", () => {
     });
   });
 
-  test("preserves the source when APM cannot uninstall the registered dependency", async () => {
+  test("APMが登録済みの依存を解除できなければソースを残す", async () => {
     await withTempDir("remove-local-skill", async (tempDir) => {
       await writeTree(tempDir, {
         "apm.yml": "dependencies:\n  apm:\n  - ./.apm/skills/example-skill\n",
@@ -238,8 +238,8 @@ describe("removeLocalSkill", () => {
   });
 });
 
-describe("assertRemoteUninstallTargets", () => {
-  test("rejects the bare name of a repository-owned local skill", async () => {
+describe("リモートパッケージのアンインストール対象", () => {
+  test("リポジトリ管理のローカルスキルを名前だけで指定した場合は拒否する", async () => {
     await withTempDir("remote-uninstall", async (tempDir) => {
       await writeTree(tempDir, {
         ".apm/skills/example-skill/SKILL.md": "# Example\n",
@@ -251,7 +251,7 @@ describe("assertRemoteUninstallTargets", () => {
     });
   });
 
-  test("allows remote package identifiers", async () => {
+  test("リモートパッケージの識別子は許可する", async () => {
     await withTempDir("remote-uninstall", async (tempDir) => {
       await expect(
         assertRemoteUninstallTargets(tempDir, ["owner/remote-skill"]),

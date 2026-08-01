@@ -5,8 +5,8 @@ import { createSymlink, readSymlinkTarget, withTempDir, writeTree } from "./test
 import { loadDotfilesConfig } from "../scripts/lib/dotfiles-config";
 import { formatPlan, planLinkActions, runLinkPlan, type LinkPlan } from "../scripts/lib/link-dist";
 
-describe("runLinkPlan", () => {
-  test("keeps a matching symlink unchanged", async () => {
+describe("配備計画の実行", () => {
+  test("リンク先が一致するシンボリックリンクは変更しない", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -30,7 +30,7 @@ describe("runLinkPlan", () => {
     });
   });
 
-  test("creates parent directories and symlinks individual files", async () => {
+  test("親ディレクトリを作り、ファイルごとにシンボリックリンクを張る", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -52,7 +52,7 @@ describe("runLinkPlan", () => {
     });
   });
 
-  test("moves conflicting files into the backup tree", async () => {
+  test("競合するファイルをバックアップ先へ移す", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -77,7 +77,7 @@ describe("runLinkPlan", () => {
     });
   });
 
-  test("does not mutate the filesystem in dry-run mode", async () => {
+  test("dry-runではファイルシステムを変更しない", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -102,7 +102,7 @@ describe("runLinkPlan", () => {
     });
   });
 
-  test("creates symlinks alongside existing unmanaged files", async () => {
+  test("管理外の既存ファイルを残したままシンボリックリンクを張る", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -125,7 +125,7 @@ describe("runLinkPlan", () => {
     });
   });
 
-  test("migrates an old managed directory symlink without moving source files", async () => {
+  test("配布元のファイルを動かさず、旧形式のディレクトリリンクを移行する", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -156,8 +156,8 @@ describe("runLinkPlan", () => {
   });
 });
 
-describe("runLinkPlan with copy actions", () => {
-  test("creates a real file (not symlink) for copy actions", async () => {
+describe("コピーによる配備", () => {
+  test("シンボリックリンクではなく実ファイルを作る", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -182,7 +182,7 @@ describe("runLinkPlan with copy actions", () => {
     });
   });
 
-  test("backs up existing file before copying", async () => {
+  test("既存ファイルをバックアップしてからコピーする", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -210,7 +210,7 @@ describe("runLinkPlan with copy actions", () => {
     });
   });
 
-  test("keeps the existing destination when replacement copy fails", async () => {
+  test("置き換え用のコピーに失敗したら既存の配備先を残す", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -238,7 +238,7 @@ describe("runLinkPlan with copy actions", () => {
     });
   });
 
-  test("copies all files under a directory when directory path is in copyPaths", async () => {
+  test("copyにディレクトリを指定したら配下の全ファイルをコピーする", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -266,7 +266,7 @@ describe("runLinkPlan with copy actions", () => {
     });
   });
 
-  test("skips files that are not in symlinkPaths or copyPaths", async () => {
+  test("symlinkにもcopyにもないファイルは配備しない", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -290,21 +290,23 @@ describe("runLinkPlan with copy actions", () => {
   });
 });
 
-describe("runLinkPlan with prune actions", () => {
-  test("backs up the obsolete dangling .agents/AGENTS.md symlink", async () => {
+describe("不要になった配備先の退避", () => {
+  test("リポジトリ設定に残る不要なリンク切れのシンボリックリンクを退避する", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const repoRoot = process.cwd();
       const sourceRoot = path.join(repoRoot, "dist");
       const homeDir = path.join(tempDir, "home");
-      const destinationPath = path.join(homeDir, ".agents", "AGENTS.md");
-      const backupPath = path.join(
-        homeDir,
-        ".dotfiles-backups",
-        "20260328T100000",
-        ".agents",
-        "AGENTS.md",
-      );
-      await createSymlink(path.join(tempDir, "old-dist", ".agents", "AGENTS.md"), destinationPath);
+      const obsoletePaths = [
+        ".agents/AGENTS.md",
+        ".config/zellij",
+        "mybin/nyanpasu",
+      ];
+      for (const relativePath of obsoletePaths) {
+        await createSymlink(
+          path.join(tempDir, "old-dist", relativePath),
+          path.join(homeDir, relativePath),
+        );
+      }
       const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(
         repoRoot,
         sourceRoot,
@@ -320,12 +322,20 @@ describe("runLinkPlan with prune actions", () => {
       });
       await runLinkPlan(plan);
 
-      await expect(lstat(destinationPath)).rejects.toThrow();
-      expect((await lstat(backupPath)).isSymbolicLink()).toBe(true);
+      for (const relativePath of obsoletePaths) {
+        await expect(lstat(path.join(homeDir, relativePath))).rejects.toThrow();
+        const backupPath = path.join(
+          homeDir,
+          ".dotfiles-backups",
+          "20260328T100000",
+          relativePath,
+        );
+        expect((await lstat(backupPath)).isSymbolicLink()).toBe(true);
+      }
     });
   });
 
-  test("backs up an explicitly pruned top-level path absent from sourceRoot", async () => {
+  test("配布元にない最上位パスもpruneに指定されていれば退避する", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -348,7 +358,7 @@ describe("runLinkPlan with prune actions", () => {
     });
   });
 
-  test("backs up files under prune paths when they no longer exist in sourceRoot", async () => {
+  test("prune配下で配布元から消えたファイルを退避する", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -376,7 +386,7 @@ describe("runLinkPlan with prune actions", () => {
     });
   });
 
-  test("does not prune unmanaged sibling files outside declared prune paths", async () => {
+  test("pruneの対象外にある管理外のファイルは退避しない", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       const homeDir = path.join(tempDir, "home");
@@ -402,8 +412,8 @@ describe("runLinkPlan with prune actions", () => {
   });
 });
 
-describe("formatPlan", () => {
-  test("formats actions as flat list with summary", () => {
+describe("配備計画の表示", () => {
+  test("操作を一覧化し、件数を添える", () => {
     const plan: LinkPlan = {
       actions: [
         { type: "backup", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc", backupPath: "/home/.dotfiles-backups/20260418T150000/.zshrc" },
@@ -432,7 +442,7 @@ describe("formatPlan", () => {
     );
   });
 
-  test("shows only summary when no changes", () => {
+  test("変更がなければ集計だけを表示する", () => {
     const plan: LinkPlan = {
       actions: [
         { type: "noop", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc" },

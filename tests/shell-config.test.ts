@@ -151,8 +151,8 @@ esac
   return { homeDir };
 }
 
-describe("shell config", () => {
-  test("zshenv sources secrets before interactive shell config loads", async () => {
+describe("シェル設定", () => {
+  test("対話シェルの設定より先にzshenvが秘密情報を読み込む", async () => {
     await withTempDir("zshenv-secrets", async (tempDir) => {
       const homeDir = path.join(tempDir, "home");
 
@@ -170,7 +170,7 @@ describe("shell config", () => {
     });
   });
 
-  test("zshrc loads tracked fragments and repo aliases into an interactive shell", async () => {
+  test("対話シェルでzshrcが管理対象の設定断片とリポジトリ用エイリアスを読み込む", async () => {
     await withTempDir("zshrc-fragments", async (tempDir) => {
       const { homeDir } = await createMinimalZshHome(tempDir);
 
@@ -198,7 +198,7 @@ describe("shell config", () => {
     });
   });
 
-  test("zshrc only enables direnv when mise can resolve it", async () => {
+  test("miseがdirenvを解決できる場合だけzshrcがdirenvを有効にする", async () => {
     await withTempDir("zshrc-direnv", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");
       const direnvPath = path.join(binDir, "direnv");
@@ -233,7 +233,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("config-based pre-commit hooks warn when gitleaks is unavailable but do not block commits", async () => {
+  test("Git設定で有効にしたpre-commit hookはgitleaksがなくても警告だけでコミットを妨げない", async () => {
     await withTempDir("pre-commit-warning", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
       await expectGitSupportsConfigBasedHooks(env);
@@ -265,7 +265,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("public document privacy checker rejects staged markdown with environment-identifying paths", async () => {
+  test("公開文書の検査は環境を特定できるパスを含むステージ済みMarkdownを拒否する", async () => {
     await withTempDir("public-document-privacy-checker-leak", async (tempDir) => {
       const repoDir = await initPlainRepo(tempDir);
 
@@ -280,7 +280,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("public document privacy checker allows staged markdown without environment-identifying paths", async () => {
+  test("公開文書の検査は環境固有のパスを含まないステージ済みMarkdownを許可する", async () => {
     await withTempDir("public-document-privacy-checker-safe", async (tempDir) => {
       const repoDir = await initPlainRepo(tempDir);
 
@@ -294,7 +294,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("public document privacy checker ignores staged non-markdown files", async () => {
+  test("公開文書の検査はステージ済みのMarkdown以外を無視する", async () => {
     await withTempDir("public-document-privacy-checker-non-markdown", async (tempDir) => {
       const repoDir = await initPlainRepo(tempDir);
 
@@ -308,7 +308,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("config-based pre-commit hooks reject commits when public document privacy checker fails", async () => {
+  test("Git設定で有効にしたpre-commit hookは公開文書の検査に失敗したコミットを拒否する", async () => {
     await withTempDir("pre-commit-public-document-privacy", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
       await expectGitSupportsConfigBasedHooks(env);
@@ -325,7 +325,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("config-based pre-commit hooks fail closed when the public document privacy checker is unavailable", async () => {
+  test("Git設定で有効にしたpre-commit hookは公開文書の検査を実行できなければコミットを拒否する", async () => {
     await withTempDir("pre-commit-public-document-privacy-missing", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
       await expectGitSupportsConfigBasedHooks(env);
@@ -344,7 +344,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("git undo unstages staged changes before touching commits", async () => {
+  test("git undoはコミットを戻す前にステージ済みの変更を外す", async () => {
     await withTempDir("git-undo-unstage", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
 
@@ -365,7 +365,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("git undo moves the latest commit back to staged changes", async () => {
+  test("git undoは最新コミットをステージ済みの変更へ戻す", async () => {
     await withTempDir("git-undo-commit", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
 
@@ -389,7 +389,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("git undo can uncommit the initial commit back to staged changes", async () => {
+  test("git undoは最初のコミットもステージ済みの変更へ戻せる", async () => {
     await withTempDir("git-undo-root", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
 
@@ -407,7 +407,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("git undo path only unstages the requested path", async () => {
+  test("git undoにパスを渡すと指定したパスだけをステージから外す", async () => {
     await withTempDir("git-undo-path", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
 
@@ -430,7 +430,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("git undo path fails when the requested path is not staged", async () => {
+  test("git undoに渡したパスがステージされていなければ失敗する", async () => {
     await withTempDir("git-undo-path-error", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
 
@@ -446,7 +446,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("git undo fails when there is nothing to undo", async () => {
+  test("git undoは戻すものがなければ失敗する", async () => {
     await withTempDir("git-undo-empty", async (tempDir) => {
       const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
 
@@ -456,30 +456,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("nyanpasu passes layout as a global zellij option", async () => {
-    await withTempDir("nyanpasu", async (tempDir) => {
-      const binDir = path.join(tempDir, "bin");
-      const capturePath = path.join(tempDir, "zellij-args");
-
-      await writeTree(binDir, {
-        zellij: `#!/bin/sh
-printf '%s\n' "$@" > "${capturePath}"
-`,
-      });
-      await chmod(path.join(binDir, "zellij"), 0o755);
-
-      const result = await runCommand("sh", ["dist/mybin/nyanpasu"], {
-        ...process.env,
-        ZELLIJ: "0",
-        PATH: `${binDir}:${process.env.PATH ?? ""}`,
-      });
-
-      expect(result.code).toBe(0);
-      expect(await readFile(capturePath, "utf8")).toBe("--layout\nquad\nattach\nnyanpasu\n-c\n");
-    });
-  });
-
-  test("tada stays quiet and exits successfully on unsupported environments", async () => {
+  test("tadaは未対応の環境で何も表示せず正常終了する", async () => {
     const result = await runCommand("sh", ["dist/mybin/tada"], {
       ...process.env,
       TADA_UNAME: "Linux",
@@ -490,7 +467,7 @@ printf '%s\n' "$@" > "${capturePath}"
     expect(result.stderr).toBe("");
   });
 
-  test("tada launches the bundled binary on macOS", async () => {
+  test("tadaはmacOSで同梱バイナリを起動する", async () => {
     await withTempDir("tada", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");
       const launchCapturePath = path.join(tempDir, "launched");
@@ -537,7 +514,7 @@ printf 'ok\n' > "${launchCapturePath}"
     });
   });
 
-  test("tada resolves a symlinked launcher before locating the bundled binary", async () => {
+  test("tadaはシンボリックリンク経由で起動しても実体から同梱バイナリを探す", async () => {
     await withTempDir("tada", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");
       const realLauncherDir = path.join(tempDir, "dist", "mybin");
