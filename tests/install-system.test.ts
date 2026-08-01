@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { withTempDir } from "./test-helpers";
 
@@ -39,6 +39,51 @@ async function runScript(
     new Response(proc.stdout).text(),
   ]);
   return { exitCode, stderr, stdout };
+}
+
+async function prepareMiseInstaller(
+  tempDir: string,
+  fakeBin: string,
+  installedVersion = "2026.7.7",
+) {
+  const installerPath = path.join(tempDir, "mise-installer.sh");
+
+  await makeExecutable(
+    installerPath,
+    `#!/bin/sh
+set -eu
+mkdir -p "$(dirname "$MISE_INSTALL_PATH")"
+printf '%s\n' '#!/bin/sh' 'printf "%s\\n" "${installedVersion} macos-arm64"' > "$MISE_INSTALL_PATH"
+chmod u+x "$MISE_INSTALL_PATH"
+printf '%s\n' "$MISE_VERSION" > "$MISE_INSTALL_MARKER"
+`,
+  );
+  await makeExecutable(
+    path.join(fakeBin, "curl"),
+    `#!/bin/sh
+set -eu
+output=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --output)
+      output="$2"
+      shift 2
+      ;;
+    *) shift ;;
+  esac
+done
+/bin/cp "$MISE_FAKE_INSTALLER" "$output"
+`,
+  );
+  await makeExecutable(
+    path.join(fakeBin, "shasum"),
+    `#!/bin/sh
+/bin/cat > "$MISE_CHECKSUM_LOG"
+exit "\${MISE_SHASUM_EXIT:-0}"
+`,
+  );
+
+  return installerPath;
 }
 
 async function runInstallSystemFunction(
@@ -108,21 +153,91 @@ exit 1
     await withTempDir("install-mise-missing", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const installMarker = path.join(tempDir, "installed-version");
+      const checksumLog = path.join(tempDir, "checksum.log");
+      const tempRoot = path.join(tempDir, "tmp");
 
-      await makeExecutable(
-        path.join(fakeBin, "curl"),
-        `#!/bin/sh
-printf '%s\n' '#!/bin/sh' 'printf "%s\\n" "$MISE_VERSION" > "$MISE_INSTALL_MARKER"'
-`,
-      );
+      await mkdir(tempRoot);
+      const installerPath = await prepareMiseInstaller(tempDir, fakeBin);
 
       const result = await runScript(installMise, fakeBin, {
         HOME: tempDir,
+        MISE_CHECKSUM_LOG: checksumLog,
+        MISE_FAKE_INSTALLER: installerPath,
         MISE_INSTALL_MARKER: installMarker,
+        TMPDIR: tempRoot,
       });
 
       expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(installMarker, "utf8")).toBe("v2026.7.7\n");
+      expect(await readFile(checksumLog, "utf8")).toMatch(
+        /^0b98c2dc48edc807be860a76e14209afcfe36684c591f92337c5d9ff909e7740  .*\/install\.sh\n$/,
+      );
+      expect(await readdir(tempRoot)).toEqual([]);
+    });
+  });
+
+  test("ダウンロードに失敗したら一時ファイルを残さない", async () => {
+    await withTempDir("install-mise-download-failure", async (tempDir) => {
+      const fakeBin = path.join(tempDir, "bin");
+      const tempRoot = path.join(tempDir, "tmp");
+
+      await mkdir(tempRoot);
+      await makeExecutable(path.join(fakeBin, "curl"), "#!/bin/sh\nexit 22\n");
+
+      const result = await runScript(installMise, fakeBin, {
+        HOME: tempDir,
+        TMPDIR: tempRoot,
+      });
+
+      expect(result.exitCode).not.toBe(0);
+      expect(await readdir(tempRoot)).toEqual([]);
+    });
+  });
+
+  test("チェックサムが一致しないinstallerを実行しない", async () => {
+    await withTempDir("install-mise-integrity-failure", async (tempDir) => {
+      const fakeBin = path.join(tempDir, "bin");
+      const installMarker = path.join(tempDir, "installed-version");
+      const checksumLog = path.join(tempDir, "checksum.log");
+      const tempRoot = path.join(tempDir, "tmp");
+
+      await mkdir(tempRoot);
+      const installerPath = await prepareMiseInstaller(tempDir, fakeBin);
+      const result = await runScript(installMise, fakeBin, {
+        HOME: tempDir,
+        MISE_CHECKSUM_LOG: checksumLog,
+        MISE_FAKE_INSTALLER: installerPath,
+        MISE_INSTALL_MARKER: installMarker,
+        MISE_SHASUM_EXIT: "1",
+        TMPDIR: tempRoot,
+      });
+
+      expect(result.exitCode).not.toBe(0);
+      expect(await Bun.file(installMarker).exists()).toBe(false);
+      expect(await readdir(tempRoot)).toEqual([]);
+    });
+  });
+
+  test("導入された実体のバージョンが違えば失敗して後始末する", async () => {
+    await withTempDir("install-mise-version-mismatch", async (tempDir) => {
+      const fakeBin = path.join(tempDir, "bin");
+      const installMarker = path.join(tempDir, "installed-version");
+      const checksumLog = path.join(tempDir, "checksum.log");
+      const tempRoot = path.join(tempDir, "tmp");
+
+      await mkdir(tempRoot);
+      const installerPath = await prepareMiseInstaller(tempDir, fakeBin, "2026.7.6");
+      const result = await runScript(installMise, fakeBin, {
+        HOME: tempDir,
+        MISE_CHECKSUM_LOG: checksumLog,
+        MISE_FAKE_INSTALLER: installerPath,
+        MISE_INSTALL_MARKER: installMarker,
+        TMPDIR: tempRoot,
+      });
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain("expected mise 2026.7.7, got: 2026.7.6");
+      expect(await readdir(tempRoot)).toEqual([]);
     });
   });
 });
