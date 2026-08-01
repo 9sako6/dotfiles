@@ -2,7 +2,7 @@
 
 import path from "node:path";
 import { loadDotfilesConfig } from "./lib/dotfiles-config";
-import { formatPlan, planLinkActions, runLinkPlan } from "./lib/link-dist";
+import { formatPlan, planLinkActions, runLinkPlan } from "./lib/link-home";
 import { parseCliArgs } from "./lib/paths";
 
 async function main() {
@@ -13,7 +13,7 @@ async function main() {
   }
 
   const repoRoot = process.cwd();
-  const sourceRoot = path.resolve(repoRoot, "dist");
+  const sourceRoot = path.resolve(repoRoot, "home");
   const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
   const plan = await planLinkActions({
     copyPaths,

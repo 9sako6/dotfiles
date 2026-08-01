@@ -48,7 +48,7 @@ jobs:
           /nix/var/nix/profiles/default/bin/nix --version | grep 'Lix'
           sudo /run/current-system/sw/bin/darwin-version
 
-      - name: Verify dist-managed daily-use tools
+      - name: Verify home-managed daily-use tools
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           cd "$HOME/dotfiles"

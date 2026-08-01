@@ -51,10 +51,10 @@ async function initRepoWithManagedGitConfig(tempDir: string) {
   await mkdir(hooksDir, { recursive: true });
   await mkdir(repoDir, { recursive: true });
   await mkdir(mybinDir, { recursive: true });
-  await copyFile("dist/.gitconfig", globalConfigPath);
-  await copyFile("dist/mybin/git-undo", undoScriptPath);
-  await copyFile("dist/.config/git/hooks/check-public-document-privacy", publicDocumentPrivacyCheckerPath);
-  await copyFile("dist/.config/git/hooks/run-gitleaks-pre-commit", gitleaksHookPath);
+  await copyFile("home/.gitconfig", globalConfigPath);
+  await copyFile("home/mybin/git-undo", undoScriptPath);
+  await copyFile("home/.config/git/hooks/check-public-document-privacy", publicDocumentPrivacyCheckerPath);
+  await copyFile("home/.config/git/hooks/run-gitleaks-pre-commit", gitleaksHookPath);
   await chmod(undoScriptPath, 0o755);
   await chmod(publicDocumentPrivacyCheckerPath, 0o755);
   await chmod(gitleaksHookPath, 0o755);
@@ -103,7 +103,7 @@ async function writeRepoFile(repoDir: string, relativePath: string, content: str
 }
 
 async function runPublicDocumentPrivacyChecker(repoDir: string, env: NodeJS.ProcessEnv = process.env) {
-  const checkerPath = path.join(process.cwd(), "dist/.config/git/hooks/check-public-document-privacy");
+  const checkerPath = path.join(process.cwd(), "home/.config/git/hooks/check-public-document-privacy");
 
   return runCommand("/bin/sh", [checkerPath], env, { cwd: repoDir });
 }
@@ -160,7 +160,7 @@ describe("シェル設定", () => {
         ".zsh.d/secrets.zsh": "export SECRET_FROM_TEST=loaded\n",
       });
 
-      const result = await runCommand("zsh", ["-f", "-c", "source dist/.zshenv; printf '%s' \"$SECRET_FROM_TEST\""], {
+      const result = await runCommand("zsh", ["-f", "-c", "source home/.zshenv; printf '%s' \"$SECRET_FROM_TEST\""], {
         ...process.env,
         HOME: homeDir,
       });
@@ -174,7 +174,7 @@ describe("シェル設定", () => {
     await withTempDir("zshrc-fragments", async (tempDir) => {
       const { homeDir } = await createMinimalZshHome(tempDir);
 
-      await copyFile("dist/.zsh.d/alias.zsh", path.join(homeDir, ".zsh.d", "alias.zsh"));
+      await copyFile("home/.zsh.d/alias.zsh", path.join(homeDir, ".zsh.d", "alias.zsh"));
 
       const result = await runCommand(
         "zsh",
@@ -182,7 +182,7 @@ describe("シェル設定", () => {
           "-f",
           "-i",
           "-c",
-          "abbrev-alias(){ alias \"$@\"; }; source dist/.zshrc; alias codex; printf ' prompt=%s key=%s fn=%s local=%s' \"$PROMPT_LOADED\" \"$KEYBINDINGS_LOADED\" \"$FUNCTIONS_LOADED\" \"$LOCAL_LOADED\"",
+          "abbrev-alias(){ alias \"$@\"; }; source home/.zshrc; alias codex; printf ' prompt=%s key=%s fn=%s local=%s' \"$PROMPT_LOADED\" \"$KEYBINDINGS_LOADED\" \"$FUNCTIONS_LOADED\" \"$LOCAL_LOADED\"",
         ],
         {
           ...process.env,
@@ -209,7 +209,7 @@ describe("シェル設定", () => {
 printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
 `,
       });
-      await copyFile("dist/.zsh.d/alias.zsh", path.join(homeDir, ".zsh.d", "alias.zsh"));
+      await copyFile("home/.zsh.d/alias.zsh", path.join(homeDir, ".zsh.d", "alias.zsh"));
       await chmod(direnvPath, 0o755);
 
       const result = await runCommand(
@@ -218,7 +218,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
           "-f",
           "-i",
           "-c",
-          "abbrev-alias(){ alias \"$@\"; }; source dist/.zshrc; printf '%s' \"$DIRENV_HOOK_LOADED\"",
+          "abbrev-alias(){ alias \"$@\"; }; source home/.zshrc; printf '%s' \"$DIRENV_HOOK_LOADED\"",
         ],
         {
           ...process.env,
@@ -457,7 +457,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
   });
 
   test("tadaは未対応の環境で何も表示せず正常終了する", async () => {
-    const result = await runCommand("sh", ["dist/mybin/tada"], {
+    const result = await runCommand("sh", ["home/mybin/tada"], {
       ...process.env,
       TADA_UNAME: "Linux",
     });
@@ -490,7 +490,7 @@ printf 'ok\n' > "${launchCapturePath}"
         chmod(bundledBinaryPath, 0o755),
       ]);
 
-      const result = await runCommand("sh", ["dist/mybin/tada"], {
+      const result = await runCommand("sh", ["home/mybin/tada"], {
         ...process.env,
         PATH: `${binDir}:${process.env.PATH ?? ""}`,
         TADA_NOHUP_BIN: path.join(binDir, "nohup"),
@@ -517,7 +517,7 @@ printf 'ok\n' > "${launchCapturePath}"
   test("tadaはシンボリックリンク経由で起動しても実体から同梱バイナリを探す", async () => {
     await withTempDir("tada", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");
-      const realLauncherDir = path.join(tempDir, "dist", "mybin");
+      const realLauncherDir = path.join(tempDir, "repo", "home", "mybin");
       const symlinkLauncherDir = path.join(tempDir, "home", "mybin");
       const launchCapturePath = path.join(tempDir, "launched");
       const realLauncherPath = path.join(realLauncherDir, "tada");
@@ -533,7 +533,7 @@ printf 'ok\n' > "${launchCapturePath}"
         mkdir(path.join(realLauncherDir, "lib"), { recursive: true }),
         mkdir(symlinkLauncherDir, { recursive: true }),
       ]);
-      await copyFile("dist/mybin/tada", realLauncherPath);
+      await copyFile("home/mybin/tada", realLauncherPath);
       await writeTree(realLauncherDir, {
         "lib/tada-darwin-arm64": `#!/bin/sh
 printf 'ok\n' > "${launchCapturePath}"

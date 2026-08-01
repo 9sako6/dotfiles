@@ -16,12 +16,12 @@ flowchart TD
     resolved -->|"いいえ"| proposal["不足している判断基準を特定し、更新案を作る"]
     proposal --> ask["ユーザーに確認する"]
     boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
-    boundary -->|"dist-managed user tools"| dist["skill には配布先でも使える一般ルールだけを書く"]
+    boundary -->|"home-managed user tools"| home["skill には配備先でも使える一般ルールだけを書く"]
     boundary -->|"system configuration"| system["Mac 全体の設定は darwin/ に置く"]
     boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
-    boundary -->|"secrets"| secrets["repo と dist/ に入れず、最終判断をユーザーに確認する"]
+    boundary -->|"secrets"| secrets["repo と home/ に入れず、最終判断をユーザーに確認する"]
     repo --> change["変更に進む"]
-    dist --> change
+    home --> change
     system --> change
 ```
 
@@ -52,7 +52,7 @@ curl -fsSL dot.9sako6.com | bash
 
 ```sh
 mise run plan       # 配備計画を表示（filesystem は変更しない）
-mise run apply      # dist/ を home directory に反映
+mise run apply      # home/ を home directory に反映
 mise run dev:test   # 契約テストを実行
 mise run install:system # Lix と nix-darwin で macOS の設定を反映
 ```
@@ -62,11 +62,11 @@ mise run install:system # Lix と nix-darwin で macOS の設定を反映
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
-2. `dist-managed user tools` を変更する場合は、`mise run plan` で配備状況を確認
+2. `home-managed user tools` を変更する場合は、`mise run plan` で配備状況を確認
 3. 必要な変更を入れる
 4. `mise run dev:test` で回帰を確認
 5. 変更した管理区分に応じて反映
-   - `dist-managed user tools` — `mise run apply`
+   - `home-managed user tools` — `mise run apply`
    - `system configuration` — `mise run install:system`
 
 `repo runtime` の変更に反映コマンドはない。`install:system` の初回実行では、

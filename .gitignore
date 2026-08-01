@@ -18,12 +18,12 @@ tmp/**
 *.pem
 *.key
 .superpowers/
-dist/.zsh.d/local.zsh
-dist/.zsh.d/secrets.zsh
+home/.zsh.d/local.zsh
+home/.zsh.d/secrets.zsh
 
 # Deno
 deno.lock
 
 # APM dependencies
 apm_modules/
-dist/.gitignore
+home/.gitignore

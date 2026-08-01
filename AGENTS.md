@@ -25,7 +25,7 @@ flowchart LR
 
 `latest`、`^x.y`、`~x.y`、`@v4` などは固定されたバージョンとして扱わない。GitHub Actions の指定例は `@abc123 # v4.3.1`。
 
-- `dist/` に秘密情報を入れない。秘密は `~/.zsh.d/secrets.zsh` に置く
+- `home/` に秘密情報を入れない。秘密は `~/.zsh.d/secrets.zsh` に置く
 
 ## 検証
 
