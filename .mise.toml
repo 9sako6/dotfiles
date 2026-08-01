@@ -28,7 +28,7 @@ description = "Uninstall an agents skill via apm, then build agents resources"
 
 [tasks."install:user"]
 depends = ["apply"]
-run = "cd $HOME && mise bootstrap --yes"
+run = 'cd "$HOME" && "$HOME/.local/bin/mise" bootstrap --yes'
 description = "Converge user tools from deployed home-directory config"
 
 [tasks."install:system"]

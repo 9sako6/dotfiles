@@ -14,27 +14,20 @@ fd = "10.4.2"
 fzf = "0.70.0"
 gh = "2.96.0"
 ghq = "1.9.4"
-gitleaks = "8.30.1"
+"github:9sako6/zundamonotify" = "0.1.6"
 "github:ogulcancelik/herdr" = "0.7.5"
+gitleaks = "8.30.1"
 lefthook = "2.1.4"
 node = "24.18.0"
+"npm:@devcontainers/cli" = "0.87.0"
 "npm:hunkdiff" = "0.17.6"
-pnpm = "10.33.0"
 "pipx:apm-cli" = "0.23.1"
-"raycast:app" = "latest"
+pnpm = "10.33.0"
 ripgrep = "15.1.0"
+ruby = "3.4.9"
 uv = "0.11.26"
-"github:9sako6/zundamonotify" = "0.1.6"
+xcodegen = "2.45.3"
 zoxide = "0.9.9"
-
-[plugins]
-"vfox-backend:raycast" = "https://github.com/9sako6/mise-raycast.git#v0.1.0"
-
-[bootstrap.packages]
-# Bitwarden desktop app
-"brew-cask:bitwarden" = "latest"
-"brew-cask:ghostty" = "latest"
-"brew:git" = "latest"
 
 [bootstrap.repos]
 "~/.local/share/zinit/zinit.git" = { url = "https://github.com/zdharma-continuum/zinit.git", ref = "55d19f86f627c9995db9885d0971d9b6701fe0d3" }

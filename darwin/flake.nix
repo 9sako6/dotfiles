@@ -6,10 +6,11 @@
       url = "github:nix-darwin/nix-darwin/56c666e108467d87d13508936aade6d567f2a501";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nix-homebrew.url = "github:zhaofengli/nix-homebrew/937ce52c7d046310571f3a070713804ead496843";
     nixpkgs.url = "github:NixOS/nixpkgs/705e9929918b43bd7b715dc0a878ac870449bb03";
   };
 
-  outputs = { self, nix-darwin, ... }:
+  outputs = { self, nix-darwin, nix-homebrew, ... }:
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
@@ -25,6 +26,7 @@
           inherit primaryUser;
         };
         modules = [
+          nix-homebrew.darwinModules.nix-homebrew
           ./configuration.nix
           {
             nixpkgs.hostPlatform = system;

@@ -1,5 +1,8 @@
 { pkgs, primaryUser, ... }:
 
+let
+  homebrewPackages = import ./homebrew-packages.nix;
+in
 {
   assertions = [
     {
@@ -8,6 +11,22 @@
     }
   ];
 
+  environment.systemPackages = [
+    pkgs.git
+  ];
+
+  homebrew = {
+    enable = true;
+    inherit (homebrewPackages) brews casks;
+    global.autoUpdate = false;
+    onActivation = {
+      autoUpdate = false;
+      cleanup = "uninstall";
+      upgrade = false;
+    };
+    taps = [ ];
+  };
+
   nix = {
     enable = true;
     package = pkgs.lix;
@@ -15,6 +34,15 @@
       "flakes"
       "nix-command"
     ];
+  };
+
+  nix-homebrew = {
+    enable = true;
+    # 既存Homebrewの移行時だけ両方trueにし、成功後は通常運用へ戻す。
+    autoMigrate = false;
+    enableRosetta = false;
+    mutableTaps = false;
+    user = primaryUser;
   };
 
   system = {
