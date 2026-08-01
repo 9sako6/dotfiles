@@ -5,7 +5,7 @@ import { withTempDir, writeTree } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installScript = path.join(repoRoot, "install.sh");
-const trustedRevision = "1ef9c70e677cdd524dd5ceafd34ee4f09df004e9";
+const trustedRevision = "d2ee15291d3fd50f699bfa0073ccff1d1071f5f1";
 
 async function makeExecutable(filePath: string, content: string) {
   await mkdir(path.dirname(filePath), { recursive: true });

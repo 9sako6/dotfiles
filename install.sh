@@ -4,7 +4,7 @@ set -eu
 main() {
   DOTFILES_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
   DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/9sako6/dotfiles.git}"
-  DOTFILES_REVISION="1ef9c70e677cdd524dd5ceafd34ee4f09df004e9"
+  DOTFILES_REVISION="d2ee15291d3fd50f699bfa0073ccff1d1071f5f1"
   MISE_BIN="${HOME}/.local/bin/mise"
 
   if [ ! -d "$DOTFILES_DIR/.git" ]; then
