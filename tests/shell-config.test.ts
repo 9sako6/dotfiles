@@ -182,6 +182,28 @@ describe("シェル設定", () => {
     expect(nixIndex).toBeLessThan(systemIndex);
   });
 
+  test("非対話シェルでもmiseと管理対象のコマンドを解決する", async () => {
+    await withTempDir("zshenv-mise-path", async (tempDir) => {
+      const homeDir = path.join(tempDir, "home");
+      const misePath = path.join(homeDir, ".local", "bin", "mise");
+      const rgPath = path.join(homeDir, ".local", "share", "mise", "shims", "rg");
+
+      await writeTree(path.dirname(misePath), { mise: "#!/bin/sh\nexit 0\n" });
+      await writeTree(path.dirname(rgPath), { rg: "#!/bin/sh\nexit 0\n" });
+      await chmod(misePath, 0o755);
+      await chmod(rgPath, 0o755);
+
+      const result = await runCommand(
+        "zsh",
+        ["-f", "-c", "source home/.zshenv; command -v mise; command -v rg"],
+        { ...process.env, HOME: homeDir, PATH: "/usr/bin:/bin" },
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe(`${misePath}\n${rgPath}\n`);
+    });
+  });
+
   test("mise有効化後もNixのsystem packageをmacOS標準コマンドより先に解決する", async () => {
     await withTempDir("zshrc-nix-path", async (tempDir) => {
       const { homeDir } = await createMinimalZshHome(tempDir);
@@ -191,7 +213,7 @@ describe("シェル設定", () => {
           "-f",
           "-i",
           "-c",
-          "source home/.zshrc; printf '%s %s' $path[(i)/run/current-system/sw/bin] $path[(i)/usr/bin]",
+          "source home/.zshenv; source home/.zshrc; printf '%s %s' $path[(i)/run/current-system/sw/bin] $path[(i)/usr/bin]",
         ],
         {
           ...process.env,

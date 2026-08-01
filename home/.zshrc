@@ -35,7 +35,6 @@
 # note this assumes mise is located at ~/.local/bin/mise
 # which is what install.sh does by default
 eval "$(~/.local/bin/mise activate zsh)"
-export PATH="/run/current-system/sw/bin:$HOME/.local/share/mise/shims:$PATH"
 
 if mise which zoxide > /dev/null 2>&1; then
   eval "$(zoxide init zsh)"

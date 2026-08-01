@@ -4,16 +4,26 @@ setopt no_global_rcs
 
 export LANG=ja_JP.UTF-8
 
-# PATH general
-export PATH="/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:$PATH"
-
-# Setting for original commands
-export PATH="$PATH:$HOME/mybin"
-
 # Set PATH, MANPATH, etc., for Homebrew.
 [ -f '/opt/homebrew/bin/brew' ] && eval "$(/opt/homebrew/bin/brew shellenv)"
 [ -f '/usr/local/bin/brew' ] && eval "$(/usr/local/bin/brew shellenv)"
 [ -f '/home/linuxbrew/.linuxbrew/bin/brew' ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+typeset -U path PATH
+path=(
+  /run/current-system/sw/bin
+  "$HOME/.local/share/mise/shims"
+  "$HOME/.local/bin"
+  /usr/local/bin
+  /usr/bin
+  /bin
+  /usr/sbin
+  /sbin
+  /Library/TeX/texbin
+  $path
+  "$HOME/mybin"
+)
+export PATH
 
 # Set secret environment variables
 [ -e "${HOME}/.zsh.d/secrets.zsh" ] && source "${HOME}/.zsh.d/secrets.zsh"
