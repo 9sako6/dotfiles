@@ -17,6 +17,7 @@
   ],
   "prune": [
     ".Brewfile",
+    ".agents/AGENTS.md",
     ".agents/skills",
     ".claude/skills"
   ]

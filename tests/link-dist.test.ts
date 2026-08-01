@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { access, lstat, mkdir, readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import { createSymlink, readSymlinkTarget, withTempDir, writeTree } from "./test-helpers";
+import { loadDotfilesConfig } from "../scripts/lib/dotfiles-config";
 import { formatPlan, planLinkActions, runLinkPlan, type LinkPlan } from "../scripts/lib/link-dist";
 
 describe("runLinkPlan", () => {
@@ -290,6 +291,40 @@ describe("runLinkPlan with copy actions", () => {
 });
 
 describe("runLinkPlan with prune actions", () => {
+  test("backs up the obsolete dangling .agents/AGENTS.md symlink", async () => {
+    await withTempDir("link-dist", async (tempDir) => {
+      const repoRoot = process.cwd();
+      const sourceRoot = path.join(repoRoot, "dist");
+      const homeDir = path.join(tempDir, "home");
+      const destinationPath = path.join(homeDir, ".agents", "AGENTS.md");
+      const backupPath = path.join(
+        homeDir,
+        ".dotfiles-backups",
+        "20260328T100000",
+        ".agents",
+        "AGENTS.md",
+      );
+      await createSymlink(path.join(tempDir, "old-dist", ".agents", "AGENTS.md"), destinationPath);
+      const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(
+        repoRoot,
+        sourceRoot,
+      );
+
+      const plan = await planLinkActions({
+        copyPaths,
+        homeDir,
+        prunePaths,
+        sourceRoot,
+        symlinkPaths,
+        timestamp: "20260328T100000",
+      });
+      await runLinkPlan(plan);
+
+      await expect(lstat(destinationPath)).rejects.toThrow();
+      expect((await lstat(backupPath)).isSymbolicLink()).toBe(true);
+    });
+  });
+
   test("backs up an explicitly pruned top-level path absent from sourceRoot", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
