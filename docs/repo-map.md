@@ -31,4 +31,4 @@
 - mise は `major.minor.patch`
 - GitHub Actions は commit SHA ＋ バージョンコメント（semver タグより immutable）
 - mise bootstrap の `brew` / `brew-cask` package は例外（バージョン指定をサポートしていない）。バージョン管理が必要なものは mise `[tools]` で扱う
-- Bootstrap（`install.sh`）と devcontainer は例外。バージョン管理ツール導入前の環境なのでシンプルさを優先し、ユーザーの明示的な許可の上で緩和できる
+- `install.sh` は、バージョン管理ツール導入前のため、ユーザーの明示的な許可があれば固定を緩めてよい

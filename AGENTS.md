@@ -17,7 +17,7 @@ flowchart LR
     target -->|"mise [tools]"| mise["major.minor.patch"]
     target -->|"GitHub Actions"| actions["commit SHA とバージョンコメント"]
     target -->|"mise bootstrap の brew / brew-cask package"| brew["固定の例外"]
-    target -->|"install.sh / devcontainer（バージョン管理ツールの導入前）"| permission{"ユーザーが緩和を明示したか"}
+    target -->|"install.sh（バージョン管理ツールの導入前）"| permission{"ユーザーが緩和を明示したか"}
     target -->|"その他"| exact["厳密に固定する"]
     permission -->|"はい"| simple["簡潔さを優先し、固定を緩めてよい"]
     permission -->|"いいえ"| exact
