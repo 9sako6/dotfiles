@@ -8,7 +8,7 @@ import {
   planLinkActions as planTrackedLinkActions,
   runLinkPlan,
   type LinkPlan,
-} from "../scripts/lib/link-dist";
+} from "../scripts/lib/link-home";
 
 type PlanOptions = Parameters<typeof planTrackedLinkActions>[0];
 
@@ -21,8 +21,8 @@ function planLinkActions(options: Omit<PlanOptions, "statePath"> & { statePath?:
 
 describe("配備計画の実行", () => {
   test("リンク先が一致するシンボリックリンクは変更しない", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const sourcePath = path.join(sourceRoot, ".zshrc");
       const destinationPath = path.join(homeDir, ".zshrc");
@@ -45,8 +45,8 @@ describe("配備計画の実行", () => {
   });
 
   test("親ディレクトリを作り、ファイルごとにシンボリックリンクを張る", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".config/mise/config.toml": "tasks = {}\n",
@@ -67,8 +67,8 @@ describe("配備計画の実行", () => {
   });
 
   test("競合するファイルをバックアップ先へ移す", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".zshrc": "new\n",
@@ -92,8 +92,8 @@ describe("配備計画の実行", () => {
   });
 
   test("dry-runではファイルシステムを変更しない", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".zshrc": "new\n",
@@ -117,8 +117,8 @@ describe("配備計画の実行", () => {
   });
 
   test("管理外の既存ファイルを残したままシンボリックリンクを張る", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".config/nvim/init.vim": "set number\n",
@@ -139,9 +139,9 @@ describe("配備計画の実行", () => {
     });
   });
 
-  test("配布元のファイルを動かさず、旧形式のディレクトリリンクを移行する", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+  test("home/のファイルを動かさず、旧形式のディレクトリリンクを移行する", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const sourceDir = path.join(sourceRoot, ".zsh.d");
       const sourceFile = path.join(sourceDir, "alias.zsh");
@@ -172,8 +172,8 @@ describe("配備計画の実行", () => {
 
 describe("コピーによる配備", () => {
   test("シンボリックリンクではなく実ファイルを作る", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".claude/settings.json": '{"model":"opus"}',
@@ -197,8 +197,8 @@ describe("コピーによる配備", () => {
   });
 
   test("既存ファイルをバックアップしてからコピーする", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".claude/settings.json": '{"model":"opus"}',
@@ -225,8 +225,8 @@ describe("コピーによる配備", () => {
   });
 
   test("置き換え用のコピーに失敗したら既存の配備先を残す", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const sourceFile = path.join(sourceRoot, ".claude", "settings.json");
       const destinationFile = path.join(homeDir, ".claude", "settings.json");
@@ -253,8 +253,8 @@ describe("コピーによる配備", () => {
   });
 
   test("copyにディレクトリを指定したら配下の全ファイルをコピーする", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".claude/skills/foo.md": "# foo\n",
@@ -281,8 +281,8 @@ describe("コピーによる配備", () => {
   });
 
   test("symlinkにもcopyにもないファイルは配備しない", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".zshrc": "listed\n",
@@ -305,9 +305,9 @@ describe("コピーによる配備", () => {
 });
 
 describe("不要になった配備先の退避", () => {
-  test("初回実行でもdistを指す孤児リンクを設定への列挙なしで検出する", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "repo", "dist");
+  test("初回実行でもhome/を指す孤児リンクを設定への列挙なしで検出する", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
       const obsoletePath = path.join(homeDir, ".tmux.conf");
@@ -336,9 +336,9 @@ describe("不要になった配備先の退避", () => {
     });
   });
 
-  test("所有台帳にあるリンクが配布元から消えたら次のapplyで退避する", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "repo", "dist");
+  test("所有台帳にあるリンクがhome/から消えたら次のapplyで退避する", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
       const removedSource = path.join(sourceRoot, ".tmux.conf");
@@ -376,8 +376,8 @@ describe("不要になった配備先の退避", () => {
   });
 
   test("所有台帳の作成後は台帳にないリンクを推測で退避しない", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "repo", "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
       const unmanagedSource = path.join(sourceRoot, "unmanaged");
@@ -409,8 +409,8 @@ describe("不要になった配備先の退避", () => {
   });
 
   test("所有していたリンクが通常ファイルへ差し替えられていたら削除せずドリフトにする", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "repo", "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
       const removedSource = path.join(sourceRoot, ".tmux.conf");
@@ -449,9 +449,9 @@ describe("不要になった配備先の退避", () => {
     });
   });
 
-  test("所有台帳にある未変更のコピーが配布元から消えたら退避する", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "repo", "dist");
+  test("所有台帳にある未変更のコピーがhome/から消えたら退避する", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
       const sourcePath = path.join(sourceRoot, ".claude", "settings.json");
@@ -485,8 +485,8 @@ describe("不要になった配備先の退避", () => {
   });
 
   test("所有していたコピーが編集されていたら削除せずドリフトにする", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "repo", "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       const statePath = path.join(homeDir, ".local", "state", "dotfiles", "deployment.json");
       const sourcePath = path.join(sourceRoot, ".claude", "settings.json");
@@ -523,9 +523,9 @@ describe("不要になった配備先の退避", () => {
   });
 
   test("リポジトリ設定に残る不要なリンク切れのシンボリックリンクを退避する", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
+    await withTempDir("link-home", async (tempDir) => {
       const repoRoot = process.cwd();
-      const sourceRoot = path.join(repoRoot, "dist");
+      const sourceRoot = path.join(repoRoot, "home");
       const homeDir = path.join(tempDir, "home");
       const obsoletePaths = [
         ".agents/AGENTS.md",
@@ -534,7 +534,7 @@ describe("不要になった配備先の退避", () => {
       ];
       for (const relativePath of obsoletePaths) {
         await createSymlink(
-          path.join(tempDir, "old-dist", relativePath),
+          path.join(tempDir, "old-home", relativePath),
           path.join(homeDir, relativePath),
         );
       }
@@ -566,9 +566,9 @@ describe("不要になった配備先の退避", () => {
     });
   });
 
-  test("配布元にない最上位パスもpruneに指定されていれば退避する", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+  test("home/にない最上位パスもpruneに指定されていれば退避する", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await mkdir(sourceRoot, { recursive: true });
       await writeTree(homeDir, {
@@ -589,9 +589,9 @@ describe("不要になった配備先の退避", () => {
     });
   });
 
-  test("prune配下で配布元から消えたファイルを退避する", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+  test("prune配下でhome/から消えたファイルを退避する", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".agents/skills/current/SKILL.md": "# current\n",
@@ -618,8 +618,8 @@ describe("不要になった配備先の退避", () => {
   });
 
   test("pruneの対象外にある管理外のファイルは退避しない", async () => {
-    await withTempDir("link-dist", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".agents/skills/current/SKILL.md": "# current\n",
@@ -647,17 +647,17 @@ describe("配備計画の表示", () => {
   test("操作を一覧化し、件数を添える", () => {
     const plan: LinkPlan = {
       actions: [
-        { type: "backup", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc", backupPath: "/home/.dotfiles-backups/20260418T150000/.zshrc" },
-        { type: "link", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc" },
-        { type: "copy", sourcePath: "/repo/dist/.claude/settings.json", destinationPath: "/home/.claude/settings.json" },
+        { type: "backup", sourcePath: "/repo/home/.zshrc", destinationPath: "/home/.zshrc", backupPath: "/home/.dotfiles-backups/20260418T150000/.zshrc" },
+        { type: "link", sourcePath: "/repo/home/.zshrc", destinationPath: "/home/.zshrc" },
+        { type: "copy", sourcePath: "/repo/home/.claude/settings.json", destinationPath: "/home/.claude/settings.json" },
         { type: "prune", destinationPath: "/home/.agents/skills/removed/SKILL.md", backupPath: "/home/.dotfiles-backups/20260418T150000/.agents/skills/removed/SKILL.md" },
-        { type: "noop", sourcePath: "/repo/dist/.gitconfig", destinationPath: "/home/.gitconfig" },
+        { type: "noop", sourcePath: "/repo/home/.gitconfig", destinationPath: "/home/.gitconfig" },
       ],
       backupRoot: "/home/.dotfiles-backups/20260418T150000",
       drifts: [],
       dryRun: true,
       homeDir: "/home",
-      sourceRoot: "/repo/dist",
+      sourceRoot: "/repo/home",
       timestamp: "20260418T150000",
     };
 
@@ -665,8 +665,8 @@ describe("配備計画の表示", () => {
     expect(output).toBe(
       [
         "  backup  ~/.zshrc → ~/.dotfiles-backups/20260418T150000/.zshrc",
-        "  link    dist/.zshrc → ~/.zshrc",
-        "  copy    dist/.claude/settings.json → ~/.claude/settings.json",
+        "  link    home/.zshrc → ~/.zshrc",
+        "  copy    home/.claude/settings.json → ~/.claude/settings.json",
         "  prune   ~/.agents/skills/removed/SKILL.md → ~/.dotfiles-backups/20260418T150000/.agents/skills/removed/SKILL.md",
         "",
         "1 link, 1 copy, 1 prune, 1 backup, 1 unchanged",
@@ -677,13 +677,13 @@ describe("配備計画の表示", () => {
   test("変更がなければ集計だけを表示する", () => {
     const plan: LinkPlan = {
       actions: [
-        { type: "noop", sourcePath: "/repo/dist/.zshrc", destinationPath: "/home/.zshrc" },
+        { type: "noop", sourcePath: "/repo/home/.zshrc", destinationPath: "/home/.zshrc" },
       ],
       backupRoot: "/home/.dotfiles-backups/20260418T150000",
       drifts: [],
       dryRun: true,
       homeDir: "/home",
-      sourceRoot: "/repo/dist",
+      sourceRoot: "/repo/home",
       timestamp: "20260418T150000",
     };
 

@@ -64,7 +64,7 @@ jobs:
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
-      - name: Verify dist-managed daily-use tools
+      - name: Verify home-managed daily-use tools
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           mise exec -- atuin --version

@@ -5,7 +5,7 @@ import path from "node:path";
 import { loadDotfilesConfig } from "./lib/dotfiles-config";
 import { deploymentStatePath } from "./lib/deployment-state";
 import { formatDoctorSection, inspectHomebrew, inspectMise } from "./lib/doctor";
-import { formatPlan, planLinkActions } from "./lib/link-dist";
+import { formatPlan, planLinkActions } from "./lib/link-home";
 
 async function main() {
   const homeDir = process.env.HOME;
@@ -14,7 +14,7 @@ async function main() {
   }
 
   const repoRoot = process.cwd();
-  const sourceRoot = path.join(repoRoot, "dist");
+  const sourceRoot = path.join(repoRoot, "home");
   const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
   const plan = await planLinkActions({
     copyPaths,

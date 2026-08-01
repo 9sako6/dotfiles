@@ -84,7 +84,7 @@ export async function planLinkActions({
 }: PlanOptions): Promise<ManagedLinkPlan> {
   const rootStat = await lstatOrNull(sourceRoot);
   if (!rootStat?.isDirectory()) {
-    throw new Error(`dist directory does not exist: ${sourceRoot}`);
+    throw new Error(`home directory does not exist: ${sourceRoot}`);
   }
 
   const actions: LinkAction[] = [];

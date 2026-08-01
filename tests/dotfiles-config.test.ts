@@ -8,7 +8,7 @@ describe(".dotfiles.jsonの読み込み", () => {
   test("symlink、copy、pruneの各設定を読み込む", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const repoRoot = tempDir;
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".zshrc": "",
         ".claude/settings.json": "{}",
@@ -29,7 +29,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test("symlink、copy、pruneがなければ空集合として扱う", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".keep": "" });
       await writeFile(path.join(tempDir, ".dotfiles.json"), "{}");
 
@@ -42,7 +42,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test(".dotfiles.jsonがなければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".keep": "" });
       await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow();
     });
@@ -50,7 +50,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test(".dotfiles.jsonが正しいJSONでなければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".keep": "" });
       await writeFile(path.join(tempDir, ".dotfiles.json"), "{not json");
       await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow();
@@ -59,7 +59,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test("symlinkが文字列の配列でなければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".keep": "" });
       await writeFile(
         path.join(tempDir, ".dotfiles.json"),
@@ -69,9 +69,9 @@ describe(".dotfiles.jsonの読み込み", () => {
     });
   });
 
-  test("管理対象のパスがdist配下から外れていればエラーにする", async () => {
+  test("管理対象のパスがhome配下から外れていればエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".keep": "" });
 
       for (const config of [
@@ -87,7 +87,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test("pruneが文字列の配列でなければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".keep": "" });
       await writeFile(
         path.join(tempDir, ".dotfiles.json"),
@@ -99,7 +99,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test("同じパスがsymlinkとcopyの両方にあればエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".zshrc": "" });
       await writeFile(
         path.join(tempDir, ".dotfiles.json"),
@@ -111,7 +111,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test("copyのパスがsymlink配下にあればエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".config/mise/config.toml": "" });
       await writeFile(
         path.join(tempDir, ".dotfiles.json"),
@@ -123,7 +123,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test("symlinkのパスがcopy配下にあればエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".claude/settings.json": "" });
       await writeFile(
         path.join(tempDir, ".dotfiles.json"),
@@ -135,7 +135,7 @@ describe(".dotfiles.jsonの読み込み", () => {
 
   test("pruneのパスがcopy配下になければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, {
         ".agents/skills/foo/SKILL.md": "",
       });
@@ -147,9 +147,9 @@ describe(".dotfiles.jsonの読み込み", () => {
     });
   });
 
-  test("列挙したパスが配布元になければエラーにする", async () => {
+  test("列挙したパスがhome/になければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".zshrc": "" });
       await writeFile(
         path.join(tempDir, ".dotfiles.json"),
@@ -159,9 +159,9 @@ describe(".dotfiles.jsonの読み込み", () => {
     });
   });
 
-  test("配布元に存在するディレクトリを受け入れる", async () => {
+  test("home/に存在するディレクトリを受け入れる", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
-      const sourceRoot = path.join(tempDir, "dist");
+      const sourceRoot = path.join(tempDir, "home");
       await writeTree(sourceRoot, { ".zsh.d/alias.zsh": "" });
       await writeFile(
         path.join(tempDir, ".dotfiles.json"),
