@@ -1,7 +1,7 @@
 # AGENTS.md
 
 管理境界、Bootstrap の原則、バージョンの固定方法は [docs/repo-map.md](docs/repo-map.md) を正本とする。
-変更前の確認を含む日常の操作手順は [docs/operations.md](docs/operations.md) にまとめている。
+変更前は必ず [docs/operations.md](docs/operations.md) の手順を確認する。
 
 ## ファイル管理
 
