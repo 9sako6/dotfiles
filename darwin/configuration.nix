@@ -47,6 +47,12 @@
         ShowDayOfWeek = true;
       };
     };
+    keyboard = {
+      # キーの割り当て変更を有効にする
+      enableKeyMapping = true;
+      # Caps LockをControlとして使う
+      remapCapsLockToControl = true;
+    };
     inherit primaryUser;
     stateVersion = 6;
   };
