@@ -118,7 +118,7 @@ bun <skill-directory>/tools/anki-cards.ts build <project>/anki.json
 
 `check` は構造、一意性、フィールド、タグ、一次資料、制御文字を検査する。複数回答や長すぎる答えは警告する。警告を機械的に無視せず、カードを読むか、妥当な例外の理由を `notes` または `ANKI_PLAN.md` に残す。
 
-`build` は同じ検査に成功した場合だけ、`output` のTSVと `preview` のMarkdownを生成する。出力は `anki.json` と同じディレクトリ内の相対パスに限る。
+`build` は同じ検査に成功した場合だけ、`output` のTSVと `preview` のMarkdownを生成する。出力は `anki.json` の実体と同じproject directory内の相対パスに限る。symlinkを経由してproject外へ出るパスは使わない。
 
 カード本文は日本語レビューを終えてから最終生成する。CLIでは目的の欠落や、疑問詞と短答の意味上の不一致を判定できないため、警告0件でも通読を省略しない。
 

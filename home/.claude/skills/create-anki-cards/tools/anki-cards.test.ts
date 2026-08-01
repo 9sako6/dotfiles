@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { ankiBase91 } from "./anki-cards";
@@ -303,6 +310,60 @@ describe("カードの生成", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("正規データ自身を上書きできません");
     expect(await readFile(inputPath, "utf8")).toBe(original);
+  });
+
+  test("project外を指すsymlink parentへの出力を拒否する", async () => {
+    const project = validProject();
+    project.contract.output = "out/cards.tsv";
+    const { directory, inputPath } = await createProject(project);
+    const outside = await mkdtemp(path.join(os.tmpdir(), "anki-cards-outside-"));
+    temporaryDirectories.push(outside);
+    const outsideOutput = path.join(outside, "cards.tsv");
+    await writeFile(outsideOutput, "変更前\n");
+    await symlink(outside, path.join(directory, "out"));
+
+    const result = await runTool(directory, "build", inputPath);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("出力先の親directoryがproject外です");
+    expect(await readFile(outsideOutput, "utf8")).toBe("変更前\n");
+    expect(Bun.file(path.join(directory, "cards.preview.md")).size).toBe(0);
+  });
+
+  test("outputとpreviewが同じ実体pathを指す場合は拒否する", async () => {
+    const project = validProject();
+    const { directory, inputPath } = await createProject(project);
+    const shared = path.join(directory, "shared.txt");
+    await writeFile(shared, "変更前\n");
+    await symlink("shared.txt", path.join(directory, "cards.tsv"));
+    await symlink("shared.txt", path.join(directory, "cards.preview.md"));
+
+    const result = await runTool(directory, "build", inputPath);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("outputとは異なる実体path");
+    expect(await readFile(shared, "utf8")).toBe("変更前\n");
+  });
+
+  test("project内の通常directoryではatomic replacementを維持する", async () => {
+    const project = validProject();
+    project.contract.output = "generated/cards.tsv";
+    project.contract.preview = "generated/cards.preview.md";
+    const { directory, inputPath } = await createProject(project);
+    const generated = path.join(directory, "generated");
+    await mkdir(generated);
+    await writeFile(path.join(generated, "cards.tsv"), "変更前\n");
+    await writeFile(path.join(generated, "cards.preview.md"), "変更前\n");
+
+    const result = await runTool(directory, "build", inputPath);
+
+    expect(result.exitCode).toBe(0);
+    expect(await readFile(path.join(generated, "cards.tsv"), "utf8")).toContain(
+      "#separator:tab",
+    );
+    expect(
+      await readFile(path.join(generated, "cards.preview.md"), "utf8"),
+    ).toContain("Ankiカードプレビュー");
   });
 });
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { rename, unlink, writeFile } from "node:fs/promises";
+import { realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
 
@@ -451,25 +451,107 @@ function renderPreview(project: Project): string {
 }
 
 async function replaceOutputs(
-  outputs: ReadonlyArray<{ destination: string; content: string }>,
+  projectDirectory: string,
+  outputs: ReadonlyArray<{
+    parent: string;
+    filename: string;
+    content: string;
+  }>,
 ): Promise<void> {
-  const temporaryPaths: string[] = [];
+  const originalDirectory = process.cwd();
   try {
     for (const output of outputs) {
-      const temporaryPath = `${output.destination}.${randomUUID()}.tmp`;
-      temporaryPaths.push(temporaryPath);
-      await writeFile(temporaryPath, output.content, "utf8");
-    }
-    for (let index = 0; index < outputs.length; index += 1) {
-      await rename(temporaryPaths[index], outputs[index].destination);
+      process.chdir(output.parent);
+      const [currentDirectory, expected, current] = await Promise.all([
+        realpath("."),
+        stat(output.parent),
+        stat("."),
+      ]);
+      if (
+        !isWithinDirectory(projectDirectory, currentDirectory) ||
+        expected.dev !== current.dev ||
+        expected.ino !== current.ino
+      ) {
+        throw new Error("出力先の親directoryが検証後に変更されました");
+      }
+
+      const temporaryName = `.${output.filename}.${randomUUID()}.tmp`;
+      try {
+        await writeFile(temporaryName, output.content, {
+          encoding: "utf8",
+          flag: "wx",
+          mode: 0o600,
+        });
+        await rename(temporaryName, output.filename);
+      } finally {
+        await unlink(temporaryName).catch(() => undefined);
+      }
+      process.chdir(originalDirectory);
     }
   } finally {
-    await Promise.all(
-      temporaryPaths.map((temporaryPath) =>
-        unlink(temporaryPath).catch(() => undefined),
-      ),
-    );
+    process.chdir(originalDirectory);
   }
+}
+
+function isWithinDirectory(directory: string, candidate: string): boolean {
+  const relative = path.relative(directory, candidate);
+  return (
+    relative === "" ||
+    (relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
+  );
+}
+
+async function resolveOutputTargets(
+  projectDirectory: string,
+  inputPath: string,
+  outputs: ReadonlyArray<{
+    name: "output" | "preview";
+    destination: string;
+    content: string;
+  }>,
+): Promise<
+  Array<{
+    name: "output" | "preview";
+    parent: string;
+    filename: string;
+    identity: string;
+    content: string;
+  }>
+> {
+  const resolved = await Promise.all(
+    outputs.map(async (output) => {
+      const parent = await realpath(path.dirname(output.destination));
+      if (!isWithinDirectory(projectDirectory, parent)) {
+        throw new Error(
+          `contract.${output.name}: 出力先の親directoryがproject外です`,
+        );
+      }
+      const filename = path.basename(output.destination);
+      let identity: string;
+      try {
+        identity = await realpath(output.destination);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
+        identity = path.join(parent, filename);
+      }
+      if (!isWithinDirectory(projectDirectory, identity)) {
+        throw new Error(`contract.${output.name}: 出力先の実体がproject外です`);
+      }
+      return { ...output, parent, filename, identity };
+    }),
+  );
+
+  if (resolved.some(({ identity }) => identity === inputPath)) {
+    throw new Error("正規データ自身を上書きできません");
+  }
+  if (resolved[0].identity === resolved[1].identity) {
+    throw new Error("contract.preview: outputとは異なる実体pathを指定してください");
+  }
+  return resolved;
 }
 
 function validateProject(project: Project): QualityWarning[] {
@@ -748,7 +830,8 @@ async function build(
   inputPath: string,
   ankiExportPath?: string,
 ): Promise<number> {
-  const { project, warnings } = await readProject(inputPath);
+  const realInputPath = await realpath(path.resolve(inputPath));
+  const { project, warnings } = await readProject(realInputPath);
   if (project.contract.mode === "create" && ankiExportPath) {
     throw new Error("新規作成モードでは--anki-exportを指定できません");
   }
@@ -758,32 +841,38 @@ async function build(
   const guidsByIdentity = ankiExportPath
     ? readGuidMap(await Bun.file(ankiExportPath).text(), project)
     : undefined;
-  const absoluteInputPath = path.resolve(inputPath);
-  const directory = path.dirname(absoluteInputPath);
+  const directory = path.dirname(realInputPath);
   const outputPath = path.resolve(directory, project.contract.output);
   const previewPath = path.resolve(directory, project.contract.preview);
-  if ([outputPath, previewPath].includes(absoluteInputPath)) {
-    throw new Error("正規データ自身を上書きできません");
-  }
   const assignedGuids = assignMissingGuids(project);
   validateProject(project);
-  await replaceOutputs([
+  const resolvedOutputs = await resolveOutputTargets(
+    directory,
+    realInputPath,
+    [
+      {
+        name: "output",
+        destination: outputPath,
+        content: renderTsv(project, guidsByIdentity),
+      },
+      {
+        name: "preview",
+        destination: previewPath,
+        content: renderPreview(project),
+      },
+    ],
+  );
+  await replaceOutputs(directory, [
     ...(assignedGuids
       ? [
           {
-            destination: absoluteInputPath,
+            parent: directory,
+            filename: path.basename(realInputPath),
             content: `${JSON.stringify(project, null, 2)}\n`,
           },
         ]
       : []),
-    {
-      destination: outputPath,
-      content: renderTsv(project, guidsByIdentity),
-    },
-    {
-      destination: previewPath,
-      content: renderPreview(project),
-    },
+    ...resolvedOutputs,
   ]);
   printWarnings(warnings);
   process.stdout.write(
