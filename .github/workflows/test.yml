@@ -28,8 +28,24 @@ jobs:
       - name: Run gitleaks
         run: gitleaks git --redact --no-banner --exit-code 1
 
-  public-install-smoke:
+  contract-test:
     needs: secret-scan
+    runs-on: macos-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Install mise
+        run: ./scripts/install-mise.sh
+
+      - name: Run contract tests
+        run: |
+          "$HOME/.local/bin/mise" trust
+          "$HOME/.local/bin/mise" run test
+
+  public-install-smoke:
+    needs: contract-test
     runs-on: macos-latest
     env:
       GITHUB_TOKEN: ${{ github.token }}
