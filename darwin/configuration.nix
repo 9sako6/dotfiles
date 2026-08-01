@@ -1,5 +1,8 @@
 { pkgs, primaryUser, ... }:
 
+let
+  homebrewPackages = import ./homebrew-packages.nix;
+in
 {
   assertions = [
     {
@@ -7,6 +10,22 @@
       message = "install:system must provide the primary macOS user";
     }
   ];
+
+  environment.systemPackages = [
+    pkgs.git
+  ];
+
+  homebrew = {
+    enable = true;
+    inherit (homebrewPackages) brews casks;
+    global.autoUpdate = false;
+    onActivation = {
+      autoUpdate = false;
+      cleanup = "uninstall";
+      upgrade = false;
+    };
+    taps = [ ];
+  };
 
   nix = {
     enable = true;
@@ -16,6 +35,17 @@
       "nix-command"
     ];
   };
+
+  nix-homebrew = {
+    enable = true;
+    # 既存Homebrewの移行時だけ両方trueにし、成功後は通常運用へ戻す。
+    autoMigrate = false;
+    enableRosetta = false;
+    mutableTaps = false;
+    user = primaryUser;
+  };
+
+  services.zundamonotify.enable = true;
 
   system = {
     defaults = {

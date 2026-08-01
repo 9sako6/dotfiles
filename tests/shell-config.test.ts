@@ -170,6 +170,43 @@ describe("シェル設定", () => {
     });
   });
 
+  test("zshenvはNixのsystem packageをmacOS標準コマンドより先に解決する", async () => {
+    const result = await runCommand("zsh", [
+      "-f",
+      "-c",
+      "source home/.zshenv; printf '%s %s' $path[(i)/run/current-system/sw/bin] $path[(i)/usr/bin]",
+    ]);
+
+    expect(result.code).toBe(0);
+    const [nixIndex, systemIndex] = result.stdout.split(" ").map(Number);
+    expect(nixIndex).toBeLessThan(systemIndex);
+  });
+
+  test("mise有効化後もNixのsystem packageをmacOS標準コマンドより先に解決する", async () => {
+    await withTempDir("zshrc-nix-path", async (tempDir) => {
+      const { homeDir } = await createMinimalZshHome(tempDir);
+      const result = await runCommand(
+        "zsh",
+        [
+          "-f",
+          "-i",
+          "-c",
+          "source home/.zshrc; printf '%s %s' $path[(i)/run/current-system/sw/bin] $path[(i)/usr/bin]",
+        ],
+        {
+          ...process.env,
+          DOTFILES_NO_BANNER: "1",
+          HOME: homeDir,
+          PATH: `${path.join(homeDir, ".local", "bin")}:/usr/bin:/run/current-system/sw/bin`,
+        },
+      );
+
+      expect(result.code).toBe(0);
+      const [nixIndex, systemIndex] = result.stdout.split(" ").map(Number);
+      expect(nixIndex).toBeLessThan(systemIndex);
+    });
+  });
+
   test("対話シェルでzshrcが管理対象の設定断片とリポジトリ用エイリアスを読み込む", async () => {
     await withTempDir("zshrc-fragments", async (tempDir) => {
       const { homeDir } = await createMinimalZshHome(tempDir);

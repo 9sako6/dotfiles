@@ -2,6 +2,7 @@
 
 import path from "node:path";
 import { loadDotfilesConfig } from "./lib/dotfiles-config";
+import { deploymentStatePath } from "./lib/deployment-state";
 import { formatPlan, planLinkActions, runLinkPlan } from "./lib/link-home";
 import { parseCliArgs } from "./lib/paths";
 
@@ -21,6 +22,7 @@ async function main() {
     homeDir,
     prunePaths,
     sourceRoot,
+    statePath: deploymentStatePath(homeDir, process.env.XDG_STATE_HOME),
     symlinkPaths,
   });
   await runLinkPlan(plan);

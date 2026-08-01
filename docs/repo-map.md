@@ -5,8 +5,8 @@
 ファイルは次の 5 区分で扱う。共有してよい設定と共有してはいけない情報を同じ repo に混ぜないための境界。
 
 - `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
-- `home-managed user tools` — home directory に配備して日常利用する設定。共有してよい内容だけを入れる。
-- `system configuration` — `darwin/` に置く macOS の設定。nix-darwin で Mac 全体へ反映し、home directory には配備しない。
+- `home-managed user tools` — home directory に配備して日常利用する設定。mise は開発 CLI と repository bootstrap だけを管理する。
+- `system configuration` — `darwin/` に置く macOS の設定。nix-darwin で Mac 全体へ反映し、Homebrew 本体と cask もここで管理する。
 - `local-only` — マシン固有の設定。repo に入れず、各マシンに手で置く（例: `~/.zsh.d/local.zsh`）。
 - `secrets` — 認証情報や鍵などの機密。repo と `home/` のどちらにも入れない（推奨置き場の例: `~/.zsh.d/secrets.zsh`）。
 
@@ -33,5 +33,6 @@
 
 - mise は `major.minor.patch`
 - GitHub Actions は commit SHA ＋ バージョンコメント（semver タグより immutable）
-- mise bootstrap の `brew` / `brew-cask` package は例外（バージョン指定をサポートしていない）。バージョン管理が必要なものは mise `[tools]` で扱う
+- nix-homebrew は flake input の commit SHA
+- Homebrew の formula / cask は nix-darwin の宣言へ集約する。バージョン管理が必要な CLI は mise `[tools]` または Nix で扱う
 - `install.sh` は、バージョン管理ツール導入前のため、ユーザーの明示的な許可があれば固定を緩めてよい

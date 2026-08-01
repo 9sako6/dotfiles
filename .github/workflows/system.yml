@@ -21,10 +21,16 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - name: Converge system configuration
-        run: ./scripts/install-system.sh
+      - name: Install Lix
+        run: ./scripts/install-lix.sh
 
-      - name: Verify declarative system
+      - name: Build system configuration
         run: |
           /nix/var/nix/profiles/default/bin/nix --version | grep 'Lix'
-          sudo /run/current-system/sw/bin/darwin-version
+          DARWIN_PRIMARY_USER="$(id -un)" \
+            /nix/var/nix/profiles/default/bin/nix \
+            --extra-experimental-features "nix-command flakes" \
+            build \
+            --impure \
+            --no-link \
+            "path:${GITHUB_WORKSPACE}/darwin#darwinConfigurations.aarch64-darwin.system"
