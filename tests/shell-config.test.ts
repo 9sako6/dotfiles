@@ -151,6 +151,74 @@ esac
   return { homeDir };
 }
 
+async function preparePinnedZinitHome(tempDir: string, mismatchPlugin = "") {
+  const fakeBin = path.join(tempDir, "bin");
+  const gitLogPath = path.join(tempDir, "zinit-git.log");
+  const loadLogPath = path.join(tempDir, "zinit-load.log");
+  const { homeDir } = await createMinimalZshHome(tempDir);
+  const pluginsDir = path.join(homeDir, ".local", "share", "zinit", "plugins");
+  const zinitHome = path.join(homeDir, ".local", "share", "zinit", "zinit.git");
+
+  for (const plugin of [
+    "momo-lab---zsh-abbrev-alias",
+    "zsh-users---zsh-autosuggestions",
+    "zsh-users---zsh-syntax-highlighting",
+  ]) {
+    await mkdir(path.join(pluginsDir, plugin, ".git"), { recursive: true });
+  }
+  await writeTree(zinitHome, {
+    "zinit.zsh": `typeset -gA ZINIT
+ZINIT[PLUGINS_DIR]="${pluginsDir}"
+zinit() {
+  if [[ "$1" = light ]]; then
+    print -r -- "$2" >> "$ZINIT_LOAD_LOG"
+  fi
+}
+`,
+  });
+  const gitPath = path.join(fakeBin, "git");
+  await writeTree(fakeBin, {
+    git: `#!/bin/sh
+set -eu
+plugin_dir="$2"
+shift 2
+case "$1" in
+  checkout)
+    printf '%s\n' "$4" > "$plugin_dir/.test-revision"
+    printf '<%s>' "$@" >> "$ZINIT_GIT_LOG"
+    printf '\n' >> "$ZINIT_GIT_LOG"
+    ;;
+  rev-parse)
+    if [ -n "$ZINIT_MISMATCH_PLUGIN" ]; then
+      case "$plugin_dir" in
+        *"$ZINIT_MISMATCH_PLUGIN") printf '%040d\n' 0; exit 0 ;;
+      esac
+    fi
+    /bin/cat "$plugin_dir/.test-revision"
+    ;;
+  clean) exit 0 ;;
+  status) exit 0 ;;
+  *) exit 1 ;;
+esac
+`,
+  });
+  await chmod(gitPath, 0o755);
+
+  return {
+    env: {
+      ...process.env,
+      DOTFILES_NO_BANNER: "1",
+      HOME: homeDir,
+      PATH: `${fakeBin}:${path.join(homeDir, ".local", "bin")}:/usr/bin:/bin`,
+      ZINIT_GIT_LOG: gitLogPath,
+      ZINIT_LOAD_LOG: loadLogPath,
+      ZINIT_MISMATCH_PLUGIN: mismatchPlugin,
+    },
+    gitLogPath,
+    loadLogPath,
+  };
+}
+
 describe("シェル設定", () => {
   test("対話シェルの設定より先にzshenvが秘密情報を読み込む", async () => {
     await withTempDir("zshenv-secrets", async (tempDir) => {
@@ -289,6 +357,45 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
 
       expect(result.code).toBe(0);
       expect(result.stdout).toBe("1");
+    });
+  });
+
+  test("Zinit pluginをfull commit SHAへ固定してから読み込む", async () => {
+    await withTempDir("zinit-pinned", async (tempDir) => {
+      const { env, gitLogPath, loadLogPath } = await preparePinnedZinitHome(tempDir);
+
+      const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
+
+      expect(result.code).toBe(0);
+      expect(await readFile(loadLogPath, "utf8")).toBe(
+        "momo-lab/zsh-abbrev-alias\n" +
+          "zsh-users/zsh-syntax-highlighting\n" +
+          "zsh-users/zsh-autosuggestions\n",
+      );
+      const revisions = Array.from(
+        (await readFile(gitLogPath, "utf8")).matchAll(/<checkout><--quiet><--detach><([0-9a-f]{40})>/g),
+        (match) => match[1],
+      );
+      expect(revisions).toHaveLength(3);
+      expect(new Set(revisions).size).toBe(3);
+    });
+  });
+
+  test("Zinit pluginのresolved commitが固定値と違えば読み込まない", async () => {
+    await withTempDir("zinit-mismatch", async (tempDir) => {
+      const { env, loadLogPath } = await preparePinnedZinitHome(
+        tempDir,
+        "zsh-users---zsh-syntax-highlighting",
+      );
+
+      const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain("refusing zsh-users/zsh-syntax-highlighting");
+      const loaded = await readFile(loadLogPath, "utf8");
+      expect(loaded).toContain("momo-lab/zsh-abbrev-alias\n");
+      expect(loaded).not.toContain("zsh-users/zsh-syntax-highlighting\n");
+      expect(loaded).toContain("zsh-users/zsh-autosuggestions\n");
     });
   });
 
