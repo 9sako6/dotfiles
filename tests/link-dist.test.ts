@@ -291,20 +291,21 @@ describe("runLinkPlan with copy actions", () => {
 });
 
 describe("runLinkPlan with prune actions", () => {
-  test("backs up the obsolete dangling .agents/AGENTS.md symlink", async () => {
+  test("backs up obsolete dangling symlinks declared by the repository config", async () => {
     await withTempDir("link-dist", async (tempDir) => {
       const repoRoot = process.cwd();
       const sourceRoot = path.join(repoRoot, "dist");
       const homeDir = path.join(tempDir, "home");
-      const destinationPath = path.join(homeDir, ".agents", "AGENTS.md");
-      const backupPath = path.join(
-        homeDir,
-        ".dotfiles-backups",
-        "20260328T100000",
-        ".agents",
-        "AGENTS.md",
-      );
-      await createSymlink(path.join(tempDir, "old-dist", ".agents", "AGENTS.md"), destinationPath);
+      const obsoletePaths = [
+        ".agents/AGENTS.md",
+        ".config/zellij/layouts/quad.kdl",
+      ];
+      for (const relativePath of obsoletePaths) {
+        await createSymlink(
+          path.join(tempDir, "old-dist", relativePath),
+          path.join(homeDir, relativePath),
+        );
+      }
       const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(
         repoRoot,
         sourceRoot,
@@ -320,8 +321,16 @@ describe("runLinkPlan with prune actions", () => {
       });
       await runLinkPlan(plan);
 
-      await expect(lstat(destinationPath)).rejects.toThrow();
-      expect((await lstat(backupPath)).isSymbolicLink()).toBe(true);
+      for (const relativePath of obsoletePaths) {
+        await expect(lstat(path.join(homeDir, relativePath))).rejects.toThrow();
+        const backupPath = path.join(
+          homeDir,
+          ".dotfiles-backups",
+          "20260328T100000",
+          relativePath,
+        );
+        expect((await lstat(backupPath)).isSymbolicLink()).toBe(true);
+      }
     });
   });
 

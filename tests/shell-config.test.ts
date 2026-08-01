@@ -456,7 +456,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("nyanpasu passes layout as a global zellij option", async () => {
+  test("nyanpasu attaches to its named zellij session", async () => {
     await withTempDir("nyanpasu", async (tempDir) => {
       const binDir = path.join(tempDir, "bin");
       const capturePath = path.join(tempDir, "zellij-args");
@@ -475,7 +475,7 @@ printf '%s\n' "$@" > "${capturePath}"
       });
 
       expect(result.code).toBe(0);
-      expect(await readFile(capturePath, "utf8")).toBe("--layout\nquad\nattach\nnyanpasu\n-c\n");
+      expect(await readFile(capturePath, "utf8")).toBe("attach\nnyanpasu\n-c\n");
     });
   });
 
