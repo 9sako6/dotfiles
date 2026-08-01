@@ -18,6 +18,35 @@
   };
 
   system = {
+    defaults = {
+      NSGlobalDomain = {
+        # 外観をダークモードにする
+        AppleInterfaceStyle = "Dark";
+        # 文頭の英字を自動で大文字にしない
+        NSAutomaticCapitalizationEnabled = false;
+        # ナチュラルスクロールを無効にする
+        "com.apple.swipescrolldirection" = false;
+      };
+
+      # 右下のホットコーナーには何も割り当てない
+      dock.wvous-br-corner = 1;
+
+      finder = {
+        # ゴミ箱に入れてから30日が過ぎた項目を自動で削除する
+        FXRemoveOldTrashItems = true;
+        # Finderの新しいウィンドウでホームフォルダを開く
+        NewWindowTarget = "Home";
+      };
+
+      menuExtraClock = {
+        # 12時間表示の時刻にAM/PMを付ける
+        ShowAMPM = true;
+        # メニューバーに空きがあるときは日付も表示する
+        ShowDate = 0;
+        # メニューバーの時計に曜日を表示する
+        ShowDayOfWeek = true;
+      };
+    };
     inherit primaryUser;
     stateVersion = 6;
   };
