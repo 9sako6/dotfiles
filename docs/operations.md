@@ -17,10 +17,12 @@ flowchart TD
     proposal --> ask["ユーザーに確認する"]
     boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
     boundary -->|"dist-managed user tools"| dist["skill には配布先でも使える一般ルールだけを書く"]
+    boundary -->|"system configuration"| system["Mac 全体の設定は darwin/ に置く"]
     boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
     boundary -->|"secrets"| secrets["repo と dist/ に入れず、最終判断をユーザーに確認する"]
     repo --> change["変更に進む"]
     dist --> change
+    system --> change
 ```
 
 ### 生成物
@@ -59,10 +61,13 @@ mise run install:system # Lix と nix-darwin で macOS の設定を反映
 
 ## 変更前後の基本手順
 
-1. `mise run plan` で確認
-2. 必要な変更を入れる
-3. `mise run dev:test` で回帰を確認
-4. `mise run apply` で反映
+1. 上の手順で管理区分を確定
+2. `dist-managed user tools` を変更する場合は、`mise run plan` で配備状況を確認
+3. 必要な変更を入れる
+4. `mise run dev:test` で回帰を確認
+5. 変更した管理区分に応じて反映
+   - `dist-managed user tools` — `mise run apply`
+   - `system configuration` — `mise run install:system`
 
-`darwin/` を変更したら、`mise run install:system` で Mac に反映する。初回は
-Lix を導入するため、途中で `sudo` の認証を求められる。
+`repo runtime` の変更に反映コマンドはない。`install:system` の初回実行では、
+Lix を導入するため途中で `sudo` の認証を求められる。

@@ -1,24 +1,14 @@
 #!/bin/sh
 set -eu
 
-LIX_INSTALLER_SHA256="3c71fdcfeddac8fa075b626b6e0ddd9ba73af930e47b4fa027e22c7279f596ae"
-LIX_INSTALLER_URL="https://install.lix.systems/lix/lix-installer-aarch64-darwin"
-LIX_INSTALLER_VERSION="3.95.0"
-
-repo_dir="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+repo_dir="$(dirname -- "$script_dir")"
 darwin_dir="${repo_dir}/darwin"
-temp_dir=""
+install_lix_script="${script_dir}/install-lix.sh"
 
 fail() {
   printf 'install:system: %s\n' "$*" >&2
   exit 1
-}
-
-cleanup() {
-  if [ -n "$temp_dir" ]; then
-    rm -f "${temp_dir}/lix-installer"
-    rmdir "$temp_dir" 2>/dev/null || true
-  fi
 }
 
 find_nix() {
@@ -32,38 +22,6 @@ find_nix() {
     return 1
   fi
 }
-
-install_lix() {
-  temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-lix.XXXXXX")"
-  installer_path="${temp_dir}/lix-installer"
-
-  curl \
-    --proto '=https' \
-    --tlsv1.2 \
-    --silent \
-    --show-error \
-    --fail \
-    --location \
-    --output "$installer_path" \
-    "$LIX_INSTALLER_URL"
-
-  printf '%s  %s\n' "$LIX_INSTALLER_SHA256" "$installer_path" |
-    shasum -a 256 -c -
-  chmod u+x "$installer_path"
-
-  installer_version="$("$installer_path" --version)"
-  case "$installer_version" in
-    "lix-installer ${LIX_INSTALLER_VERSION}:"*) ;;
-    *) fail "expected Lix Installer ${LIX_INSTALLER_VERSION}, got: ${installer_version}" ;;
-  esac
-
-  "$installer_path" install --enable-flakes --no-confirm
-  cleanup
-  temp_dir=""
-}
-
-trap cleanup 0
-trap 'exit 1' HUP INT TERM
 
 [ "$(uname -s)" = "Darwin" ] || fail "nix-darwin requires macOS"
 
@@ -81,7 +39,7 @@ else
 fi
 
 if ! nix_bin="$(find_nix)"; then
-  install_lix
+  "$install_lix_script"
   nix_bin="$(find_nix)" ||
     fail "Lix installation completed but nix was not found"
 fi

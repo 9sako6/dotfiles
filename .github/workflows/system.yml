@@ -8,6 +8,7 @@ on:
       - ".github/workflows/system.yml"
       - ".mise.toml"
       - "darwin/**"
+      - "scripts/install-lix.sh"
       - "scripts/install-system.sh"
   workflow_dispatch:
 

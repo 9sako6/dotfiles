@@ -4,6 +4,7 @@ import path from "node:path";
 import { withTempDir } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
+const installLix = path.join(repoRoot, "scripts/install-lix.sh");
 const installSystem = path.join(repoRoot, "scripts/install-system.sh");
 
 async function makeExecutable(filePath: string, content: string) {
@@ -12,8 +13,12 @@ async function makeExecutable(filePath: string, content: string) {
   await chmod(filePath, 0o755);
 }
 
-async function runInstallSystem(fakeBin: string, env: Record<string, string>) {
-  const proc = Bun.spawn(["/bin/sh", installSystem], {
+async function runScript(
+  script: string,
+  fakeBin: string,
+  env: Record<string, string>,
+) {
+  const proc = Bun.spawn(["/bin/sh", script], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -74,7 +79,7 @@ exec "$@"
 `,
       );
 
-      const result = await runInstallSystem(fakeBin, {
+      const result = await runScript(installSystem, fakeBin, {
         SYSTEM_INSTALL_LOG: logPath,
       });
 
@@ -110,7 +115,7 @@ touch "$SYSTEM_DOWNLOAD_MARKER"
 `,
       );
 
-      const result = await runInstallSystem(fakeBin, {
+      const result = await runScript(installSystem, fakeBin, {
         SYSTEM_DOWNLOAD_MARKER: downloadMarker,
       });
 
@@ -124,26 +129,7 @@ touch "$SYSTEM_DOWNLOAD_MARKER"
     await withTempDir("install-system-checksum", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const installerMarker = path.join(tempDir, "installer-ran");
-      const sudoMarker = path.join(tempDir, "sudo-ran");
 
-      await makeExecutable(
-        path.join(fakeBin, "uname"),
-        `#!/bin/sh
-case "$1" in
-  -s) printf '%s\\n' Darwin ;;
-  -m) printf '%s\\n' arm64 ;;
-esac
-`,
-      );
-      await makeExecutable(
-        path.join(fakeBin, "id"),
-        `#!/bin/sh
-case "$1" in
-  -u) printf '%s\\n' 501 ;;
-  -un) printf '%s\\n' test-user ;;
-esac
-`,
-      );
       await makeExecutable(
         path.join(fakeBin, "curl"),
         `#!/bin/sh
@@ -164,21 +150,13 @@ printf '%s\\n' '#!/bin/sh' "touch \\"$SYSTEM_INSTALLER_MARKER\\"" > "$output"
 exit 1
 `,
       );
-      await makeExecutable(
-        path.join(fakeBin, "sudo"),
-        `#!/bin/sh
-touch "$SYSTEM_SUDO_MARKER"
-`,
-      );
 
-      const result = await runInstallSystem(fakeBin, {
+      const result = await runScript(installLix, fakeBin, {
         SYSTEM_INSTALLER_MARKER: installerMarker,
-        SYSTEM_SUDO_MARKER: sudoMarker,
       });
 
       expect(result.exitCode).not.toBe(0);
       expect(await Bun.file(installerMarker).exists()).toBe(false);
-      expect(await Bun.file(sudoMarker).exists()).toBe(false);
     });
   });
 });
