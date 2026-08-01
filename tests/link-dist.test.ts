@@ -298,7 +298,8 @@ describe("runLinkPlan with prune actions", () => {
       const homeDir = path.join(tempDir, "home");
       const obsoletePaths = [
         ".agents/AGENTS.md",
-        ".config/zellij/layouts/quad.kdl",
+        ".config/zellij",
+        "mybin/nyanpasu",
       ];
       for (const relativePath of obsoletePaths) {
         await createSymlink(

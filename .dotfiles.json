@@ -20,6 +20,7 @@
     ".agents/AGENTS.md",
     ".agents/skills",
     ".claude/skills",
-    ".config/zellij/layouts/quad.kdl"
+    ".config/zellij",
+    "mybin/nyanpasu"
   ]
 }

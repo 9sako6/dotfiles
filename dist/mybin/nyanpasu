@@ -1,6 +1,0 @@
-#!/bin/sh
-if [ "${ZELLIJ:-0}" != "0" ]; then
-  echo "Already inside a zellij session" >&2
-  exit 1
-fi
-zellij attach nyanpasu -c
