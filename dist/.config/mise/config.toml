@@ -31,6 +31,7 @@ zoxide = "0.9.9"
 "vfox-backend:raycast" = "https://github.com/9sako6/mise-raycast.git#v0.1.0"
 
 [bootstrap.packages]
+"brew-cask:bitwarden" = "latest"
 "brew-cask:ghostty" = "latest"
 "brew:git" = "latest"
 
