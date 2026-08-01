@@ -5,6 +5,7 @@ import { withTempDir, writeTree } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installScript = path.join(repoRoot, "install.sh");
+const trustedRevision = "1ef9c70e677cdd524dd5ceafd34ee4f09df004e9";
 
 async function makeExecutable(filePath: string, content: string) {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -12,12 +13,19 @@ async function makeExecutable(filePath: string, content: string) {
   await chmod(filePath, 0o755);
 }
 
-async function prepareBootstrapEnvironment(tempDir: string) {
+async function prepareBootstrapEnvironment(
+  tempDir: string,
+  options: { checkoutExists?: boolean; dirty?: boolean; revision?: string } = {},
+) {
   const dotfilesDir = path.join(tempDir, "dotfiles");
+  const fakeBin = path.join(tempDir, "bin");
+  const gitLogPath = path.join(tempDir, "git.log");
   const homeDir = path.join(tempDir, "home");
   const logPath = path.join(tempDir, "bootstrap.log");
 
-  await mkdir(path.join(dotfilesDir, ".git"), { recursive: true });
+  if (options.checkoutExists !== false) {
+    await mkdir(path.join(dotfilesDir, ".git"), { recursive: true });
+  }
   await makeExecutable(
     path.join(dotfilesDir, "scripts/install-mise.sh"),
     `#!/bin/sh
@@ -32,6 +40,27 @@ printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
 printf '\\n' >> "$BOOTSTRAP_LOG"
 `,
   );
+  await makeExecutable(
+    path.join(fakeBin, "git"),
+    `#!/bin/sh
+set -eu
+printf '<%s>' "$@" >> "$BOOTSTRAP_GIT_LOG"
+printf '\\n' >> "$BOOTSTRAP_GIT_LOG"
+
+if [ "$1" = "clone" ]; then
+  mkdir -p "$4/.git"
+  exit 0
+fi
+
+shift 2
+case "$1" in
+  checkout) exit 0 ;;
+  rev-parse) printf '%s\\n' "$BOOTSTRAP_REVISION" ;;
+  status) [ "${options.dirty ? "1" : "0"}" = "0" ] || printf '%s\\n' ' M install.sh' ;;
+  *) exit 1 ;;
+esac
+`,
+  );
 
   return {
     env: {
@@ -39,7 +68,11 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
       BOOTSTRAP_LOG: logPath,
       DOTFILES_DIR: dotfilesDir,
       HOME: homeDir,
+      PATH: `${fakeBin}:/usr/bin:/bin`,
+      BOOTSTRAP_GIT_LOG: gitLogPath,
+      BOOTSTRAP_REVISION: options.revision ?? trustedRevision,
     },
+    gitLogPath,
     logPath,
   };
 }
@@ -70,6 +103,50 @@ describe("公開bootstrap", () => {
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\nmise <trust>\nmise <bootstrap> <--yes>\n",
       );
+    });
+  });
+
+  test("新規環境では固定revisionをdetached checkoutしてからbootstrapする", async () => {
+    await withTempDir("bootstrap-fresh", async (tempDir) => {
+      const { env, gitLogPath, logPath } = await prepareBootstrapEnvironment(tempDir, {
+        checkoutExists: false,
+      });
+      env.DOTFILES_REPO_URL = "https://example.test/dotfiles.git";
+
+      const result = await runScript(installScript, env);
+
+      expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
+      expect(await readFile(gitLogPath, "utf8")).toContain(
+        `<clone><--no-checkout><https://example.test/dotfiles.git><${env.DOTFILES_DIR}>\n` +
+          `<-C><${env.DOTFILES_DIR}><checkout><--detach><${trustedRevision}>\n`,
+      );
+      expect(await readFile(logPath, "utf8")).toContain("install-mise\n");
+    });
+  });
+
+  test("既存checkoutのrevisionが異なれば信頼も実行もしない", async () => {
+    await withTempDir("bootstrap-revision-mismatch", async (tempDir) => {
+      const { env, logPath } = await prepareBootstrapEnvironment(tempDir, {
+        revision: "0000000000000000000000000000000000000000",
+      });
+
+      const result = await runScript(installScript, env);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain(`expected dotfiles revision ${trustedRevision}`);
+      expect(await Bun.file(logPath).exists()).toBe(false);
+    });
+  });
+
+  test("固定revisionでもlocal changesがあれば信頼も実行もしない", async () => {
+    await withTempDir("bootstrap-dirty", async (tempDir) => {
+      const { env, logPath } = await prepareBootstrapEnvironment(tempDir, { dirty: true });
+
+      const result = await runScript(installScript, env);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain("dotfiles checkout has local changes");
+      expect(await Bun.file(logPath).exists()).toBe(false);
     });
   });
 
