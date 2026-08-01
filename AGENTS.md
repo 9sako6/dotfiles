@@ -48,5 +48,4 @@ flowchart TD
 ## Git と作業ファイル
 
 - 作業ブランチは作らない。変更は `master` に直接コミットし、`master` を push する
-- 一時的な作業メモは `tmp/` に置く（`tmp/plans/`, `tmp/specs/`）
 - `README.md` は編集しない
