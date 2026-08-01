@@ -5,6 +5,7 @@ import { withTempDir } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installLix = path.join(repoRoot, "scripts/install-lix.sh");
+const installMise = path.join(repoRoot, "scripts/install-mise.sh");
 const installSystem = path.join(repoRoot, "scripts/install-system.sh");
 
 async function makeExecutable(filePath: string, content: string) {
@@ -36,6 +37,60 @@ async function runScript(
   ]);
   return { exitCode, stderr, stdout };
 }
+
+describe("install:mise", () => {
+  test("指定バージョンが導入済みなら再導入しない", async () => {
+    await withTempDir("install-mise-current", async (tempDir) => {
+      const fakeBin = path.join(tempDir, "bin");
+      const miseBin = path.join(tempDir, ".local/bin/mise");
+      const downloadMarker = path.join(tempDir, "downloaded");
+
+      await makeExecutable(
+        miseBin,
+        `#!/bin/sh
+printf '%s\n' '2026.7.7 macos-arm64'
+`,
+      );
+      await makeExecutable(
+        path.join(fakeBin, "curl"),
+        `#!/bin/sh
+touch "$MISE_DOWNLOAD_MARKER"
+exit 1
+`,
+      );
+
+      const result = await runScript(installMise, fakeBin, {
+        HOME: tempDir,
+        MISE_DOWNLOAD_MARKER: downloadMarker,
+      });
+
+      expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
+      expect(await Bun.file(downloadMarker).exists()).toBe(false);
+    });
+  });
+
+  test("未導入なら固定バージョンを導入する", async () => {
+    await withTempDir("install-mise-missing", async (tempDir) => {
+      const fakeBin = path.join(tempDir, "bin");
+      const installMarker = path.join(tempDir, "installed-version");
+
+      await makeExecutable(
+        path.join(fakeBin, "curl"),
+        `#!/bin/sh
+printf '%s\n' '#!/bin/sh' 'printf "%s\\n" "$MISE_VERSION" > "$MISE_INSTALL_MARKER"'
+`,
+      );
+
+      const result = await runScript(installMise, fakeBin, {
+        HOME: tempDir,
+        MISE_INSTALL_MARKER: installMarker,
+      });
+
+      expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
+      expect(await readFile(installMarker, "utf8")).toBe("v2026.7.7\n");
+    });
+  });
+});
 
 describe("install:system", () => {
   test("実行時に取得したユーザー名を nix-darwin へ渡す", async () => {
