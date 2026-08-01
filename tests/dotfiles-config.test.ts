@@ -4,8 +4,8 @@ import { writeFile } from "node:fs/promises";
 import { withTempDir, writeTree } from "./test-helpers";
 import { loadDotfilesConfig } from "../scripts/lib/dotfiles-config";
 
-describe("loadDotfilesConfig", () => {
-  test("returns symlinkPaths, copyPaths, and prunePaths from .dotfiles.json", async () => {
+describe(".dotfiles.jsonの読み込み", () => {
+  test("symlink、copy、pruneの各設定を読み込む", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const repoRoot = tempDir;
       const sourceRoot = path.join(tempDir, "dist");
@@ -27,7 +27,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("treats missing symlink, copy, and prune fields as empty sets", async () => {
+  test("symlink、copy、pruneがなければ空集合として扱う", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".keep": "" });
@@ -40,7 +40,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when .dotfiles.json is missing", async () => {
+  test(".dotfiles.jsonがなければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".keep": "" });
@@ -48,7 +48,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when .dotfiles.json is not valid JSON", async () => {
+  test(".dotfiles.jsonが正しいJSONでなければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".keep": "" });
@@ -57,7 +57,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when symlink is not a string array", async () => {
+  test("symlinkが文字列の配列でなければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".keep": "" });
@@ -69,7 +69,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when a managed path escapes the dist tree", async () => {
+  test("管理対象のパスがdist配下から外れていればエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".keep": "" });
@@ -85,7 +85,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when prune is not a string array", async () => {
+  test("pruneが文字列の配列でなければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".keep": "" });
@@ -97,7 +97,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when the same path appears in both symlink and copy", async () => {
+  test("同じパスがsymlinkとcopyの両方にあればエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".zshrc": "" });
@@ -109,7 +109,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when a copy path is a descendant of a symlink path", async () => {
+  test("copyのパスがsymlink配下にあればエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".config/mise/config.toml": "" });
@@ -121,7 +121,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when a symlink path is a descendant of a copy path", async () => {
+  test("symlinkのパスがcopy配下にあればエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".claude/settings.json": "" });
@@ -133,7 +133,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when a prune path is outside copy paths", async () => {
+  test("pruneのパスがcopy配下になければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, {
@@ -147,7 +147,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("throws when a listed path does not exist under sourceRoot", async () => {
+  test("列挙したパスが配布元になければエラーにする", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".zshrc": "" });
@@ -159,7 +159,7 @@ describe("loadDotfilesConfig", () => {
     });
   });
 
-  test("accepts directory entries that exist under sourceRoot", async () => {
+  test("配布元に存在するディレクトリを受け入れる", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "dist");
       await writeTree(sourceRoot, { ".zsh.d/alias.zsh": "" });
