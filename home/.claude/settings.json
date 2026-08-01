@@ -1,12 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(awk:*)",
       "Bash(test:*)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(grep:*)",
-      "Bash(find:*)",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
