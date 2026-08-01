@@ -77,6 +77,11 @@ Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理す�
 既存 Homebrew の移行中は `autoMigrate = true`、`mutableTaps = true` にし、
 `install:system` の初回成功後は両方を `false` へ戻す。
 
+GitHub-hosted macOS runner には管理外の Homebrew が導入済みのため、CI は system derivation の
+build までを検証し、activation は行わない。新規 Mac への activation の E2E は、Homebrew のない
+VM または実機で確認する。公開インストールの smoke test も user environment の導入と system
+derivation の build を分けて検証する。
+
 `apply` は配備したファイルを local state に記録する。後から配布元のファイルを削除すると、
 未変更の配備先は次回の `plan` に退避対象として現れ、`apply` でバックアップへ移る。
 配備後に差し替えたり編集したファイルは自動では移動せず、ドリフトとして報告される。

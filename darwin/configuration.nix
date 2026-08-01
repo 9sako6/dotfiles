@@ -45,6 +45,8 @@ in
     user = primaryUser;
   };
 
+  services.zundamonotify.enable = true;
+
   system = {
     defaults = {
       NSGlobalDomain = {

@@ -34,24 +34,39 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
       - name: Verify secrets are absent before install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
-      - name: Run README install command
-        run: curl -fsSL dot.9sako6.com | bash
+      - name: Install mise
+        run: ./scripts/install-mise.sh
+
+      - name: Install user environment
+        run: |
+          "$HOME/.local/bin/mise" trust
+          "$HOME/.local/bin/mise" run install:user
+
+      - name: Install Lix
+        run: ./scripts/install-lix.sh
+
+      - name: Build system configuration
+        run: |
+          /nix/var/nix/profiles/default/bin/nix --version | grep 'Lix'
+          DARWIN_PRIMARY_USER="$(id -un)" \
+            /nix/var/nix/profiles/default/bin/nix \
+            --extra-experimental-features "nix-command flakes" \
+            build \
+            --impure \
+            --no-link \
+            "path:${GITHUB_WORKSPACE}/darwin#darwinConfigurations.aarch64-darwin.system"
 
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
-      - name: Verify declarative system
-        run: |
-          /nix/var/nix/profiles/default/bin/nix --version | grep 'Lix'
-          sudo /run/current-system/sw/bin/darwin-version
-
       - name: Verify dist-managed daily-use tools
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          cd "$HOME/dotfiles"
           mise exec -- atuin --version
           mise exec -- bun --version
           mise exec -- codex --version
@@ -64,5 +79,4 @@ jobs:
           mise exec -- herdr --version
           mise exec -- pnpm --version
           mise exec -- rg --version
-          test -d /Applications/Raycast.app
           mise exec -- zoxide --version
