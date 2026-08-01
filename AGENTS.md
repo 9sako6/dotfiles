@@ -1,43 +1,7 @@
 # AGENTS.md
 
 管理境界、Bootstrap の原則、バージョンの固定方法は [docs/repo-map.md](docs/repo-map.md) を正本とする。
-日常の操作手順は [docs/operations.md](docs/operations.md) にまとめている。
-
-## 変更前の確認
-
-変更前は次の順に管理区分を確定する。
-
-```mermaid
-flowchart TD
-    start["変更対象を確認"] --> known{"管理区分を判断できるか"}
-    known -->|"はい"| boundary{"管理区分"}
-    known -->|"いいえ"| map["docs/repo-map.md を確認"]
-    map --> resolved{"管理区分を判断できたか"}
-    resolved -->|"はい"| boundary
-    resolved -->|"いいえ"| proposal["不足している判断基準と更新案を整理"]
-    proposal --> ask["ユーザーに確認する"]
-    boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
-    boundary -->|"dist-managed user tools"| dist["skill には配布先でも使える一般ルールだけを書く"]
-    boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
-    boundary -->|"secrets"| secrets["repo と dist/ に入れず、最終判断をユーザーに確認する"]
-    repo --> change["変更に進む"]
-    dist --> change
-```
-
-### 生成物
-
-`apm.lock.yaml` などの生成物は手で編集しない。
-
-```mermaid
-flowchart TD
-    target["変更対象"] --> generated{"生成物か"}
-    generated -->|"いいえ"| edit["直接変更する"]
-    generated -->|"はい"| locate["生成元と再生成手順を探す"]
-    locate --> found{"手順を特定できたか"}
-    found -->|"いいえ"| ask["ユーザーに確認する"]
-    found -->|"はい"| regenerate["正規の手順で再生成する"]
-    regenerate --> order["列挙順も生成器に委ねる"]
-```
+変更前の確認を含む日常の操作手順は [docs/operations.md](docs/operations.md) にまとめている。
 
 ## ファイル管理
 
