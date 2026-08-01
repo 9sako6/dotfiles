@@ -1,5 +1,5 @@
 # dotfiles
 
 ```sh
-curl -fsSL dot.9sako6.com | bash
+curl -fsSL https://dot.9sako6.com | sh
 ```

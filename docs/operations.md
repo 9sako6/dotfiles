@@ -43,7 +43,7 @@ flowchart TD
 ## 初回セットアップ
 
 ```sh
-curl -fsSL dot.9sako6.com | bash
+curl -fsSL https://dot.9sako6.com | sh
 ```
 
 既存ファイルは `~/.dotfiles-backups/` に退避される。
