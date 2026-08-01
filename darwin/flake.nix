@@ -7,9 +7,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixpkgs.url = "github:NixOS/nixpkgs/705e9929918b43bd7b715dc0a878ac870449bb03";
+    zundamonotify = {
+      url = "github:9sako6/zundamonotify/09a246f93b2f2aa6307c49136751c0386fb5c485";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nix-darwin, ... }:
+  outputs = { self, nix-darwin, zundamonotify, ... }:
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
@@ -25,6 +29,7 @@
           inherit primaryUser;
         };
         modules = [
+          zundamonotify.darwinModules.default
           ./configuration.nix
           {
             nixpkgs.hostPlatform = system;

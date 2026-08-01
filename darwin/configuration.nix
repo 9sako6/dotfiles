@@ -17,6 +17,8 @@
     ];
   };
 
+  services.zundamonotify.enable = true;
+
   system = {
     defaults = {
       NSGlobalDomain = {

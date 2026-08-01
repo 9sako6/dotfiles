@@ -40,7 +40,29 @@
     "root": {
       "inputs": {
         "nix-darwin": "nix-darwin",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "zundamonotify": "zundamonotify"
+      }
+    },
+    "zundamonotify": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1785579633,
+        "narHash": "sha256-t55up2vb/TeyCmXRSAUFH87XyrAv2JFpu+oUTERli/g=",
+        "owner": "9sako6",
+        "repo": "zundamonotify",
+        "rev": "09a246f93b2f2aa6307c49136751c0386fb5c485",
+        "type": "github"
+      },
+      "original": {
+        "owner": "9sako6",
+        "repo": "zundamonotify",
+        "rev": "09a246f93b2f2aa6307c49136751c0386fb5c485",
+        "type": "github"
       }
     }
   },
