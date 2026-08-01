@@ -6,7 +6,10 @@ import { withTempDir } from "./test-helpers";
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installLix = path.join(repoRoot, "scripts/install-lix.sh");
 const installMise = path.join(repoRoot, "scripts/install-mise.sh");
-const installSystem = path.join(repoRoot, "scripts/install-system.sh");
+const installSystemLibrary = path.join(
+  repoRoot,
+  "scripts/lib/install-system.sh",
+);
 
 async function makeExecutable(filePath: string, content: string) {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -29,6 +32,38 @@ async function runScript(
     stderr: "pipe",
     stdout: "pipe",
   });
+
+  const [exitCode, stderr, stdout] = await Promise.all([
+    proc.exited,
+    new Response(proc.stderr).text(),
+    new Response(proc.stdout).text(),
+  ]);
+  return { exitCode, stderr, stdout };
+}
+
+async function runInstallSystemFunction(
+  command: string,
+  args: string[],
+  env: Record<string, string> = {},
+) {
+  const proc = Bun.spawn(
+    [
+      "/bin/sh",
+      "-c",
+      `. "$1"
+shift
+${command}`,
+      "install-system-test",
+      installSystemLibrary,
+      ...args,
+    ],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ...env },
+      stderr: "pipe",
+      stdout: "pipe",
+    },
+  );
 
   const [exitCode, stderr, stdout] = await Promise.all([
     proc.exited,
@@ -99,24 +134,6 @@ describe("install:system", () => {
       const logPath = path.join(tempDir, "system.log");
 
       await makeExecutable(
-        path.join(fakeBin, "uname"),
-        `#!/bin/sh
-case "$1" in
-  -s) printf '%s\\n' Darwin ;;
-  -m) printf '%s\\n' arm64 ;;
-esac
-`,
-      );
-      await makeExecutable(
-        path.join(fakeBin, "id"),
-        `#!/bin/sh
-case "$1" in
-  -u) printf '%s\\n' 501 ;;
-  -un) printf '%s\\n' test-user ;;
-esac
-`,
-      );
-      await makeExecutable(
         path.join(fakeBin, "sudo"),
         `#!/bin/sh
 exec "$@"
@@ -134,9 +151,18 @@ exec "$@"
 `,
       );
 
-      const result = await runScript(installSystem, fakeBin, {
-        SYSTEM_INSTALL_LOG: logPath,
-      });
+      const result = await runInstallSystemFunction(
+        'install_system_run_darwin_rebuild "$1" "$2" "$3" "$4" "$5" "$6"',
+        [
+          path.join(fakeBin, "sudo"),
+          "/usr/bin/env",
+          path.join(fakeBin, "nix"),
+          "test-user",
+          path.join(repoRoot, "darwin"),
+          "aarch64-darwin",
+        ],
+        { SYSTEM_INSTALL_LOG: logPath },
+      );
 
       expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
       const log = await readFile(logPath, "utf8");
@@ -149,20 +175,116 @@ exec "$@"
     });
   });
 
+  test("PATH 上の偽 nix と sudo を特権コマンドとして選ばない", async () => {
+    await withTempDir("install-system-path", async (tempDir) => {
+      const fakeBin = path.join(tempDir, "bin");
+      const marker = path.join(tempDir, "executed");
+
+      for (const executable of ["nix", "sudo"]) {
+        await makeExecutable(
+          path.join(fakeBin, executable),
+          `#!/bin/sh
+touch "${marker}"
+`,
+        );
+      }
+
+      const result = await runInstallSystemFunction(
+        `printf 'sudo=%s\\n' "$(install_system_resolve_sudo)"
+if nix_bin="$(install_system_resolve_nix)"; then
+  printf 'nix=%s\\n' "$nix_bin"
+else
+  printf 'nix_status=%s\\n' "$?"
+fi`,
+        [],
+        { PATH: `${fakeBin}:/usr/bin:/bin` },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toContain("sudo=/usr/bin/sudo\n");
+      expect(result.stdout).not.toContain(fakeBin);
+      expect(await Bun.file(marker).exists()).toBe(false);
+    });
+  });
+
+  test("user 所有の実行ファイルを trusted と判定しない", async () => {
+    await withTempDir("install-system-owner", async (tempDir) => {
+      const executable = path.join(tempDir, "nix");
+      await makeExecutable(executable, "#!/bin/sh\n");
+
+      const result = await runInstallSystemFunction(
+        'install_system_is_root_owned_readonly "$1"',
+        [executable],
+      );
+
+      expect(result.exitCode).not.toBe(0);
+    });
+  });
+
+  test("root 所有でも書き込み可能な path を trusted と判定しない", async () => {
+    const result = await runInstallSystemFunction(
+      'install_system_is_root_owned_readonly "$1"',
+      ["/tmp"],
+    );
+
+    expect(result.exitCode).not.toBe(0);
+  });
+
+  test("Nix 導入済みなら installer を実行しない", async () => {
+    await withTempDir("install-system-nix-present", async (tempDir) => {
+      const installer = path.join(tempDir, "install-lix");
+      const marker = path.join(tempDir, "installer-ran");
+      await makeExecutable(installer, `#!/bin/sh\ntouch "${marker}"\n`);
+
+      const result = await runInstallSystemFunction(
+        `install_system_resolve_nix() { printf '%s\\n' /trusted/nix; }
+install_system_ensure_nix "$1"`,
+        [installer],
+      );
+
+      expect(result).toMatchObject({
+        exitCode: 0,
+        stderr: "",
+        stdout: "/trusted/nix\n",
+      });
+      expect(await Bun.file(marker).exists()).toBe(false);
+    });
+  });
+
+  test("Nix 未導入なら installer 後に trusted path を再検証する", async () => {
+    await withTempDir("install-system-nix-missing", async (tempDir) => {
+      const installer = path.join(tempDir, "install-lix");
+      const marker = path.join(tempDir, "installer-ran");
+      await makeExecutable(installer, `#!/bin/sh\ntouch "${marker}"\n`);
+
+      const result = await runInstallSystemFunction(
+        `install_marker="$2"
+install_system_resolve_nix() {
+  if [ -e "$install_marker" ]; then
+    printf '%s\\n' /trusted/nix
+  else
+    return 1
+  fi
+}
+install_system_ensure_nix "$1"`,
+        [installer, marker],
+      );
+
+      expect(result).toMatchObject({
+        exitCode: 0,
+        stderr: "",
+        stdout: "/trusted/nix\n",
+      });
+      expect(await Bun.file(marker).exists()).toBe(true);
+    });
+  });
+
   test("非対応の CPU ではダウンロード前に終了する", async () => {
     await withTempDir("install-system-arch", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const downloadMarker = path.join(tempDir, "downloaded");
 
-      await makeExecutable(
-        path.join(fakeBin, "uname"),
-        `#!/bin/sh
-case "$1" in
-  -s) printf '%s\\n' Darwin ;;
-  -m) printf '%s\\n' x86_64 ;;
-esac
-`,
-      );
       await makeExecutable(
         path.join(fakeBin, "curl"),
         `#!/bin/sh
@@ -170,9 +292,11 @@ touch "$SYSTEM_DOWNLOAD_MARKER"
 `,
       );
 
-      const result = await runScript(installSystem, fakeBin, {
-        SYSTEM_DOWNLOAD_MARKER: downloadMarker,
-      });
+      const result = await runInstallSystemFunction(
+        'install_system_host_platform "$1" "$2"',
+        ["Darwin", "x86_64"],
+        { SYSTEM_DOWNLOAD_MARKER: downloadMarker },
+      );
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("supports Apple Silicon only");
