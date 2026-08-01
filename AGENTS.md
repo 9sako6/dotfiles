@@ -10,10 +10,16 @@
 ```mermaid
 flowchart TD
     start["変更対象を確認"] --> known{"管理区分を判断できるか"}
+    known -->|"はい"| boundary{"管理区分"}
     known -->|"いいえ"| map["docs/repo-map.md を確認"]
-    map --> known
-    known -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
-    known -->|"dist-managed user tools"| dist["skill には配布先でも使える一般ルールだけを書く"]
+    map --> resolved{"管理区分を判断できたか"}
+    resolved -->|"はい"| boundary
+    resolved -->|"いいえ"| proposal["不足している判断基準と更新案を整理"]
+    proposal --> ask["ユーザーに確認する"]
+    boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
+    boundary -->|"dist-managed user tools"| dist["skill には配布先でも使える一般ルールだけを書く"]
+    boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
+    boundary -->|"secrets"| secrets["repo と dist/ に入れず、最終判断をユーザーに確認する"]
     repo --> change["変更に進む"]
     dist --> change
 ```
