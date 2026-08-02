@@ -65,12 +65,22 @@ async function inspectDeployment(
 
 async function inspectMiseInstallations(homeDir: string): Promise<DoctorSectionContent> {
   const misePath = path.join(homeDir, ".local", "bin", "mise");
-  const miseInventory = inspectMise(await run(misePath, ["ls", "--prunable", "--json"]));
+  const [missingRaw, prunableRaw] = await Promise.all([
+    run(misePath, ["ls", "--missing", "--json"]),
+    run(misePath, ["ls", "--prunable", "--json"]),
+  ]);
+  const miseInventory = inspectMise({ missingRaw, prunableRaw });
+  const findings: string[] = [];
+  if (miseInventory.missing.length > 0) {
+    findings.push(`missing: ${miseInventory.missing.join(", ")}`);
+  }
+  if (miseInventory.prunable.length > 0) {
+    findings.push(`prunable: ${miseInventory.prunable.join(", ")}`);
+  }
   return {
-    findings: miseInventory.prunable.length === 0
-      ? []
-      : [`prunable: ${miseInventory.prunable.join(", ")}`],
-    summary: `${miseInventory.prunable.length} prunable installation(s)`,
+    findings,
+    summary:
+      `${miseInventory.missing.length} missing, ${miseInventory.prunable.length} prunable installation(s)`,
   };
 }
 

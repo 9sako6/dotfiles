@@ -1,4 +1,5 @@
 export type MiseInventory = {
+  missing: string[];
   prunable: string[];
 };
 
@@ -22,18 +23,28 @@ type MiseRecord = {
   version?: string;
 };
 
-export function inspectMise(raw: string): MiseInventory {
+export function inspectMise(options: {
+  missingRaw: string;
+  prunableRaw: string;
+}): MiseInventory {
+  return {
+    missing: miseVersions(options.missingRaw, false),
+    prunable: miseVersions(options.prunableRaw, true),
+  };
+}
+
+function miseVersions(raw: string, installed: boolean): string[] {
   const parsed = JSON.parse(raw) as Record<string, MiseRecord[]>;
-  const prunable: string[] = [];
+  const entries: string[] = [];
   for (const [tool, versions] of Object.entries(parsed)) {
     for (const version of versions) {
-      if (!version.installed || typeof version.version !== "string") {
+      if (version.installed !== installed || typeof version.version !== "string") {
         continue;
       }
-      prunable.push(`${tool}@${version.version}`);
+      entries.push(`${tool}@${version.version}`);
     }
   }
-  return { prunable: prunable.sort() };
+  return entries.sort();
 }
 
 export function inspectHomebrew(options: {
@@ -97,7 +108,9 @@ export async function runDoctor(inspections: readonly DoctorInspection[]): Promi
     }),
   );
   return {
-    failed: sections.some((section) => section.failed),
+    failed: sections.some(
+      (section) => section.failed || section.content.findings.length > 0,
+    ),
     output: sections.map((section) => {
       if (section.failed) {
         return [`[${section.title}]`, "  diagnosis failed", `  error: ${section.error}`].join("\n");
