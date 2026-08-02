@@ -299,7 +299,32 @@ async function replaceWithBackup(action: ReplaceAction) {
 }
 
 export function formatPlan(plan: LinkPlan): string {
-  const lines: string[] = [];
+  const summary = summarizeLinkPlan(plan);
+  const lines = summary.findings.map((finding) => `  ${finding}`);
+  const { counts } = summary;
+  const parts: string[] = [];
+  if (counts.link > 0) parts.push(`${counts.link} link`);
+  if (counts.copy > 0) parts.push(`${counts.copy} copy`);
+  if (counts.prune > 0) parts.push(`${counts.prune} prune`);
+  if (counts.backup > 0) parts.push(`${counts.backup} backup`);
+  if (counts.drift > 0) parts.push(`${counts.drift} drift`);
+  if (counts.noop > 0) parts.push(`${counts.noop} unchanged`);
+
+  if (lines.length > 0) {
+    lines.push("");
+  }
+  lines.push(parts.join(", "));
+
+  return lines.join("\n");
+}
+
+export function summarizeLinkPlan(plan: LinkPlan): {
+  changeCount: number;
+  counts: { backup: number; copy: number; drift: number; link: number; noop: number; prune: number };
+  findings: string[];
+  managedCount: number;
+} {
+  const findings: string[] = [];
   const counts = { backup: 0, copy: 0, link: 0, noop: 0, prune: 0 };
   const repoRoot = path.dirname(plan.sourceRoot);
 
@@ -313,35 +338,28 @@ export function formatPlan(plan: LinkPlan): string {
     if (action.type === "noop") continue;
 
     if (action.type === "replace") {
-      lines.push(`  backup  ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
-      lines.push(`  ${action.replacementType.padEnd(8)}${path.relative(repoRoot, action.sourcePath)} → ${tildefy(action.destinationPath, plan.homeDir)}`);
+      findings.push(`backup  ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
+      findings.push(`${action.replacementType.padEnd(8)}${path.relative(repoRoot, action.sourcePath)} → ${tildefy(action.destinationPath, plan.homeDir)}`);
     } else if (action.type === "backup") {
-      lines.push(`  backup  ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
+      findings.push(`backup  ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
     } else if (action.type === "prune") {
-      lines.push(`  prune   ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
+      findings.push(`prune   ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
     } else {
-      lines.push(`  ${action.type.padEnd(8)}${path.relative(repoRoot, action.sourcePath)} → ${tildefy(action.destinationPath, plan.homeDir)}`);
+      findings.push(`${action.type.padEnd(8)}${path.relative(repoRoot, action.sourcePath)} → ${tildefy(action.destinationPath, plan.homeDir)}`);
     }
   }
 
   for (const drift of plan.drifts) {
-    lines.push(`  drift   ${tildefy(drift.destinationPath, plan.homeDir)} (${drift.reason})`);
+    findings.push(`drift   ${tildefy(drift.destinationPath, plan.homeDir)} (${drift.reason})`);
   }
 
-  const parts: string[] = [];
-  if (counts.link > 0) parts.push(`${counts.link} link`);
-  if (counts.copy > 0) parts.push(`${counts.copy} copy`);
-  if (counts.prune > 0) parts.push(`${counts.prune} prune`);
-  if (counts.backup > 0) parts.push(`${counts.backup} backup`);
-  if (plan.drifts.length > 0) parts.push(`${plan.drifts.length} drift`);
-  if (counts.noop > 0) parts.push(`${counts.noop} unchanged`);
-
-  if (lines.length > 0) {
-    lines.push("");
-  }
-  lines.push(parts.join(", "));
-
-  return lines.join("\n");
+  return {
+    changeCount: plan.actions.filter((action) => action.type !== "noop").length +
+      plan.drifts.length,
+    counts: { ...counts, drift: plan.drifts.length },
+    findings,
+    managedCount: plan.actions.length,
+  };
 }
 
 async function planPruneActions(

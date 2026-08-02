@@ -7,6 +7,7 @@ import {
   formatPlan,
   planLinkActions as planTrackedLinkActions,
   runLinkPlan,
+  summarizeLinkPlan,
   type LinkPlan,
 } from "../scripts/lib/link-home";
 
@@ -747,6 +748,17 @@ describe("配備計画の表示", () => {
     };
 
     const output = formatPlan(plan);
+    expect(summarizeLinkPlan(plan)).toEqual({
+      changeCount: 3,
+      counts: { backup: 1, copy: 1, drift: 0, link: 1, noop: 1, prune: 1 },
+      findings: [
+        "backup  ~/.zshrc → ~/.dotfiles-backups/20260418T150000/.zshrc",
+        "link    home/.zshrc → ~/.zshrc",
+        "copy    home/.claude/settings.json → ~/.claude/settings.json",
+        "prune   ~/.agents/skills/removed/SKILL.md → ~/.dotfiles-backups/20260418T150000/.agents/skills/removed/SKILL.md",
+      ],
+      managedCount: 4,
+    });
     expect(output).toBe(
       [
         "  backup  ~/.zshrc → ~/.dotfiles-backups/20260418T150000/.zshrc",

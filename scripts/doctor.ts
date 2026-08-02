@@ -10,7 +10,7 @@ import {
   inspectMise,
   runDoctor,
 } from "./lib/doctor";
-import { formatPlan, planLinkActions } from "./lib/link-home";
+import { planLinkActions, summarizeLinkPlan } from "./lib/link-home";
 
 async function main() {
   const homeDir = process.env.HOME;
@@ -54,16 +54,12 @@ async function inspectDeployment(
     statePath: deploymentStatePath(homeDir, process.env.XDG_STATE_HOME),
     symlinkPaths,
   });
-  const deploymentChanges = plan.actions.filter((action) => action.type !== "noop").length + plan.drifts.length;
-  const deploymentFindings = formatPlan(plan)
-    .split("\n")
-    .filter((line) => line.startsWith("  "))
-    .map((line) => line.trim());
+  const deployment = summarizeLinkPlan(plan);
   return {
-    findings: deploymentChanges === 0 ? [] : deploymentFindings,
-    summary: deploymentChanges === 0
-      ? `${plan.actions.length} managed files are converged`
-      : `${deploymentChanges} change or drift item(s) detected`,
+    findings: deployment.changeCount === 0 ? [] : deployment.findings,
+    summary: deployment.changeCount === 0
+      ? `${deployment.managedCount} managed files are converged`
+      : `${deployment.changeCount} change or drift item(s) detected`,
   };
 }
 
