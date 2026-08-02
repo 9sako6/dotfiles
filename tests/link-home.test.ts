@@ -135,11 +135,18 @@ describe("配備計画の実行", () => {
         copyPaths: new Set([".config/example"]),
         symlinkPaths: new Set(),
       });
-      const copyActions = plan.actions.filter((action) => action.type === "copy");
-      const backupAction = plan.actions.find((action) => action.type === "backup");
+      const copyActions = plan.actions.filter((action) =>
+        action.type === "copy" ||
+        (action.type === "replace" && action.replacementType === "copy")
+      );
+      const replacement = plan.actions.find((action) => action.type === "replace");
       expect(copyActions).toHaveLength(3);
-      expect(backupAction?.type).toBe("backup");
-      await unlink(copyActions[2].sourcePath);
+      expect(replacement?.type).toBe("replace");
+      const failingCopy = copyActions[2];
+      if (!("sourcePath" in failingCopy)) {
+        throw new Error("copy action does not have a source path");
+      }
+      await unlink(failingCopy.sourcePath);
 
       await expect(runLinkPlan(plan)).rejects.toThrow();
 
@@ -147,8 +154,8 @@ describe("配備計画の実行", () => {
       for (const action of copyActions.slice(1)) {
         await expect(access(action.destinationPath)).rejects.toThrow();
       }
-      if (backupAction?.type === "backup") {
-        await expect(access(backupAction.backupPath)).rejects.toThrow();
+      if (replacement?.type === "replace") {
+        await expect(access(replacement.backupPath)).rejects.toThrow();
       }
       await expect(access(plan.deploymentState.statePath)).rejects.toThrow();
     });
@@ -726,8 +733,7 @@ describe("配備計画の表示", () => {
   test("操作を一覧化し、件数を添える", () => {
     const plan: LinkPlan = {
       actions: [
-        { type: "backup", sourcePath: "/repo/home/.zshrc", destinationPath: "/home/.zshrc", backupPath: "/home/.dotfiles-backups/20260418T150000/.zshrc" },
-        { type: "link", sourcePath: "/repo/home/.zshrc", destinationPath: "/home/.zshrc" },
+        { type: "replace", replacementType: "link", sourcePath: "/repo/home/.zshrc", destinationPath: "/home/.zshrc", backupPath: "/home/.dotfiles-backups/20260418T150000/.zshrc" },
         { type: "copy", sourcePath: "/repo/home/.claude/settings.json", destinationPath: "/home/.claude/settings.json" },
         { type: "prune", destinationPath: "/home/.agents/skills/removed/SKILL.md", backupPath: "/home/.dotfiles-backups/20260418T150000/.agents/skills/removed/SKILL.md" },
         { type: "noop", sourcePath: "/repo/home/.gitconfig", destinationPath: "/home/.gitconfig" },

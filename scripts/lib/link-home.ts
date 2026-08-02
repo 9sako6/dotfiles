@@ -24,6 +24,13 @@ export type LinkAction =
   | {
       backupPath: string;
       destinationPath: string;
+      replacementType: "copy" | "link";
+      sourcePath: string;
+      type: "replace";
+    }
+  | {
+      backupPath: string;
+      destinationPath: string;
       sourcePath: string;
       type: "backup";
     }
@@ -168,24 +175,22 @@ export async function runLinkPlan(plan: ManagedLinkPlan) {
 
   const rollbackActions: RollbackAction[] = [];
   try {
-    for (let index = 0; index < plan.actions.length; index += 1) {
-      const action = plan.actions[index];
+    for (const action of plan.actions) {
       if (action.type === "noop") {
         continue;
       }
 
+      if (action.type === "replace") {
+        await replaceWithBackup(action);
+        rollbackActions.push({
+          backupPath: action.backupPath,
+          destinationPath: action.destinationPath,
+          type: "restore",
+        });
+        continue;
+      }
+
       if (action.type === "backup") {
-        const replacement = plan.actions[index + 1];
-        if (isReplacementForBackup(action, replacement)) {
-          await replaceWithBackup(action, replacement);
-          rollbackActions.push({
-            backupPath: action.backupPath,
-            destinationPath: action.destinationPath,
-            type: "restore",
-          });
-          index += 1;
-          continue;
-        }
         await mkdir(path.dirname(action.backupPath), { recursive: true });
         await rename(action.destinationPath, action.backupPath);
         rollbackActions.push({
@@ -262,41 +267,29 @@ async function rollbackLinkActions(actions: readonly RollbackAction[]): Promise<
   return errors;
 }
 
-type ReplacementAction = Extract<LinkAction, { type: "copy" | "link" }>;
-type BackupAction = Extract<LinkAction, { type: "backup" }>;
+type ReplaceAction = Extract<LinkAction, { type: "replace" }>;
 
-function isReplacementForBackup(
-  backup: BackupAction,
-  replacement: LinkAction | undefined,
-): replacement is ReplacementAction {
-  return (
-    !!replacement &&
-    (replacement.type === "copy" || replacement.type === "link") &&
-    replacement.destinationPath === backup.destinationPath
-  );
-}
-
-async function replaceWithBackup(backup: BackupAction, replacement: ReplacementAction) {
-  const destinationDir = path.dirname(replacement.destinationPath);
+async function replaceWithBackup(action: ReplaceAction) {
+  const destinationDir = path.dirname(action.destinationPath);
   const tempPath = path.join(
     destinationDir,
-    `.dotfiles-${path.basename(replacement.destinationPath)}.${process.pid}.${Date.now()}.tmp`,
+    `.dotfiles-${path.basename(action.destinationPath)}.${process.pid}.${Date.now()}.tmp`,
   );
 
   await mkdir(destinationDir, { recursive: true });
-  await mkdir(path.dirname(backup.backupPath), { recursive: true });
+  await mkdir(path.dirname(action.backupPath), { recursive: true });
   try {
-    if (replacement.type === "copy") {
-      await copyFile(replacement.sourcePath, tempPath);
+    if (action.replacementType === "copy") {
+      await copyFile(action.sourcePath, tempPath);
     } else {
-      await symlink(replacement.sourcePath, tempPath);
+      await symlink(action.sourcePath, tempPath);
     }
-    await rename(backup.destinationPath, backup.backupPath);
+    await rename(action.destinationPath, action.backupPath);
     try {
-      await rename(tempPath, replacement.destinationPath);
+      await rename(tempPath, action.destinationPath);
     } catch (error) {
-      if (!(await lstatOrNull(replacement.destinationPath))) {
-        await rename(backup.backupPath, backup.destinationPath);
+      if (!(await lstatOrNull(action.destinationPath))) {
+        await rename(action.backupPath, action.destinationPath);
       }
       throw error;
     }
@@ -311,10 +304,18 @@ export function formatPlan(plan: LinkPlan): string {
   const repoRoot = path.dirname(plan.sourceRoot);
 
   for (const action of plan.actions) {
-    counts[action.type] += 1;
+    if (action.type === "replace") {
+      counts.backup += 1;
+      counts[action.replacementType] += 1;
+    } else {
+      counts[action.type] += 1;
+    }
     if (action.type === "noop") continue;
 
-    if (action.type === "backup") {
+    if (action.type === "replace") {
+      lines.push(`  backup  ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
+      lines.push(`  ${action.replacementType.padEnd(8)}${path.relative(repoRoot, action.sourcePath)} → ${tildefy(action.destinationPath, plan.homeDir)}`);
+    } else if (action.type === "backup") {
       lines.push(`  backup  ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
     } else if (action.type === "prune") {
       lines.push(`  prune   ${tildefy(action.destinationPath, plan.homeDir)} → ${tildefy(action.backupPath, plan.homeDir)}`);
@@ -507,8 +508,8 @@ async function planManagedPath(
   actions.push({
     backupPath: backupPathFor(options.homeDir, destinationPath, options.timestamp),
     destinationPath,
+    replacementType: actionType,
     sourcePath,
-    type: "backup",
+    type: "replace",
   });
-  actions.push({ destinationPath, sourcePath, type: actionType });
 }
