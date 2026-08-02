@@ -236,6 +236,29 @@ describe("ローカルスキルの削除", () => {
       );
     });
   });
+
+  test("登録解除後の再生成に失敗したらローカルソースを残す", async () => {
+    await withTempDir("remove-local-skill", async (tempDir) => {
+      await writeTree(tempDir, {
+        "apm.yml": "dependencies:\n  apm:\n  - ./.apm/skills/example-skill\n",
+        ".apm/skills/example-skill/SKILL.md": "# Example\n",
+      });
+      let commandCount = 0;
+
+      await expect(
+        removeLocalSkill(tempDir, ["example-skill"], async () => {
+          commandCount += 1;
+          if (commandCount === 3) {
+            throw new Error("compile failed");
+          }
+        }),
+      ).rejects.toThrow("compile failed");
+
+      expect(commandCount).toBe(3);
+      expect(await readFile(path.join(tempDir, ".apm/skills/example-skill/SKILL.md"), "utf8"))
+        .toBe("# Example\n");
+    });
+  });
 });
 
 describe("リモートパッケージのアンインストール対象", () => {

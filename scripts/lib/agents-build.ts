@@ -57,10 +57,10 @@ export async function removeLocalSkill(cwd: string, args: string[], runCommand: 
   }
   await runCommand("apm", ["uninstall", dependency], cwd);
 
-  await rm(sourcePath, { recursive: true });
   for (const command of createAgentsBuildPlan("build", [])) {
     await runCommand(command.command, command.args, cwd);
   }
+  await rm(sourcePath, { recursive: true });
 }
 
 export async function assertRemoteUninstallTargets(cwd: string, args: string[]) {
