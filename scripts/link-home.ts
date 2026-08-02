@@ -2,7 +2,7 @@
 
 import path from "node:path";
 import { loadDotfilesConfig } from "./lib/dotfiles-config";
-import { deploymentStatePath } from "./lib/deployment-state";
+import { deploymentStatePath, withDeploymentLock } from "./lib/deployment-state";
 import { formatPlan, planLinkActions, runLinkPlan } from "./lib/link-home";
 import { parseCliArgs } from "./lib/paths";
 
@@ -16,16 +16,23 @@ async function main() {
   const repoRoot = process.cwd();
   const sourceRoot = path.resolve(repoRoot, "home");
   const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
-  const plan = await planLinkActions({
+  const statePath = deploymentStatePath(homeDir, process.env.XDG_STATE_HOME);
+  const createPlan = () => planLinkActions({
     copyPaths,
     dryRun,
     homeDir,
     prunePaths,
     sourceRoot,
-    statePath: deploymentStatePath(homeDir, process.env.XDG_STATE_HOME),
+    statePath,
     symlinkPaths,
   });
-  await runLinkPlan(plan);
+  const plan = dryRun
+    ? await createPlan()
+    : await withDeploymentLock(statePath, async () => {
+        const lockedPlan = await createPlan();
+        await runLinkPlan(lockedPlan);
+        return lockedPlan;
+      });
 
   console.log(formatPlan(plan));
 }

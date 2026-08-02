@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { mkdir, readFile, readlink, rename, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { link, mkdir, readFile, readlink, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { lstatOrNull, readDirents } from "./fs";
 
@@ -25,6 +25,81 @@ export type DeploymentDrift = {
 
 export function deploymentStatePath(homeDir: string, stateHome?: string): string {
   return path.join(stateHome ?? path.join(homeDir, ".local", "state"), "dotfiles", "deployment.json");
+}
+
+export async function withDeploymentLock<T>(
+  statePath: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const lockPath = `${statePath}.lock`;
+  await mkdir(path.dirname(lockPath), { recursive: true });
+  await acquireDeploymentLock(lockPath);
+  try {
+    return await operation();
+  } finally {
+    await rm(lockPath, { force: true });
+  }
+}
+
+async function acquireDeploymentLock(lockPath: string): Promise<void> {
+  for (;;) {
+    const candidatePath = `${lockPath}.${process.pid}.${randomUUID()}.candidate`;
+    await writeFile(candidatePath, `${JSON.stringify({ pid: process.pid })}\n`, {
+      flag: "wx",
+      mode: 0o600,
+    });
+    try {
+      await link(candidatePath, lockPath);
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error;
+      }
+    } finally {
+      await rm(candidatePath, { force: true });
+    }
+
+    const owner = await readDeploymentLockOwner(lockPath);
+    if (owner !== null && isProcessAlive(owner.pid)) {
+      throw new Error(`dotfiles deployment is already running with pid ${owner.pid}`);
+    }
+
+    const stalePath = `${lockPath}.${process.pid}.${randomUUID()}.stale`;
+    try {
+      await rename(lockPath, stalePath);
+      await rm(stalePath, { force: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+}
+
+async function readDeploymentLockOwner(lockPath: string): Promise<{ pid: number } | null> {
+  try {
+    const parsed = JSON.parse(await readFile(lockPath, "utf8")) as { pid?: unknown };
+    return Number.isSafeInteger(parsed.pid) && Number(parsed.pid) > 0
+      ? { pid: Number(parsed.pid) }
+      : null;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    if (error instanceof SyntaxError) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== "ESRCH";
+  }
 }
 
 export async function loadDeploymentState(statePath: string): Promise<DeploymentState | null> {
