@@ -5,7 +5,7 @@ import { withTempDir, writeTree } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installScript = path.join(repoRoot, "install.sh");
-const trustedRevision = "d2ee15291d3fd50f699bfa0073ccff1d1071f5f1";
+const trustedRevision = "f3ca1669a49014bff282a3868c290cda91005b8a";
 
 async function makeExecutable(filePath: string, content: string) {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -184,6 +184,42 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
       expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir)).toBe(revision);
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\nmise <trust>\nmise <bootstrap> <--yes>\n",
+      );
+    });
+  });
+
+  test("既定revisionが現在のbootstrap entrypointを含む", async () => {
+    await withTempDir("bootstrap-default-revision", async (tempDir) => {
+      const dotfilesDir = path.join(tempDir, "checkout");
+      const homeDir = path.join(tempDir, "home");
+      const logPath = path.join(tempDir, "bootstrap.log");
+      await makeExecutable(
+        path.join(homeDir, ".local", "bin", "mise"),
+        `#!/bin/sh
+if [ "\${1:-}" = "--version" ]; then
+  printf '%s\n' '2026.7.7 macos-arm64'
+  exit 0
+fi
+printf 'mise' >> "$BOOTSTRAP_LOG"
+printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
+printf '\n' >> "$BOOTSTRAP_LOG"
+`,
+      );
+
+      const result = await runScript(installScript, {
+        ...process.env,
+        BOOTSTRAP_LOG: logPath,
+        DOTFILES_DIR: dotfilesDir,
+        DOTFILES_REPO_URL: repoRoot,
+        HOME: homeDir,
+        PATH: "/usr/bin:/bin",
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir))
+        .toBe(trustedRevision);
+      expect(await readFile(logPath, "utf8")).toBe(
+        "mise <trust>\nmise <bootstrap> <--yes>\n",
       );
     });
   });
