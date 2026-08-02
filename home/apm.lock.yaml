@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-08-01T15:18:34.947571+00:00'
+generated_at: '2026-08-02T02:42:06.067597+00:00'
 apm_version: 0.23.1
 dependencies:
 - repo_url: 9sako6/-
@@ -129,12 +129,12 @@ dependencies:
   deployed_file_hashes:
     .agents/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
     .agents/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
-    .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:eca7b0c143e7df2c810db9450856fe3a567f1e47e412f625cae3ceeb186466bc
-    .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:94e5673d9251dac7cd37440ff0ee386dde64bd4b0a3f1643297918ea0e03e8c1
+    .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:d373577aa1202c60b116da5399a9b0b1055998a0c71cb2b3949a0a809fb7bc63
+    .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:48e881056db81f6c20bf95c468c909b2c55faa3d2db22568346c7c3be7f59ffd
     .claude/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
     .claude/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
-    .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:eca7b0c143e7df2c810db9450856fe3a567f1e47e412f625cae3ceeb186466bc
-    .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:94e5673d9251dac7cd37440ff0ee386dde64bd4b0a3f1643297918ea0e03e8c1
+    .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:d373577aa1202c60b116da5399a9b0b1055998a0c71cb2b3949a0a809fb7bc63
+    .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:48e881056db81f6c20bf95c468c909b2c55faa3d2db22568346c7c3be7f59ffd
   source: local
   local_path: ./.apm/skills/create-anki-cards
 - repo_url: _local/rails-mysql-explain
@@ -258,14 +258,14 @@ local_deployed_files:
 local_deployed_file_hashes:
   .agents/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
   .agents/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
-  .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:eca7b0c143e7df2c810db9450856fe3a567f1e47e412f625cae3ceeb186466bc
-  .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:94e5673d9251dac7cd37440ff0ee386dde64bd4b0a3f1643297918ea0e03e8c1
+  .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:d373577aa1202c60b116da5399a9b0b1055998a0c71cb2b3949a0a809fb7bc63
+  .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:48e881056db81f6c20bf95c468c909b2c55faa3d2db22568346c7c3be7f59ffd
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
   .claude/rules/global.md: sha256:b0caecb365f6899e6e81c60180a4ddb22320c1ca08e413d3f759e08aebed474f
   .claude/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
   .claude/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
-  .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:eca7b0c143e7df2c810db9450856fe3a567f1e47e412f625cae3ceeb186466bc
-  .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:94e5673d9251dac7cd37440ff0ee386dde64bd4b0a3f1643297918ea0e03e8c1
+  .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:d373577aa1202c60b116da5399a9b0b1055998a0c71cb2b3949a0a809fb7bc63
+  .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:48e881056db81f6c20bf95c468c909b2c55faa3d2db22568346c7c3be7f59ffd
   .claude/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
   .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1

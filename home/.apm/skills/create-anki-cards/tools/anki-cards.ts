@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { lstat, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
 
@@ -459,37 +459,105 @@ async function replaceOutputs(
   }>,
 ): Promise<void> {
   const originalDirectory = process.cwd();
+  const prepared = outputs.map((output) => ({
+    ...output,
+    backupName: `.${output.filename}.${randomUUID()}.backup`,
+    hadOriginal: false,
+    phase: "pending" as "pending" | "staged" | "original-moved" | "published" | "restored",
+    temporaryName: `.${output.filename}.${randomUUID()}.tmp`,
+  }));
+  let published = false;
   try {
-    for (const output of outputs) {
-      process.chdir(output.parent);
-      const [currentDirectory, expected, current] = await Promise.all([
-        realpath("."),
-        stat(output.parent),
-        stat("."),
-      ]);
-      if (
-        !isWithinDirectory(projectDirectory, currentDirectory) ||
-        expected.dev !== current.dev ||
-        expected.ino !== current.ino
-      ) {
-        throw new Error("出力先の親directoryが検証後に変更されました");
-      }
+    for (const output of prepared) {
+      await enterVerifiedOutputParent(projectDirectory, output.parent);
 
-      const temporaryName = `.${output.filename}.${randomUUID()}.tmp`;
       try {
-        await writeFile(temporaryName, output.content, {
-          encoding: "utf8",
-          flag: "wx",
-          mode: 0o600,
-        });
-        await rename(temporaryName, output.filename);
-      } finally {
-        await unlink(temporaryName).catch(() => undefined);
+        const destination = await lstat(output.filename);
+        if (destination.isDirectory()) {
+          throw new Error(`出力先をdirectoryで置き換えられません: ${output.filename}`);
+        }
+        output.hadOriginal = true;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
       }
+      await writeFile(output.temporaryName, output.content, {
+        encoding: "utf8",
+        flag: "wx",
+        mode: 0o600,
+      });
+      output.phase = "staged";
       process.chdir(originalDirectory);
+    }
+
+    try {
+      for (const output of prepared) {
+        await enterVerifiedOutputParent(projectDirectory, output.parent);
+        if (output.hadOriginal) {
+          await rename(output.filename, output.backupName);
+          output.phase = "original-moved";
+        }
+        await rename(output.temporaryName, output.filename);
+        output.phase = "published";
+        process.chdir(originalDirectory);
+      }
+      published = true;
+    } catch (error) {
+      const rollbackErrors: unknown[] = [];
+      for (const output of [...prepared].reverse()) {
+        try {
+          process.chdir(output.parent);
+          if (output.phase === "published") {
+            await unlink(output.filename);
+          }
+          if (output.phase === "published" || output.phase === "original-moved") {
+            if (output.hadOriginal) {
+              await rename(output.backupName, output.filename);
+            }
+            output.phase = "restored";
+          }
+        } catch (rollbackError) {
+          rollbackErrors.push(rollbackError);
+        } finally {
+          process.chdir(originalDirectory);
+        }
+      }
+      if (rollbackErrors.length > 0) {
+        throw new AggregateError(
+          [error, ...rollbackErrors],
+          "output replacement failed and rollback was incomplete",
+        );
+      }
+      throw error;
     }
   } finally {
     process.chdir(originalDirectory);
+    for (const output of prepared) {
+      await unlink(path.join(output.parent, output.temporaryName)).catch(() => undefined);
+      if (published) {
+        await unlink(path.join(output.parent, output.backupName)).catch(() => undefined);
+      }
+    }
+  }
+}
+
+async function enterVerifiedOutputParent(
+  projectDirectory: string,
+  outputParent: string,
+): Promise<void> {
+  process.chdir(outputParent);
+  const [currentDirectory, expected, current] = await Promise.all([
+    realpath("."),
+    stat(outputParent),
+    stat("."),
+  ]);
+  if (
+    !isWithinDirectory(projectDirectory, currentDirectory) ||
+    expected.dev !== current.dev ||
+    expected.ino !== current.ino
+  ) {
+    throw new Error("出力先の親directoryが検証後に変更されました");
   }
 }
 

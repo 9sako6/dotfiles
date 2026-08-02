@@ -299,6 +299,24 @@ describe("カードの生成", () => {
     expect(await readFile(previewPath, "utf8")).toBe("以前のプレビュー\n");
   });
 
+  test("一つの出力先を置き換えられない場合は正規データと既存出力を変更しない", async () => {
+    const project: any = validProject();
+    project.contract.guidPolicy = "generate";
+    project.contract.preview = "preview";
+    const { directory, inputPath } = await createProject(project);
+    const original = await readFile(inputPath, "utf8");
+    const tsvPath = path.join(directory, "cards.tsv");
+    await writeFile(tsvPath, "以前のTSV\n");
+    await mkdir(path.join(directory, "preview"));
+
+    const result = await runTool(directory, "build", inputPath);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("出力先をdirectoryで置き換えられません");
+    expect(await readFile(inputPath, "utf8")).toBe(original);
+    expect(await readFile(tsvPath, "utf8")).toBe("以前のTSV\n");
+  });
+
   test("正規データ自身を出力先に指定できない", async () => {
     const project = validProject();
     project.contract.output = "anki.json";
