@@ -4,7 +4,7 @@ import {
   inspectHomebrew,
   inspectMise,
   runDoctor,
-} from "../scripts/lib/doctor";
+} from "../lib/doctor";
 import { withTempDir } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
@@ -54,7 +54,7 @@ describe("doctorの診断実行", () => {
 
   test("診断が失敗してもCLIは全セクションを表示して失敗終了する", async () => {
     await withTempDir("doctor-command", async (tempDir) => {
-      const proc = Bun.spawn([process.execPath, path.join(repoRoot, "scripts", "doctor.ts")], {
+      const proc = Bun.spawn([process.execPath, path.join(repoRoot, "bin", "doctor.ts")], {
         cwd: repoRoot,
         env: {
           ...process.env,

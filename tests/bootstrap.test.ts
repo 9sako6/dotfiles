@@ -27,7 +27,7 @@ async function prepareBootstrapEnvironment(
     await mkdir(path.join(dotfilesDir, ".git"), { recursive: true });
   }
   await makeExecutable(
-    path.join(dotfilesDir, "scripts/install-mise.sh"),
+    path.join(dotfilesDir, "bin/install-mise.sh"),
     `#!/bin/sh
 printf 'install-mise\\n' >> "$BOOTSTRAP_LOG"
 `,
@@ -153,12 +153,12 @@ describe("公開bootstrap", () => {
       await runCommand("git", ["-C", sourceDir, "config", "user.email", "test@example.invalid"], tempDir);
       await runCommand("git", ["-C", sourceDir, "config", "user.name", "Bootstrap Test"], tempDir);
       await makeExecutable(
-        path.join(sourceDir, "scripts", "install-mise.sh"),
+        path.join(sourceDir, "bin", "install-mise.sh"),
         `#!/bin/sh
 printf 'install-mise\\n' >> "$BOOTSTRAP_LOG"
 `,
       );
-      await runCommand("git", ["-C", sourceDir, "add", "scripts/install-mise.sh"], tempDir);
+      await runCommand("git", ["-C", sourceDir, "add", "bin/install-mise.sh"], tempDir);
       await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
       const revision = await runCommand("git", ["-C", sourceDir, "rev-parse", "HEAD"], tempDir);
       await makeExecutable(

@@ -2,14 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { access, lstat, mkdir, readFile, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createSymlink, readSymlinkTarget, withTempDir, writeTree } from "./test-helpers";
-import { loadDotfilesConfig } from "../scripts/lib/dotfiles-config";
+import { loadDotfilesConfig } from "../lib/dotfiles-config";
 import {
   formatPlan,
   planLinkActions as planTrackedLinkActions,
   runLinkPlan,
   summarizeLinkPlan,
   type LinkPlan,
-} from "../scripts/lib/link-home";
+} from "../lib/link-home";
 
 type PlanOptions = Parameters<typeof planTrackedLinkActions>[0];
 

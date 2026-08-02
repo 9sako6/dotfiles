@@ -2,7 +2,7 @@
 set -eu
 
 script_dir="$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && pwd)"
-. "${script_dir}/lib/install-system.sh"
+. "${script_dir}/../lib/install-system.sh"
 
 host_platform="$(
   install_system_host_platform \

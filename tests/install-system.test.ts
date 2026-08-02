@@ -4,11 +4,11 @@ import path from "node:path";
 import { withTempDir } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
-const installLix = path.join(repoRoot, "scripts/install-lix.sh");
-const installMise = path.join(repoRoot, "scripts/install-mise.sh");
+const installLix = path.join(repoRoot, "bin/install-lix.sh");
+const installMise = path.join(repoRoot, "bin/install-mise.sh");
 const installSystemLibrary = path.join(
   repoRoot,
-  "scripts/lib/install-system.sh",
+  "lib/install-system.sh",
 );
 
 async function makeExecutable(filePath: string, content: string) {

@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Install mise
-        run: ./scripts/install-mise.sh
+        run: ./bin/install-mise.sh
 
       - name: Run contract tests
         run: |
@@ -56,7 +56,7 @@ jobs:
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
       - name: Install mise
-        run: ./scripts/install-mise.sh
+        run: ./bin/install-mise.sh
 
       - name: Install user environment
         run: |
@@ -70,10 +70,10 @@ jobs:
           test -z "$(git status --short --untracked-files=all -- home)"
 
       - name: Install Lix
-        run: ./scripts/install-lix.sh
+        run: ./bin/install-lix.sh
 
       - name: Build system configuration
-        run: ./scripts/build-system.sh
+        run: ./bin/build-system.sh
 
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"

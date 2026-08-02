@@ -8,10 +8,10 @@ on:
       - ".github/workflows/system.yml"
       - ".mise.toml"
       - "darwin/**"
-      - "scripts/build-system.sh"
-      - "scripts/install-lix.sh"
-      - "scripts/install-system.sh"
-      - "scripts/lib/install-system.sh"
+      - "bin/build-system.sh"
+      - "bin/install-lix.sh"
+      - "bin/install-system.sh"
+      - "lib/install-system.sh"
   workflow_dispatch:
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Install Lix
-        run: ./scripts/install-lix.sh
+        run: ./bin/install-lix.sh
 
       - name: Build system configuration
-        run: ./scripts/build-system.sh
+        run: ./bin/build-system.sh

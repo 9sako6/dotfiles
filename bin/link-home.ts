@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 
 import path from "node:path";
-import { loadDotfilesConfig } from "./lib/dotfiles-config";
-import { deploymentStatePath, withDeploymentLock } from "./lib/deployment-state";
-import { formatPlan, planLinkActions, runLinkPlan } from "./lib/link-home";
-import { parseCliArgs } from "./lib/paths";
+import { loadDotfilesConfig } from "../lib/dotfiles-config";
+import { deploymentStatePath, withDeploymentLock } from "../lib/deployment-state";
+import { formatPlan, planLinkActions, runLinkPlan } from "../lib/link-home";
+import { parseCliArgs } from "../lib/paths";
 
 async function main() {
   const { dryRun } = parseCliArgs(process.argv.slice(2));

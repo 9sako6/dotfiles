@@ -9,7 +9,7 @@ import {
   readFileIfExists,
   removeLocalSkill,
   restoreLockfileIfOnlyGeneratedAtChanged,
-} from "./lib/agents-build";
+} from "../lib/agents-build";
 
 async function main() {
   const cwd = process.cwd();

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { withDeploymentLock } from "../scripts/lib/deployment-state";
+import { withDeploymentLock } from "../lib/deployment-state";
 import { withTempDir } from "./test-helpers";
 
 describe("配備の排他制御", () => {

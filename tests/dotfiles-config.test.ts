@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { withTempDir, writeTree } from "./test-helpers";
-import { loadDotfilesConfig } from "../scripts/lib/dotfiles-config";
+import { loadDotfilesConfig } from "../lib/dotfiles-config";
 
 describe(".dotfiles.jsonの読み込み", () => {
   test("symlink、copy、pruneの各設定を読み込む", async () => {

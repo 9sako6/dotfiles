@@ -2,15 +2,15 @@
 
 import { access } from "node:fs/promises";
 import path from "node:path";
-import { loadDotfilesConfig } from "./lib/dotfiles-config";
-import { deploymentStatePath } from "./lib/deployment-state";
+import { loadDotfilesConfig } from "../lib/dotfiles-config";
+import { deploymentStatePath } from "../lib/deployment-state";
 import {
   type DoctorSectionContent,
   inspectHomebrew,
   inspectMise,
   runDoctor,
-} from "./lib/doctor";
-import { planLinkActions, summarizeLinkPlan } from "./lib/link-home";
+} from "../lib/doctor";
+import { planLinkActions, summarizeLinkPlan } from "../lib/link-home";
 
 async function main() {
   const homeDir = process.env.HOME;

@@ -7,7 +7,7 @@ import {
   finalizeCompiledAgents,
   removeLocalSkill,
   restoreLockfileIfOnlyGeneratedAtChanged,
-} from "../scripts/lib/agents-build";
+} from "../lib/agents-build";
 import { withTempDir, writeTree } from "./test-helpers";
 
 describe("生成したエージェント設定の後処理", () => {

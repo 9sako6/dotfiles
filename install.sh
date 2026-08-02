@@ -24,7 +24,7 @@ main() {
     exit 1
   }
 
-  "$DOTFILES_DIR/scripts/install-mise.sh"
+  "$DOTFILES_DIR/bin/install-mise.sh"
 
   cd "$DOTFILES_DIR"
   "$MISE_BIN" trust
