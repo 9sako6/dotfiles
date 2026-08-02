@@ -73,15 +73,7 @@ jobs:
         run: ./scripts/install-lix.sh
 
       - name: Build system configuration
-        run: |
-          /nix/var/nix/profiles/default/bin/nix --version | grep 'Lix'
-          DARWIN_PRIMARY_USER="$(id -un)" \
-            /nix/var/nix/profiles/default/bin/nix \
-            --extra-experimental-features "nix-command flakes" \
-            build \
-            --impure \
-            --no-link \
-            "path:${GITHUB_WORKSPACE}/darwin#darwinConfigurations.aarch64-darwin.system"
+        run: ./scripts/build-system.sh
 
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"

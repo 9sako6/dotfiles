@@ -109,6 +109,21 @@ install_system_run_darwin_rebuild() {
     --impure
 }
 
+install_system_run_darwin_build() {
+  nix_bin="$1"
+  primary_user="$2"
+  darwin_dir="$3"
+  host_platform="$4"
+
+  DARWIN_PRIMARY_USER="$primary_user" \
+    "$nix_bin" \
+    --extra-experimental-features "nix-command flakes" \
+    build \
+    --impure \
+    --no-link \
+    "path:${darwin_dir}#darwinConfigurations.${host_platform}.system"
+}
+
 install_system_main() {
   script_dir="$1"
   repo_dir="$(/usr/bin/dirname -- "$script_dir")"

@@ -243,6 +243,44 @@ exit 1
 });
 
 describe("install:system", () => {
+  test("非activation buildでも共通のplatformとprimary userを使う", async () => {
+    await withTempDir("build-system", async (tempDir) => {
+      const fakeBin = path.join(tempDir, "bin");
+      const logPath = path.join(tempDir, "system.log");
+      await makeExecutable(
+        path.join(fakeBin, "nix"),
+        `#!/bin/sh
+{
+  printf 'primary_user=%s\n' "$DARWIN_PRIMARY_USER"
+  printf 'args='
+  printf '<%s>' "$@"
+  printf '\n'
+} > "$SYSTEM_INSTALL_LOG"
+`,
+      );
+
+      const result = await runInstallSystemFunction(
+        'install_system_run_darwin_build "$1" "$2" "$3" "$4"',
+        [
+          path.join(fakeBin, "nix"),
+          "test-user",
+          path.join(repoRoot, "darwin"),
+          "aarch64-darwin",
+        ],
+        { SYSTEM_INSTALL_LOG: logPath },
+      );
+
+      expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
+      const log = await readFile(logPath, "utf8");
+      expect(log).toContain("primary_user=test-user");
+      expect(log).toContain("<--extra-experimental-features><nix-command flakes>");
+      expect(log).toContain("<build><--impure><--no-link>");
+      expect(log).toMatch(
+        /<path:[^>]+\/darwin#darwinConfigurations\.aarch64-darwin\.system>/,
+      );
+    });
+  });
+
   test("実行時に取得したユーザー名を nix-darwin へ渡す", async () => {
     await withTempDir("install-system", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
