@@ -51,11 +51,12 @@ curl -fsSL https://dot.9sako6.com | sh
 ## 日常コマンド
 
 ```sh
-mise run plan       # 配備計画を表示（filesystem は変更しない）
-mise run apply      # home/ を home directory に反映
-mise run doctor     # 配備、mise、Homebrewのドリフトを診断
-mise run test       # 契約テストを実行
+dot pull            # origin/master の変更を fast-forward で取得
+dot plan            # 配備計画を表示（filesystem は変更しない）
+dot apply           # 計画を確認して home/ を home directory に反映
+dot doctor          # 配備、mise、Homebrewのドリフトを診断
 mise run install:system # Lix と nix-darwin で macOS の設定を反映
+mise run test       # 契約テストを実行
 ```
 
 他の task は `mise tasks` で一覧できる。

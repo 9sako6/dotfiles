@@ -84,6 +84,7 @@ jobs:
           mise exec -- atuin --version
           mise exec -- bun --version
           mise exec -- codex --version
+          dot --help
           mise exec -- fd --version
           mise exec -- fzf --version
           mise exec -- gh --version

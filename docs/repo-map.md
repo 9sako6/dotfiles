@@ -20,6 +20,7 @@
 
 ## Bootstrap の原則
 
+- `bin/` は直接実行する repository entrypoint、`lib/` は entrypoint が利用する内部実装を所有する。
 - `install.sh` は bootstrap に徹する。外部前提の導入と task の実行順制御だけを担当し、複数責務を 1 つの task に隠さない。
 - `.mise.toml` の task は 1 task 1 責務に保つ。依存関係がある処理も、観測可能な単位に分ける。
 - `install:system` が Lix の有無を確認し、Lix Installer のチェックサムを検証してから nix-darwin を適用する。利用者は実行順を指定しない。

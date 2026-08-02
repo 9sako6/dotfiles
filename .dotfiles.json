@@ -1,14 +1,15 @@
 {
   "symlink": [
     ".config",
-    ".zsh.d",
-    "mybin",
     ".gitconfig",
     ".gitignore_global",
+    ".local/bin/dot",
+    ".zsh.d",
     ".zshenv",
     ".zshrc",
     "apm.lock.yaml",
-    "apm.yml"
+    "apm.yml",
+    "mybin"
   ],
   "copy": [
     ".agents",

@@ -15,6 +15,9 @@ tmp/**
 .env
 .env.*
 *.local
+!home/.local/
+!home/.local/bin/
+!home/.local/bin/dot
 *.pem
 *.key
 .superpowers/
