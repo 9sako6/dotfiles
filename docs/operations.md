@@ -64,11 +64,11 @@ mise run test       # 契約テストを実行
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
-2. `home-managed user tools` を変更する場合は、`mise run plan` で配備状況を確認
+2. `home-managed user tools` を変更する場合は、`dot plan` で配備状況を確認
 3. 必要な変更を入れる
 4. `mise run test` で回帰を確認
 5. 変更した管理区分に応じて反映
-   - `home-managed user tools` — `mise run apply`
+   - `home-managed user tools` — `dot apply`
    - `system configuration` — `mise run install:system`
 
 `repo runtime` の変更に反映コマンドはない。`install:system` の初回実行では、
