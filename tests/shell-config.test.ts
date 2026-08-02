@@ -289,7 +289,7 @@ describe("シェル設定", () => {
     await withTempDir("zshrc-nix-path", async (tempDir) => {
       const { homeDir } = await createMinimalZshHome(tempDir);
       const result = await runCommand(
-        "zsh",
+        "/bin/zsh",
         [
           "-f",
           "-i",
