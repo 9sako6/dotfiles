@@ -2,7 +2,52 @@ import { describe, expect, test } from "bun:test";
 import {
   inspectHomebrew,
   inspectMise,
+  runDoctor,
 } from "../scripts/lib/doctor";
+
+describe("doctorの診断実行", () => {
+  test("一つの診断が失敗しても残りを実行して全結果を表示する", async () => {
+    const visited: string[] = [];
+    const result = await runDoctor([
+      {
+        inspect: async () => {
+          visited.push("deployment");
+          return { findings: [], summary: "converged" };
+        },
+        title: "deployment",
+      },
+      {
+        inspect: async () => {
+          visited.push("mise");
+          throw new Error("mise is unavailable");
+        },
+        title: "mise",
+      },
+      {
+        inspect: async () => {
+          visited.push("homebrew");
+          return { findings: ["missing package"], summary: "drift detected" };
+        },
+        title: "homebrew",
+      },
+    ]);
+
+    expect(visited.sort()).toEqual(["deployment", "homebrew", "mise"]);
+    expect(result.failed).toBe(true);
+    expect(result.output).toBe([
+      "[deployment]",
+      "  converged",
+      "",
+      "[mise]",
+      "  diagnosis failed",
+      "  error: mise is unavailable",
+      "",
+      "[homebrew]",
+      "  drift detected",
+      "  warning: missing package",
+    ].join("\n"));
+  });
+});
 
 describe("doctorのmise診断", () => {
   test("miseがprunableと判定したインストールを列挙する", () => {

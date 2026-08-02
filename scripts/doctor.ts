@@ -4,7 +4,12 @@ import { access } from "node:fs/promises";
 import path from "node:path";
 import { loadDotfilesConfig } from "./lib/dotfiles-config";
 import { deploymentStatePath } from "./lib/deployment-state";
-import { formatDoctorSection, inspectHomebrew, inspectMise } from "./lib/doctor";
+import {
+  type DoctorSectionContent,
+  inspectHomebrew,
+  inspectMise,
+  runDoctor,
+} from "./lib/doctor";
 import { formatPlan, planLinkActions } from "./lib/link-home";
 
 async function main() {
@@ -14,6 +19,30 @@ async function main() {
   }
 
   const repoRoot = process.cwd();
+  const report = await runDoctor([
+    {
+      inspect: () => inspectDeployment(repoRoot, homeDir),
+      title: "deployment",
+    },
+    {
+      inspect: () => inspectMiseInstallations(homeDir),
+      title: "mise",
+    },
+    {
+      inspect: () => inspectHomebrewInstallations(repoRoot),
+      title: "homebrew",
+    },
+  ]);
+  console.log(report.output);
+  if (report.failed) {
+    process.exitCode = 1;
+  }
+}
+
+async function inspectDeployment(
+  repoRoot: string,
+  homeDir: string,
+): Promise<DoctorSectionContent> {
   const sourceRoot = path.join(repoRoot, "home");
   const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
   const plan = await planLinkActions({
@@ -25,68 +54,73 @@ async function main() {
     statePath: deploymentStatePath(homeDir, process.env.XDG_STATE_HOME),
     symlinkPaths,
   });
-
-  const sections: string[] = [];
   const deploymentChanges = plan.actions.filter((action) => action.type !== "noop").length + plan.drifts.length;
   const deploymentFindings = formatPlan(plan)
     .split("\n")
     .filter((line) => line.startsWith("  "))
     .map((line) => line.trim());
-  sections.push(formatDoctorSection(
-    "deployment",
-    deploymentChanges === 0 ? `${plan.actions.length} managed files are converged` : `${deploymentChanges} change or drift item(s) detected`,
-    deploymentChanges === 0 ? [] : deploymentFindings,
-  ));
+  return {
+    findings: deploymentChanges === 0 ? [] : deploymentFindings,
+    summary: deploymentChanges === 0
+      ? `${plan.actions.length} managed files are converged`
+      : `${deploymentChanges} change or drift item(s) detected`,
+  };
+}
 
+async function inspectMiseInstallations(homeDir: string): Promise<DoctorSectionContent> {
   const misePath = path.join(homeDir, ".local", "bin", "mise");
   const miseInventory = inspectMise(await run(misePath, ["ls", "--prunable", "--json"]));
-  sections.push(formatDoctorSection(
-    "mise",
-    `${miseInventory.prunable.length} prunable installation(s)`,
-    miseInventory.prunable.length === 0 ? [] : [`prunable: ${miseInventory.prunable.join(", ")}`],
-  ));
+  return {
+    findings: miseInventory.prunable.length === 0
+      ? []
+      : [`prunable: ${miseInventory.prunable.join(", ")}`],
+    summary: `${miseInventory.prunable.length} prunable installation(s)`,
+  };
+}
 
+async function inspectHomebrewInstallations(repoRoot: string): Promise<DoctorSectionContent> {
   const nixPath = await findNix();
   const brewPath = Bun.which("brew");
   if (!nixPath) {
-    sections.push(formatDoctorSection("homebrew", "Nix is unavailable", ["nix-darwin declarations cannot be evaluated"]));
-  } else {
-    const declarations = JSON.parse(await run(nixPath, [
-      "--extra-experimental-features",
-      "nix-command flakes",
-      "eval",
-      "--json",
-      "--file",
-      path.join(repoRoot, "darwin", "homebrew-packages.nix"),
-    ])) as { brews: string[]; casks: string[] };
-    const declaredCasks = new Set(declarations.casks);
-    const declaredFormulae = new Set(declarations.brews);
-    const installedFormulae = brewPath ? lines(await run(brewPath, ["leaves"])) : [];
-    const installedCasks = brewPath ? lines(await run(brewPath, ["list", "--cask"])) : [];
-    const homebrewInventory = inspectHomebrew({
-      declaredCasks,
-      declaredFormulae,
-      installedCasks,
-      installedFormulae,
-    });
-    const homebrewFindings: string[] = [];
-    if (!brewPath) {
-      homebrewFindings.push("brew is unavailable");
-    }
-    if (homebrewInventory.missing.length > 0) {
-      homebrewFindings.push(`missing: ${homebrewInventory.missing.join(", ")}`);
-    }
-    if (homebrewInventory.unmanaged.length > 0) {
-      homebrewFindings.push(`unmanaged: ${homebrewInventory.unmanaged.join(", ")}`);
-    }
-    sections.push(formatDoctorSection(
-      "homebrew",
-      `${declaredCasks.size + declaredFormulae.size} declared, ${installedCasks.length + installedFormulae.length} requested package(s) installed`,
-      homebrewFindings,
-    ));
+    return {
+      findings: ["nix-darwin declarations cannot be evaluated"],
+      summary: "Nix is unavailable",
+    };
   }
 
-  console.log(sections.join("\n\n"));
+  const declarations = JSON.parse(await run(nixPath, [
+    "--extra-experimental-features",
+    "nix-command flakes",
+    "eval",
+    "--json",
+    "--file",
+    path.join(repoRoot, "darwin", "homebrew-packages.nix"),
+  ])) as { brews: string[]; casks: string[] };
+  const declaredCasks = new Set(declarations.casks);
+  const declaredFormulae = new Set(declarations.brews);
+  const installedFormulae = brewPath ? lines(await run(brewPath, ["leaves"])) : [];
+  const installedCasks = brewPath ? lines(await run(brewPath, ["list", "--cask"])) : [];
+  const homebrewInventory = inspectHomebrew({
+    declaredCasks,
+    declaredFormulae,
+    installedCasks,
+    installedFormulae,
+  });
+  const homebrewFindings: string[] = [];
+  if (!brewPath) {
+    homebrewFindings.push("brew is unavailable");
+  }
+  if (homebrewInventory.missing.length > 0) {
+    homebrewFindings.push(`missing: ${homebrewInventory.missing.join(", ")}`);
+  }
+  if (homebrewInventory.unmanaged.length > 0) {
+    homebrewFindings.push(`unmanaged: ${homebrewInventory.unmanaged.join(", ")}`);
+  }
+  return {
+    findings: homebrewFindings,
+    summary:
+      `${declaredCasks.size + declaredFormulae.size} declared, ${installedCasks.length + installedFormulae.length} requested package(s) installed`,
+  };
 }
 
 async function exists(filePath: string): Promise<boolean> {

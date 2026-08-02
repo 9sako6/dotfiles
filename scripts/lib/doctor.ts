@@ -7,6 +7,16 @@ export type HomebrewInventory = {
   unmanaged: string[];
 };
 
+export type DoctorSectionContent = {
+  findings: string[];
+  summary: string;
+};
+
+export type DoctorInspection = {
+  inspect: () => Promise<DoctorSectionContent>;
+  title: string;
+};
+
 type MiseRecord = {
   installed?: boolean;
   version?: string;
@@ -53,7 +63,7 @@ export function inspectHomebrew(options: {
   return { missing, unmanaged };
 }
 
-export function formatDoctorSection(
+function formatDoctorSection(
   title: string,
   summary: string,
   findings: readonly string[],
@@ -63,4 +73,40 @@ export function formatDoctorSection(
     lines.push(`  warning: ${finding}`);
   }
   return lines.join("\n");
+}
+
+export async function runDoctor(inspections: readonly DoctorInspection[]): Promise<{
+  failed: boolean;
+  output: string;
+}> {
+  const sections = await Promise.all(
+    inspections.map(async ({ inspect, title }) => {
+      try {
+        return {
+          content: await inspect(),
+          failed: false as const,
+          title,
+        };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error.message : String(error),
+          failed: true as const,
+          title,
+        };
+      }
+    }),
+  );
+  return {
+    failed: sections.some((section) => section.failed),
+    output: sections.map((section) => {
+      if (section.failed) {
+        return [`[${section.title}]`, "  diagnosis failed", `  error: ${section.error}`].join("\n");
+      }
+      return formatDoctorSection(
+        section.title,
+        section.content.summary,
+        section.content.findings,
+      );
+    }).join("\n\n"),
+  };
 }

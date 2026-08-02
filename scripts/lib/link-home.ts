@@ -166,43 +166,100 @@ export async function runLinkPlan(plan: ManagedLinkPlan) {
     return;
   }
 
-  for (let index = 0; index < plan.actions.length; index += 1) {
-    const action = plan.actions[index];
-    if (action.type === "noop") {
-      continue;
-    }
-
-    if (action.type === "backup") {
-      const replacement = plan.actions[index + 1];
-      if (isReplacementForBackup(action, replacement)) {
-        await replaceWithBackup(action, replacement);
-        index += 1;
+  const rollbackActions: RollbackAction[] = [];
+  try {
+    for (let index = 0; index < plan.actions.length; index += 1) {
+      const action = plan.actions[index];
+      if (action.type === "noop") {
         continue;
       }
-      await mkdir(path.dirname(action.backupPath), { recursive: true });
-      await rename(action.destinationPath, action.backupPath);
-      continue;
+
+      if (action.type === "backup") {
+        const replacement = plan.actions[index + 1];
+        if (isReplacementForBackup(action, replacement)) {
+          await replaceWithBackup(action, replacement);
+          rollbackActions.push({
+            backupPath: action.backupPath,
+            destinationPath: action.destinationPath,
+            type: "restore",
+          });
+          index += 1;
+          continue;
+        }
+        await mkdir(path.dirname(action.backupPath), { recursive: true });
+        await rename(action.destinationPath, action.backupPath);
+        rollbackActions.push({
+          backupPath: action.backupPath,
+          destinationPath: action.destinationPath,
+          type: "restore",
+        });
+        continue;
+      }
+
+      if (action.type === "prune") {
+        await mkdir(path.dirname(action.backupPath), { recursive: true });
+        await rename(action.destinationPath, action.backupPath);
+        rollbackActions.push({
+          backupPath: action.backupPath,
+          destinationPath: action.destinationPath,
+          type: "restore",
+        });
+        continue;
+      }
+
+      await mkdir(path.dirname(action.destinationPath), { recursive: true });
+      if (action.type === "copy") {
+        await copyFile(action.sourcePath, action.destinationPath);
+      } else {
+        await symlink(action.sourcePath, action.destinationPath);
+      }
+      rollbackActions.push({ destinationPath: action.destinationPath, type: "remove" });
     }
 
-    if (action.type === "prune") {
-      await mkdir(path.dirname(action.backupPath), { recursive: true });
-      await rename(action.destinationPath, action.backupPath);
-      continue;
+    await writeDeploymentState({
+      ...plan.deploymentState,
+      homeDir: plan.homeDir,
+      sourceRoot: plan.sourceRoot,
+    });
+  } catch (error) {
+    const rollbackErrors = await rollbackLinkActions(rollbackActions);
+    if (rollbackErrors.length > 0) {
+      throw new AggregateError(
+        [error, ...rollbackErrors],
+        "link plan failed and rollback was incomplete",
+      );
     }
+    throw error;
+  }
+}
 
-    await mkdir(path.dirname(action.destinationPath), { recursive: true });
-    if (action.type === "copy") {
-      await copyFile(action.sourcePath, action.destinationPath);
-    } else {
-      await symlink(action.sourcePath, action.destinationPath);
+type RollbackAction =
+  | {
+      destinationPath: string;
+      type: "remove";
+    }
+  | {
+      backupPath: string;
+      destinationPath: string;
+      type: "restore";
+    };
+
+async function rollbackLinkActions(actions: readonly RollbackAction[]): Promise<unknown[]> {
+  const errors: unknown[] = [];
+  for (const action of [...actions].reverse()) {
+    try {
+      if (action.type === "remove") {
+        await rm(action.destinationPath, { force: true, recursive: true });
+      } else {
+        await rm(action.destinationPath, { force: true, recursive: true });
+        await mkdir(path.dirname(action.destinationPath), { recursive: true });
+        await rename(action.backupPath, action.destinationPath);
+      }
+    } catch (error) {
+      errors.push(error);
     }
   }
-
-  await writeDeploymentState({
-    ...plan.deploymentState,
-    homeDir: plan.homeDir,
-    sourceRoot: plan.sourceRoot,
-  });
+  return errors;
 }
 
 type ReplacementAction = Extract<LinkAction, { type: "copy" | "link" }>;

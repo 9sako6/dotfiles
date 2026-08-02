@@ -116,6 +116,44 @@ describe("配備計画の実行", () => {
     });
   });
 
+  test("後続の配備に失敗したら先に作成・置換した配備先を戻す", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
+      const homeDir = path.join(tempDir, "home");
+      await writeTree(sourceRoot, {
+        ".config/example/first.json": "first\n",
+        ".config/example/second.json": "second\n",
+        ".config/example/third.json": "third\n",
+      });
+      await writeTree(homeDir, {
+        ".config/example/first.json": "old\n",
+      });
+
+      const plan = await planLinkActions({
+        sourceRoot,
+        homeDir,
+        copyPaths: new Set([".config/example"]),
+        symlinkPaths: new Set(),
+      });
+      const copyActions = plan.actions.filter((action) => action.type === "copy");
+      const backupAction = plan.actions.find((action) => action.type === "backup");
+      expect(copyActions).toHaveLength(3);
+      expect(backupAction?.type).toBe("backup");
+      await unlink(copyActions[2].sourcePath);
+
+      await expect(runLinkPlan(plan)).rejects.toThrow();
+
+      expect(await readFile(copyActions[0].destinationPath, "utf8")).toBe("old\n");
+      for (const action of copyActions.slice(1)) {
+        await expect(access(action.destinationPath)).rejects.toThrow();
+      }
+      if (backupAction?.type === "backup") {
+        await expect(access(backupAction.backupPath)).rejects.toThrow();
+      }
+      await expect(access(plan.deploymentState.statePath)).rejects.toThrow();
+    });
+  });
+
   test("管理外の既存ファイルを残したままシンボリックリンクを張る", async () => {
     await withTempDir("link-home", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "repo", "home");
