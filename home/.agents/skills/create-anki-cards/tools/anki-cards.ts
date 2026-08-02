@@ -27,20 +27,39 @@ type TagPolicy =
       requireAtLeastOne: boolean;
     };
 
-type Project = {
-  version: 1;
-  contract: {
+type CommonContract = {
+  output: string;
+  preview: string;
+  deck: string;
+  noteType: string;
+  html: boolean;
+  fields: Field[];
+  tagPolicy: TagPolicy;
+};
+
+type ParsedProject = {
+  version: number;
+  contract: CommonContract & {
     mode: "create" | "update";
-    output: string;
-    preview: string;
-    deck: string;
-    noteType: string;
-    html: boolean;
     guidPolicy?: "anki" | "generate";
-    fields: Field[];
-    tagPolicy: TagPolicy;
     identityField?: string;
   };
+  cards: Card[];
+};
+
+type Project = {
+  version: 1;
+  contract:
+    | CommonContract & {
+        mode: "create";
+        guidPolicy: "anki" | "generate";
+        identityField?: never;
+      }
+    | CommonContract & {
+        mode: "update";
+        guidPolicy?: never;
+        identityField: string;
+      };
   cards: Card[];
 };
 
@@ -66,7 +85,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function parseProject(raw: unknown): Project {
+function parseProject(raw: unknown): ParsedProject {
   const errors: string[] = [];
   if (!isRecord(raw)) {
     throw new Error("Validation failed:\n- root: オブジェクトが必要です");
@@ -203,7 +222,7 @@ function parseProject(raw: unknown): Project {
   if (errors.length > 0) {
     throw new Error(`Validation failed:\n- ${errors.join("\n- ")}`);
   }
-  return raw as unknown as Project;
+  return raw as unknown as ParsedProject;
 }
 
 function encodeTsv(value: string): string {
@@ -234,7 +253,7 @@ function renderTsv(
   ];
   for (const card of cards) {
     const identity =
-      contract.mode === "update" && contract.identityField
+      contract.mode === "update"
         ? card.fields[contract.identityField]
         : undefined;
     lines.push(
@@ -326,9 +345,10 @@ function readGuidMap(
   text: string,
   project: Project,
 ): ReadonlyMap<string, string> {
-  if (project.contract.mode !== "update" || !project.contract.identityField) {
-    throw new Error("更新モードにはidentityFieldが必要です");
+  if (project.contract.mode !== "update") {
+    throw new Error("Anki書き出しは更新モードだけで使えます");
   }
+  const identityField = project.contract.identityField;
   const { headers, body } = splitAnkiHeaders(text);
   if (headers.get("separator")?.toLowerCase() !== "tab") {
     throw new Error("Anki書き出しTSVには#separator:tabが必要です");
@@ -367,10 +387,10 @@ function readGuidMap(
   ) {
     throw new Error("Anki書き出しTSVには有効な#guid columnが必要です");
   }
-  const identityColumn = columns.indexOf(project.contract.identityField);
+  const identityColumn = columns.indexOf(identityField);
   if (identityColumn === -1) {
     throw new Error(
-      `Anki書き出しTSVに識別フィールドがありません: ${project.contract.identityField}`,
+      `Anki書き出しTSVに識別フィールドがありません: ${identityField}`,
     );
   }
   const guidsByIdentity = new Map<string, string>();
@@ -406,7 +426,7 @@ function readGuidMap(
     guidsByIdentity.set(identity, guid);
   }
   const expectedIdentities = new Set(
-    project.cards.map((card) => card.fields[project.contract.identityField!]),
+    project.cards.map((card) => card.fields[identityField]),
   );
   const missing = [...expectedIdentities].filter(
     (identity) => !guidsByIdentity.has(identity),
@@ -622,7 +642,10 @@ async function resolveOutputTargets(
   return resolved;
 }
 
-function validateProject(project: Project): QualityWarning[] {
+function validateProject(project: ParsedProject): {
+  project: Project;
+  warnings: QualityWarning[];
+} {
   const seenIds = new Set<string>();
   const errors: string[] = [];
   const warnings: QualityWarning[] = [];
@@ -829,14 +852,41 @@ function validateProject(project: Project): QualityWarning[] {
   if (errors.length > 0) {
     throw new Error(`Validation failed:\n- ${errors.join("\n- ")}`);
   }
-  return warnings;
+  if (project.contract.mode === "create") {
+    const { identityField: _, ...contract } = project.contract;
+    return {
+      project: {
+        cards: project.cards,
+        contract: {
+          ...contract,
+          guidPolicy: contract.guidPolicy ?? "anki",
+          mode: "create",
+        },
+        version: 1,
+      },
+      warnings,
+    };
+  }
+
+  const { guidPolicy: _, ...contract } = project.contract;
+  return {
+    project: {
+      cards: project.cards,
+      contract: {
+        ...contract,
+        identityField: contract.identityField!,
+        mode: "update",
+      },
+      version: 1,
+    },
+    warnings,
+  };
 }
 
 async function readProject(
   inputPath: string,
 ): Promise<{ project: Project; warnings: QualityWarning[] }> {
-  const project = parseProject(await Bun.file(inputPath).json());
-  return { project, warnings: validateProject(project) };
+  return validateProject(parseProject(await Bun.file(inputPath).json()));
 }
 
 const ANKI_BASE91_TABLE =
@@ -913,7 +963,6 @@ async function build(
   const outputPath = path.resolve(directory, project.contract.output);
   const previewPath = path.resolve(directory, project.contract.preview);
   const assignedGuids = assignMissingGuids(project);
-  validateProject(project);
   const resolvedOutputs = await resolveOutputTargets(
     directory,
     realInputPath,
