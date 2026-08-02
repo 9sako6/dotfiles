@@ -154,6 +154,45 @@ describe("配備計画の実行", () => {
     });
   });
 
+  test("所有台帳の保存に失敗したら作成した配備先と退避対象を元に戻す", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
+      const homeDir = path.join(tempDir, "home");
+      const stateDir = path.join(tempDir, "blocked-state");
+      const statePath = path.join(stateDir, "deployment.json");
+      const copiedPath = path.join(homeDir, ".config", "example.json");
+      const prunedPath = path.join(homeDir, ".obsolete");
+      await writeTree(sourceRoot, {
+        ".config/example.json": "managed\n",
+      });
+      await writeTree(homeDir, {
+        ".obsolete": "preserve\n",
+      });
+
+      const plan = await planLinkActions({
+        copyPaths: new Set([".config"]),
+        homeDir,
+        prunePaths: new Set([".obsolete"]),
+        sourceRoot,
+        statePath,
+        symlinkPaths: new Set(),
+        timestamp: "20260802T120000",
+      });
+      await writeFile(stateDir, "not a directory\n");
+
+      await expect(runLinkPlan(plan)).rejects.toThrow();
+
+      await expect(access(copiedPath)).rejects.toThrow();
+      expect(await readFile(prunedPath, "utf8")).toBe("preserve\n");
+      await expect(access(path.join(
+        homeDir,
+        ".dotfiles-backups",
+        "20260802T120000",
+        ".obsolete",
+      ))).rejects.toThrow();
+    });
+  });
+
   test("管理外の既存ファイルを残したままシンボリックリンクを張る", async () => {
     await withTempDir("link-home", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "repo", "home");
@@ -337,7 +376,9 @@ describe("コピーによる配備", () => {
 
       await expect(access(path.join(homeDir, ".zshrc"))).resolves.toBeNull();
       await expect(access(path.join(homeDir, ".unlisted"))).rejects.toThrow();
-      expect(plan.actions.some((action) => action.sourcePath.endsWith(".unlisted"))).toBe(false);
+      expect(plan.actions.some((action) =>
+        "sourcePath" in action && action.sourcePath.endsWith(".unlisted")
+      )).toBe(false);
     });
   });
 });

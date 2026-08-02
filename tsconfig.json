@@ -11,6 +11,7 @@
     ]
   },
   "include": [
+    "home/.apm/skills/create-anki-cards/tools/**/*.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts"
   ]

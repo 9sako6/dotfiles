@@ -48,7 +48,11 @@ run = "bun run scripts/link-home.ts --check"
 description = "Show planned deploy actions without changing the filesystem"
 
 [tasks.test]
-run = "bun test ./tests ./home/.apm/skills/create-anki-cards/tools/anki-cards.test.ts"
+run = [
+  "bun install --frozen-lockfile",
+  "bun run tsc --noEmit",
+  "bun test ./tests ./home/.apm/skills/create-anki-cards/tools/anki-cards.test.ts",
+]
 description = "Run the dotfiles test suite"
 
 [tasks.doctor]

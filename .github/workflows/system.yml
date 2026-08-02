@@ -10,6 +10,7 @@ on:
       - "darwin/**"
       - "scripts/install-lix.sh"
       - "scripts/install-system.sh"
+      - "scripts/lib/install-system.sh"
   workflow_dispatch:
 
 permissions:

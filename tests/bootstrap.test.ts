@@ -62,16 +62,18 @@ esac
 `,
   );
 
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    BOOTSTRAP_LOG: logPath,
+    DOTFILES_DIR: dotfilesDir,
+    HOME: homeDir,
+    PATH: `${fakeBin}:/usr/bin:/bin`,
+    BOOTSTRAP_GIT_LOG: gitLogPath,
+    BOOTSTRAP_REVISION: options.revision ?? trustedRevision,
+  };
+
   return {
-    env: {
-      ...process.env,
-      BOOTSTRAP_LOG: logPath,
-      DOTFILES_DIR: dotfilesDir,
-      HOME: homeDir,
-      PATH: `${fakeBin}:/usr/bin:/bin`,
-      BOOTSTRAP_GIT_LOG: gitLogPath,
-      BOOTSTRAP_REVISION: options.revision ?? trustedRevision,
-    },
+    env,
     gitLogPath,
     logPath,
   };
@@ -90,6 +92,23 @@ async function runScript(script: string, env: NodeJS.ProcessEnv) {
     new Response(proc.stdout).text(),
   ]);
   return { exitCode, stderr, stdout };
+}
+
+async function runCommand(command: string, args: string[], cwd: string) {
+  const proc = Bun.spawn([command, ...args], {
+    cwd,
+    stderr: "pipe",
+    stdout: "pipe",
+  });
+  const [exitCode, stderr, stdout] = await Promise.all([
+    proc.exited,
+    new Response(proc.stderr).text(),
+    new Response(proc.stdout).text(),
+  ]);
+  if (exitCode !== 0) {
+    throw new Error(`${command} ${args.join(" ")} failed: ${stderr}`);
+  }
+  return stdout.trim();
 }
 
 describe("公開bootstrap", () => {
@@ -121,6 +140,51 @@ describe("公開bootstrap", () => {
           `<-C><${env.DOTFILES_DIR}><checkout><--detach><${trustedRevision}>\n`,
       );
       expect(await readFile(logPath, "utf8")).toContain("install-mise\n");
+    });
+  });
+
+  test("実際のgitで指定revisionをcloneしてbootstrapする", async () => {
+    await withTempDir("bootstrap-git", async (tempDir) => {
+      const sourceDir = path.join(tempDir, "source");
+      const dotfilesDir = path.join(tempDir, "checkout");
+      const homeDir = path.join(tempDir, "home");
+      const logPath = path.join(tempDir, "bootstrap.log");
+      await runCommand("git", ["init", "--quiet", sourceDir], tempDir);
+      await runCommand("git", ["-C", sourceDir, "config", "user.email", "test@example.invalid"], tempDir);
+      await runCommand("git", ["-C", sourceDir, "config", "user.name", "Bootstrap Test"], tempDir);
+      await makeExecutable(
+        path.join(sourceDir, "scripts", "install-mise.sh"),
+        `#!/bin/sh
+printf 'install-mise\\n' >> "$BOOTSTRAP_LOG"
+`,
+      );
+      await runCommand("git", ["-C", sourceDir, "add", "scripts/install-mise.sh"], tempDir);
+      await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
+      const revision = await runCommand("git", ["-C", sourceDir, "rev-parse", "HEAD"], tempDir);
+      await makeExecutable(
+        path.join(homeDir, ".local", "bin", "mise"),
+        `#!/bin/sh
+printf 'mise' >> "$BOOTSTRAP_LOG"
+printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
+printf '\\n' >> "$BOOTSTRAP_LOG"
+`,
+      );
+
+      const result = await runScript(installScript, {
+        ...process.env,
+        BOOTSTRAP_LOG: logPath,
+        DOTFILES_DIR: dotfilesDir,
+        DOTFILES_REPO_URL: sourceDir,
+        DOTFILES_REVISION: revision,
+        HOME: homeDir,
+        PATH: "/usr/bin:/bin",
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir)).toBe(revision);
+      expect(await readFile(logPath, "utf8")).toBe(
+        "install-mise\nmise <trust>\nmise <bootstrap> <--yes>\n",
+      );
     });
   });
 

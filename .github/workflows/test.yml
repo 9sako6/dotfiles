@@ -63,6 +63,12 @@ jobs:
           "$HOME/.local/bin/mise" trust
           "$HOME/.local/bin/mise" run install:user
 
+      - name: Verify generated agent resources
+        run: |
+          "$HOME/.local/bin/mise" run agents:build
+          git diff --exit-code -- home
+          test -z "$(git status --short --untracked-files=all -- home)"
+
       - name: Install Lix
         run: ./scripts/install-lix.sh
 

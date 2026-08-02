@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import path from "node:path";
 import {
   inspectHomebrew,
   inspectMise,
   runDoctor,
 } from "../scripts/lib/doctor";
+import { withTempDir } from "./test-helpers";
+
+const repoRoot = path.resolve(import.meta.dir, "..");
 
 describe("doctorの診断実行", () => {
   test("一つの診断が失敗しても残りを実行して全結果を表示する", async () => {
@@ -46,6 +50,32 @@ describe("doctorの診断実行", () => {
       "  drift detected",
       "  warning: missing package",
     ].join("\n"));
+  });
+
+  test("診断が失敗してもCLIは全セクションを表示して失敗終了する", async () => {
+    await withTempDir("doctor-command", async (tempDir) => {
+      const proc = Bun.spawn([process.execPath, path.join(repoRoot, "scripts", "doctor.ts")], {
+        cwd: repoRoot,
+        env: {
+          ...process.env,
+          HOME: path.join(tempDir, "home"),
+          PATH: "/usr/bin:/bin",
+        },
+        stderr: "pipe",
+        stdout: "pipe",
+      });
+      const [exitCode, stderr, stdout] = await Promise.all([
+        proc.exited,
+        new Response(proc.stderr).text(),
+        new Response(proc.stdout).text(),
+      ]);
+
+      expect(exitCode).toBe(1);
+      expect(stderr).toBe("");
+      expect(stdout).toContain("[deployment]\n");
+      expect(stdout).toContain("[mise]\n  diagnosis failed\n");
+      expect(stdout).toContain("[homebrew]\n");
+    });
   });
 });
 
