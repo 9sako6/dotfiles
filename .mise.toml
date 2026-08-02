@@ -3,27 +3,27 @@ bun = "1.3.12"
 
 [tasks."agents:build"]
 dir = "{{config_root}}/home"
-run = "bun run ../bin/build-agents.ts"
+run = "../bin/build-agents.ts"
 description = "Build agents resources via apm"
 
 [tasks."agents:install"]
 dir = "{{config_root}}/home"
-run = "bun run ../bin/build-agents.ts install"
+run = "../bin/build-agents.ts install"
 description = "Install an agents skill via apm, then build agents resources"
 
 [tasks."agents:remove-local"]
 dir = "{{config_root}}/home"
-run = "bun run ../bin/build-agents.ts remove-local"
+run = "../bin/build-agents.ts remove-local"
 description = "Remove a repository-owned local agents skill, then build agents resources"
 
 [tasks."agents:update"]
 dir = "{{config_root}}/home"
-run = "bun run ../bin/build-agents.ts update"
+run = "../bin/build-agents.ts update"
 description = "Update an agents skill via apm, then build agents resources"
 
 [tasks."agents:uninstall"]
 dir = "{{config_root}}/home"
-run = "bun run ../bin/build-agents.ts uninstall"
+run = "../bin/build-agents.ts uninstall"
 description = "Uninstall an agents skill via apm, then build agents resources"
 
 [tasks."install:user"]
@@ -40,11 +40,11 @@ depends = ["install:system", "install:user"]
 description = "Converge the macOS system and user environments"
 
 [tasks.apply]
-run = "bun run bin/link-home.ts"
+run = "./bin/link-home.ts"
 description = "Apply the managed home tree to the home directory"
 
 [tasks.plan]
-run = "bun run bin/link-home.ts --check"
+run = "./bin/link-home.ts --check"
 description = "Show planned deploy actions without changing the filesystem"
 
 [tasks.test]
@@ -56,5 +56,5 @@ run = [
 description = "Run the dotfiles test suite"
 
 [tasks.doctor]
-run = "bun run bin/doctor.ts"
+run = "./bin/doctor.ts"
 description = "Diagnose deployment and package-manager drift"

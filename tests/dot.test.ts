@@ -79,7 +79,7 @@ describe("dotのコマンド契約", () => {
         stderr: "",
         stdout: [
           `cwd=${repoRoot}`,
-          `<exec><--><bun><${path.join(repoRoot, "bin/dot.ts")}><--help>`,
+          `<exec><--><${path.join(repoRoot, "bin/dot.ts")}><--help>`,
           "",
         ].join("\n"),
       });
