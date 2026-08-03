@@ -842,6 +842,37 @@ printf '<%s>' "$@" > "$GITLEAKS_LOG"
     });
   });
 
+  test("ASCIIコマンドは隣接するpayloadをそのまま表示する", async () => {
+    for (const commandName of ["nonnonbiyori", "renchon"]) {
+      const commandPath = path.join("home", "mybin", commandName);
+      const payload = await readFile(`${commandPath}.ascii`, "utf8");
+      const result = await runCommand(commandPath, []);
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toBe(payload);
+    }
+  });
+
+  test("tadaの同梱成果物は固定toolchainでsourceから再生成済みである", async () => {
+    const result = await runCommand("sh", ["bin/build-tada.sh", "--check"]);
+
+    expect(result.code).toBe(0);
+    expect(result.stderr).not.toContain("is not generated from");
+  }, 30_000);
+
+  test("tadaの同梱成果物は署名済みApple Silicon実行ファイルである", async () => {
+    const artifactPath = "home/mybin/lib/tada-darwin-arm64";
+    const executableResult = await runCommand("test", ["-x", artifactPath]);
+    const architectureResult = await runCommand("lipo", ["-archs", artifactPath]);
+    const signatureResult = await runCommand("codesign", ["--verify", "--strict", artifactPath]);
+
+    expect(executableResult.code).toBe(0);
+    expect(architectureResult.code).toBe(0);
+    expect(architectureResult.stdout.trim()).toBe("arm64");
+    expect(signatureResult.code).toBe(0);
+  });
+
   test("tadaは未対応の環境で何も表示せず正常終了する", async () => {
     const result = await runCommand("sh", ["home/mybin/tada"], {
       ...process.env,

@@ -15,7 +15,7 @@ final class TadaApp: NSObject, NSApplicationDelegate {
       return
     }
 
-    for screen in NSScreen.screens {
+    for screen in screens {
       let screenFrame = screen.frame
       windows.append(makeWindow(screenFrame: screenFrame))
     }
