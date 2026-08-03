@@ -1,6 +1,6 @@
-import { copyFile, mkdir, readFile, rename, rm, symlink } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, rm, rmdir, symlink } from "node:fs/promises";
 import path from "node:path";
-import { backupPathFor, backupRootFor, createTimestamp } from "./backup";
+import { allocateBackupRoot, backupPathFor, backupRootFor, createTimestamp } from "./backup";
 import {
   findOrphanedDeployments,
   writeDeploymentState,
@@ -61,6 +61,7 @@ export type LinkPlan = {
 };
 
 export type ManagedLinkPlan = LinkPlan & {
+  backupRootReserved: boolean;
   deploymentState: {
     currentDeployments: ManagedDeployment[];
     retainedEntries: DeploymentEntry[];
@@ -146,10 +147,20 @@ export async function planLinkActions({
     ),
     statePath,
   };
+  const hasBackups = actions.some((action) => "backupPath" in action);
+  const backupRoot = hasBackups
+    ? await allocateBackupRoot(homeDir, timestamp, !dryRun)
+    : backupRootFor(homeDir, timestamp);
+  for (const action of actions) {
+    if ("backupPath" in action) {
+      action.backupPath = path.join(backupRoot, path.relative(homeDir, action.destinationPath));
+    }
+  }
 
   return {
     actions,
-    backupRoot: backupRootFor(homeDir, timestamp),
+    backupRoot,
+    backupRootReserved: hasBackups && !dryRun,
     drifts,
     dryRun,
     homeDir,
@@ -157,6 +168,14 @@ export async function planLinkActions({
     timestamp,
     deploymentState,
   };
+}
+
+export async function discardLinkPlan(plan: ManagedLinkPlan) {
+  if (!plan.backupRootReserved) {
+    return;
+  }
+  await rmdir(plan.backupRoot);
+  plan.backupRootReserved = false;
 }
 
 function pathsOverlap(left: string, right: string): boolean {

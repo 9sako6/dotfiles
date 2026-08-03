@@ -92,6 +92,48 @@ describe("配備計画の実行", () => {
     });
   });
 
+  test("同じtimestampの連続実行でも既存のbackup世代を保持する", async () => {
+    await withTempDir("link-home", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "repo", "home");
+      const homeDir = path.join(tempDir, "home");
+      const destinationPath = path.join(homeDir, ".zshrc");
+      await writeTree(sourceRoot, {
+        ".zshrc": "managed\n",
+      });
+      await writeTree(homeDir, {
+        ".zshrc": "first\n",
+      });
+
+      const firstPlan = await planLinkActions({
+        homeDir,
+        sourceRoot,
+        symlinkPaths: new Set([".zshrc"]),
+        timestamp: "20260325T120000",
+      });
+      await runLinkPlan(firstPlan);
+      await unlink(destinationPath);
+      await writeFile(destinationPath, "second\n");
+
+      const secondPlan = await planLinkActions({
+        homeDir,
+        sourceRoot,
+        symlinkPaths: new Set([".zshrc"]),
+        timestamp: "20260325T120000",
+      });
+      expect(secondPlan.backupRoot).toBe(
+        path.join(homeDir, ".dotfiles-backups", "20260325T120000-2"),
+      );
+      expect(formatPlan(secondPlan)).toContain("~/.dotfiles-backups/20260325T120000-2/.zshrc");
+      await runLinkPlan(secondPlan);
+
+      expect(await readFile(path.join(firstPlan.backupRoot, ".zshrc"), "utf8")).toBe("first\n");
+      expect(await readFile(path.join(secondPlan.backupRoot, ".zshrc"), "utf8")).toBe("second\n");
+      expect(await readSymlinkTarget(destinationPath)).toBe(
+        await realpath(path.join(sourceRoot, ".zshrc")),
+      );
+    });
+  });
+
   test("dry-runではファイルシステムを変更しない", async () => {
     await withTempDir("link-home", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "repo", "home");
