@@ -50,6 +50,13 @@ in
   services.zundamonotify.enable = true;
 
   system = {
+    activationScripts = {
+      # スクリーンショット保存先のディレクトリを用意する
+      screenshotDirectory.text = ''
+        install -d -o "${primaryUser}" -g "$(id -gn "${primaryUser}")" "/Users/${primaryUser}/screenshots"
+      '';
+    };
+
     defaults = {
       NSGlobalDomain = {
         # 外観をダークモードにする
