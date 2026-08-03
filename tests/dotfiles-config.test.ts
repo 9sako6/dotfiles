@@ -245,6 +245,19 @@ describe(".dotfiles.jsonの読み込み", () => {
     });
   });
 
+  test("同じkeyを重複して書いたらエラーにする", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "home");
+      await writeTree(sourceRoot, { ".zshrc": "" });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        '{"symlink":[".zshrc"],"symlink":[]}',
+      );
+
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/duplicate member/);
+    });
+  });
+
   test("アルファベット順の列挙は受け入れる", async () => {
     await withTempDir("dotfiles-config", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "home");

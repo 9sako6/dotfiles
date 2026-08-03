@@ -38,7 +38,10 @@ async function readConfigFile(configPath: string): Promise<string> {
   }
 }
 
+class DotfilesConfigError extends Error {}
+
 function parseDotfilesConfig(raw: string): Record<ManagedFields, string[]> {
+  assertNoDuplicateMembers(raw);
   let value: unknown;
   try {
     value = JSON.parse(raw);
@@ -64,6 +67,51 @@ function parseDotfilesConfig(raw: string): Record<ManagedFields, string[]> {
     copy: parseManagedPaths(root, "copy"),
     prune: parseManagedPaths(root, "prune"),
   };
+}
+
+function assertNoDuplicateMembers(raw: string): void {
+  const memberKeySets: Set<string>[] = [];
+  for (let index = 0; index < raw.length; index++) {
+    const char = raw[index]!;
+    if (char === '"') {
+      const keyEnd = scanStringEnd(raw, index);
+      let next = keyEnd + 1;
+      while (next < raw.length && isJsonWhitespace(raw[next]!)) {
+        next += 1;
+      }
+      const parent = memberKeySets[memberKeySets.length - 1];
+      if (parent && raw[next] === ":") {
+        const key = JSON.parse(raw.slice(index, keyEnd + 1)) as string;
+        if (parent.has(key)) {
+          throw new DotfilesConfigError(`.dotfiles.json: duplicate member "${key}"`);
+        }
+        parent.add(key);
+      }
+      index = keyEnd;
+      continue;
+    }
+    if (char === "{") {
+      memberKeySets.push(new Set());
+    } else if (char === "}") {
+      memberKeySets.pop();
+    }
+  }
+}
+
+function scanStringEnd(raw: string, start: number): number {
+  for (let index = start + 1; index < raw.length; index++) {
+    const char = raw[index]!;
+    if (char === "\\") {
+      index += 1;
+    } else if (char === '"') {
+      return index;
+    }
+  }
+  return raw.length - 1;
+}
+
+function isJsonWhitespace(char: string): boolean {
+  return char === " " || char === "\t" || char === "\n" || char === "\r";
 }
 
 function parseManagedPaths(root: Record<string, unknown>, fieldName: string): string[] {
