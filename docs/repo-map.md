@@ -43,4 +43,6 @@
 
 Homebrew の formula と cask は nix-darwin の宣言へ集める。バージョン管理が必要な CLI は mise `[tools]` または Nix で扱う。
 
-`install.sh` だけはバージョン管理ツールの導入前に動く。ユーザーが明示的に許可した場合に限り、固定を緩めてよい。
+`install.sh` だけはバージョン管理ツールの導入前に動く。コミット自身の SHA を既定値として埋め込まず、
+実行時に `origin/master` の先端を取得する。既存 checkout にローカル変更、別 branch、または
+`origin/master` から分岐した commit があれば更新しない。

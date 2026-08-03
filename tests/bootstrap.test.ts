@@ -6,7 +6,7 @@ import { withTempDir, writeTree } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installScript = path.join(repoRoot, "install.sh");
-const trustedRevision = "f193a5a832ffffbd772135b72527418067d0aa5c";
+const remoteRevision = "1111111111111111111111111111111111111111";
 
 async function makeExecutable(filePath: string, content: string) {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -16,7 +16,12 @@ async function makeExecutable(filePath: string, content: string) {
 
 async function prepareBootstrapEnvironment(
   tempDir: string,
-  options: { checkoutExists?: boolean; dirty?: boolean; revision?: string } = {},
+  options: {
+    ancestor?: boolean;
+    branch?: string;
+    checkoutExists?: boolean;
+    dirty?: boolean;
+  } = {},
 ) {
   const dotfilesDir = path.join(tempDir, "dotfiles");
   const fakeBin = path.join(tempDir, "bin");
@@ -57,8 +62,14 @@ shift 2
 case "$1" in
   branch) exit 0 ;;
   checkout) exit 0 ;;
-  rev-parse) printf '%s\\n' "$BOOTSTRAP_REVISION" ;;
+  fetch) exit 0 ;;
+  merge-base) [ "${options.ancestor === false ? "0" : "1"}" = "1" ] ;;
+  rev-parse) printf '%s\\n' "$BOOTSTRAP_REMOTE_REVISION" ;;
   status) [ "${options.dirty ? "1" : "0"}" = "0" ] || printf '%s\\n' ' M install.sh' ;;
+  symbolic-ref)
+    [ -n "$BOOTSTRAP_BRANCH" ] || exit 1
+    printf '%s\\n' "$BOOTSTRAP_BRANCH"
+    ;;
   *) exit 1 ;;
 esac
 `,
@@ -71,7 +82,8 @@ esac
     HOME: homeDir,
     PATH: `${fakeBin}:/usr/bin:/bin`,
     BOOTSTRAP_GIT_LOG: gitLogPath,
-    BOOTSTRAP_REVISION: options.revision ?? trustedRevision,
+    BOOTSTRAP_BRANCH: options.branch ?? "master",
+    BOOTSTRAP_REMOTE_REVISION: remoteRevision,
   };
 
   return {
@@ -127,7 +139,7 @@ describe("公開bootstrap", () => {
     });
   });
 
-  test("新規環境では固定revisionを検証してからmasterをorigin/masterへ接続する", async () => {
+  test("新規環境ではorigin/masterの先端をbootstrapしてmasterへ接続する", async () => {
     await withTempDir("bootstrap-fresh", async (tempDir) => {
       const { env, gitLogPath, logPath } = await prepareBootstrapEnvironment(tempDir, {
         checkoutExists: false,
@@ -139,17 +151,18 @@ describe("公開bootstrap", () => {
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(gitLogPath, "utf8")).toContain(
         `<clone><--no-checkout><https://example.test/dotfiles.git><${env.DOTFILES_DIR}>\n` +
-          `<-C><${env.DOTFILES_DIR}><checkout><--detach><${trustedRevision}>\n`,
+          `<-C><${env.DOTFILES_DIR}><rev-parse><refs/remotes/origin/master>\n` +
+          `<-C><${env.DOTFILES_DIR}><checkout><--quiet><--detach><${remoteRevision}>\n`,
       );
       expect(await readFile(gitLogPath, "utf8")).toContain(
-        `<-C><${env.DOTFILES_DIR}><checkout><--quiet><-B><master><${trustedRevision}>\n` +
+        `<-C><${env.DOTFILES_DIR}><checkout><--quiet><-B><master><${remoteRevision}>\n` +
           `<-C><${env.DOTFILES_DIR}><branch><--quiet><--set-upstream-to=origin/master><master>\n`,
       );
       expect(await readFile(logPath, "utf8")).toContain("install-mise\n");
     });
   });
 
-  test("実際のgitで指定revisionをcloneしてbootstrapする", async () => {
+  test("実際のgitでorigin/masterの先端をcloneしてbootstrapする", async () => {
     await withTempDir("bootstrap-git", async (tempDir) => {
       const sourceDir = path.join(tempDir, "source");
       const dotfilesDir = path.join(tempDir, "checkout");
@@ -181,7 +194,6 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
         BOOTSTRAP_LOG: logPath,
         DOTFILES_DIR: dotfilesDir,
         DOTFILES_REPO_URL: sourceDir,
-        DOTFILES_REVISION: revision,
         HOME: homeDir,
         PATH: "/usr/bin:/bin",
       });
@@ -202,9 +214,26 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
       await writeFile(path.join(sourceDir, "after-bootstrap.txt"), "updated\n");
       await runCommand("git", ["-C", sourceDir, "add", "after-bootstrap.txt"], tempDir);
       await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "after bootstrap"], tempDir);
+      const updatedRevision = await runCommand(
+        "git",
+        ["-C", sourceDir, "rev-parse", "HEAD"],
+        tempDir,
+      );
 
-      await expect(pullDotfiles(dotfilesDir)).resolves.toContain("Updated dotfiles:");
+      const rerun = await runScript(installScript, {
+        ...process.env,
+        BOOTSTRAP_LOG: logPath,
+        DOTFILES_DIR: dotfilesDir,
+        DOTFILES_REPO_URL: sourceDir,
+        HOME: homeDir,
+        PATH: "/usr/bin:/bin",
+      });
+
+      expect(rerun).toEqual({ exitCode: 0, stderr: "", stdout: "" });
+      expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir))
+        .toBe(updatedRevision);
       expect(await readFile(path.join(dotfilesDir, "after-bootstrap.txt"), "utf8")).toBe("updated\n");
+      await expect(pullDotfiles(dotfilesDir)).resolves.toBe("Dotfiles are up to date.");
     });
   });
 
@@ -229,7 +258,6 @@ fi
         );
         await runCommand("git", ["-C", sourceDir, "add", "bin/install-mise.sh"], tempDir);
         await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
-        const revision = await runCommand("git", ["-C", sourceDir, "rev-parse", "HEAD"], tempDir);
         await makeExecutable(
           path.join(homeDir, ".local", "bin", "mise"),
           `#!/bin/sh
@@ -245,7 +273,6 @@ fi
           BOOTSTRAP_FAIL_STAGE: failureStage,
           DOTFILES_DIR: dotfilesDir,
           DOTFILES_REPO_URL: sourceDir,
-          DOTFILES_REVISION: revision,
           HOME: homeDir,
           PATH: "/usr/bin:/bin",
         };
@@ -277,8 +304,8 @@ fi
     });
   }
 
-  test("既定revisionが現在のbootstrap entrypointを含む", async () => {
-    await withTempDir("bootstrap-default-revision", async (tempDir) => {
+  test("origin/masterの先端が現在のbootstrap entrypointを含む", async () => {
+    await withTempDir("bootstrap-origin-master", async (tempDir) => {
       const dotfilesDir = path.join(tempDir, "checkout");
       const homeDir = path.join(tempDir, "home");
       const logPath = path.join(tempDir, "bootstrap.log");
@@ -306,7 +333,7 @@ printf '\n' >> "$BOOTSTRAP_LOG"
 
       expect(result.exitCode).toBe(0);
       expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir))
-        .toBe(trustedRevision);
+        .toBe(await runCommand("git", ["rev-parse", "HEAD"], repoRoot));
       expect(await runCommand("git", ["-C", dotfilesDir, "branch", "--show-current"], tempDir))
         .toBe("master");
       expect(await runCommand(
@@ -320,21 +347,21 @@ printf '\n' >> "$BOOTSTRAP_LOG"
     });
   });
 
-  test("既存checkoutのrevisionが異なれば信頼も実行もしない", async () => {
-    await withTempDir("bootstrap-revision-mismatch", async (tempDir) => {
+  test("既存checkoutがorigin/masterから分岐していれば信頼も実行もしない", async () => {
+    await withTempDir("bootstrap-diverged", async (tempDir) => {
       const { env, logPath } = await prepareBootstrapEnvironment(tempDir, {
-        revision: "0000000000000000000000000000000000000000",
+        ancestor: false,
       });
 
       const result = await runScript(installScript, env);
 
       expect(result.exitCode).not.toBe(0);
-      expect(result.stderr).toContain(`expected dotfiles revision ${trustedRevision}`);
+      expect(result.stderr).toContain("dotfiles checkout has commits outside origin/master");
       expect(await Bun.file(logPath).exists()).toBe(false);
     });
   });
 
-  test("固定revisionでもlocal changesがあれば信頼も実行もしない", async () => {
+  test("既存checkoutにlocal changesがあれば信頼も実行もしない", async () => {
     await withTempDir("bootstrap-dirty", async (tempDir) => {
       const { env, logPath } = await prepareBootstrapEnvironment(tempDir, { dirty: true });
 
