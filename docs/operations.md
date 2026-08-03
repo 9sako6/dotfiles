@@ -87,8 +87,6 @@ mise run test       # 契約テストを実行
 Lix を導入するため途中で `sudo` の認証を求められる。
 
 Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理する。
-既存 Homebrew の移行中は `autoMigrate = true`、`mutableTaps = true` にし、
-`install:system` の初回成功後は両方を `false` へ戻す。
 
 GitHub-hosted macOS runner には管理外の Homebrew が導入済みのため、CI は system derivation の
 build までを検証し、activation は行わない。新規 Mac への activation の E2E は、Homebrew のない
