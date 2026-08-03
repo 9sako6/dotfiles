@@ -384,51 +384,106 @@ fi`,
     expect(result.exitCode).not.toBe(0);
   });
 
-  test("Nix 導入済みなら installer を実行しない", async () => {
-    await withTempDir("install-system-nix-present", async (tempDir) => {
+  test("期待する Lix が導入済みなら installer を実行しない", async () => {
+    await withTempDir("install-system-lix-present", async (tempDir) => {
       const installer = path.join(tempDir, "install-lix");
       const marker = path.join(tempDir, "installer-ran");
+      const nixBin = path.join(tempDir, "nix");
       await makeExecutable(installer, `#!/bin/sh\ntouch "${marker}"\n`);
+      await makeExecutable(nixBin, "#!/bin/sh\nprintf '%s\\n' 'nix (Lix, like Nix) 2.95.2'\n");
 
       const result = await runInstallSystemFunction(
-        `install_system_resolve_nix() { printf '%s\\n' /trusted/nix; }
-install_system_ensure_nix "$1"`,
-        [installer],
+        `nix_fixture="$2"
+install_system_resolve_nix() { printf '%s\\n' "$nix_fixture"; }
+install_system_ensure_lix "$1"`,
+        [installer, nixBin],
       );
 
       expect(result).toMatchObject({
         exitCode: 0,
         stderr: "",
-        stdout: "/trusted/nix\n",
+        stdout: `${nixBin}\n`,
       });
       expect(await Bun.file(marker).exists()).toBe(false);
     });
   });
 
-  test("Nix 未導入なら installer 後に trusted path を再検証する", async () => {
-    await withTempDir("install-system-nix-missing", async (tempDir) => {
+  test("非 Lix の Nix が導入済みなら拒否する", async () => {
+    await withTempDir("install-system-non-lix", async (tempDir) => {
       const installer = path.join(tempDir, "install-lix");
       const marker = path.join(tempDir, "installer-ran");
+      const nixBin = path.join(tempDir, "nix");
       await makeExecutable(installer, `#!/bin/sh\ntouch "${marker}"\n`);
+      await makeExecutable(nixBin, "#!/bin/sh\nprintf '%s\\n' 'nix (Nix) 2.31.0'\n");
+
+      const result = await runInstallSystemFunction(
+        `nix_fixture="$2"
+install_system_resolve_nix() { printf '%s\\n' "$nix_fixture"; }
+install_system_ensure_lix "$1"`,
+        [installer, nixBin],
+      );
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain("system configuration requires a working Lix installation");
+      expect(await Bun.file(marker).exists()).toBe(false);
+    });
+  });
+
+  test("Lix 未導入なら installer 後に identity を再検証する", async () => {
+    await withTempDir("install-system-lix-missing", async (tempDir) => {
+      const installer = path.join(tempDir, "install-lix");
+      const marker = path.join(tempDir, "installer-ran");
+      const nixBin = path.join(tempDir, "nix");
+      await makeExecutable(installer, `#!/bin/sh\ntouch "${marker}"\n`);
+      await makeExecutable(nixBin, "#!/bin/sh\nprintf '%s\\n' 'nix (Lix, like Nix) 2.95.2'\n");
 
       const result = await runInstallSystemFunction(
         `install_marker="$2"
+nix_fixture="$3"
 install_system_resolve_nix() {
   if [ -e "$install_marker" ]; then
-    printf '%s\\n' /trusted/nix
+    printf '%s\\n' "$nix_fixture"
   else
     return 1
   fi
 }
-install_system_ensure_nix "$1"`,
-        [installer, marker],
+install_system_ensure_lix "$1"`,
+        [installer, marker, nixBin],
       );
 
       expect(result).toMatchObject({
         exitCode: 0,
         stderr: "",
-        stdout: "/trusted/nix\n",
+        stdout: `${nixBin}\n`,
       });
+      expect(await Bun.file(marker).exists()).toBe(true);
+    });
+  });
+
+  test("installer 後の実体が Lix でなければ拒否する", async () => {
+    await withTempDir("install-system-lix-mismatch", async (tempDir) => {
+      const installer = path.join(tempDir, "install-lix");
+      const marker = path.join(tempDir, "installer-ran");
+      const nixBin = path.join(tempDir, "nix");
+      await makeExecutable(installer, `#!/bin/sh\ntouch "${marker}"\n`);
+      await makeExecutable(nixBin, "#!/bin/sh\nprintf '%s\\n' 'nix (Nix) 2.31.0'\n");
+
+      const result = await runInstallSystemFunction(
+        `install_marker="$2"
+nix_fixture="$3"
+install_system_resolve_nix() {
+  if [ -e "$install_marker" ]; then
+    printf '%s\\n' "$nix_fixture"
+  else
+    return 1
+  fi
+}
+install_system_ensure_lix "$1"`,
+        [installer, marker, nixBin],
+      );
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain("system configuration requires a working Lix installation");
       expect(await Bun.file(marker).exists()).toBe(true);
     });
   });
