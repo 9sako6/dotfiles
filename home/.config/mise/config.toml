@@ -25,6 +25,7 @@ opencode = "1.18.11"
 "pipx:apm-cli" = "0.26.0"
 pnpm = "11.18.0"
 ripgrep = "15.2.0"
+# Requires libyaml (brew install libyaml) for psych to build
 ruby = "4.0.6"
 uv = "0.12.1"
 xcodegen = "2.46.0"
