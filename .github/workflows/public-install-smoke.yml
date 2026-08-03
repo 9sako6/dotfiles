@@ -36,7 +36,7 @@ jobs:
           "$HOME/.local/bin/mise" run install:user
 
       - name: Verify zinit plugins converged by install:user
-        run: "$HOME/.local/bin/mise" bootstrap repos status --missing
+        run: '"$HOME/.local/bin/mise" bootstrap repos status --missing'
 
       - name: Verify zinit plugins load in an interactive shell
         run: |
