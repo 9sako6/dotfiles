@@ -1,144 +1,88 @@
-# MySQL EXPLAIN 読み方ガイド
+# MySQL EXPLAINの読み方
 
-一次情報: https://dev.mysql.com/doc/refman/8.0/en/explain-output.html
+判断の根拠には、MySQL公式の [EXPLAIN Output Format](https://dev.mysql.com/doc/refman/8.0/en/explain-output.html)、[Optimizing Queries with EXPLAIN](https://dev.mysql.com/doc/refman/8.0/en/using-explain.html)、[Optimization and Indexes](https://dev.mysql.com/doc/refman/8.0/en/optimization-indexes.html) を使う。
 
-## EXPLAIN出力の主要カラム
+## 先に記録する情報
 
-| カラム | 意味 |
-|--------|------|
-| `id` | SELECT識別子。サブクエリやUNIONで複数行になる |
-| `select_type` | `SIMPLE`, `PRIMARY`, `SUBQUERY`, `DERIVED` 等 |
-| `table` | 対象テーブル |
-| `type` | **結合タイプ（最重要）** — 下記の階層を参照 |
-| `possible_keys` | 使用候補のインデックス |
-| `key` | 実際に使われたインデックス |
-| `key_len` | 使われたインデックスの長さ（複合インデックスの何カラム目まで使われたか推定可能） |
-| `ref` | インデックスと比較されたカラムまたは定数 |
-| `rows` | 走査予測行数（統計ベースの推定値） |
-| `filtered` | テーブル条件でフィルタされる行の割合（%） |
-| `Extra` | 追加情報 — 下記参照 |
+実行計画だけではインデックスの要否を決められない。クエリごとに次を揃える。
 
-## type列の階層（上ほど高速）
+- 実際のSQLとbind値
+- MySQLのバージョンと実行環境
+- 対象テーブルのおおよその行数
+- 1回の処理で返す行数
+- 1リクエストまたは1ジョブでの呼び出し回数
+- ピーク時の並行数
+- 現在の応答時間やDB負荷に問題があるか
 
-```
-system  — テーブルに1行しかない（constの特殊ケース）
-const   — PRIMARY KEY / UNIQUEインデックスで1行特定
-eq_ref  — JOINで相手テーブルから1行特定（PRIMARY KEY / UNIQUE）
-ref     — 非UNIQUEインデックスで一致する行を取得
-fulltext — FULLTEXTインデックス使用
-ref_or_null — refと同様だがNULLも検索
-index_merge — 複数インデックスのマージ
-unique_subquery — INサブクエリでPRIMARY KEY使用
-index_subquery — INサブクエリで非UNIQUEインデックス使用
-range   — インデックスを使った範囲検索（BETWEEN, IN, >, < 等）
-index   — フルインデックススキャン（データは読まないがインデックス全走査）
-ALL     — フルテーブルスキャン（最も遅い）
-```
+## 出力列
 
-### 判定基準
+| 列 | 読み方 |
+|---|---|
+| `id` | SELECT単位の識別子。サブクエリやUNIONでは複数行になる |
+| `select_type` | `SIMPLE`、`PRIMARY`、`SUBQUERY`、`DERIVED` などのSELECT種別 |
+| `table` | その行でアクセスするテーブル |
+| `type` | 行へ到達する方法。速度の採点ではない |
+| `possible_keys` | オプティマイザが候補にしたインデックス |
+| `key` | 選択されたインデックス。`NULL` なら使っていない |
+| `key_len` | 使用したキー長。複合インデックスの使用範囲を調べる手掛かりになる |
+| `ref` | `key` と比較する列または定数 |
+| `rows` | MySQLが調べると見積もった行数。InnoDBでは推定値 |
+| `filtered` | テーブル条件を通過すると見積もった割合 |
+| `Extra` | 絞り込み、並べ替え、一時テーブル、カバリングなどの補足 |
 
-- **`const`, `eq_ref`**: 問題なし。主キーやユニークキーで1行特定
-- **`ref`**: 通常は問題なし。`rows` が極端に多くないか確認
-- **`range`**: 範囲の広さを `rows` で確認。数百〜数千行なら通常OK
-- **`index`**: フルインデックススキャン。テーブルが小さければ許容、大きければ要改善
-- **`ALL`**: フルテーブルスキャン。小テーブル（数百行以下）以外では要改善
+`rows × filtered ÷ 100` は、次のテーブルへ渡す推定行数である。最終的な返却行数や実測行数ではない。
 
-## Extra列の注目すべき値
+## アクセス方法
 
-| 値 | 意味 | 対応 |
-|----|------|------|
-| `Using index` | カバリングインデックスで完結（データページ不要） | 良好 |
-| `Using where` | WHERE句でフィルタリング | `rows` と `filtered` を合わせて確認 |
-| `Using index condition` | Index Condition Pushdown | 良好（MySQL 5.6+） |
-| `Using temporary` | 一時テーブル使用（GROUP BY, DISTINCT等） | 大量データでは要注意 |
-| `Using filesort` | ソート処理にファイルソート使用 | 大量データでは要注意 |
-| `Using join buffer` | JOINバッファ使用（インデックスなしJOIN） | インデックス追加を検討 |
+`type` はアクセス方法を示す。名前だけで結論を出さず、`rows`、`filtered`、返却行数、呼び出し回数と一緒に読む。
 
-## よくあるパターンと判断
+| 値 | 意味 |
+|---|---|
+| `system` / `const` | 主キーまたは一意キーなどで、最大1行として扱う |
+| `eq_ref` | JOINの各組み合わせに対して、主キーまたは一意キーから1行を読む |
+| `ref` | 非一意インデックスから一致する行を読む |
+| `range` | インデックスの範囲を読む |
+| `index` | インデックス全体を走査する。カバリングとは限らない |
+| `ALL` | テーブル全体を走査する |
 
-### 外部キーのJOIN
+`eq_ref` や `ref` でも、外側の行数や反復回数が多ければ負荷は増える。`ALL` でも、小さいテーブルや大半の行を返すクエリでは妥当な場合がある。
 
-```
-type: eq_ref, key: PRIMARY
-```
+## Extra
 
-主キーでのJOINは最適。外部キー側のインデックスも `possible_keys` に現れていれば問題なし。
+| 値 | 読み方 |
+|---|---|
+| `Using where` | 読み取った行を条件で絞る。これだけでは問題ではない |
+| `Using index` | 必要な列をインデックスだけで取得するカバリング |
+| `Using index condition` | Index Condition Pushdownでインデックス上の条件を先に評価する |
+| `Using filesort` | インデックス順だけでは並べられず、追加のソートを行う。ディスクファイルの使用を意味しない |
+| `Using temporary` | 内部一時テーブルを使う。対象件数とメモリ上限を確認する |
+| `Using join buffer` | JOINでバッファを使う。結合条件と利用できるインデックスを確認する |
 
-### WHERE句での絞り込み
+`Using filesort` や `Using temporary` は警告名ではない。少量で上限のある結果なら、そのままのほうが単純なこともある。
 
-```
-type: ref, key: index_on_column, rows: 15
-```
+## 推定値
 
-インデックスが使われ、走査行数が少なければ問題なし。
+`rows` と `filtered` が予想と大きく違う場合は、データ分布と統計を確認する。統計が古いと決めつけない。bind値による偏り、複合条件の相関、候補インデックスの費用も考える。
 
-### 複合条件のWHERE
+実測が必要なら、そのMySQLバージョンで `EXPLAIN ANALYZE` を利用できるか確認する。`EXPLAIN ANALYZE` はクエリを実行するため、承認済みの検証環境でSELECTだけに使う。`ANALYZE TABLE` も統計を変更する操作なので、レビュー目的で無断実行しない。
 
-```
-type: ref, key: index_on_col_a, rows: 1000, filtered: 10.00
-```
+## インデックスの判断
 
-`rows` x `filtered` / 100 = 実際に返る推定行数（この例では100行）。
-`filtered` が低い場合、複合インデックスの追加で改善できる可能性がある。
+次の順で判断する。
 
-### サブクエリ / EXISTS
+1. 実際のSQL、bind値、返却行数、呼び出し回数を確定する。
+2. 選択された `key` と各テーブルの推定走査量を読む。
+3. 既存インデックスで同じ用途を満たせないか確認する。
+4. 候補インデックスを使う計画を、代表的なデータ量と値で比較する。
+5. 読み取りの改善と、INSERT、UPDATE、DELETE、容量への費用を比較する。
+6. 追加、不要、判断保留のいずれかを根拠付きで選ぶ。
 
-```
-id: 2, select_type: DEPENDENT SUBQUERY, type: ref
-```
+次の形は調査の入口になる。
 
-外側の行ごとにサブクエリが実行される。外側の `rows` x 内側の `rows` が総走査行数の目安。
+- `ALL` または `index` で、返却する割合に比べて多くの行を繰り返し走査している
+- `ref` または `range` でも、`rows` と呼び出し回数の積が大きい
+- `possible_keys` に候補があるのに `key` が `NULL` で、期待した費用と計画が合わない
+- 複合条件の一部しか `key` で絞れず、`rows` に対して `filtered` が低い
+- ループ内で同じSQLを発行し、走査量より往復回数が支配的になっている
 
-### IN句（ActiveRecordのincludesが生成するクエリ）
-
-```sql
-SELECT * FROM images WHERE id IN (1, 2, 3, ...)
-```
-
-```
-type: range, key: PRIMARY, rows: N
-```
-
-IN句の要素数がNに反映される。主キーでの `range` なので効率的。
-
-### LEFT OUTER JOIN（eager_load / includesのJOIN化）
-
-```
-id: 1, table: parent,  type: ALL,    rows: 100
-id: 1, table: child,   type: eq_ref, key: PRIMARY, rows: 1
-```
-
-親テーブルのスキャン方式と子テーブルのJOIN方式を両方確認する。子側が `eq_ref` なら効率的。親側の `type` が `ALL` でも行数が少なければ許容。
-
-## インデックス追加の判断フロー
-
-```
-1. type が ALL または index か？
-   ├─ YES → テーブルの行数を確認
-   │   ├─ 数百行以下 → 許容（フルスキャンでも十分高速）
-   │   └─ 数千行以上 → インデックス追加を検討
-   └─ NO → rows を確認
-       ├─ 妥当な行数 → 問題なし
-       └─ 想定より多い → 複合インデックスやカバリングインデックスを検討
-
-2. ループ内で呼ばれるクエリか？
-   ├─ YES → 1回あたりの rows が小さくても、N回の積算を評価
-   │   例: rows=5 x 100レコード = 500行走査（許容範囲内）
-   │   例: rows=5000 x 100レコード = 50万行走査（要改善）
-   └─ NO → 1回の実行コストのみで判断
-
-3. possible_keys にキーがあるのに key が NULL か？
-   └─ YES → オプティマイザが「インデックスを使うより全スキャンが速い」と判断した
-       → テーブル統計が古い可能性あり（ANALYZE TABLE を検討）
-       → または本当に全スキャンが最適（小テーブルなど）
-```
-
-## 本番相当のデータ量がある環境で実行すべき理由
-
-MySQLオプティマイザはテーブル統計（行数、カーディナリティ等）に基づいて実行計画を決定する。小規模データでは:
-
-- フルテーブルスキャンがインデックスアクセスより速いと判断されることがある
-- `rows` の推定値が実際の本番と大きく異なる
-- 複合インデックスの選択判断が変わる
-
-そのため、EXPLAIN結果は本番相当のデータ量がある環境で取得したものを信頼する。リードレプリカなど参照専用の接続先があればそちらを使う。
+固定の行数だけでインデックスを追加しない。遅延や負荷の問題が観測できず、将来の件数も確認できない場合は判断を保留する。
