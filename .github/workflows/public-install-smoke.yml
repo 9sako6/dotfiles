@@ -32,6 +32,7 @@ jobs:
       - name: Install user environment
         run: |
           "$HOME/.local/bin/mise" trust
+          "$HOME/.local/bin/mise" install
           "$HOME/.local/bin/mise" run install:user
 
       - name: Verify generated agent resources

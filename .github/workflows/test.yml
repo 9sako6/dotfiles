@@ -44,7 +44,10 @@ jobs:
       - name: Install mise
         run: ./bin/install-mise.sh
 
-      - name: Run contract tests
+      - name: Install test tools
         run: |
           "$HOME/.local/bin/mise" trust
-          "$HOME/.local/bin/mise" run test
+          "$HOME/.local/bin/mise" install
+
+      - name: Run contract tests
+        run: '"$HOME/.local/bin/mise" run test'

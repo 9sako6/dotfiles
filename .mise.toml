@@ -2,6 +2,9 @@
 bun = "1.3.12"
 swift = "6.2.3"
 
+[settings]
+auto_install = false
+
 [tasks."agents:build"]
 dir = "{{config_root}}/home"
 run = "../bin/build-agents.ts"
