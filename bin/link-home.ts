@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 
-import path from "node:path";
 import { loadDotfilesConfig } from "../lib/dotfiles-config";
 import { deploymentStatePath, withDeploymentLock } from "../lib/deployment-state";
 import { formatPlan, planLinkActions, runLinkPlan } from "../lib/link-home";
+import { managedHomeRoot, resolveRepoRoot } from "../lib/paths";
 
 async function main() {
   const mode = parseMode(process.argv.slice(2));
@@ -13,8 +13,8 @@ async function main() {
     throw new Error("HOME is not set");
   }
 
-  const repoRoot = process.cwd();
-  const sourceRoot = path.resolve(repoRoot, "home");
+  const repoRoot = await resolveRepoRoot(import.meta.path);
+  const sourceRoot = managedHomeRoot(repoRoot);
   const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
   const statePath = deploymentStatePath(homeDir, process.env.XDG_STATE_HOME);
   const createPlan = () => planLinkActions({

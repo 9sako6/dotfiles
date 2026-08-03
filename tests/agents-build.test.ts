@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { access, readFile, writeFile } from "node:fs/promises";
+import { access, chmod, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   assertRemoteUninstallTargets,
@@ -9,6 +9,8 @@ import {
   restoreLockfileIfOnlyGeneratedAtChanged,
 } from "../lib/agents-build";
 import { withTempDir, writeTree } from "./test-helpers";
+
+const repoRoot = path.resolve(import.meta.dir, "..");
 
 describe("生成したエージェント設定の後処理", () => {
   test("生成したAGENTS.mdをCodex設定へ移し、opencode設定へ配り、APMの未対応出力を削除する", async () => {
@@ -282,6 +284,65 @@ describe("リモートパッケージのアンインストール対象", () => {
       await expect(
         assertRemoteUninstallTargets(tempDir, ["owner/remote-skill"]),
       ).resolves.toBeUndefined();
+    });
+  });
+});
+
+describe("agents entrypointの作業ディレクトリ", () => {
+  test("absolute entrypoint pathは無関係なCWDから実行してもhome/を対象にする", async () => {
+    await withTempDir("agents-foreign-cwd", async (tempDir) => {
+      const fixtureRoot = path.join(tempDir, "repo");
+      const elsewhere = path.join(tempDir, "elsewhere");
+      const homeRoot = path.join(fixtureRoot, "home");
+      const fakeBin = path.join(tempDir, "bin");
+      const fakeApm = path.join(fakeBin, "apm");
+      const fakeMise = path.join(fakeBin, "mise");
+      await Promise.all([
+        cp(path.join(repoRoot, "bin/build-agents.ts"), path.join(fixtureRoot, "bin", "build-agents.ts")),
+        cp(path.join(repoRoot, "lib"), path.join(fixtureRoot, "lib"), { recursive: true }),
+      ]);
+      await writeTree(homeRoot, { "apm.yml": "dependencies:\n  apm: []\n" });
+      await mkdir(elsewhere, { recursive: true });
+      await mkdir(path.join(tempDir, "home"), { recursive: true });
+      await mkdir(fakeBin, { recursive: true });
+      await writeFile(
+        fakeApm,
+        "#!/bin/sh\ncase \"$1\" in\n  install) exit 0 ;;\n  compile) printf '# agents\\n' > AGENTS.md; exit 0 ;;\nesac\n",
+      );
+      await writeFile(
+        fakeMise,
+        `#!/bin/sh\n[ "$1" = "which" ] && [ "$2" = "apm" ] && printf '%s\\n' "${fakeApm}" && exit 0\nexit 1\n`,
+      );
+      await Promise.all([chmod(fakeApm, 0o755), chmod(fakeMise, 0o755)]);
+
+      const proc = Bun.spawn(
+        [process.execPath, path.join(fixtureRoot, "bin", "build-agents.ts"), "build"],
+        {
+          cwd: elsewhere,
+          env: {
+            ...process.env,
+            HOME: path.join(tempDir, "home"),
+            PATH: `${fakeBin}:/usr/bin:/bin`,
+          },
+          stderr: "pipe",
+          stdout: "pipe",
+        },
+      );
+      const [exitCode, stderr, stdout] = await Promise.all([
+        proc.exited,
+        new Response(proc.stderr).text(),
+        new Response(proc.stdout).text(),
+      ]);
+
+      expect(exitCode).toBe(0);
+      expect(stderr).toBe("");
+      expect(stdout).toBe("");
+      expect(await readFile(path.join(homeRoot, ".codex", "AGENTS.md"), "utf8")).toBe("# agents\n");
+      expect(await readFile(path.join(homeRoot, ".config", "opencode", "AGENTS.md"), "utf8")).toBe(
+        "# agents\n",
+      );
+      await expect(access(path.join(homeRoot, "AGENTS.md"))).rejects.toThrow();
+      expect(await readdir(elsewhere)).toEqual([]);
     });
   });
 });

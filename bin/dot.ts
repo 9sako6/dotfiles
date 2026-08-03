@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 
-import { realpath } from "node:fs/promises";
 import path from "node:path";
 import {
   DotUsageError,
@@ -10,6 +9,7 @@ import {
   pullDotfiles,
   type DotCommand,
 } from "../lib/dot";
+import { resolveRepoRoot } from "../lib/paths";
 
 async function main(): Promise<number> {
   let parsed;
@@ -29,7 +29,7 @@ async function main(): Promise<number> {
     return 0;
   }
 
-  const repoRoot = path.dirname(path.dirname(await realpath(import.meta.path)));
+  const repoRoot = await resolveRepoRoot(import.meta.path);
   try {
     if (parsed.command === "pull") {
       console.log(await pullDotfiles(repoRoot));
@@ -52,7 +52,6 @@ async function runCommand(repoRoot: string, command: Exclude<DotCommand, "pull">
     ? ["doctor.ts"]
     : ["link-home.ts", command === "plan" ? "--check" : "--confirm"];
   const child = Bun.spawn([process.execPath, path.join(repoRoot, "bin", invocation[0]!), ...invocation.slice(1)], {
-    cwd: repoRoot,
     env: Bun.env,
     stderr: "inherit",
     stdin: "inherit",

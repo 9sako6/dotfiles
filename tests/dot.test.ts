@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { access, chmod, lstat, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, cp, lstat, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   DotUsageError,
@@ -218,6 +218,28 @@ describe("dot applyの確認", () => {
       expect((await lstat(path.join(homeDir, ".zshrc"))).isSymbolicLink()).toBe(true);
     });
   });
+
+  test("absolute entrypoint pathは無関係なCWDから実行しても同じリポジトリを対象にする", async () => {
+    await withDeploymentFixture("apply-foreign-cwd", async ({ homeDir, fixtureRoot }) => {
+      const elsewhere = path.join(path.dirname(fixtureRoot), "elsewhere");
+      await mkdir(elsewhere, { recursive: true });
+
+      const result = await runProcess(
+        [process.execPath, path.join(fixtureRoot, "bin/link-home.ts"), "--confirm"],
+        elsewhere,
+        {
+          ...process.env,
+          HOME: homeDir,
+          XDG_STATE_HOME: path.join(homeDir, ".state"),
+        },
+        "yes\n",
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Applied 1 change.");
+      expect(await readFile(path.join(homeDir, ".zshrc"), "utf8")).toBe("managed\n");
+    });
+  });
 });
 
 async function withGitRepositories(
@@ -266,6 +288,8 @@ async function withDeploymentFixture(
       ".dotfiles.json": JSON.stringify({ symlink: [".zshrc"] }),
       "home/.zshrc": "managed\n",
     });
+    await cp(path.join(repoRoot, "bin"), path.join(fixtureRoot, "bin"), { recursive: true });
+    await cp(path.join(repoRoot, "lib"), path.join(fixtureRoot, "lib"), { recursive: true });
     await mkdir(homeDir, { recursive: true });
     await run({ fixtureRoot, homeDir });
   });
@@ -273,7 +297,7 @@ async function withDeploymentFixture(
 
 async function runLinkHome(cwd: string, homeDir: string, input: string) {
   return await runProcess(
-    [process.execPath, path.join(repoRoot, "bin/link-home.ts"), "--confirm"],
+    [process.execPath, path.join(cwd, "bin/link-home.ts"), "--confirm"],
     cwd,
     {
       ...process.env,

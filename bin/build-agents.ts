@@ -10,28 +10,29 @@ import {
   removeLocalSkill,
   restoreLockfileIfOnlyGeneratedAtChanged,
 } from "../lib/agents-build";
+import { managedHomeRoot, resolveRepoRoot } from "../lib/paths";
 
 async function main() {
-  const cwd = process.cwd();
+  const homeRoot = managedHomeRoot(await resolveRepoRoot(import.meta.path));
   const [operationArg = "build", ...operationArgs] = process.argv.slice(2);
   if (!isAgentsBuildOperation(operationArg)) {
     throw new Error(`Unknown agents operation: ${operationArg}`);
   }
 
-  const lockPath = path.join(cwd, "apm.lock.yaml");
+  const lockPath = path.join(homeRoot, "apm.lock.yaml");
   const originalLockfile = await readFileIfExists(lockPath);
 
   if (operationArg === "remove-local") {
-    await removeLocalSkill(cwd, operationArgs, run);
+    await removeLocalSkill(homeRoot, operationArgs, run);
   } else {
     if (operationArg === "uninstall") {
-      await assertRemoteUninstallTargets(cwd, operationArgs);
+      await assertRemoteUninstallTargets(homeRoot, operationArgs);
     }
     for (const commandPlan of createAgentsBuildPlan(operationArg, operationArgs)) {
-      await run(commandPlan.command, commandPlan.args, cwd);
+      await run(commandPlan.command, commandPlan.args, homeRoot);
     }
   }
-  await finalizeCompiledAgents(cwd);
+  await finalizeCompiledAgents(homeRoot);
   await restoreLockfileIfOnlyGeneratedAtChanged(lockPath, originalLockfile);
 }
 

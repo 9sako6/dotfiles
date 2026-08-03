@@ -79,6 +79,32 @@ describe("doctorの診断実行", () => {
     });
   });
 
+  test("absolute entrypoint pathは無関係なCWDから実行しても同じリポジトリを診断する", async () => {
+    await withTempDir("doctor-foreign-cwd", async (tempDir) => {
+      const proc = Bun.spawn([process.execPath, path.join(repoRoot, "bin", "doctor.ts")], {
+        cwd: tempDir,
+        env: {
+          ...process.env,
+          HOME: path.join(tempDir, "home"),
+          PATH: "/usr/bin:/bin",
+        },
+        stderr: "pipe",
+        stdout: "pipe",
+      });
+      const [exitCode, stderr, stdout] = await Promise.all([
+        proc.exited,
+        new Response(proc.stderr).text(),
+        new Response(proc.stdout).text(),
+      ]);
+
+      expect(exitCode).toBe(1);
+      expect(stderr).toBe("");
+      expect(stdout).toContain("[deployment]\n");
+      expect(stdout).toContain("[mise]\n  diagnosis failed\n");
+      expect(stdout).toContain("[homebrew]\n");
+    });
+  });
+
   test("診断自体が成功してもfindingがあれば失敗終了と判定する", async () => {
     const result = await runDoctor([
       {

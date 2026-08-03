@@ -6,28 +6,23 @@ swift = "6.2.3"
 auto_install = false
 
 [tasks."agents:build"]
-dir = "{{config_root}}/home"
-run = "../bin/build-agents.ts"
+run = "./bin/build-agents.ts"
 description = "Build agents resources via apm"
 
 [tasks."agents:install"]
-dir = "{{config_root}}/home"
-run = "../bin/build-agents.ts install"
+run = "./bin/build-agents.ts install"
 description = "Install an agents skill via apm, then build agents resources"
 
 [tasks."agents:remove-local"]
-dir = "{{config_root}}/home"
-run = "../bin/build-agents.ts remove-local"
+run = "./bin/build-agents.ts remove-local"
 description = "Remove a repository-owned local agents skill, then build agents resources"
 
 [tasks."agents:update"]
-dir = "{{config_root}}/home"
-run = "../bin/build-agents.ts update"
+run = "./bin/build-agents.ts update"
 description = "Update an agents skill via apm, then build agents resources"
 
 [tasks."agents:uninstall"]
-dir = "{{config_root}}/home"
-run = "../bin/build-agents.ts uninstall"
+run = "./bin/build-agents.ts uninstall"
 description = "Uninstall an agents skill via apm, then build agents resources"
 
 [tasks."mybin:build"]

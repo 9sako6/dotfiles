@@ -11,6 +11,7 @@ import {
   runDoctor,
 } from "../lib/doctor";
 import { planLinkActions, summarizeLinkPlan } from "../lib/link-home";
+import { managedHomeRoot, resolveRepoRoot } from "../lib/paths";
 
 async function main() {
   const homeDir = process.env.HOME;
@@ -18,7 +19,7 @@ async function main() {
     throw new Error("HOME is not set");
   }
 
-  const repoRoot = process.cwd();
+  const repoRoot = await resolveRepoRoot(import.meta.path);
   const report = await runDoctor([
     {
       inspect: () => inspectDeployment(repoRoot, homeDir),
@@ -43,7 +44,7 @@ async function inspectDeployment(
   repoRoot: string,
   homeDir: string,
 ): Promise<DoctorSectionContent> {
-  const sourceRoot = path.join(repoRoot, "home");
+  const sourceRoot = managedHomeRoot(repoRoot);
   const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
   const plan = await planLinkActions({
     copyPaths,
