@@ -1,5 +1,7 @@
 {
-  brews = [ ];
+  brews = [
+    "libyaml"
+  ];
   casks = [
     "bitwarden"
     "codexbar"
