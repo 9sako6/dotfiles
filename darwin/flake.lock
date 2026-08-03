@@ -88,17 +88,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1785767339,
-        "narHash": "sha256-sKWMDndthMOUOmDSU7zHVyEQE7Rba/14Gt45j2U/F2E=",
+        "lastModified": 1785768729,
+        "narHash": "sha256-F+Yd5j1BcaIKAzJ45W64+Xe/IF7wPg8ltNPXdi+XP4A=",
         "owner": "9sako6",
         "repo": "zundamonotify",
-        "rev": "8acb3b086f6c95e09e430501250f7a3c44249d32",
+        "rev": "dc2f311d22d88bb266c08c05ae6a44c378856e63",
         "type": "github"
       },
       "original": {
         "owner": "9sako6",
         "repo": "zundamonotify",
-        "rev": "8acb3b086f6c95e09e430501250f7a3c44249d32",
+        "rev": "dc2f311d22d88bb266c08c05ae6a44c378856e63",
         "type": "github"
       }
     }
