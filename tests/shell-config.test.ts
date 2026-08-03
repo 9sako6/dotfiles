@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, copyFile, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { withTempDir, writeTree } from "./test-helpers";
@@ -8,21 +8,25 @@ function runCommand(
   command: string,
   args: string[],
   env: NodeJS.ProcessEnv = process.env,
-  options: { cwd?: string } = {},
+  options: { cwd?: string; input?: string } = {},
 ) {
   return new Promise<{ code: number | null; stderr: string; stdout: string }>((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
       env,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
+
+    if (options.input !== undefined) {
+      child.stdin?.end(options.input);
+    }
 
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (chunk) => {
+    child.stdout!.on("data", (chunk) => {
       stdout += String(chunk);
     });
-    child.stderr.on("data", (chunk) => {
+    child.stderr!.on("data", (chunk) => {
       stderr += String(chunk);
     });
     child.on("error", reject);
@@ -983,6 +987,71 @@ printf 'ok\n' > "${launchCapturePath}"
         }
       }
       expect(await readFile(launchCapturePath, "utf8")).toContain("ok");
+    });
+  });
+
+  test("timerは記録なしで終了操作と経過時間表示を維持する", async () => {
+    await withTempDir("timer-plain", async (tempDir) => {
+      const timerPath = path.resolve("home/mybin/timer");
+      const result = await runCommand("ruby", [timerPath], process.env, {
+        cwd: tempDir,
+        input: "q",
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain("quit : 'q'");
+      expect(result.stdout).toContain("\u001b[32m00:00:00\u001b[0m");
+      expect(result.stdout).not.toContain("save :");
+      expect(await readdir(tempDir)).toEqual([]);
+    });
+  });
+
+  test("timerは存在しないlogを0として作成し、記録と合計を表示する", async () => {
+    await withTempDir("timer-recorded", async (tempDir) => {
+      const timerPath = path.resolve("home/mybin/timer");
+      const logPath = path.join(tempDir, "work.log");
+      const result = await runCommand("ruby", [timerPath, logPath], process.env, { input: "q" });
+      const logLines = (await readFile(logPath, "utf8")).trimEnd().split("\n");
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain("total: 00:00:00");
+      expect(result.stdout).toContain(`save : ${logPath}`);
+      expect(logLines).toHaveLength(3);
+      expect(logLines[2]).toBe("00:00:00");
+    });
+  });
+
+  test("timerは既存記録の合計へ新しい記録を追記する", async () => {
+    await withTempDir("timer-total", async (tempDir) => {
+      const timerPath = path.resolve("home/mybin/timer");
+      const logPath = path.join(tempDir, "work.log");
+      await writeFile(logPath, "2026-08-03 10:00:00 +0900\n2026-08-03 10:00:01 +0900\n00:00:01\n");
+
+      const result = await runCommand("ruby", [timerPath, logPath], process.env, { input: "q" });
+      const logLines = (await readFile(logPath, "utf8")).trimEnd().split("\n");
+
+      expect(result.code).toBe(0);
+      expect(result.stdout.match(/total: 00:00:01/g)).toHaveLength(2);
+      expect(logLines).toHaveLength(6);
+    });
+  });
+
+  test("timerは破損logと読めないlogを異なる失敗として扱う", async () => {
+    await withTempDir("timer-errors", async (tempDir) => {
+      const timerPath = path.resolve("home/mybin/timer");
+      const corruptLogPath = path.join(tempDir, "corrupt.log");
+      const unreadableLogPath = path.join(tempDir, "unreadable.log");
+      await writeFile(corruptLogPath, "broken\n");
+      await writeFile(unreadableLogPath, "2026-08-03 10:00:00 +0900\n2026-08-03 10:00:01 +0900\n00:00:01\n");
+      await chmod(unreadableLogPath, 0o000);
+
+      const corruptResult = await runCommand("ruby", [timerPath, corruptLogPath], process.env, { input: "q" });
+      const unreadableResult = await runCommand("ruby", [timerPath, unreadableLogPath], process.env, { input: "q" });
+
+      expect(corruptResult.code).toBe(1);
+      expect(corruptResult.stderr).toContain("timer: corrupt log");
+      expect(unreadableResult.code).toBe(1);
+      expect(unreadableResult.stderr).toContain("timer: cannot read log");
     });
   });
 
