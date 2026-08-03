@@ -11,7 +11,7 @@ import {
 import { withTempDir, writeTree } from "./test-helpers";
 
 describe("生成したエージェント設定の後処理", () => {
-  test("生成したAGENTS.mdをCodex設定へ移し、APMの未対応出力を削除する", async () => {
+  test("生成したAGENTS.mdをCodex設定へ移し、opencode設定へ配り、APMの未対応出力を削除する", async () => {
     await withTempDir("agents-build", async (tempDir) => {
       await writeTree(tempDir, {
         "AGENTS.md": "# agents\n",
@@ -24,6 +24,9 @@ describe("生成したエージェント設定の後処理", () => {
       await finalizeCompiledAgents(tempDir);
 
       expect(await readFile(path.join(tempDir, ".codex", "AGENTS.md"), "utf8")).toBe("# agents\n");
+      expect(await readFile(path.join(tempDir, ".config", "opencode", "AGENTS.md"), "utf8")).toBe(
+        "# agents\n",
+      );
       for (const relativePath of ["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".codex/config.toml", ".mcp.json"]) {
         await expect(access(path.join(tempDir, relativePath))).rejects.toThrow();
       }
@@ -65,29 +68,29 @@ describe("生成したエージェント設定の後処理", () => {
 describe("エージェント設定の生成手順", () => {
   test("ビルド時は既存の固定インストール手順を使う", () => {
     expect(createAgentsBuildPlan("build", [])).toEqual([
-      { command: "apm", args: ["install", "--frozen", "--only", "apm", "--target", "claude,codex"] },
-      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+      { command: "apm", args: ["install", "--frozen", "--only", "apm", "--target", "claude,codex,opencode"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex,opencode"] },
     ]);
   });
 
   test("指定したパッケージをインストールしてからエージェント設定を生成する", () => {
     expect(createAgentsBuildPlan("install", ["mattpocock/skills/foo"])).toEqual([
-      { command: "apm", args: ["install", "mattpocock/skills/foo", "--target", "claude,codex"] },
-      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+      { command: "apm", args: ["install", "mattpocock/skills/foo", "--target", "claude,codex,opencode"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex,opencode"] },
     ]);
   });
 
   test("指定したパッケージを更新してからエージェント設定を生成する", () => {
     expect(createAgentsBuildPlan("update", ["mattpocock/skills/foo"])).toEqual([
       { command: "apm", args: ["deps", "update", "mattpocock/skills/foo"] },
-      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex,opencode"] },
     ]);
   });
 
   test("指定したパッケージをアンインストールしてからエージェント設定を生成する", () => {
     expect(createAgentsBuildPlan("uninstall", ["mattpocock/skills/foo"])).toEqual([
       { command: "apm", args: ["uninstall", "mattpocock/skills/foo"] },
-      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex,opencode"] },
     ]);
   });
 
@@ -99,8 +102,8 @@ describe("エージェント設定の生成手順", () => {
 
   test("パッケージを指定しなくてもAPMのインストールと生成を実行する", () => {
     expect(createAgentsBuildPlan("install", [])).toEqual([
-      { command: "apm", args: ["install", "--target", "claude,codex"] },
-      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex"] },
+      { command: "apm", args: ["install", "--target", "claude,codex,opencode"] },
+      { command: "apm", args: ["compile", "--clean", "--target", "claude,codex,opencode"] },
     ]);
   });
 });
@@ -141,13 +144,13 @@ describe("ローカルスキルの削除", () => {
             "--only",
             "apm",
             "--target",
-            "claude,codex",
+            "claude,codex,opencode",
           ],
           cwd: tempDir,
         },
         {
           command: "apm",
-          args: ["compile", "--clean", "--target", "claude,codex"],
+          args: ["compile", "--clean", "--target", "claude,codex,opencode"],
           cwd: tempDir,
         },
       ]);
@@ -174,7 +177,7 @@ describe("ローカルスキルの削除", () => {
             "install",
             "./.apm/skills/example-skill",
             "--target",
-            "claude,codex",
+            "claude,codex,opencode",
           ],
           cwd: tempDir,
         },
@@ -191,13 +194,13 @@ describe("ローカルスキルの削除", () => {
             "--only",
             "apm",
             "--target",
-            "claude,codex",
+            "claude,codex,opencode",
           ],
           cwd: tempDir,
         },
         {
           command: "apm",
-          args: ["compile", "--clean", "--target", "claude,codex"],
+          args: ["compile", "--clean", "--target", "claude,codex,opencode"],
           cwd: tempDir,
         },
       ]);

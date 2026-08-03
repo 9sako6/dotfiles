@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export type AgentsBuildOperation = "build" | "install" | "update" | "uninstall";
@@ -13,18 +13,18 @@ export type CommandRunner = (command: string, args: string[], cwd: string) => Pr
 
 const compileCommand: CommandPlan = {
   command: "apm",
-  args: ["compile", "--clean", "--target", "claude,codex"],
+  args: ["compile", "--clean", "--target", "claude,codex,opencode"],
 };
 
 export function createAgentsBuildPlan(operation: AgentsBuildOperation, args: string[]): CommandPlan[] {
   switch (operation) {
     case "build":
       return [
-        { command: "apm", args: ["install", "--frozen", "--only", "apm", "--target", "claude,codex"] },
+        { command: "apm", args: ["install", "--frozen", "--only", "apm", "--target", "claude,codex,opencode"] },
         compileCommand,
       ];
     case "install":
-      return [{ command: "apm", args: ["install", ...args, "--target", "claude,codex"] }, compileCommand];
+      return [{ command: "apm", args: ["install", ...args, "--target", "claude,codex,opencode"] }, compileCommand];
     case "update":
       return [{ command: "apm", args: ["deps", "update", ...args] }, compileCommand];
     case "uninstall": {
@@ -51,7 +51,7 @@ export async function removeLocalSkill(cwd: string, args: string[], runCommand: 
   if (!(await hasApmDependency(path.join(cwd, "apm.yml"), dependency))) {
     await runCommand(
       "apm",
-      ["install", dependency, "--target", "claude,codex"],
+      ["install", dependency, "--target", "claude,codex,opencode"],
       cwd,
     );
   }
@@ -87,6 +87,10 @@ export async function finalizeCompiledAgents(rootDir: string) {
   await assertExists(sourceAgentsPath, "APM did not generate AGENTS.md");
   await mkdir(codexDir, { recursive: true });
   await rename(sourceAgentsPath, codexAgentsPath);
+
+  const opencodeDir = path.join(rootDir, ".config", "opencode");
+  await mkdir(opencodeDir, { recursive: true });
+  await copyFile(codexAgentsPath, path.join(opencodeDir, "AGENTS.md"));
 
   await Promise.all([
     rm(path.join(rootDir, "CLAUDE.md"), { force: true }),
