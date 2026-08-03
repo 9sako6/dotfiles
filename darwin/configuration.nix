@@ -63,6 +63,9 @@ in
       # 右下のホットコーナーには何も割り当てない
       dock.wvous-br-corner = 1;
 
+      # Dockの「最近使った項目」を非表示にする
+      dock.show-recents = false;
+
       # 音声入力を有効にする
       CustomUserPreferences."com.apple.assistant.support"."Dictation Enabled" = true;
 
@@ -71,6 +74,8 @@ in
         AppleShowAllExtensions = true;
         # 隠しファイルも表示する
         AppleShowAllFiles = true;
+        # Finderに「終了」メニューを追加する
+        QuitMenuItem = true;
         # ゴミ箱に入れてから30日が過ぎた項目を自動で削除する
         FXRemoveOldTrashItems = true;
         # Finderの新しいウィンドウでホームフォルダを開く
@@ -85,6 +90,9 @@ in
         # メニューバーの時計に曜日を表示する
         ShowDayOfWeek = true;
       };
+
+      # スクリーンショットの保存先
+      screencapture.location = "~/screenshots";
     };
     keyboard = {
       # キーの割り当て変更を有効にする
