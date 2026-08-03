@@ -57,6 +57,7 @@ async function inspectDeployment(
   const deployment = summarizeLinkPlan(plan);
   return {
     findings: deployment.changeCount === 0 ? [] : deployment.findings,
+    nextSteps: [],
     summary: deployment.changeCount === 0
       ? `${deployment.managedCount} managed files are converged`
       : `${deployment.changeCount} change or drift item(s) detected`,
@@ -79,6 +80,7 @@ async function inspectMiseInstallations(homeDir: string): Promise<DoctorSectionC
   }
   return {
     findings,
+    nextSteps: miseInventory.prunable.length > 0 ? ["mise prune --tools"] : [],
     summary:
       `${miseInventory.missing.length} missing, ${miseInventory.prunable.length} prunable installation(s)`,
   };
@@ -90,6 +92,7 @@ async function inspectHomebrewInstallations(repoRoot: string): Promise<DoctorSec
   if (!nixPath) {
     return {
       findings: ["nix-darwin declarations cannot be evaluated"],
+      nextSteps: [],
       summary: "Nix is unavailable",
     };
   }
@@ -124,6 +127,7 @@ async function inspectHomebrewInstallations(repoRoot: string): Promise<DoctorSec
   }
   return {
     findings: homebrewFindings,
+    nextSteps: [],
     summary:
       `${declaredCasks.size + declaredFormulae.size} declared, ${installedCasks.length + installedFormulae.length} requested package(s) installed`,
   };

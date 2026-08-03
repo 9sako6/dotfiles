@@ -17,7 +17,7 @@ describe("doctorの診断実行", () => {
       {
         inspect: async () => {
           visited.push("deployment");
-          return { findings: [], summary: "converged" };
+          return { findings: [], nextSteps: [], summary: "converged" };
         },
         title: "deployment",
       },
@@ -31,7 +31,7 @@ describe("doctorの診断実行", () => {
       {
         inspect: async () => {
           visited.push("homebrew");
-          return { findings: ["missing package"], summary: "drift detected" };
+          return { findings: ["missing package"], nextSteps: [], summary: "drift detected" };
         },
         title: "homebrew",
       },
@@ -82,7 +82,11 @@ describe("doctorの診断実行", () => {
   test("診断自体が成功してもfindingがあれば失敗終了と判定する", async () => {
     const result = await runDoctor([
       {
-        inspect: async () => ({ findings: ["drift detected"], summary: "1 finding" }),
+        inspect: async () => ({
+          findings: ["drift detected"],
+          nextSteps: [],
+          summary: "1 finding",
+        }),
         title: "deployment",
       },
     ]);
@@ -129,6 +133,7 @@ exit 0
       expect(stdout).toContain("[mise]\n  1 missing, 1 prunable installation(s)\n");
       expect(stdout).toContain("  warning: missing: node@24.0.0\n");
       expect(stdout).toContain("  warning: prunable: bun@1.3.11\n");
+      expect(stdout).toContain("  hint: mise prune --tools\n");
     });
   });
 });

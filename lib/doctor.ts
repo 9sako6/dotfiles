@@ -10,6 +10,7 @@ export type HomebrewInventory = {
 
 export type DoctorSectionContent = {
   findings: string[];
+  nextSteps: string[];
   summary: string;
 };
 
@@ -78,10 +79,14 @@ function formatDoctorSection(
   title: string,
   summary: string,
   findings: readonly string[],
+  nextSteps: readonly string[],
 ): string {
   const lines = [`[${title}]`, `  ${summary}`];
   for (const finding of findings) {
     lines.push(`  warning: ${finding}`);
+  }
+  for (const nextStep of nextSteps) {
+    lines.push(`  hint: ${nextStep}`);
   }
   return lines.join("\n");
 }
@@ -119,6 +124,7 @@ export async function runDoctor(inspections: readonly DoctorInspection[]): Promi
         section.title,
         section.content.summary,
         section.content.findings,
+        section.content.nextSteps,
       );
     }).join("\n\n"),
   };
