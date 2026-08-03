@@ -246,7 +246,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:86f4f6a328b68eb597a01eba7966c870461bd71e3c067a025ee5009cfb460942
+  content_hash: sha256:71e23dff9499d234591a87d9d29e21b52bf11bf413869c58e2c6daf906b2aa31
 - kind: project-relative
   target: claude
   value: .claude/skills/brandkit
@@ -1206,7 +1206,7 @@ local_deployed_file_hashes:
   .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:86c9e5bc92ab48c1a88b48c20d10f4bfd1acc082ea649e985c0cb5379169a6ed
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
-  .claude/rules/global.md: sha256:86f4f6a328b68eb597a01eba7966c870461bd71e3c067a025ee5009cfb460942
+  .claude/rules/global.md: sha256:71e23dff9499d234591a87d9d29e21b52bf11bf413869c58e2c6daf906b2aa31
   .claude/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
   .claude/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
   .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:03859c23c419185bd5dacda8c398390f4c2fa8cfc06c3c3c95346b0c78dd08c5
