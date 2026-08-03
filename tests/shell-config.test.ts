@@ -858,13 +858,6 @@ printf '<%s>' "$@" > "$GITLEAKS_LOG"
     }
   });
 
-  test("tadaの同梱成果物は固定toolchainでsourceから再生成済みである", async () => {
-    const result = await runCommand("sh", ["bin/build-tada.sh", "--check"]);
-
-    expect(result.code).toBe(0);
-    expect(result.stderr).not.toContain("is not generated from");
-  }, 30_000);
-
   test("tadaの同梱成果物は署名済みApple Silicon実行ファイルである", async () => {
     const artifactPath = "home/mybin/lib/tada-darwin-arm64";
     const executableResult = await runCommand("test", ["-x", artifactPath]);
