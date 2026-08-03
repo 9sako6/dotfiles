@@ -67,6 +67,8 @@ in
       CustomUserPreferences."com.apple.assistant.support"."Dictation Enabled" = true;
 
       finder = {
+        # ファイル拡張子を常に表示する
+        AppleShowAllExtensions = true;
         # 隠しファイルも表示する
         AppleShowAllFiles = true;
         # ゴミ箱に入れてから30日が過ぎた項目を自動で削除する
