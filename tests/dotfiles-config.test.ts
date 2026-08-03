@@ -172,4 +172,90 @@ describe(".dotfiles.jsonの読み込み", () => {
       expect(config.symlinkPaths).toEqual(new Set([".zsh.d"]));
     });
   });
+
+  test("rootがobjectでなければエラーにする", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "home");
+      await writeTree(sourceRoot, { ".keep": "" });
+
+      for (const raw of ["[]", '"symlink"', "null", "42"]) {
+        await writeFile(path.join(tempDir, ".dotfiles.json"), raw);
+        await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(
+          /root must be an object/,
+        );
+      }
+    });
+  });
+
+  test("未知のkeyを列挙付きで拒否する", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "home");
+      await writeTree(sourceRoot, { ".keep": "" });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        JSON.stringify({ symlink: [".keep"], symlinkd: [".keep"] }),
+      );
+
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/symlinkd/);
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(
+        /allowed: symlink, copy, prune/,
+      );
+    });
+  });
+
+  test("typoを含む設定からは集合を確定できず配備計画に進めない", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "home");
+      await writeTree(sourceRoot, { ".zshrc": "" });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        JSON.stringify({ symlnik: [".zshrc"] }),
+      );
+
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/symlnik/);
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(
+        /allowed: symlink, copy, prune/,
+      );
+    });
+  });
+
+  test("同じentryを重複して列挙したらエラーにする", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "home");
+      await writeTree(sourceRoot, { ".zshrc": "" });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        JSON.stringify({ symlink: [".zshrc", ".zshrc"] }),
+      );
+
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/duplicate/);
+    });
+  });
+
+  test("アルファベット順でない列挙を拒否する", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "home");
+      await writeTree(sourceRoot, { ".config": "", ".zshrc": "" });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        JSON.stringify({ symlink: [".zshrc", ".config"] }),
+      );
+
+      await expect(loadDotfilesConfig(tempDir, sourceRoot)).rejects.toThrow(/alphabetically/);
+    });
+  });
+
+  test("アルファベット順の列挙は受け入れる", async () => {
+    await withTempDir("dotfiles-config", async (tempDir) => {
+      const sourceRoot = path.join(tempDir, "home");
+      await writeTree(sourceRoot, { ".config": "", ".zshrc": "" });
+      await writeFile(
+        path.join(tempDir, ".dotfiles.json"),
+        JSON.stringify({ symlink: [".config", ".zshrc"] }),
+      );
+
+      const config = await loadDotfilesConfig(tempDir, sourceRoot);
+      expect(config.symlinkPaths).toEqual(new Set([".config", ".zshrc"]));
+    });
+  });
 });
