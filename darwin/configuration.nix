@@ -83,6 +83,10 @@ in
         AppleShowAllFiles = true;
         # Finderに「終了」メニューを追加する
         QuitMenuItem = true;
+        # パスバーを表示する
+        ShowPathbar = true;
+        # ステータスバーを表示する
+        ShowStatusBar = true;
         # ゴミ箱に入れてから30日が過ぎた項目を自動で削除する
         FXRemoveOldTrashItems = true;
         # Finderの新しいウィンドウでホームフォルダを開く
