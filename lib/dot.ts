@@ -42,7 +42,7 @@ export function formatDotHelp(command?: DotCommand): string {
       "  pull    Fast-forward the local dotfiles checkout from origin/master",
       "  plan    Show planned home-directory deployment changes",
       "  apply   Review and apply home-directory deployment changes",
-      "  doctor  Diagnose deployment and package-manager drift",
+      "  doctor  Diagnose deployment, system, and package-manager drift",
       "",
       "Run 'dot help <command>' for details.",
     ].join("\n");
@@ -50,7 +50,7 @@ export function formatDotHelp(command?: DotCommand): string {
 
   const descriptions: Record<DotCommand, string> = {
     apply: "Review and apply home-directory deployment changes.",
-    doctor: "Diagnose deployment, mise, and Homebrew drift.",
+    doctor: "Diagnose deployment, mise, system, and Homebrew drift.",
     plan: "Show planned home-directory deployment changes without modifying files.",
     pull: "Fast-forward the clean local master branch from origin/master.",
   };

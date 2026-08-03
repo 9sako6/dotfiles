@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
-import { access } from "node:fs/promises";
+import { access, realpath } from "node:fs/promises";
+import { userInfo } from "node:os";
 import path from "node:path";
 import { loadDotfilesConfig } from "../lib/dotfiles-config";
 import { deploymentStatePath } from "../lib/deployment-state";
@@ -8,6 +9,7 @@ import {
   type DoctorSectionContent,
   inspectHomebrew,
   inspectMise,
+  inspectSystem,
   runDoctor,
 } from "../lib/doctor";
 import { planLinkActions, summarizeLinkPlan } from "../lib/link-home";
@@ -30,6 +32,10 @@ async function main() {
       title: "mise",
     },
     {
+      inspect: () => inspectSystemConfiguration(repoRoot),
+      title: "system",
+    },
+    {
       inspect: () => inspectHomebrewInstallations(repoRoot),
       title: "homebrew",
     },
@@ -38,6 +44,44 @@ async function main() {
   if (report.failed) {
     process.exitCode = 1;
   }
+}
+
+async function inspectSystemConfiguration(repoRoot: string): Promise<DoctorSectionContent> {
+  const nixPath = await findNix();
+  if (!nixPath) {
+    return {
+      findings: ["system declarations cannot be evaluated"],
+      nextSteps: ["mise run install:system"],
+      summary: "Nix is unavailable",
+    };
+  }
+
+  const expectedStorePath = (await run(nixPath, [
+    "--extra-experimental-features",
+    "nix-command flakes",
+    "eval",
+    "--raw",
+    "--impure",
+    `path:${path.join(repoRoot, "darwin")}#darwinConfigurations.aarch64-darwin.system`,
+  ], { DARWIN_PRIMARY_USER: userInfo().username })).trim();
+  const currentSystem = "/run/current-system";
+  const activeStorePath = await exists(currentSystem) ? await realpath(currentSystem) : null;
+  const inventory = inspectSystem({ activeStorePath, expectedStorePath });
+
+  if (inventory.status === "active") {
+    return {
+      findings: [],
+      nextSteps: [],
+      summary: "system configuration is active",
+    };
+  }
+  return {
+    findings: [inventory.status === "missing"
+      ? "no active nix-darwin system was found"
+      : "active system does not match repository declarations"],
+    nextSteps: ["mise run install:system"],
+    summary: "system configuration is not active",
+  };
 }
 
 async function inspectDeployment(
@@ -158,17 +202,21 @@ async function findNix(): Promise<string | null> {
   return null;
 }
 
-async function run(command: string, args: string[]): Promise<string> {
-  const result = await runAllowFailure(command, args);
+async function run(
+  command: string,
+  args: string[],
+  env?: Record<string, string>,
+): Promise<string> {
+  const result = await runAllowFailure(command, args, env);
   if (result.code !== 0) {
     throw new Error(`${command} ${args.join(" ")} failed: ${result.stderr.trim()}`);
   }
   return result.stdout;
 }
 
-async function runAllowFailure(command: string, args: string[]) {
+async function runAllowFailure(command: string, args: string[], env?: Record<string, string>) {
   const process = Bun.spawn([command, ...args], {
-    env: { ...Bun.env, HOMEBREW_NO_AUTO_UPDATE: "1" },
+    env: { ...Bun.env, ...env, HOMEBREW_NO_AUTO_UPDATE: "1" },
     stderr: "pipe",
     stdout: "pipe",
   });

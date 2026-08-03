@@ -68,4 +68,4 @@ description = "Run the dotfiles test suite"
 
 [tasks.doctor]
 run = "./bin/doctor.ts"
-description = "Diagnose deployment and package-manager drift"
+description = "Diagnose deployment, system, and package-manager drift"

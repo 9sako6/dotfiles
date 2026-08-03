@@ -8,6 +8,11 @@ export type HomebrewInventory = {
   unmanaged: string[];
 };
 
+export type SystemInventory =
+  | { status: "active" }
+  | { status: "missing" }
+  | { status: "outdated" };
+
 export type DoctorSectionContent = {
   findings: string[];
   nextSteps: string[];
@@ -73,6 +78,19 @@ export function inspectHomebrew(options: {
       .map((name) => `brew:${name}`),
   ].sort();
   return { missing, unmanaged };
+}
+
+export function inspectSystem(options: {
+  activeStorePath: string | null;
+  expectedStorePath: string;
+}): SystemInventory {
+  if (options.activeStorePath === null) {
+    return { status: "missing" };
+  }
+  if (options.activeStorePath !== options.expectedStorePath) {
+    return { status: "outdated" };
+  }
+  return { status: "active" };
 }
 
 function formatDoctorSection(

@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   inspectHomebrew,
   inspectMise,
+  inspectSystem,
   runDoctor,
 } from "../lib/doctor";
 import { withTempDir } from "./test-helpers";
@@ -75,6 +76,7 @@ describe("doctorの診断実行", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain("[deployment]\n");
       expect(stdout).toContain("[mise]\n  diagnosis failed\n");
+      expect(stdout).toContain("[system]\n");
       expect(stdout).toContain("[homebrew]\n");
     });
   });
@@ -101,6 +103,7 @@ describe("doctorの診断実行", () => {
       expect(stderr).toBe("");
       expect(stdout).toContain("[deployment]\n");
       expect(stdout).toContain("[mise]\n  diagnosis failed\n");
+      expect(stdout).toContain("[system]\n");
       expect(stdout).toContain("[homebrew]\n");
     });
   });
@@ -198,6 +201,29 @@ describe("doctorのHomebrew診断", () => {
 
     expect(result.missing).toEqual(["brew-cask:ghostty"]);
     expect(result.unmanaged).toEqual(["brew-cask:codex", "brew:gh"]);
+  });
+});
+
+describe("doctorのsystem診断", () => {
+  test("期待するStoreパスと現在のsystemが一致していれば反映済みと判定する", () => {
+    expect(inspectSystem({
+      activeStorePath: "/nix/store/current-system",
+      expectedStorePath: "/nix/store/current-system",
+    })).toEqual({ status: "active" });
+  });
+
+  test("現在のsystemがなければ未反映と判定する", () => {
+    expect(inspectSystem({
+      activeStorePath: null,
+      expectedStorePath: "/nix/store/expected-system",
+    })).toEqual({ status: "missing" });
+  });
+
+  test("Storeパスが異なれば未反映と判定する", () => {
+    expect(inspectSystem({
+      activeStorePath: "/nix/store/current-system",
+      expectedStorePath: "/nix/store/expected-system",
+    })).toEqual({ status: "outdated" });
   });
 });
 
