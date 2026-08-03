@@ -35,6 +35,20 @@ jobs:
           "$HOME/.local/bin/mise" install
           "$HOME/.local/bin/mise" run install:user
 
+      - name: Verify zinit plugins converged by install:user
+        run: "$HOME/.local/bin/mise" bootstrap repos status --missing
+
+      - name: Verify zinit plugins load in an interactive shell
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          script -q /dev/null zsh -i -c '
+            [[ -n $ZSH_HIGHLIGHT_VERSION ]] || exit 1
+            [[ -n $functions[_zsh_autosuggest_start] ]] || exit 1
+            whence -w abbrev-alias | grep -q function || exit 1
+            print zinit-plugins-ok
+          '
+          "$HOME/.local/bin/mise" bootstrap repos status --missing
+
       - name: Verify generated agent resources
         run: |
           "$HOME/.local/bin/mise" run agents:build

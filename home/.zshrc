@@ -50,23 +50,20 @@ fi
   if [ -f "${ZINIT_HOME}/zinit.zsh" ]; then
     source "${ZINIT_HOME}/zinit.zsh"
 
-    zinit_light_pinned() {
+    zinit_light_verified() {
       local repository="$1"
-      local revision="$2"
       local plugin_dir="${ZINIT[PLUGINS_DIR]}/${repository//\//---}"
+      local config="${XDG_CONFIG_HOME:-${HOME}/.config}/mise/config.toml"
 
-      if [ ! -d "$plugin_dir/.git" ]; then
-        command git clone --no-checkout "https://github.com/${repository}.git" "$plugin_dir" || return 1
+      local revision
+      revision="$(command sed -n "/${repository//\//---}/s/.*ref = \"//p" "$config" 2>/dev/null | command sed -n '1s/".*//p')"
+      if [ -z "$revision" ]; then
+        print -u2 "zinit: refusing ${repository}; no pin for it in ${config}"
+        return 1
       fi
 
-      command git -C "$plugin_dir" checkout --quiet --detach "$revision" || {
-        command git -C "$plugin_dir" fetch --depth 1 origin "$revision" &&
-          command git -C "$plugin_dir" checkout --quiet --detach "$revision"
-      } || return 1
-      command git -C "$plugin_dir" clean --force --quiet -- '*.zwc' || return 1
-
-      local resolved_revision="$(command git -C "$plugin_dir" rev-parse HEAD)"
-      if [[ "$resolved_revision" != "$revision" || -n "$(command git -C "$plugin_dir" status --porcelain)" ]]; then
+      local resolved_revision="$(command git -C "$plugin_dir" rev-parse HEAD 2>/dev/null)"
+      if [[ "$resolved_revision" != "$revision" || -n "$(command git -C "$plugin_dir" status --porcelain 2>/dev/null)" ]]; then
         print -u2 "zinit: refusing ${repository} at ${resolved_revision:-unknown}; expected ${revision}"
         return 1
       fi
@@ -75,10 +72,10 @@ fi
       zinit light "$repository"
     }
 
-    zinit_light_pinned momo-lab/zsh-abbrev-alias 33fe094da0a70e279e1cc5376a3d7cb7a5343df5
-    zinit_light_pinned zsh-users/zsh-syntax-highlighting 1d85c692615a25fe2293bdd44b34c217d5d2bf04
-    zinit_light_pinned zsh-users/zsh-autosuggestions 85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5
-    unfunction zinit_light_pinned
+    zinit_light_verified momo-lab/zsh-abbrev-alias
+    zinit_light_verified zsh-users/zsh-syntax-highlighting
+    zinit_light_verified zsh-users/zsh-autosuggestions
+    unfunction zinit_light_verified
   fi
 }
 

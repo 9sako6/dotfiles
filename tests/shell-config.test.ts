@@ -214,7 +214,13 @@ esac
   return brewPath;
 }
 
-async function preparePinnedZinitHome(tempDir: string, mismatchPlugin = "") {
+const ZINIT_PLUGINS = [
+  { name: "momo-lab/zsh-abbrev-alias", dir: "momo-lab---zsh-abbrev-alias", sha: "33fe094da0a70e279e1cc5376a3d7cb7a5343df5" },
+  { name: "zsh-users/zsh-syntax-highlighting", dir: "zsh-users---zsh-syntax-highlighting", sha: "1d85c692615a25fe2293bdd44b34c217d5d2bf04" },
+  { name: "zsh-users/zsh-autosuggestions", dir: "zsh-users---zsh-autosuggestions", sha: "85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5" },
+] as const;
+
+async function preparePinnedZinitHome(tempDir: string, options: { revisionOverrides?: Partial<Record<string, string>>; dirty?: string[] } = {}) {
   const fakeBin = path.join(tempDir, "bin");
   const gitLogPath = path.join(tempDir, "zinit-git.log");
   const loadLogPath = path.join(tempDir, "zinit-load.log");
@@ -222,12 +228,20 @@ async function preparePinnedZinitHome(tempDir: string, mismatchPlugin = "") {
   const pluginsDir = path.join(homeDir, ".local", "share", "zinit", "plugins");
   const zinitHome = path.join(homeDir, ".local", "share", "zinit", "zinit.git");
 
-  for (const plugin of [
-    "momo-lab---zsh-abbrev-alias",
-    "zsh-users---zsh-autosuggestions",
-    "zsh-users---zsh-syntax-highlighting",
-  ]) {
-    await mkdir(path.join(pluginsDir, plugin, ".git"), { recursive: true });
+  const configDir = path.join(homeDir, ".config", "mise");
+  const configLines = ZINIT_PLUGINS.map(
+    (plugin) =>
+      `"~/.local/share/zinit/plugins/${plugin.dir}" = { url = "https://github.com/${plugin.name}.git", ref = "${plugin.sha}" }`,
+  );
+  await writeTree(configDir, { "config.toml": `[bootstrap.repos]\n${configLines.join("\n")}\n` });
+
+  for (const plugin of ZINIT_PLUGINS) {
+    const pluginDir = path.join(pluginsDir, plugin.dir);
+    await mkdir(path.join(pluginDir, ".git"), { recursive: true });
+    await writeFile(path.join(pluginDir, ".test-revision"), `${options.revisionOverrides?.[plugin.dir] ?? plugin.sha}\n`);
+  }
+  for (const dirty of options.dirty ?? []) {
+    await writeFile(path.join(pluginsDir, dirty, ".test-status"), "?? stray.zwc\n");
   }
   await writeTree(zinitHome, {
     "zinit.zsh": `typeset -gA ZINIT
@@ -245,22 +259,18 @@ zinit() {
 set -eu
 plugin_dir="$2"
 shift 2
+printf '<%s>' "$@" >> "$ZINIT_GIT_LOG"
+printf '\n' >> "$ZINIT_GIT_LOG"
 case "$1" in
-  checkout)
-    printf '%s\n' "$4" > "$plugin_dir/.test-revision"
-    printf '<%s>' "$@" >> "$ZINIT_GIT_LOG"
-    printf '\n' >> "$ZINIT_GIT_LOG"
-    ;;
   rev-parse)
-    if [ -n "$ZINIT_MISMATCH_PLUGIN" ]; then
-      case "$plugin_dir" in
-        *"$ZINIT_MISMATCH_PLUGIN") printf '%040d\n' 0; exit 0 ;;
-      esac
-    fi
-    /bin/cat "$plugin_dir/.test-revision"
+    /bin/cat "$plugin_dir/.test-revision" 2>/dev/null
     ;;
-  clean) exit 0 ;;
-  status) exit 0 ;;
+  status)
+    /bin/cat "$plugin_dir/.test-status" 2>/dev/null
+    ;;
+  clone|fetch|checkout|clean)
+    exit 1
+    ;;
   *) exit 1 ;;
 esac
 `,
@@ -273,9 +283,9 @@ esac
       DOTFILES_NO_BANNER: "1",
       HOME: homeDir,
       PATH: `${fakeBin}:${path.join(homeDir, ".local", "bin")}:/usr/bin:/bin`,
+      XDG_CONFIG_HOME: "",
       ZINIT_GIT_LOG: gitLogPath,
       ZINIT_LOAD_LOG: loadLogPath,
-      ZINIT_MISMATCH_PLUGIN: mismatchPlugin,
     },
     gitLogPath,
     loadLogPath,
@@ -490,7 +500,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("Zinit pluginをfull commit SHAへ固定してから読み込む", async () => {
+  test("install:userが取得したZinit pluginを固定commitで読み込む", async () => {
     await withTempDir("zinit-pinned", async (tempDir) => {
       const { env, gitLogPath, loadLogPath } = await preparePinnedZinitHome(tempDir);
 
@@ -502,21 +512,26 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
           "zsh-users/zsh-syntax-highlighting\n" +
           "zsh-users/zsh-autosuggestions\n",
       );
-      const revisions = Array.from(
-        (await readFile(gitLogPath, "utf8")).matchAll(/<checkout><--quiet><--detach><([0-9a-f]{40})>/g),
-        (match) => match[1],
-      );
-      expect(revisions).toHaveLength(3);
-      expect(new Set(revisions).size).toBe(3);
+      const gitCalls = (await readFile(gitLogPath, "utf8")).trimEnd().split("\n");
+      expect(gitCalls).toHaveLength(6);
+      expect(gitCalls).toEqual([
+        "<rev-parse><HEAD>",
+        "<status><--porcelain>",
+        "<rev-parse><HEAD>",
+        "<status><--porcelain>",
+        "<rev-parse><HEAD>",
+        "<status><--porcelain>",
+      ]);
     });
   });
 
   test("Zinit pluginのresolved commitが固定値と違えば読み込まない", async () => {
     await withTempDir("zinit-mismatch", async (tempDir) => {
-      const { env, loadLogPath } = await preparePinnedZinitHome(
-        tempDir,
-        "zsh-users---zsh-syntax-highlighting",
-      );
+      const { env, loadLogPath } = await preparePinnedZinitHome(tempDir, {
+        revisionOverrides: {
+          "zsh-users---zsh-syntax-highlighting": "0000000000000000000000000000000000000000",
+        },
+      });
 
       const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
 
@@ -526,6 +541,23 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
       expect(loaded).toContain("momo-lab/zsh-abbrev-alias\n");
       expect(loaded).not.toContain("zsh-users/zsh-syntax-highlighting\n");
       expect(loaded).toContain("zsh-users/zsh-autosuggestions\n");
+    });
+  });
+
+  test("dirtyなworktreeのZinit pluginは読み込まない", async () => {
+    await withTempDir("zinit-dirty", async (tempDir) => {
+      const { env, loadLogPath } = await preparePinnedZinitHome(tempDir, {
+        dirty: ["zsh-users---zsh-autosuggestions"],
+      });
+
+      const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toContain("refusing zsh-users/zsh-autosuggestions");
+      const loaded = await readFile(loadLogPath, "utf8");
+      expect(loaded).toContain("momo-lab/zsh-abbrev-alias\n");
+      expect(loaded).toContain("zsh-users/zsh-syntax-highlighting\n");
+      expect(loaded).not.toContain("zsh-users/zsh-autosuggestions\n");
     });
   });
 

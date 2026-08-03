@@ -31,4 +31,7 @@ xcodegen = "2.46.0"
 zoxide = "0.10.0"
 
 [bootstrap.repos]
+"~/.local/share/zinit/plugins/momo-lab---zsh-abbrev-alias" = { url = "https://github.com/momo-lab/zsh-abbrev-alias.git", ref = "33fe094da0a70e279e1cc5376a3d7cb7a5343df5" }
 "~/.local/share/zinit/zinit.git" = { url = "https://github.com/zdharma-continuum/zinit.git", ref = "55d19f86f627c9995db9885d0971d9b6701fe0d3" }
+"~/.local/share/zinit/plugins/zsh-users---zsh-autosuggestions" = { url = "https://github.com/zsh-users/zsh-autosuggestions.git", ref = "85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5" }
+"~/.local/share/zinit/plugins/zsh-users---zsh-syntax-highlighting" = { url = "https://github.com/zsh-users/zsh-syntax-highlighting.git", ref = "1d85c692615a25fe2293bdd44b34c217d5d2bf04" }
