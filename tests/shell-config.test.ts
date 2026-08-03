@@ -30,7 +30,7 @@ function runCommand(
       stderr += String(chunk);
     });
     child.on("error", reject);
-    child.on("exit", (code) => {
+    child.on("close", (code) => {
       resolve({ code, stderr, stdout });
     });
   });
