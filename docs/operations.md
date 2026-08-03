@@ -73,12 +73,18 @@ mise run test       # 契約テストを実行
 `nix-collect-garbage` は古い世代を削除する。実行前に
 `install:system:generations` でロールバック候補を確認すること。
 
+## 検証
+
+変更した振る舞いをコマンドやスクリプトで観測してから、`mise run test` を実行する。振る舞いをテストできない場合は、観測可能な境界を作ってから変更する。
+
+設定ファイルやソースの文面を直接検査するテストは書かない。
+
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
 2. `home-managed user tools` を変更する場合は、`dot plan` で配備状況を確認
 3. 必要な変更を入れる
-4. `mise run test` で回帰を確認
+4. 「検証」の手順を実施
 5. 変更した管理区分に応じて反映
    - `home-managed user tools` — `dot apply`
    - `system configuration` — `mise run install:system`
