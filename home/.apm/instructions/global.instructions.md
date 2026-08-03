@@ -19,9 +19,12 @@ applyTo: "**"
 # remote collaboration
 
 - ユーザーの明示的な確認なしに、`git push` を含む公開・同期・アップロードを行わない
-- AI エージェントが行ったコミットには、適切な `Co-Authored-By` trailer を付ける。例:
-  - `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`
-  - `Co-Authored-By: codex <codex@openai.com>`
+- AI エージェントが行ったコミットの `Co-Authored-By` trailer にツール名・モデル名を含める。
+  形式: `Co-Authored-By: <ツール名> (<モデルID>) <email>`
+- 例:
+  - `Co-Authored-By: opencode (deepseek-v4-flash) <noreply@opencode.ai>`
+  - `Co-Authored-By: codex (gpt-5.2-codex) <codex@openai.com>`
+  - `Co-Authored-By: Claude (claude-opus-4-6) <noreply@anthropic.com>`
 - コミットメッセージには、変更の理由を記載する
 
 # sources
