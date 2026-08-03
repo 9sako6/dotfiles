@@ -30,8 +30,5 @@ uv = "0.12.1"
 xcodegen = "2.46.0"
 zoxide = "0.10.0"
 
-[settings]
-verbose = true
-
 [bootstrap.repos]
 "~/.local/share/zinit/zinit.git" = { url = "https://github.com/zdharma-continuum/zinit.git", ref = "55d19f86f627c9995db9885d0971d9b6701fe0d3" }
