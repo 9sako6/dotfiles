@@ -67,6 +67,8 @@ in
         "com.apple.swipescrolldirection" = false;
       };
 
+      controlcenter.Sound = true;
+
       # 右下のホットコーナーには何も割り当てない
       dock.wvous-br-corner = 1;
 
