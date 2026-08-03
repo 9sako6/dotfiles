@@ -8,16 +8,18 @@ export type DotfilesConfig = {
   prunePaths: ReadonlySet<string>;
 };
 
+const managedFields = ["symlink", "copy", "prune"] as const;
+type ManagedFields = (typeof managedFields)[number];
+
 export async function loadDotfilesConfig(
   repoRoot: string,
   sourceRoot: string,
 ): Promise<DotfilesConfig> {
   const configPath = path.join(repoRoot, ".dotfiles.json");
-  const raw = await readFile(configPath, "utf8");
-  const parsed = JSON.parse(raw) as { symlink?: unknown; copy?: unknown; prune?: unknown };
-  const symlinkPaths = new Set(parseManagedPaths(parsed.symlink, "symlink"));
-  const copyPaths = new Set(parseManagedPaths(parsed.copy, "copy"));
-  const prunePaths = new Set(parseManagedPaths(parsed.prune, "prune"));
+  const parsed = parseDotfilesConfig(await readConfigFile(configPath));
+  const symlinkPaths = new Set(parsed.symlink);
+  const copyPaths = new Set(parsed.copy);
+  const prunePaths = new Set(parsed.prune);
   validateNoConflicts(symlinkPaths, copyPaths);
   await validatePrunePaths(sourceRoot, copyPaths, prunePaths);
   await validatePathsExist(sourceRoot, symlinkPaths, "symlink");
@@ -25,17 +27,128 @@ export async function loadDotfilesConfig(
   return { symlinkPaths, copyPaths, prunePaths };
 }
 
-function parseManagedPaths(value: unknown, fieldName: string): string[] {
+async function readConfigFile(configPath: string): Promise<string> {
+  try {
+    return await readFile(configPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error(`.dotfiles.json: file not found: ${configPath}`);
+    }
+    throw error;
+  }
+}
+
+class DotfilesConfigError extends Error {}
+
+function parseDotfilesConfig(raw: string): Record<ManagedFields, string[]> {
+  assertNoDuplicateMembers(raw);
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(
+      `.dotfiles.json: invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(".dotfiles.json: root must be an object");
+  }
+  const root = value as Record<string, unknown>;
+  const unknownKeys = Object.keys(root).filter(
+    (key) => !(managedFields as readonly string[]).includes(key),
+  );
+  if (unknownKeys.length > 0) {
+    throw new Error(
+      `.dotfiles.json: unknown key(s): ${unknownKeys.join(", ")}; allowed: ${managedFields.join(", ")}`,
+    );
+  }
+  return {
+    symlink: parseManagedPaths(root, "symlink"),
+    copy: parseManagedPaths(root, "copy"),
+    prune: parseManagedPaths(root, "prune"),
+  };
+}
+
+function assertNoDuplicateMembers(raw: string): void {
+  const memberKeySets: Set<string>[] = [];
+  for (let index = 0; index < raw.length; index++) {
+    const char = raw[index]!;
+    if (char === '"') {
+      const keyEnd = scanStringEnd(raw, index);
+      let next = keyEnd + 1;
+      while (next < raw.length && isJsonWhitespace(raw[next]!)) {
+        next += 1;
+      }
+      const parent = memberKeySets[memberKeySets.length - 1];
+      if (parent && raw[next] === ":") {
+        const key = JSON.parse(raw.slice(index, keyEnd + 1)) as string;
+        if (parent.has(key)) {
+          throw new DotfilesConfigError(`.dotfiles.json: duplicate member "${key}"`);
+        }
+        parent.add(key);
+      }
+      index = keyEnd;
+      continue;
+    }
+    if (char === "{") {
+      memberKeySets.push(new Set());
+    } else if (char === "}") {
+      memberKeySets.pop();
+    }
+  }
+}
+
+function scanStringEnd(raw: string, start: number): number {
+  for (let index = start + 1; index < raw.length; index++) {
+    const char = raw[index]!;
+    if (char === "\\") {
+      index += 1;
+    } else if (char === '"') {
+      return index;
+    }
+  }
+  return raw.length - 1;
+}
+
+function isJsonWhitespace(char: string): boolean {
+  return char === " " || char === "\t" || char === "\n" || char === "\r";
+}
+
+function parseManagedPaths(root: Record<string, unknown>, fieldName: string): string[] {
+  const value = root[fieldName];
   if (value === undefined) {
     return [];
   }
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
     throw new Error(`.dotfiles.json: "${fieldName}" must be an array of strings`);
   }
-  for (const entry of value) {
+  const entries = value as string[];
+  for (const entry of entries) {
     validateManagedPath(entry, fieldName);
   }
-  return value;
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const entry of entries) {
+    if (seen.has(entry)) {
+      duplicates.add(entry);
+    }
+    seen.add(entry);
+  }
+  if (duplicates.size > 0) {
+    throw new Error(
+      `.dotfiles.json: "${fieldName}" contains duplicate entry(ies): ${[...duplicates].join(", ")}`,
+    );
+  }
+  for (let index = 1; index < entries.length; index++) {
+    const previous = entries[index - 1]!;
+    const current = entries[index]!;
+    if (current < previous) {
+      throw new Error(
+        `.dotfiles.json: "${fieldName}" must list entries alphabetically; "${current}" should come before "${previous}"`,
+      );
+    }
+  }
+  return entries;
 }
 
 function validateManagedPath(relativePath: string, fieldName: string): void {
