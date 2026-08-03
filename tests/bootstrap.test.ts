@@ -208,6 +208,75 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
     });
   });
 
+  for (const failureStage of ["install-mise", "trust", "bootstrap"] as const) {
+    test(`${failureStage}の失敗後も再実行でmasterへ収束する`, async () => {
+      await withTempDir(`bootstrap-retry-${failureStage}`, async (tempDir) => {
+        const sourceDir = path.join(tempDir, "source");
+        const dotfilesDir = path.join(tempDir, "checkout");
+        const homeDir = path.join(tempDir, "home");
+        const failureMarker = path.join(tempDir, "failed-once");
+        await runCommand("git", ["init", "--quiet", "--initial-branch=master", sourceDir], tempDir);
+        await runCommand("git", ["-C", sourceDir, "config", "user.email", "test@example.invalid"], tempDir);
+        await runCommand("git", ["-C", sourceDir, "config", "user.name", "Bootstrap Test"], tempDir);
+        await makeExecutable(
+          path.join(sourceDir, "bin", "install-mise.sh"),
+          `#!/bin/sh
+if [ "$BOOTSTRAP_FAIL_STAGE" = "install-mise" ] && [ ! -e "$BOOTSTRAP_FAILURE_MARKER" ]; then
+  : > "$BOOTSTRAP_FAILURE_MARKER"
+  exit 1
+fi
+`,
+        );
+        await runCommand("git", ["-C", sourceDir, "add", "bin/install-mise.sh"], tempDir);
+        await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
+        const revision = await runCommand("git", ["-C", sourceDir, "rev-parse", "HEAD"], tempDir);
+        await makeExecutable(
+          path.join(homeDir, ".local", "bin", "mise"),
+          `#!/bin/sh
+if [ "$BOOTSTRAP_FAIL_STAGE" = "$1" ] && [ ! -e "$BOOTSTRAP_FAILURE_MARKER" ]; then
+  : > "$BOOTSTRAP_FAILURE_MARKER"
+  exit 1
+fi
+`,
+        );
+        const env = {
+          ...process.env,
+          BOOTSTRAP_FAILURE_MARKER: failureMarker,
+          BOOTSTRAP_FAIL_STAGE: failureStage,
+          DOTFILES_DIR: dotfilesDir,
+          DOTFILES_REPO_URL: sourceDir,
+          DOTFILES_REVISION: revision,
+          HOME: homeDir,
+          PATH: "/usr/bin:/bin",
+        };
+
+        const failed = await runScript(installScript, env);
+
+        expect(failed.exitCode).not.toBe(0);
+        expect(await runCommand(
+          "git",
+          ["-C", dotfilesDir, "branch", "--show-current"],
+          tempDir,
+        )).toBe("");
+
+        const retried = await runScript(installScript, env);
+
+        expect(retried).toEqual({ exitCode: 0, stderr: "", stdout: "" });
+        expect(await runCommand(
+          "git",
+          ["-C", dotfilesDir, "branch", "--show-current"],
+          tempDir,
+        )).toBe("master");
+        expect(await runCommand(
+          "git",
+          ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
+          tempDir,
+        )).toBe("origin/master");
+        await expect(pullDotfiles(dotfilesDir)).resolves.toBe("Dotfiles are up to date.");
+      });
+    });
+  }
+
   test("既定revisionが現在のbootstrap entrypointを含む", async () => {
     await withTempDir("bootstrap-default-revision", async (tempDir) => {
       const dotfilesDir = path.join(tempDir, "checkout");
