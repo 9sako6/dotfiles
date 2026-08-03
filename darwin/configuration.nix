@@ -63,6 +63,9 @@ in
       # 右下のホットコーナーには何も割り当てない
       dock.wvous-br-corner = 1;
 
+      # 音声入力を有効にする
+      CustomUserPreferences."com.apple.assistant.support"."Dictation Enabled" = true;
+
       finder = {
         # ゴミ箱に入れてから30日が過ぎた項目を自動で削除する
         FXRemoveOldTrashItems = true;
