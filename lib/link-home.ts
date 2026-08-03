@@ -1,6 +1,13 @@
-import { copyFile, mkdir, readFile, rename, rm, rmdir, symlink } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, rm, symlink } from "node:fs/promises";
 import path from "node:path";
-import { allocateBackupRoot, backupPathFor, backupRootFor, createTimestamp } from "./backup";
+import {
+  allocateBackupRoot,
+  backupPathFor,
+  backupRootFor,
+  createTimestamp,
+  removeEmptyBackupRoot,
+  reserveBackupRoot,
+} from "./backup";
 import {
   findOrphanedDeployments,
   writeDeploymentState,
@@ -53,25 +60,19 @@ export type LinkDrift = {
 export type LinkPlan = {
   actions: LinkAction[];
   backupRoot: string;
-  drifts: LinkDrift[];
-  dryRun: boolean;
-  homeDir: string;
-  sourceRoot: string;
-  timestamp: string;
-};
-
-export type ManagedLinkPlan = LinkPlan & {
-  backupRootReserved: boolean;
   deploymentState: {
     currentDeployments: ManagedDeployment[];
     retainedEntries: DeploymentEntry[];
     statePath: string;
   };
+  drifts: LinkDrift[];
+  homeDir: string;
+  sourceRoot: string;
+  timestamp: string;
 };
 
 type PlanOptions = {
   copyPaths?: ReadonlySet<string>;
-  dryRun?: boolean;
   homeDir: string;
   prunePaths?: ReadonlySet<string>;
   sourceRoot: string;
@@ -82,14 +83,13 @@ type PlanOptions = {
 
 export async function planLinkActions({
   copyPaths = new Set(),
-  dryRun = false,
   homeDir,
   prunePaths = new Set(),
   sourceRoot,
   statePath,
   symlinkPaths,
   timestamp = createTimestamp(),
-}: PlanOptions): Promise<ManagedLinkPlan> {
+}: PlanOptions): Promise<LinkPlan> {
   const rootStat = await lstatOrNull(sourceRoot);
   if (!rootStat?.isDirectory()) {
     throw new Error(`home directory does not exist: ${sourceRoot}`);
@@ -149,7 +149,7 @@ export async function planLinkActions({
   };
   const hasBackups = actions.some((action) => "backupPath" in action);
   const backupRoot = hasBackups
-    ? await allocateBackupRoot(homeDir, timestamp, !dryRun)
+    ? await allocateBackupRoot(homeDir, timestamp)
     : backupRootFor(homeDir, timestamp);
   for (const action of actions) {
     if ("backupPath" in action) {
@@ -160,22 +160,12 @@ export async function planLinkActions({
   return {
     actions,
     backupRoot,
-    backupRootReserved: hasBackups && !dryRun,
+    deploymentState,
     drifts,
-    dryRun,
     homeDir,
     sourceRoot,
     timestamp,
-    deploymentState,
   };
-}
-
-export async function discardLinkPlan(plan: ManagedLinkPlan) {
-  if (!plan.backupRootReserved) {
-    return;
-  }
-  await rmdir(plan.backupRoot);
-  plan.backupRootReserved = false;
 }
 
 function pathsOverlap(left: string, right: string): boolean {
@@ -187,9 +177,9 @@ function isPathWithin(ancestor: string, target: string): boolean {
   return relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
 }
 
-export async function runLinkPlan(plan: ManagedLinkPlan) {
-  if (plan.dryRun) {
-    return;
+export async function runLinkPlan(plan: LinkPlan) {
+  if (plan.actions.some((action) => "backupPath" in action)) {
+    await reserveBackupRoot(plan.backupRoot);
   }
 
   const rollbackActions: RollbackAction[] = [];
@@ -247,6 +237,7 @@ export async function runLinkPlan(plan: ManagedLinkPlan) {
     });
   } catch (error) {
     const rollbackErrors = await rollbackLinkActions(rollbackActions);
+    await removeEmptyBackupRoot(plan.backupRoot);
     if (rollbackErrors.length > 0) {
       throw new AggregateError(
         [error, ...rollbackErrors],

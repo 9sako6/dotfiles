@@ -47,7 +47,6 @@ async function inspectDeployment(
   const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
   const plan = await planLinkActions({
     copyPaths,
-    dryRun: true,
     homeDir,
     prunePaths,
     sourceRoot,

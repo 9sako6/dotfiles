@@ -134,7 +134,7 @@ describe("配備計画の実行", () => {
     });
   });
 
-  test("dry-runではファイルシステムを変更しない", async () => {
+  test("計画はファイルシステムを変更せずbackup rootも予約しない", async () => {
     await withTempDir("link-home", async (tempDir) => {
       const sourceRoot = path.join(tempDir, "repo", "home");
       const homeDir = path.join(tempDir, "home");
@@ -146,16 +146,15 @@ describe("配備計画の実行", () => {
       });
 
       const plan = await planLinkActions({
-        dryRun: true,
         sourceRoot,
         homeDir,
         symlinkPaths: new Set([".zshrc"]),
         timestamp: "20260325T120000",
       });
-      await runLinkPlan(plan);
 
       expect(await readFile(path.join(homeDir, ".zshrc"), "utf8")).toBe("old\n");
       await expect(access(path.join(homeDir, ".dotfiles-backups", "20260325T120000", ".zshrc"))).rejects.toThrow();
+      await expect(access(plan.backupRoot)).rejects.toThrow();
     });
   });
 
@@ -200,6 +199,7 @@ describe("配備計画の実行", () => {
       if (replacement?.type === "replace") {
         await expect(access(replacement.backupPath)).rejects.toThrow();
       }
+      await expect(access(plan.backupRoot)).rejects.toThrow();
       await expect(access(plan.deploymentState.statePath)).rejects.toThrow();
     });
   });
@@ -240,6 +240,7 @@ describe("配備計画の実行", () => {
         "20260802T120000",
         ".obsolete",
       ))).rejects.toThrow();
+      await expect(access(plan.backupRoot)).rejects.toThrow();
     });
   });
 
@@ -376,6 +377,7 @@ describe("コピーによる配備", () => {
       await expect(runLinkPlan(plan)).rejects.toThrow();
       expect(await readFile(destinationFile, "utf8")).toBe('{"model":"sonnet"}');
       await expect(access(path.join(homeDir, ".dotfiles-backups", "20260327T130000", ".claude", "settings.json"))).rejects.toThrow();
+      await expect(access(plan.backupRoot)).rejects.toThrow();
     });
   });
 
@@ -446,7 +448,6 @@ describe("不要になった配備先の退避", () => {
       await createSymlink(path.join(sourceRoot, ".tmux.conf"), obsoletePath);
 
       const plan = await planLinkActions({
-        dryRun: true,
         homeDir,
         sourceRoot,
         statePath,
@@ -782,8 +783,8 @@ describe("配備計画の表示", () => {
         { type: "noop", sourcePath: "/repo/home/.gitconfig", destinationPath: "/home/.gitconfig" },
       ],
       backupRoot: "/home/.dotfiles-backups/20260418T150000",
+      deploymentState: { currentDeployments: [], retainedEntries: [], statePath: "/home/.local/state/dotfiles/deployment.json" },
       drifts: [],
-      dryRun: true,
       homeDir: "/home",
       sourceRoot: "/repo/home",
       timestamp: "20260418T150000",
@@ -819,8 +820,8 @@ describe("配備計画の表示", () => {
         { type: "noop", sourcePath: "/repo/home/.zshrc", destinationPath: "/home/.zshrc" },
       ],
       backupRoot: "/home/.dotfiles-backups/20260418T150000",
+      deploymentState: { currentDeployments: [], retainedEntries: [], statePath: "/home/.local/state/dotfiles/deployment.json" },
       drifts: [],
-      dryRun: true,
       homeDir: "/home",
       sourceRoot: "/repo/home",
       timestamp: "20260418T150000",

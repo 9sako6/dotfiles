@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, lstat, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   DotUsageError,
@@ -187,6 +187,35 @@ describe("dot applyの確認", () => {
       expect(eof.exitCode).toBe(1);
       expect(eof.stdout).toContain("Apply cancelled.");
       await expect(readFile(path.join(homeDir, ".zshrc"), "utf8")).rejects.toThrow();
+    });
+  });
+
+  test("確認キャンセルでは予約したbackup directoryを残さない", async () => {
+    await withDeploymentFixture("apply-cancel-backup", async ({ homeDir, fixtureRoot }) => {
+      await writeFile(path.join(homeDir, ".zshrc"), "old\n");
+
+      const result = await runLinkHome(fixtureRoot, homeDir, "no\n");
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain("Apply cancelled.");
+      expect(await readFile(path.join(homeDir, ".zshrc"), "utf8")).toBe("old\n");
+      await expect(access(path.join(homeDir, ".dotfiles-backups"))).rejects.toThrow();
+    });
+  });
+
+  test("確認後の適用で表示したbackup rootへ退避する", async () => {
+    await withDeploymentFixture("apply-confirm-backup", async ({ homeDir, fixtureRoot }) => {
+      await writeFile(path.join(homeDir, ".zshrc"), "old\n");
+
+      const result = await runLinkHome(fixtureRoot, homeDir, "yes\n");
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Apply these changes? Type 'yes' to continue:");
+      expect(result.stdout).toContain("Applied 1 change.");
+      const displayedBackup = result.stdout.match(/\.dotfiles-backups\/\S+/)?.[0];
+      expect(displayedBackup).toBeDefined();
+      expect(await readFile(path.join(homeDir, displayedBackup!), "utf8")).toBe("old\n");
+      expect((await lstat(path.join(homeDir, ".zshrc"))).isSymbolicLink()).toBe(true);
     });
   });
 });

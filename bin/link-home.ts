@@ -3,7 +3,7 @@
 import path from "node:path";
 import { loadDotfilesConfig } from "../lib/dotfiles-config";
 import { deploymentStatePath, withDeploymentLock } from "../lib/deployment-state";
-import { discardLinkPlan, formatPlan, planLinkActions, runLinkPlan } from "../lib/link-home";
+import { formatPlan, planLinkActions, runLinkPlan } from "../lib/link-home";
 
 async function main() {
   const mode = parseMode(process.argv.slice(2));
@@ -19,7 +19,6 @@ async function main() {
   const statePath = deploymentStatePath(homeDir, process.env.XDG_STATE_HOME);
   const createPlan = () => planLinkActions({
     copyPaths,
-    dryRun,
     homeDir,
     prunePaths,
     sourceRoot,
@@ -40,7 +39,6 @@ async function main() {
         return;
       }
       if (!(await confirmApply())) {
-        await discardLinkPlan(plan);
         console.log("Apply cancelled.");
         process.exitCode = 1;
         return;
