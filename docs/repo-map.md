@@ -30,10 +30,17 @@
 
 ## バージョンピン留め
 
-依存はすべて厳密にピン留めする。同じ repo を別マシン・別時点で動かしても結果がずれないようにするため。
+依存は、別のマシンや時点でも同じものを取得できる形式で指定する。
 
-- mise は `major.minor.patch`
-- GitHub Actions は commit SHA ＋ バージョンコメント（semver タグより immutable）
-- nix-homebrew は flake input の commit SHA
-- Homebrew の formula / cask は nix-darwin の宣言へ集約する。バージョン管理が必要な CLI は mise `[tools]` または Nix で扱う
-- `install.sh` は、バージョン管理ツール導入前のため、ユーザーの明示的な許可があれば固定を緩めてよい
+| 指定する場所 | 形式 |
+|---|---|
+| mise `[tools]` | `major.minor.patch` |
+| GitHub Actions | commit SHA とバージョンコメント |
+| Nix flake input | commit SHA |
+| その他 | 厳密なバージョンまたはrevision |
+
+`latest`、`^x.y`、`~x.y`、`@v4` は固定として扱わない。GitHub Actions は `@abc123 # v4.3.1` の形で書く。
+
+Homebrew の formula と cask は nix-darwin の宣言へ集める。バージョン管理が必要な CLI は mise `[tools]` または Nix で扱う。
+
+`install.sh` だけはバージョン管理ツールの導入前に動く。ユーザーが明示的に許可した場合に限り、固定を緩めてよい。

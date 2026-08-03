@@ -7,26 +7,6 @@
 
 - 手書きで管理するリソース列挙はアルファベティカルに保つ
 
-### バージョン
-
-バージョン指定は次の基準に従う。
-
-```mermaid
-flowchart LR
-    target{"指定する場所"}
-    target -->|"mise [tools]"| mise["major.minor.patch"]
-    target -->|"GitHub Actions"| actions["commit SHA とバージョンコメント"]
-    target -->|"mise bootstrap の brew / brew-cask package"| brew["固定の例外"]
-    target -->|"install.sh（バージョン管理ツールの導入前）"| permission{"ユーザーが緩和を明示したか"}
-    target -->|"その他"| exact["厳密に固定する"]
-    permission -->|"はい"| simple["簡潔さを優先し、固定を緩めてよい"]
-    permission -->|"いいえ"| exact
-```
-
-`latest`、`^x.y`、`~x.y`、`@v4` などは固定されたバージョンとして扱わない。GitHub Actions の指定例は `@abc123 # v4.3.1`。
-
-- `home/` に秘密情報を入れない。秘密は `~/.zsh.d/secrets.zsh` に置く
-
 ## 検証
 
 変更後は次の手順で契約テストを通す。
