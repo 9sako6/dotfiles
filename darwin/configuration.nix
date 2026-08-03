@@ -38,7 +38,6 @@ in
 
   nix-homebrew = {
     enable = true;
-    # 既存Homebrewの移行時だけ両方trueにし、成功後は通常運用へ戻す。
     autoMigrate = false;
     enableRosetta = false;
     mutableTaps = false;
