@@ -47,7 +47,7 @@ jobs:
           "$HOME/.local/bin/mise" run test
 
   public-install-smoke:
-    needs: contract-test
+    needs: secret-scan
     runs-on: macos-latest
     env:
       GITHUB_TOKEN: ${{ github.token }}
