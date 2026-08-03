@@ -33,7 +33,7 @@ description = "Build reproducible mybin assets"
 
 [tasks."install:user"]
 depends = ["apply"]
-run = 'cd "$HOME" && "$HOME/.local/bin/mise" bootstrap --yes'
+run = 'cd "$HOME" && "$HOME/.local/bin/mise" bootstrap --yes --verbose'
 description = "Converge user tools from deployed home-directory config"
 
 [tasks."install:system"]

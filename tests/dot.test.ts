@@ -59,15 +59,24 @@ describe("dotのコマンド契約", () => {
       const homeDir = path.join(tempDir, "home");
       const deployedDot = path.join(homeDir, ".local/bin/dot");
       const fakeMise = path.join(homeDir, ".local/bin/mise");
+      const fakeBun = path.join(homeDir, ".local/bin/bun");
       await mkdir(path.dirname(deployedDot), { recursive: true });
       await symlink(path.join(repoRoot, "home/.local/bin/dot"), deployedDot);
       await writeFile(fakeMise, [
+        "#!/bin/sh",
+        "test \"$MISE_AUTO_INSTALL\" = 0",
+        "test \"$1\" = which",
+        "test \"$2\" = bun",
+        `printf '%s\\n' '${fakeBun}'`,
+      ].join("\n"));
+      await writeFile(fakeBun, [
         "#!/bin/sh",
         "printf 'cwd=%s\\n' \"$PWD\"",
         "printf '<%s>' \"$@\"",
         "printf '\\n'",
       ].join("\n"));
       await chmod(fakeMise, 0o755);
+      await chmod(fakeBun, 0o755);
 
       const result = await runProcess([deployedDot, "--help"], tempDir, {
         ...process.env,
@@ -79,7 +88,7 @@ describe("dotのコマンド契約", () => {
         stderr: "",
         stdout: [
           `cwd=${repoRoot}`,
-          `<exec><--><${path.join(repoRoot, "bin/dot.ts")}><--help>`,
+          `<${path.join(repoRoot, "bin/dot.ts")}><--help>`,
           "",
         ].join("\n"),
       });

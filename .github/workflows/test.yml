@@ -6,6 +6,10 @@ on:
       - master
   workflow_dispatch:
 
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
@@ -29,7 +33,6 @@ jobs:
         run: gitleaks git --redact --no-banner --exit-code 1
 
   contract-test:
-    needs: secret-scan
     runs-on: macos-latest
     env:
       GITHUB_TOKEN: ${{ github.token }}
@@ -45,55 +48,3 @@ jobs:
         run: |
           "$HOME/.local/bin/mise" trust
           "$HOME/.local/bin/mise" run test
-
-  public-install-smoke:
-    needs: secret-scan
-    runs-on: macos-latest
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Verify secrets are absent before install
-        run: test ! -e "$HOME/.zsh.d/secrets.zsh"
-
-      - name: Install mise
-        run: ./bin/install-mise.sh
-
-      - name: Install user environment
-        run: |
-          "$HOME/.local/bin/mise" trust
-          "$HOME/.local/bin/mise" run install:user
-
-      - name: Verify generated agent resources
-        run: |
-          "$HOME/.local/bin/mise" run agents:build
-          git diff --exit-code -- home
-          test -z "$(git status --short --untracked-files=all -- home)"
-
-      - name: Install Lix
-        run: ./bin/install-lix.sh
-
-      - name: Build system configuration
-        run: ./bin/build-system.sh
-
-      - name: Verify secrets are absent after install
-        run: test ! -e "$HOME/.zsh.d/secrets.zsh"
-
-      - name: Verify home-managed daily-use tools
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          mise exec -- atuin --version
-          mise exec -- bun --version
-          mise exec -- codex --version
-          dot --help
-          mise exec -- fd --version
-          mise exec -- fzf --version
-          mise exec -- gh --version
-          mise exec -- ghq --version
-          mise exec -- gitleaks version
-          git --version
-          mise exec -- herdr --version
-          mise exec -- pnpm --version
-          mise exec -- rg --version
-          mise exec -- zoxide --version

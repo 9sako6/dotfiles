@@ -1,9 +1,9 @@
 lockfile_version: '1'
-generated_at: '2026-08-03T10:00:32.864955+00:00'
-apm_version: 0.23.1
+generated_at: '2026-08-03T11:55:23.419985+00:00'
+apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
-  name: '-'
+  name: minus
   host: github.com
   resolved_commit: 57ea40323b813642d5ae6b3dd69834b5311cfccd
   version: unknown
@@ -19,7 +19,116 @@ dependencies:
     .agents/skills/minus/SKILL.md: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
     .claude/skills/minus/SKILL.md: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
   content_hash: sha256:b8b3e28b6408b8820bc64bf74b4444320e21a373acc10200225f175373281fed
-- repo_url: Leonxlnx/taste-skill
+- repo_url: _local/create-anki-cards
+  name: create-anki-cards
+  version: 0.0.0
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/create-anki-cards
+  - .agents/skills/create-anki-cards/SKILL.md
+  - .agents/skills/create-anki-cards/references/card-design.md
+  - .agents/skills/create-anki-cards/tools/anki-cards.test.ts
+  - .agents/skills/create-anki-cards/tools/anki-cards.ts
+  - .claude/skills/create-anki-cards
+  - .claude/skills/create-anki-cards/SKILL.md
+  - .claude/skills/create-anki-cards/references/card-design.md
+  - .claude/skills/create-anki-cards/tools/anki-cards.test.ts
+  - .claude/skills/create-anki-cards/tools/anki-cards.ts
+  deployed_file_hashes:
+    .agents/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
+    .agents/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
+    .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:03859c23c419185bd5dacda8c398390f4c2fa8cfc06c3c3c95346b0c78dd08c5
+    .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:86c9e5bc92ab48c1a88b48c20d10f4bfd1acc082ea649e985c0cb5379169a6ed
+    .claude/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
+    .claude/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
+    .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:03859c23c419185bd5dacda8c398390f4c2fa8cfc06c3c3c95346b0c78dd08c5
+    .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:86c9e5bc92ab48c1a88b48c20d10f4bfd1acc082ea649e985c0cb5379169a6ed
+  source: local
+  local_path: ./.apm/skills/create-anki-cards
+- repo_url: _local/rails-mysql-explain
+  name: rails-mysql-explain
+  version: 0.0.0
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/rails-mysql-explain
+  - .agents/skills/rails-mysql-explain/SKILL.md
+  - .agents/skills/rails-mysql-explain/references/explain-guide.md
+  - .claude/skills/rails-mysql-explain
+  - .claude/skills/rails-mysql-explain/SKILL.md
+  - .claude/skills/rails-mysql-explain/references/explain-guide.md
+  deployed_file_hashes:
+    .agents/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
+    .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
+    .claude/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
+    .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
+  source: local
+  local_path: ./.apm/skills/rails-mysql-explain
+- repo_url: cursor/plugins
+  name: thermo-nuclear-code-quality-review
+  host: github.com
+  resolved_commit: 6f2e0c63189ce3b661040153d82a32a2038560ba
+  version: unknown
+  virtual_path: cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/thermo-nuclear-code-quality-review
+  - .agents/skills/thermo-nuclear-code-quality-review/SKILL.md
+  - .claude/skills/thermo-nuclear-code-quality-review
+  - .claude/skills/thermo-nuclear-code-quality-review/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/thermo-nuclear-code-quality-review/SKILL.md: sha256:7faca08b51b643b2ddd0836f92af15574444024685dcc1e677dbbb39ae8c9e8f
+    .claude/skills/thermo-nuclear-code-quality-review/SKILL.md: sha256:7faca08b51b643b2ddd0836f92af15574444024685dcc1e677dbbb39ae8c9e8f
+  content_hash: sha256:9052b01b46b1d8dbf94c45f9313ec1983443f9a460e83d49cdc7fe0f640ca476
+- repo_url: ikora128/stop-ai-slop-jp
+  name: stop-ai-slop-jp
+  host: github.com
+  resolved_commit: e09d32796f253a62693885757cea484c275d06f2
+  resolved_ref: e09d32796f253a62693885757cea484c275d06f2
+  version: unknown
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/stop-ai-slop-jp
+  - .agents/skills/stop-ai-slop-jp/.gitignore
+  - .agents/skills/stop-ai-slop-jp/CHANGELOG.md
+  - .agents/skills/stop-ai-slop-jp/LICENSE
+  - .agents/skills/stop-ai-slop-jp/README.en.md
+  - .agents/skills/stop-ai-slop-jp/README.md
+  - .agents/skills/stop-ai-slop-jp/SKILL.md
+  - .agents/skills/stop-ai-slop-jp/references/examples.md
+  - .agents/skills/stop-ai-slop-jp/references/phrases.md
+  - .agents/skills/stop-ai-slop-jp/references/structures.md
+  - .claude/skills/stop-ai-slop-jp
+  - .claude/skills/stop-ai-slop-jp/.gitignore
+  - .claude/skills/stop-ai-slop-jp/CHANGELOG.md
+  - .claude/skills/stop-ai-slop-jp/LICENSE
+  - .claude/skills/stop-ai-slop-jp/README.en.md
+  - .claude/skills/stop-ai-slop-jp/README.md
+  - .claude/skills/stop-ai-slop-jp/SKILL.md
+  - .claude/skills/stop-ai-slop-jp/references/examples.md
+  - .claude/skills/stop-ai-slop-jp/references/phrases.md
+  - .claude/skills/stop-ai-slop-jp/references/structures.md
+  deployed_file_hashes:
+    .agents/skills/stop-ai-slop-jp/.gitignore: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
+    .agents/skills/stop-ai-slop-jp/CHANGELOG.md: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
+    .agents/skills/stop-ai-slop-jp/LICENSE: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
+    .agents/skills/stop-ai-slop-jp/README.en.md: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
+    .agents/skills/stop-ai-slop-jp/README.md: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
+    .agents/skills/stop-ai-slop-jp/SKILL.md: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
+    .agents/skills/stop-ai-slop-jp/references/examples.md: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
+    .agents/skills/stop-ai-slop-jp/references/phrases.md: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
+    .agents/skills/stop-ai-slop-jp/references/structures.md: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
+    .claude/skills/stop-ai-slop-jp/.gitignore: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
+    .claude/skills/stop-ai-slop-jp/CHANGELOG.md: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
+    .claude/skills/stop-ai-slop-jp/LICENSE: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
+    .claude/skills/stop-ai-slop-jp/README.en.md: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
+    .claude/skills/stop-ai-slop-jp/README.md: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
+    .claude/skills/stop-ai-slop-jp/SKILL.md: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
+    .claude/skills/stop-ai-slop-jp/references/examples.md: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
+    .claude/skills/stop-ai-slop-jp/references/phrases.md: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
+    .claude/skills/stop-ai-slop-jp/references/structures.md: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
+  content_hash: sha256:2e81e3a96cd7e5eaaf6fae3a597a76c8538c027a3ec86b8643cb454dc231f8ff
+- repo_url: leonxlnx/taste-skill
   name: taste-skill
   host: github.com
   resolved_commit: 06d6028b5c623016c59ce8536f578e5a1127b499
@@ -111,117 +220,8 @@ dependencies:
     .claude/skills/taste-skill/SKILL.md: sha256:aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89
   content_hash: sha256:692fe4a36b148b84d886a4e1d61ddd76677b400e169555d7d266bc9edd53e0be
   declared_license: MIT
-- repo_url: _local/create-anki-cards
-  name: create-anki-cards
-  version: 0.0.0
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/create-anki-cards
-  - .agents/skills/create-anki-cards/SKILL.md
-  - .agents/skills/create-anki-cards/references/card-design.md
-  - .agents/skills/create-anki-cards/tools/anki-cards.test.ts
-  - .agents/skills/create-anki-cards/tools/anki-cards.ts
-  - .claude/skills/create-anki-cards
-  - .claude/skills/create-anki-cards/SKILL.md
-  - .claude/skills/create-anki-cards/references/card-design.md
-  - .claude/skills/create-anki-cards/tools/anki-cards.test.ts
-  - .claude/skills/create-anki-cards/tools/anki-cards.ts
-  deployed_file_hashes:
-    .agents/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
-    .agents/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
-    .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:03859c23c419185bd5dacda8c398390f4c2fa8cfc06c3c3c95346b0c78dd08c5
-    .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:86c9e5bc92ab48c1a88b48c20d10f4bfd1acc082ea649e985c0cb5379169a6ed
-    .claude/skills/create-anki-cards/SKILL.md: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
-    .claude/skills/create-anki-cards/references/card-design.md: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
-    .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:03859c23c419185bd5dacda8c398390f4c2fa8cfc06c3c3c95346b0c78dd08c5
-    .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:86c9e5bc92ab48c1a88b48c20d10f4bfd1acc082ea649e985c0cb5379169a6ed
-  source: local
-  local_path: ./.apm/skills/create-anki-cards
-- repo_url: _local/rails-mysql-explain
-  name: rails-mysql-explain
-  version: 0.0.0
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/rails-mysql-explain
-  - .agents/skills/rails-mysql-explain/SKILL.md
-  - .agents/skills/rails-mysql-explain/references/explain-guide.md
-  - .claude/skills/rails-mysql-explain
-  - .claude/skills/rails-mysql-explain/SKILL.md
-  - .claude/skills/rails-mysql-explain/references/explain-guide.md
-  deployed_file_hashes:
-    .agents/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
-    .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
-    .claude/skills/rails-mysql-explain/SKILL.md: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
-    .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
-  source: local
-  local_path: ./.apm/skills/rails-mysql-explain
-- repo_url: cursor/plugins
-  name: plugins
-  host: github.com
-  resolved_commit: 6f2e0c63189ce3b661040153d82a32a2038560ba
-  version: unknown
-  virtual_path: cursor-team-kit/skills/thermo-nuclear-code-quality-review
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/thermo-nuclear-code-quality-review
-  - .agents/skills/thermo-nuclear-code-quality-review/SKILL.md
-  - .claude/skills/thermo-nuclear-code-quality-review
-  - .claude/skills/thermo-nuclear-code-quality-review/SKILL.md
-  deployed_file_hashes:
-    .agents/skills/thermo-nuclear-code-quality-review/SKILL.md: sha256:7faca08b51b643b2ddd0836f92af15574444024685dcc1e677dbbb39ae8c9e8f
-    .claude/skills/thermo-nuclear-code-quality-review/SKILL.md: sha256:7faca08b51b643b2ddd0836f92af15574444024685dcc1e677dbbb39ae8c9e8f
-  content_hash: sha256:9052b01b46b1d8dbf94c45f9313ec1983443f9a460e83d49cdc7fe0f640ca476
-- repo_url: iKora128/stop-ai-slop-jp
-  name: stop-ai-slop-jp
-  host: github.com
-  resolved_commit: e09d32796f253a62693885757cea484c275d06f2
-  resolved_ref: e09d32796f253a62693885757cea484c275d06f2
-  version: unknown
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/stop-ai-slop-jp
-  - .agents/skills/stop-ai-slop-jp/.gitignore
-  - .agents/skills/stop-ai-slop-jp/CHANGELOG.md
-  - .agents/skills/stop-ai-slop-jp/LICENSE
-  - .agents/skills/stop-ai-slop-jp/README.en.md
-  - .agents/skills/stop-ai-slop-jp/README.md
-  - .agents/skills/stop-ai-slop-jp/SKILL.md
-  - .agents/skills/stop-ai-slop-jp/references/examples.md
-  - .agents/skills/stop-ai-slop-jp/references/phrases.md
-  - .agents/skills/stop-ai-slop-jp/references/structures.md
-  - .claude/skills/stop-ai-slop-jp
-  - .claude/skills/stop-ai-slop-jp/.gitignore
-  - .claude/skills/stop-ai-slop-jp/CHANGELOG.md
-  - .claude/skills/stop-ai-slop-jp/LICENSE
-  - .claude/skills/stop-ai-slop-jp/README.en.md
-  - .claude/skills/stop-ai-slop-jp/README.md
-  - .claude/skills/stop-ai-slop-jp/SKILL.md
-  - .claude/skills/stop-ai-slop-jp/references/examples.md
-  - .claude/skills/stop-ai-slop-jp/references/phrases.md
-  - .claude/skills/stop-ai-slop-jp/references/structures.md
-  deployed_file_hashes:
-    .agents/skills/stop-ai-slop-jp/.gitignore: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
-    .agents/skills/stop-ai-slop-jp/CHANGELOG.md: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
-    .agents/skills/stop-ai-slop-jp/LICENSE: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
-    .agents/skills/stop-ai-slop-jp/README.en.md: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
-    .agents/skills/stop-ai-slop-jp/README.md: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
-    .agents/skills/stop-ai-slop-jp/SKILL.md: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
-    .agents/skills/stop-ai-slop-jp/references/examples.md: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
-    .agents/skills/stop-ai-slop-jp/references/phrases.md: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
-    .agents/skills/stop-ai-slop-jp/references/structures.md: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
-    .claude/skills/stop-ai-slop-jp/.gitignore: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
-    .claude/skills/stop-ai-slop-jp/CHANGELOG.md: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
-    .claude/skills/stop-ai-slop-jp/LICENSE: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
-    .claude/skills/stop-ai-slop-jp/README.en.md: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
-    .claude/skills/stop-ai-slop-jp/README.md: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
-    .claude/skills/stop-ai-slop-jp/SKILL.md: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
-    .claude/skills/stop-ai-slop-jp/references/examples.md: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
-    .claude/skills/stop-ai-slop-jp/references/phrases.md: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
-    .claude/skills/stop-ai-slop-jp/references/structures.md: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
-  content_hash: sha256:2e81e3a96cd7e5eaaf6fae3a597a76c8538c027a3ec86b8643cb454dc231f8ff
 - repo_url: mattpocock/skills
-  name: skills
+  name: grill-me
   host: github.com
   resolved_commit: b8be62ffacb0118fa3eaa29a0923c87c8c11985c
   version: unknown
@@ -237,6 +237,950 @@ dependencies:
     .agents/skills/grill-me/SKILL.md: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
     .claude/skills/grill-me/SKILL.md: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
   content_hash: sha256:784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea
+deployments:
+- kind: project-relative
+  target: claude
+  value: .claude/rules/global.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:b0caecb365f6899e6e81c60180a4ddb22320c1ca08e413d3f759e08aebed474f
+- kind: project-relative
+  target: claude
+  value: .claude/skills/brandkit
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/brandkit/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:b0c4837e1bd140ca816ae54948754ddd2ac1e2a4d3619363777a80caf00b2ede
+- kind: project-relative
+  target: claude
+  value: .claude/skills/brutalist-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/brutalist-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:fffbaac8597f07679e9d87145533567658aedba3b5eca6f16a7075a333048caa
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-anki-cards
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-anki-cards/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-anki-cards/references/card-design.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-anki-cards/tools/anki-cards.test.ts
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: sha256:03859c23c419185bd5dacda8c398390f4c2fa8cfc06c3c3c95346b0c78dd08c5
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-anki-cards/tools/anki-cards.ts
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: sha256:86c9e5bc92ab48c1a88b48c20d10f4bfd1acc082ea649e985c0cb5379169a6ed
+- kind: project-relative
+  target: claude
+  value: .claude/skills/gpt-tasteskill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/gpt-tasteskill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:2e64c269953f2656c21bf5a0fa6b4568e82fe0c72b36e8f84758e090349966a5
+- kind: project-relative
+  target: claude
+  value: .claude/skills/grill-me
+  runtime: null
+  scope: project
+  owners:
+  - mattpocock/skills/skills/productivity/grill-me
+  active_owner: mattpocock/skills/skills/productivity/grill-me
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/grill-me/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - mattpocock/skills/skills/productivity/grill-me
+  active_owner: mattpocock/skills/skills/productivity/grill-me
+  content_hash: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
+- kind: project-relative
+  target: claude
+  value: .claude/skills/image-to-code-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/image-to-code-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:4c060a8064a8b13380bc2ef3d6e6a1d0b1e316aa093cd9807d0ce9e4eeb037fa
+- kind: project-relative
+  target: claude
+  value: .claude/skills/imagegen-frontend-mobile
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/imagegen-frontend-mobile/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:8a33389979f3074fa0926678e266ad2eb9234624472254469fc1ad916b9caa24
+- kind: project-relative
+  target: claude
+  value: .claude/skills/imagegen-frontend-web
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/imagegen-frontend-web/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:6b5c2256522fdba1e3313eafa3d743b960a7b13ec029d3e6586e04b23327c1f8
+- kind: project-relative
+  target: claude
+  value: .claude/skills/minimalist-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/minimalist-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:36bc7328f085405f43b476938e62460fa573bf7e984e949e072bcf014831a44c
+- kind: project-relative
+  target: claude
+  value: .claude/skills/minus
+  runtime: null
+  scope: project
+  owners:
+  - 9sako6/-/skills/minus
+  active_owner: 9sako6/-/skills/minus
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/minus/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - 9sako6/-/skills/minus
+  active_owner: 9sako6/-/skills/minus
+  content_hash: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
+- kind: project-relative
+  target: claude
+  value: .claude/skills/output-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/output-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:e5bf48b1ae561511439cf71672209a10a88cee0968cc925909ff861dfa0a96a7
+- kind: project-relative
+  target: claude
+  value: .claude/skills/rails-mysql-explain
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/rails-mysql-explain
+  - .
+  active_owner: ./.apm/skills/rails-mysql-explain
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/rails-mysql-explain/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/rails-mysql-explain
+  - .
+  active_owner: ./.apm/skills/rails-mysql-explain
+  content_hash: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
+- kind: project-relative
+  target: claude
+  value: .claude/skills/rails-mysql-explain/references/explain-guide.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/rails-mysql-explain
+  - .
+  active_owner: ./.apm/skills/rails-mysql-explain
+  content_hash: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
+- kind: project-relative
+  target: claude
+  value: .claude/skills/redesign-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/redesign-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:98ad3e5b051bfb71b2795f7e8a6aa0d32b51ee095606c098a4b2822ac07926c9
+- kind: project-relative
+  target: claude
+  value: .claude/skills/soft-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/soft-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:e1e32f5e2d420872c6c7332b53d5ff7721946766b78c4822b424c2d512c8fdbc
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stitch-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stitch-skill/DESIGN.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:0ab6740c4ebb1966dbceddb823a66d4bf027e960efbd73faca56cbf8370ae2ad
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stitch-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:46bdb08fee2dded38b6ba0a051230a502d6ac6e4044afd47592cb40c256028b5
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/.gitignore
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/CHANGELOG.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/LICENSE
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/README.en.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/README.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/references/examples.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/references/phrases.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
+- kind: project-relative
+  target: claude
+  value: .claude/skills/stop-ai-slop-jp/references/structures.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
+- kind: project-relative
+  target: claude
+  value: .claude/skills/taste-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/taste-skill-v1
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/taste-skill-v1/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:033d45af1ed23832730642f95f40ab49db7fb5222848489a6c5656144bfc6dae
+- kind: project-relative
+  target: claude
+  value: .claude/skills/taste-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89
+- kind: project-relative
+  target: claude
+  value: .claude/skills/thermo-nuclear-code-quality-review
+  runtime: null
+  scope: project
+  owners:
+  - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  active_owner: cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/thermo-nuclear-code-quality-review/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  active_owner: cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  content_hash: sha256:7faca08b51b643b2ddd0836f92af15574444024685dcc1e677dbbb39ae8c9e8f
+- kind: project-relative
+  target: codex
+  value: .agents/skills/brandkit
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/brandkit/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:b0c4837e1bd140ca816ae54948754ddd2ac1e2a4d3619363777a80caf00b2ede
+- kind: project-relative
+  target: codex
+  value: .agents/skills/brutalist-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/brutalist-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:fffbaac8597f07679e9d87145533567658aedba3b5eca6f16a7075a333048caa
+- kind: project-relative
+  target: codex
+  value: .agents/skills/create-anki-cards
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/create-anki-cards/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: sha256:f8e6124c0b30576539c89dde4d562e45070202a6e4ef3537ac952f636dc6bc31
+- kind: project-relative
+  target: codex
+  value: .agents/skills/create-anki-cards/references/card-design.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: sha256:96ef663ee327c690c0367efaf7905d51d245510ca6df26f208d823d23295f354
+- kind: project-relative
+  target: codex
+  value: .agents/skills/create-anki-cards/tools/anki-cards.test.ts
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: sha256:03859c23c419185bd5dacda8c398390f4c2fa8cfc06c3c3c95346b0c78dd08c5
+- kind: project-relative
+  target: codex
+  value: .agents/skills/create-anki-cards/tools/anki-cards.ts
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/create-anki-cards
+  - .
+  active_owner: ./.apm/skills/create-anki-cards
+  content_hash: sha256:86c9e5bc92ab48c1a88b48c20d10f4bfd1acc082ea649e985c0cb5379169a6ed
+- kind: project-relative
+  target: codex
+  value: .agents/skills/gpt-tasteskill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/gpt-tasteskill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:2e64c269953f2656c21bf5a0fa6b4568e82fe0c72b36e8f84758e090349966a5
+- kind: project-relative
+  target: codex
+  value: .agents/skills/grill-me
+  runtime: null
+  scope: project
+  owners:
+  - mattpocock/skills/skills/productivity/grill-me
+  active_owner: mattpocock/skills/skills/productivity/grill-me
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/grill-me/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - mattpocock/skills/skills/productivity/grill-me
+  active_owner: mattpocock/skills/skills/productivity/grill-me
+  content_hash: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
+- kind: project-relative
+  target: codex
+  value: .agents/skills/image-to-code-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/image-to-code-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:4c060a8064a8b13380bc2ef3d6e6a1d0b1e316aa093cd9807d0ce9e4eeb037fa
+- kind: project-relative
+  target: codex
+  value: .agents/skills/imagegen-frontend-mobile
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/imagegen-frontend-mobile/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:8a33389979f3074fa0926678e266ad2eb9234624472254469fc1ad916b9caa24
+- kind: project-relative
+  target: codex
+  value: .agents/skills/imagegen-frontend-web
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/imagegen-frontend-web/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:6b5c2256522fdba1e3313eafa3d743b960a7b13ec029d3e6586e04b23327c1f8
+- kind: project-relative
+  target: codex
+  value: .agents/skills/minimalist-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/minimalist-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:36bc7328f085405f43b476938e62460fa573bf7e984e949e072bcf014831a44c
+- kind: project-relative
+  target: codex
+  value: .agents/skills/minus
+  runtime: null
+  scope: project
+  owners:
+  - 9sako6/-/skills/minus
+  active_owner: 9sako6/-/skills/minus
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/minus/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - 9sako6/-/skills/minus
+  active_owner: 9sako6/-/skills/minus
+  content_hash: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
+- kind: project-relative
+  target: codex
+  value: .agents/skills/output-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/output-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:e5bf48b1ae561511439cf71672209a10a88cee0968cc925909ff861dfa0a96a7
+- kind: project-relative
+  target: codex
+  value: .agents/skills/rails-mysql-explain
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/rails-mysql-explain
+  - .
+  active_owner: ./.apm/skills/rails-mysql-explain
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/rails-mysql-explain/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/rails-mysql-explain
+  - .
+  active_owner: ./.apm/skills/rails-mysql-explain
+  content_hash: sha256:b3e65bfa04e85265d476bcb1aca7195a531b779abfbb397af354dab7e35456ed
+- kind: project-relative
+  target: codex
+  value: .agents/skills/rails-mysql-explain/references/explain-guide.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/rails-mysql-explain
+  - .
+  active_owner: ./.apm/skills/rails-mysql-explain
+  content_hash: sha256:0edb3987f9196d2c1e28666d61872d131e011bfe7f97aa82653044ada47e79a1
+- kind: project-relative
+  target: codex
+  value: .agents/skills/redesign-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/redesign-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:98ad3e5b051bfb71b2795f7e8a6aa0d32b51ee095606c098a4b2822ac07926c9
+- kind: project-relative
+  target: codex
+  value: .agents/skills/soft-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/soft-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:e1e32f5e2d420872c6c7332b53d5ff7721946766b78c4822b424c2d512c8fdbc
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stitch-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stitch-skill/DESIGN.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:0ab6740c4ebb1966dbceddb823a66d4bf027e960efbd73faca56cbf8370ae2ad
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stitch-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:46bdb08fee2dded38b6ba0a051230a502d6ac6e4044afd47592cb40c256028b5
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/.gitignore
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/CHANGELOG.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/LICENSE
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/README.en.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/README.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/references/examples.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/references/phrases.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
+- kind: project-relative
+  target: codex
+  value: .agents/skills/stop-ai-slop-jp/references/structures.md
+  runtime: null
+  scope: project
+  owners:
+  - ikora128/stop-ai-slop-jp
+  active_owner: ikora128/stop-ai-slop-jp
+  content_hash: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
+- kind: project-relative
+  target: codex
+  value: .agents/skills/taste-skill
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/taste-skill-v1
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/taste-skill-v1/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:033d45af1ed23832730642f95f40ab49db7fb5222848489a6c5656144bfc6dae
+- kind: project-relative
+  target: codex
+  value: .agents/skills/taste-skill/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leonxlnx/taste-skill
+  active_owner: leonxlnx/taste-skill
+  content_hash: sha256:aa194351b246b8b4799099d4ed7b033d29eab6e6e3d58d8d2172978be7b3ec89
+- kind: project-relative
+  target: codex
+  value: .agents/skills/thermo-nuclear-code-quality-review
+  runtime: null
+  scope: project
+  owners:
+  - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  active_owner: cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/thermo-nuclear-code-quality-review/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  active_owner: cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
+  content_hash: sha256:7faca08b51b643b2ddd0836f92af15574444024685dcc1e677dbbb39ae8c9e8f
 local_deployed_files:
 - .agents/skills/create-anki-cards
 - .agents/skills/create-anki-cards/SKILL.md
