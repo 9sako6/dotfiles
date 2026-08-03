@@ -38,6 +38,14 @@ description = "Converge user tools from deployed home-directory config"
 run = "./bin/install-system.sh"
 description = "Converge the macOS system configuration"
 
+[tasks."install:system:generations"]
+run = "sudo /run/current-system/sw/bin/darwin-rebuild --list-generations"
+description = "List nix-darwin system generations"
+
+[tasks."install:system:rollback"]
+run = "sudo /run/current-system/sw/bin/darwin-rebuild --rollback"
+description = "Switch back to the previous nix-darwin system generation"
+
 [tasks.bootstrap]
 depends = ["install:system", "install:user"]
 description = "Converge the macOS system and user environments"

@@ -61,6 +61,18 @@ mise run test       # 契約テストを実行
 
 他の task は `mise tasks` で一覧できる。
 
+## ロールバック
+
+- `mise run install:system:generations` — nix-darwin の世代一覧を表示
+- `mise run install:system:rollback` — 直前の世代へ戻して再 activation する
+
+`install:system:rollback` は flake を評価せず、保持済みの世代へ切り替えるため、
+設定が壊れて `install:system` が失敗しても戻せる。特定の世代へ戻す場合は
+`sudo /run/current-system/sw/bin/darwin-rebuild --switch-generation <N>` を使う。
+
+`nix-collect-garbage` は古い世代を削除する。実行前に
+`install:system:generations` でロールバック候補を確認すること。
+
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
