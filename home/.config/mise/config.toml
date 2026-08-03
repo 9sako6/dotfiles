@@ -30,6 +30,9 @@ uv = "0.12.1"
 xcodegen = "2.46.0"
 zoxide = "0.10.0"
 
+[settings.github]
+credential_command = 'gh_path="$(mise which gh)"; exec "$gh_path" auth token'
+
 [bootstrap.repos]
 "~/.local/share/zinit/plugins/momo-lab---zsh-abbrev-alias" = { url = "https://github.com/momo-lab/zsh-abbrev-alias.git", ref = "33fe094da0a70e279e1cc5376a3d7cb7a5343df5" }
 "~/.local/share/zinit/zinit.git" = { url = "https://github.com/zdharma-continuum/zinit.git", ref = "55d19f86f627c9995db9885d0971d9b6701fe0d3" }
