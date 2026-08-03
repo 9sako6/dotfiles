@@ -19,6 +19,8 @@ type Card = {
   notes?: string;
 };
 
+type UpdateCard = Omit<Card, "guid"> & { guid?: never };
+
 type TagPolicy =
   | { mode: "open"; requireAtLeastOne: boolean }
   | {
@@ -37,31 +39,25 @@ type CommonContract = {
   tagPolicy: TagPolicy;
 };
 
-type ParsedProject = {
-  version: number;
-  contract: CommonContract & {
-    mode: "create" | "update";
-    guidPolicy?: "anki" | "generate";
-    identityField?: string;
-  };
-  cards: Card[];
-};
-
-type Project = {
-  version: 1;
-  contract:
-    | CommonContract & {
+type Project =
+  | {
+      version: 1;
+      contract: CommonContract & {
         mode: "create";
         guidPolicy: "anki" | "generate";
         identityField?: never;
-      }
-    | CommonContract & {
+      };
+      cards: Card[];
+    }
+  | {
+      version: 1;
+      contract: CommonContract & {
         mode: "update";
         guidPolicy?: never;
         identityField: string;
       };
-  cards: Card[];
-};
+      cards: UpdateCard[];
+    };
 
 type QualityWarning = {
   cardId: string;
@@ -81,148 +77,317 @@ const FIELD_ROLES = new Set([
   "other",
 ]);
 
+function isFieldRole(value: unknown): value is Field["role"] {
+  return typeof value === "string" && FIELD_ROLES.has(value);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function parseProject(raw: unknown): ParsedProject {
+function rejectUnknownKeys(
+  value: Record<string, unknown>,
+  pathName: string,
+  allowed: ReadonlySet<string>,
+  errors: string[],
+) {
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      errors.push(`${pathName}.${key}: 未知のキーです`);
+    }
+  }
+}
+
+function parseNonEmptyString(
+  value: unknown,
+  pathName: string,
+  errors: string[],
+): string | undefined {
+  if (typeof value !== "string" || value.length === 0) {
+    errors.push(`${pathName}: 空でない文字列が必要です`);
+    return undefined;
+  }
+  return value;
+}
+
+function parseBoolean(
+  value: unknown,
+  pathName: string,
+  errors: string[],
+): boolean | undefined {
+  if (typeof value !== "boolean") {
+    errors.push(`${pathName}: booleanが必要です`);
+    return undefined;
+  }
+  return value;
+}
+
+function parseFields(value: unknown, errors: string[]): Field[] | undefined {
+  if (!Array.isArray(value)) {
+    errors.push("contract.fields: 配列が必要です");
+    return undefined;
+  }
+  const fields: Field[] = [];
+  for (const [index, rawField] of value.entries()) {
+    const fieldPath = `contract.fields[${index}]`;
+    if (!isRecord(rawField)) {
+      errors.push(`${fieldPath}: オブジェクトが必要です`);
+      continue;
+    }
+    rejectUnknownKeys(
+      rawField,
+      fieldPath,
+      new Set(["name", "required", "role"]),
+      errors,
+    );
+    const name = parseNonEmptyString(rawField.name, `${fieldPath}.name`, errors);
+    const required = parseBoolean(rawField.required, `${fieldPath}.required`, errors);
+    const role = rawField.role;
+    if (!isFieldRole(role)) {
+      errors.push(`${fieldPath}.role: 対応していない役割です`);
+      continue;
+    }
+    if (name !== undefined && required !== undefined) {
+      fields.push({ name, required, role });
+    }
+  }
+  return fields;
+}
+
+function parseTagPolicy(value: unknown, errors: string[]): TagPolicy | undefined {
+  if (!isRecord(value)) {
+    errors.push("contract.tagPolicy: オブジェクトが必要です");
+    return undefined;
+  }
+  const mode = value.mode;
+  const allowedKeys = mode === "restricted"
+    ? new Set(["allowed", "mode", "requireAtLeastOne"])
+    : new Set(["mode", "requireAtLeastOne"]);
+  rejectUnknownKeys(value, "contract.tagPolicy", allowedKeys, errors);
+  const requireAtLeastOne = parseBoolean(
+    value.requireAtLeastOne,
+    "contract.tagPolicy.requireAtLeastOne",
+    errors,
+  );
+  if (mode === "open") {
+    return requireAtLeastOne === undefined
+      ? undefined
+      : { mode, requireAtLeastOne };
+  }
+  if (mode !== "restricted") {
+    errors.push("contract.tagPolicy.mode: openまたはrestrictedが必要です");
+    return undefined;
+  }
+  const allowed = value.allowed;
+  if (
+    !Array.isArray(allowed) ||
+    allowed.some((tag) => typeof tag !== "string" || tag.length === 0)
+  ) {
+    errors.push("contract.tagPolicy.allowed: 空でない文字列の配列が必要です");
+    return undefined;
+  }
+  return requireAtLeastOne === undefined
+    ? undefined
+    : { allowed, mode, requireAtLeastOne };
+}
+
+function parseCards(
+  value: unknown,
+  mode: "create" | "update" | undefined,
+  guidPolicy: "anki" | "generate" | undefined,
+  errors: string[],
+): Card[] | undefined {
+  if (!Array.isArray(value)) {
+    errors.push("cards: 配列が必要です");
+    return undefined;
+  }
+  const cards: Card[] = [];
+  for (const [index, rawCard] of value.entries()) {
+    const cardPath = `cards[${index}]`;
+    if (!isRecord(rawCard)) {
+      errors.push(`${cardPath}: オブジェクトが必要です`);
+      continue;
+    }
+    rejectUnknownKeys(
+      rawCard,
+      cardPath,
+      new Set(["fields", "guid", "id", "notes", "sources", "tags"]),
+      errors,
+    );
+    const id = parseNonEmptyString(rawCard.id, `${cardPath}.id`, errors);
+    let guid: string | undefined;
+    if (rawCard.guid !== undefined) {
+      guid = parseNonEmptyString(rawCard.guid, `${cardPath}.guid`, errors);
+      if (mode !== "create" || guidPolicy !== "generate") {
+        errors.push(
+          `${cardPath}.guid: createモードかつguidPolicyがgenerateの場合だけ指定できます`,
+        );
+      }
+    }
+    const fields: Record<string, string> = {};
+    if (!isRecord(rawCard.fields)) {
+      errors.push(`${cardPath}.fields: オブジェクトが必要です`);
+    } else {
+      for (const [name, fieldValue] of Object.entries(rawCard.fields)) {
+        if (typeof fieldValue !== "string") {
+          errors.push(`${cardPath}.fields.${name}: 文字列が必要です`);
+        } else {
+          fields[name] = fieldValue;
+        }
+      }
+    }
+    const lists: Partial<Record<"sources" | "tags", string[]>> = {};
+    for (const name of ["sources", "tags"] as const) {
+      const rawList = rawCard[name];
+      if (
+        !Array.isArray(rawList) ||
+        rawList.some((item) => typeof item !== "string" || item.length === 0)
+      ) {
+        errors.push(`${cardPath}.${name}: 空でない文字列の配列が必要です`);
+      } else {
+        lists[name] = rawList;
+      }
+    }
+    let notes: string | undefined;
+    if (rawCard.notes !== undefined) {
+      if (typeof rawCard.notes !== "string") {
+        errors.push(`${cardPath}.notes: 文字列が必要です`);
+      } else {
+        notes = rawCard.notes;
+      }
+    }
+    if (
+      id !== undefined &&
+      isRecord(rawCard.fields) &&
+      lists.sources !== undefined &&
+      lists.tags !== undefined
+    ) {
+      cards.push({ fields, guid, id, notes, sources: lists.sources, tags: lists.tags });
+    }
+  }
+  return cards;
+}
+
+function parseProject(raw: unknown): Project {
   const errors: string[] = [];
   if (!isRecord(raw)) {
     throw new Error("Validation failed:\n- root: オブジェクトが必要です");
   }
-  if (typeof raw.version !== "number") {
-    errors.push("version: 数値が必要です");
+  rejectUnknownKeys(raw, "root", new Set(["cards", "contract", "version"]), errors);
+  if (raw.version !== 1) {
+    errors.push("version: 対応している値は1だけです");
   }
-  const contract = raw.contract;
-  if (!isRecord(contract)) {
+
+  const rawContract = raw.contract;
+  let contract: Project["contract"] | undefined;
+  let mode: "create" | "update" | undefined;
+  let guidPolicy: "anki" | "generate" | undefined;
+  if (!isRecord(rawContract)) {
     errors.push("contract: オブジェクトが必要です");
   } else {
-    for (const name of ["output", "preview", "deck", "noteType"] as const) {
-      if (typeof contract[name] !== "string" || contract[name].length === 0) {
-        errors.push(`contract.${name}: 空でない文字列が必要です`);
-      }
-    }
-    if (!["create", "update"].includes(String(contract.mode))) {
+    mode = rawContract.mode === "create" || rawContract.mode === "update"
+      ? rawContract.mode
+      : undefined;
+    const contractKeys = new Set([
+      "deck",
+      "fields",
+      "html",
+      "mode",
+      "noteType",
+      "output",
+      "preview",
+      "tagPolicy",
+      ...(mode === "create" ? ["guidPolicy"] : []),
+      ...(mode === "update" ? ["identityField"] : []),
+    ]);
+    rejectUnknownKeys(rawContract, "contract", contractKeys, errors);
+    if (mode === undefined) {
       errors.push("contract.mode: createまたはupdateが必要です");
     }
-    if (typeof contract.html !== "boolean") {
-      errors.push("contract.html: booleanが必要です");
-    }
-    if (
-      contract.guidPolicy !== undefined &&
-      !["anki", "generate"].includes(String(contract.guidPolicy))
-    ) {
-      errors.push("contract.guidPolicy: ankiまたはgenerateが必要です");
-    }
-    if (!Array.isArray(contract.fields)) {
-      errors.push("contract.fields: 配列が必要です");
-    } else {
-      for (const [index, field] of contract.fields.entries()) {
-        if (!isRecord(field)) {
-          errors.push(`contract.fields[${index}]: オブジェクトが必要です`);
-          continue;
-        }
-        if (typeof field.name !== "string" || field.name.length === 0) {
-          errors.push(
-            `contract.fields[${index}].name: 空でない文字列が必要です`,
-          );
-        }
-        if (typeof field.role !== "string" || !FIELD_ROLES.has(field.role)) {
-          errors.push(
-            `contract.fields[${index}].role: 対応していない役割です`,
-          );
-        }
-        if (typeof field.required !== "boolean") {
-          errors.push(
-            `contract.fields[${index}].required: booleanが必要です`,
-          );
-        }
-      }
-    }
-    const tagPolicy = contract.tagPolicy;
-    if (!isRecord(tagPolicy)) {
-      errors.push("contract.tagPolicy: オブジェクトが必要です");
-    } else {
-      if (!["open", "restricted"].includes(String(tagPolicy.mode))) {
-        errors.push("contract.tagPolicy.mode: openまたはrestrictedが必要です");
-      }
-      if (typeof tagPolicy.requireAtLeastOne !== "boolean") {
-        errors.push(
-          "contract.tagPolicy.requireAtLeastOne: booleanが必要です",
-        );
-      }
+    const output = parseNonEmptyString(rawContract.output, "contract.output", errors);
+    const preview = parseNonEmptyString(rawContract.preview, "contract.preview", errors);
+    const deck = parseNonEmptyString(rawContract.deck, "contract.deck", errors);
+    const noteType = parseNonEmptyString(rawContract.noteType, "contract.noteType", errors);
+    const html = parseBoolean(rawContract.html, "contract.html", errors);
+    const fields = parseFields(rawContract.fields, errors);
+    const tagPolicy = parseTagPolicy(rawContract.tagPolicy, errors);
+    if (mode === "create") {
       if (
-        tagPolicy.mode === "restricted" &&
-        (!Array.isArray(tagPolicy.allowed) ||
-          tagPolicy.allowed.some(
-            (tag) => typeof tag !== "string" || tag.length === 0,
-          ))
+        rawContract.guidPolicy !== undefined &&
+        rawContract.guidPolicy !== "anki" &&
+        rawContract.guidPolicy !== "generate"
       ) {
-        errors.push(
-          "contract.tagPolicy.allowed: 空でない文字列の配列が必要です",
-        );
-      }
-    }
-    if (
-      contract.identityField !== undefined &&
-      (typeof contract.identityField !== "string" ||
-        contract.identityField.length === 0)
-    ) {
-      errors.push(
-        "contract.identityField: 指定する場合は空でない文字列が必要です",
-      );
-    }
-  }
-  if (!Array.isArray(raw.cards)) {
-    errors.push("cards: 配列が必要です");
-  } else {
-    for (const [index, card] of raw.cards.entries()) {
-      if (!isRecord(card)) {
-        errors.push(`cards[${index}]: オブジェクトが必要です`);
-        continue;
-      }
-      if (typeof card.id !== "string" || card.id.length === 0) {
-        errors.push(`cards[${index}].id: 空でない文字列が必要です`);
-      }
-      if (
-        card.guid !== undefined &&
-        (typeof card.guid !== "string" || card.guid.length === 0)
-      ) {
-        errors.push(
-          `cards[${index}].guid: 指定する場合は空でない文字列が必要です`,
-        );
-      }
-      if (!isRecord(card.fields)) {
-        errors.push(`cards[${index}].fields: オブジェクトが必要です`);
+        errors.push("contract.guidPolicy: ankiまたはgenerateが必要です");
       } else {
-        for (const [name, value] of Object.entries(card.fields)) {
-          if (typeof value !== "string") {
-            errors.push(`cards[${index}].fields.${name}: 文字列が必要です`);
-          }
-        }
+        guidPolicy = rawContract.guidPolicy ?? "anki";
       }
-      for (const name of ["tags", "sources"] as const) {
-        const values = card[name];
-        if (
-          !Array.isArray(values) ||
-          values.some(
-            (value) => typeof value !== "string" || value.length === 0,
-          )
-        ) {
-          errors.push(
-            `cards[${index}].${name}: 空でない文字列の配列が必要です`,
-          );
-        }
+      if (
+        output !== undefined &&
+        preview !== undefined &&
+        deck !== undefined &&
+        noteType !== undefined &&
+        html !== undefined &&
+        fields !== undefined &&
+        tagPolicy !== undefined &&
+        guidPolicy !== undefined
+      ) {
+        contract = {
+          deck,
+          fields,
+          guidPolicy,
+          html,
+          mode,
+          noteType,
+          output,
+          preview,
+          tagPolicy,
+        };
       }
-      if (card.notes !== undefined && typeof card.notes !== "string") {
-        errors.push(`cards[${index}].notes: 文字列が必要です`);
+    } else if (mode === "update") {
+      const identityField = parseNonEmptyString(
+        rawContract.identityField,
+        "contract.identityField",
+        errors,
+      );
+      if (
+        output !== undefined &&
+        preview !== undefined &&
+        deck !== undefined &&
+        noteType !== undefined &&
+        html !== undefined &&
+        fields !== undefined &&
+        tagPolicy !== undefined &&
+        identityField !== undefined
+      ) {
+        contract = {
+          deck,
+          fields,
+          html,
+          identityField,
+          mode,
+          noteType,
+          output,
+          preview,
+          tagPolicy,
+        };
       }
     }
   }
+  const cards = parseCards(raw.cards, mode, guidPolicy, errors);
   if (errors.length > 0) {
     throw new Error(`Validation failed:\n- ${errors.join("\n- ")}`);
   }
-  return raw as unknown as ParsedProject;
+  if (contract === undefined || cards === undefined) {
+    throw new Error("Validation failed:\n- root: projectを確定できません");
+  }
+  if (contract.mode === "create") {
+    return { cards, contract, version: 1 };
+  }
+  return {
+    cards: cards.map(({ guid: _, ...card }) => card),
+    contract,
+    version: 1,
+  };
 }
 
 function encodeTsv(value: string): string {
@@ -642,16 +807,52 @@ async function resolveOutputTargets(
   return resolved;
 }
 
-function validateProject(project: ParsedProject): {
+function isPortableSourceReference(source: string): boolean {
+  if (/^https?:\/\//u.test(source)) {
+    try {
+      const url = new URL(source);
+      return (
+        ["http:", "https:"].includes(url.protocol) &&
+        url.hostname.length > 0 &&
+        url.hostname !== "localhost" &&
+        !url.hostname.endsWith(".local") &&
+        url.username === "" &&
+        url.password === ""
+      );
+    } catch {
+      return false;
+    }
+  }
+  if (
+    source.startsWith("~") ||
+    source.startsWith("$") ||
+    path.isAbsolute(source) ||
+    /^[A-Za-z]:[\\/]/u.test(source) ||
+    /^\\\\/u.test(source) ||
+    /^(?:file|vscode|vscode-insiders):/iu.test(source) ||
+    /^[A-Za-z][A-Za-z0-9+.-]*:\/\//u.test(source) ||
+    /[\r\n]/u.test(source) ||
+    UNSAFE_CONTROL_CHARACTERS.test(source)
+  ) {
+    return false;
+  }
+  const pathPart = source.split("#", 1)[0];
+  const normalized = path.normalize(pathPart);
+  return (
+    pathPart.length > 0 &&
+    normalized !== "." &&
+    normalized !== ".." &&
+    !normalized.startsWith(`..${path.sep}`)
+  );
+}
+
+function validateProject(project: Project): {
   project: Project;
   warnings: QualityWarning[];
 } {
   const seenIds = new Set<string>();
   const errors: string[] = [];
   const warnings: QualityWarning[] = [];
-  if (project.version !== 1) {
-    errors.push("version: 対応している値は1だけです");
-  }
   for (const [name, value] of [
     ["deck", project.contract.deck],
     ["noteType", project.contract.noteType],
@@ -698,26 +899,13 @@ function validateProject(project: ParsedProject): {
     }
     seenFieldNames.add(name);
   }
-  if (project.contract.mode === "update" && !project.contract.identityField) {
-    errors.push("contract.identityField: 更新モードでは必須です");
-  }
   if (
     project.contract.mode === "update" &&
-    project.contract.identityField &&
     !seenFieldNames.has(project.contract.identityField)
   ) {
     errors.push(
       `contract.identityField: 契約にないフィールドです: ${project.contract.identityField}`,
     );
-  }
-  if (project.contract.mode === "create" && project.contract.identityField) {
-    errors.push("contract.identityField: 新規作成モードでは指定できません");
-  }
-  if (
-    project.contract.mode === "update" &&
-    project.contract.guidPolicy !== undefined
-  ) {
-    errors.push("contract.guidPolicy: 更新モードでは指定できません");
   }
   const contractFields = new Map(
     project.contract.fields.map((field) => [field.name, field]),
@@ -801,9 +989,15 @@ function validateProject(project: ParsedProject): {
     if (card.sources.length === 0) {
       errors.push(`cards[${index}].sources: 一次資料がありません`);
     }
+    for (let sourceIndex = 0; sourceIndex < card.sources.length; sourceIndex += 1) {
+      if (!isPortableSourceReference(card.sources[sourceIndex])) {
+        errors.push(
+          `cards[${index}].sources[${sourceIndex}]: 公開URLまたはrepository相対参照が必要です`,
+        );
+      }
+    }
     if (
       project.contract.mode === "update" &&
-      project.contract.identityField &&
       contractFields.has(project.contract.identityField)
     ) {
       const identity = card.fields[project.contract.identityField];
@@ -852,35 +1046,7 @@ function validateProject(project: ParsedProject): {
   if (errors.length > 0) {
     throw new Error(`Validation failed:\n- ${errors.join("\n- ")}`);
   }
-  if (project.contract.mode === "create") {
-    const { identityField: _, ...contract } = project.contract;
-    return {
-      project: {
-        cards: project.cards,
-        contract: {
-          ...contract,
-          guidPolicy: contract.guidPolicy ?? "anki",
-          mode: "create",
-        },
-        version: 1,
-      },
-      warnings,
-    };
-  }
-
-  const { guidPolicy: _, ...contract } = project.contract;
-  return {
-    project: {
-      cards: project.cards,
-      contract: {
-        ...contract,
-        identityField: contract.identityField!,
-        mode: "update",
-      },
-      version: 1,
-    },
-    warnings,
-  };
+  return { project, warnings };
 }
 
 async function readProject(

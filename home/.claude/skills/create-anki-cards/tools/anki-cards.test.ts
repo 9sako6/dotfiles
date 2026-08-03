@@ -455,10 +455,23 @@ describe("カードの検証", () => {
     expect(result.stderr).toContain("Warning [market-001/long-answer]");
   });
 
-  test("契約の版、出力先、フィールド、更新識別子を検証する", async () => {
+  test("契約の版と更新識別子をschemaで検証する", async () => {
     const project: any = validProject();
     project.version = 2;
     project.contract.mode = "update";
+    const { directory, inputPath } = await createProject(project);
+
+    const result = await runTool(directory, "check", inputPath);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("version: 対応している値は1だけです");
+    expect(result.stderr).toContain("contract.identityField: 空でない文字列が必要です");
+  });
+
+  test("出力先とフィールドのsemantic contractを検証する", async () => {
+    const project: any = validProject();
+    project.contract.mode = "update";
+    project.contract.identityField = "補足";
     project.contract.output = "../cards.tsv";
     project.contract.fields.push({
       name: "表面",
@@ -470,16 +483,111 @@ describe("カードの検証", () => {
     const result = await runTool(directory, "check", inputPath);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("version: 対応している値は1だけです");
     expect(result.stderr).toContain(
       "contract.output: 作業ディレクトリ内の相対パスを指定してください",
     );
     expect(result.stderr).toContain(
       "contract.fields[3].name: フィールド名が重複しています: 表面",
     );
-    expect(result.stderr).toContain(
-      "contract.identityField: 更新モードでは必須です",
+  });
+
+  test("schemaの全階層で未知のキーをpath付きで拒否する", async () => {
+    const project: any = validProject();
+    project.extraRoot = true;
+    project.contract.guidPolciy = "generate";
+    project.contract.fields[0].extraField = true;
+    project.contract.tagPolicy.extraPolicy = true;
+    project.cards[0].extraCard = true;
+    const { directory, inputPath } = await createProject(project);
+
+    const result = await runTool(directory, "check", inputPath);
+
+    expect(result.exitCode).toBe(1);
+    for (const pathName of [
+      "root.extraRoot",
+      "contract.guidPolciy",
+      "contract.fields[0].extraField",
+      "contract.tagPolicy.extraPolicy",
+      "cards[0].extraCard",
+    ]) {
+      expect(result.stderr).toContain(`${pathName}: 未知のキーです`);
+    }
+  });
+
+  test("createとupdateの無効な契約の組合せを拒否する", async () => {
+    const createProjectData: any = validProject();
+    createProjectData.contract.identityField = "補足";
+    const createFixture = await createProject(createProjectData);
+
+    const createResult = await runTool(
+      createFixture.directory,
+      "check",
+      createFixture.inputPath,
     );
+
+    expect(createResult.exitCode).toBe(1);
+    expect(createResult.stderr).toContain("contract.identityField: 未知のキーです");
+
+    const updateProjectData: any = validProject();
+    updateProjectData.contract.mode = "update";
+    updateProjectData.contract.identityField = "補足";
+    updateProjectData.contract.guidPolicy = "generate";
+    updateProjectData.cards[0].guid = "abc";
+    const updateFixture = await createProject(updateProjectData);
+
+    const updateResult = await runTool(
+      updateFixture.directory,
+      "check",
+      updateFixture.inputPath,
+    );
+
+    expect(updateResult.exitCode).toBe(1);
+    expect(updateResult.stderr).toContain("contract.guidPolicy: 未知のキーです");
+    expect(updateResult.stderr).toContain(
+      "cards[0].guid: createモードかつguidPolicyがgenerateの場合だけ指定できます",
+    );
+  });
+
+  test("sourceは公開URLまたはrepository相対参照だけを受け付ける", async () => {
+    const accepted = validProject();
+    accepted.cards[0].sources = [
+      "docs/spec.md",
+      "lib/parser.ts:42",
+      "https://example.com/spec#section",
+    ];
+    const acceptedFixture = await createProject(accepted);
+
+    const acceptedResult = await runTool(
+      acceptedFixture.directory,
+      "check",
+      acceptedFixture.inputPath,
+    );
+
+    expect(acceptedResult.exitCode).toBe(0);
+
+    const rejected = validProject();
+    rejected.cards[0].sources = [
+      "/Users/example/private.md",
+      "../outside.md",
+      "file:///tmp/spec.md",
+      "vscode://file/spec.md",
+      "~/spec.md",
+      "$HOME/spec.md",
+    ];
+    const rejectedFixture = await createProject(rejected);
+
+    const rejectedResult = await runTool(
+      rejectedFixture.directory,
+      "check",
+      rejectedFixture.inputPath,
+    );
+
+    expect(rejectedResult.exitCode).toBe(1);
+    for (let index = 0; index < rejected.cards[0].sources.length; index += 1) {
+      expect(rejectedResult.stderr).toContain(
+        `cards[0].sources[${index}]: 公開URLまたはrepository相対参照が必要です`,
+      );
+    }
   });
 
   test("壊れたJSON構造を内部エラーにせず報告する", async () => {
