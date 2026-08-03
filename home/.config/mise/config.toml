@@ -1,7 +1,7 @@
 [tools]
 atuin = "18.18.1"
 # Bitwarden CLI (bw)
-bitwarden = "2026.3.0"
+bitwarden = "2026.7.0"
 # Secrets Manager CLI (bws)
 bitwarden-secrets-manager = "2.0.0"
 bun = "1.3.12"
