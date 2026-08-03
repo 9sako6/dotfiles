@@ -26,7 +26,7 @@ opencode = "1.18.11"
 pnpm = "11.18.0"
 ripgrep = "15.2.0"
 ruby = "4.0.6"
-uv = "0.11.26"
+uv = "0.12.1"
 xcodegen = "2.45.3"
 zoxide = "0.9.9"
 
