@@ -1,11 +1,29 @@
 #!/bin/sh
 
-if command -v gitleaks >/dev/null 2>&1; then
-  gitleaks protect --staged --no-banner
-  if [ $? -ne 0 ]; then
-    echo "gitleaks: secrets detected. Commit aborted." >&2
-    exit 1
-  fi
-else
-  echo "gitleaks: not installed, skipping local secret scan." >&2
+mise_bin="$HOME/.local/bin/mise"
+
+if [ ! -x "$mise_bin" ]; then
+  echo "gitleaks: managed mise is unavailable. Run the dotfiles bootstrap, then retry." >&2
+  exit 1
+fi
+
+gitleaks_bin="$("$mise_bin" which gitleaks 2>/dev/null)" || {
+  echo "gitleaks: managed gitleaks is unavailable. Run 'mise install gitleaks', then retry." >&2
+  exit 1
+}
+
+if [ ! -x "$gitleaks_bin" ]; then
+  echo "gitleaks: managed gitleaks is not executable. Run 'mise install gitleaks', then retry." >&2
+  exit 1
+fi
+
+"$gitleaks_bin" protect --staged --no-banner
+status=$?
+if [ "$status" -eq 1 ]; then
+  echo "gitleaks: secrets detected. Commit aborted." >&2
+  exit 1
+fi
+if [ "$status" -ne 0 ]; then
+  echo "gitleaks: scan failed with exit status $status. Commit aborted." >&2
+  exit "$status"
 fi

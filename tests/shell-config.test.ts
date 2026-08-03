@@ -32,11 +32,19 @@ function runCommand(
   });
 }
 
+async function makeExecutable(filePath: string, content: string) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, content);
+  await chmod(filePath, 0o755);
+}
+
 async function initRepoWithManagedGitConfig(tempDir: string) {
   const homeDir = path.join(tempDir, "home");
   const repoDir = path.join(tempDir, "repo");
   const hooksDir = path.join(homeDir, ".config", "git", "hooks");
   const globalConfigPath = path.join(homeDir, ".gitconfig");
+  const gitleaksPath = path.join(homeDir, ".local", "share", "mise", "installs", "gitleaks", "8.30.1", "gitleaks");
+  const misePath = path.join(homeDir, ".local", "bin", "mise");
   const mybinDir = path.join(homeDir, "mybin");
   const undoScriptPath = path.join(mybinDir, "git-undo");
   const publicDocumentPrivacyCheckerPath = path.join(hooksDir, "check-public-document-privacy");
@@ -58,11 +66,19 @@ async function initRepoWithManagedGitConfig(tempDir: string) {
   await chmod(undoScriptPath, 0o755);
   await chmod(publicDocumentPrivacyCheckerPath, 0o755);
   await chmod(gitleaksHookPath, 0o755);
+  await makeExecutable(
+    misePath,
+    `#!/bin/sh
+[ "$1" = "which" ] && [ "$2" = "gitleaks" ] || exit 2
+printf '%s\n' "$HOME/.local/share/mise/installs/gitleaks/8.30.1/gitleaks"
+`,
+  );
+  await makeExecutable(gitleaksPath, "#!/bin/sh\nexit 0\n");
 
   const initResult = await runCommand("git", ["-C", repoDir, "init", "-b", "master"], env);
   expect(initResult.code).toBe(0);
 
-  return { env, repoDir };
+  return { env, gitleaksPath, misePath, repoDir };
 }
 
 async function runGit(repoDir: string, env: NodeJS.ProcessEnv, ...args: string[]) {
@@ -578,37 +594,62 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("Git設定で有効にしたpre-commit hookはgitleaksがなくても警告だけでコミットを妨げない", async () => {
-    await withTempDir("pre-commit-warning", async (tempDir) => {
-      const { env, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+  test("Git設定で有効にしたpre-commit hookはmanaged gitleaksがなければコミットを拒否する", async () => {
+    await withTempDir("pre-commit-gitleaks-missing", async (tempDir) => {
+      const { env, misePath, repoDir } = await initRepoWithManagedGitConfig(tempDir);
       await expectGitSupportsConfigBasedHooks(env);
-      const toolPathsResult = await runCommand(
-        "/bin/sh",
-        ["-c", "command -v git && command -v grep && command -v sed && command -v dirname && command -v rm"],
-      );
-
-      expect(toolPathsResult.code).toBe(0);
-      const toolDirs = Array.from(
-        new Set(
-          toolPathsResult.stdout
-            .trim()
-            .split("\n")
-            .filter(Boolean)
-            .map((toolPath) => path.dirname(toolPath)),
-        ),
-      );
-      expect(toolDirs.length).toBeGreaterThan(0);
+      await rm(misePath);
 
       await writeRepoFile(repoDir, "README.md", "safe markdown\n");
       expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
 
-      const commitResult = await runGit(repoDir, { ...env, PATH: toolDirs.join(path.delimiter) }, "commit", "-m", "test");
+      const commitResult = await runGit(repoDir, env, "commit", "-m", "test");
       const commitOutput = `${commitResult.stdout}${commitResult.stderr}`;
 
-      expect(commitResult.code).toBe(0);
-      expect(commitOutput).toContain("gitleaks: not installed, skipping local secret scan.");
+      expect(commitResult.code).toBe(1);
+      expect(commitOutput).toContain("gitleaks: managed mise is unavailable");
     });
   });
+
+  test("pre-commit hookはmanaged gitleaksでcleanなstageを検査する", async () => {
+    await withTempDir("pre-commit-gitleaks-clean", async (tempDir) => {
+      const { env, gitleaksPath, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+      const logPath = path.join(tempDir, "gitleaks.log");
+      await makeExecutable(
+        gitleaksPath,
+        `#!/bin/sh
+printf '<%s>' "$@" > "$GITLEAKS_LOG"
+`,
+      );
+      await writeRepoFile(repoDir, "README.md", "safe markdown\n");
+      expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
+
+      const commitResult = await runGit(repoDir, { ...env, GITLEAKS_LOG: logPath }, "commit", "-m", "test");
+
+      expect(commitResult.code).toBe(0);
+      expect(await readFile(logPath, "utf8")).toBe("<protect><--staged><--no-banner>");
+    });
+  });
+
+  for (const failure of [
+    { exitCode: 1, message: "gitleaks: secrets detected. Commit aborted." },
+    { exitCode: 2, message: "gitleaks: scan failed with exit status 2. Commit aborted." },
+  ]) {
+    test(`pre-commit hookはgitleaksのexit ${failure.exitCode}でコミットを拒否する`, async () => {
+      await withTempDir(`pre-commit-gitleaks-exit-${failure.exitCode}`, async (tempDir) => {
+        const { env, gitleaksPath, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+        await makeExecutable(gitleaksPath, `#!/bin/sh\nexit ${failure.exitCode}\n`);
+        await writeRepoFile(repoDir, "README.md", "safe markdown\n");
+        expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
+
+        const commitResult = await runGit(repoDir, env, "commit", "-m", "test");
+        const commitOutput = `${commitResult.stdout}${commitResult.stderr}`;
+
+        expect(commitResult.code).not.toBe(0);
+        expect(commitOutput).toContain(failure.message);
+      });
+    });
+  }
 
   test("公開文書の検査は環境を特定できるパスを含むステージ済みMarkdownを拒否する", async () => {
     await withTempDir("public-document-privacy-checker-leak", async (tempDir) => {
