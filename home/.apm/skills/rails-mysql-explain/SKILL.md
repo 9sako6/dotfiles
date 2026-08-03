@@ -1,6 +1,6 @@
 ---
 name: rails-mysql-explain
-description: 'Use when Rails 6+ で ActiveRecord クエリや生SQLを新規作成・変更し、EXPLAINで実行計画、インデックス要否、rows を確認したいとき。where/joins/includes/exists?/pluck/find_by_sql/connection.select_all などを含む変更、またはクエリ性能レビューやインデックス追加判断が必要なときに使う。'
+description: Rails 6以降でActive Recordクエリや生SQLを追加・変更し、MySQLのEXPLAIN、インデックスの要否、走査量を確認するときに使う。クエリ性能のレビューやインデックス追加の判断も対象にする。
 compatibility: Requires MySQL 8.0+ and Rails 6.0+
 license: Apache-2.0
 metadata:
@@ -8,177 +8,78 @@ metadata:
   version: "1.0.0"
 ---
 
-# Rails MySQL EXPLAIN Check
+# Rails / MySQLのクエリ計画レビュー
 
-RailsでActiveRecordクエリや生SQLを書いた・変更したとき、MySQL EXPLAINを使ってインデックスの必要性を検証するワークフロー。
+変更したクエリが実際に発行するSQLを確認し、MySQLの実行計画と呼び出し回数からインデックスの要否を判断する。
 
-## ワークフロー
+## 進め方
 
-### Step 1: 対象クエリの特定
+### 1. 対象
 
-変更差分から、以下を含むActiveRecordクエリを全て洗い出す:
+変更差分から、追加または変更したActive Recordクエリと生SQLを洗い出す。スコープ、関連の先読み、集計、存在確認、Arel、`find_by_sql`、`select_all`、`exec_query` も含める。
 
-- `where`, `joins`, `left_joins`, `includes`, `eager_load`
-- `exists?`, `pluck`, `count`, `sum`, `maximum`, `minimum`
-- `find_by`, `find_or_create_by`
-- `order`, `group`, `having`, `distinct`
-- スコープ定義の中のクエリ
-- `find_by_sql`, `connection.select_all`, `connection.exec_query`
-- Arel から組み立てたSQL、ヒアドキュメントや文字列リテラルで直接書かれたSQL
+各クエリについて、実行箇所、目的、想定するbind値、1リクエストあたりの呼び出し回数を記録する。ループやジョブから呼ばれる場合は、ピーク時の件数と並行数も確認する。
 
-### Step 2: SQLの抽出
+### 2. 実際のSQL
 
-各クエリについて、EXPLAIN用のSQLを取得する。**メソッドによって取得方法が異なる**ことに注意。
-
-#### 通常のリレーション（where, joins, order等）
+`ActiveRecord::Relation` のまま扱えるクエリは、変更後と同じrelationで `explain` を呼ぶ。
 
 ```ruby
-Model.where(...).joins(...).to_sql
+Customer.where(active: true).includes(:orders).explain
 ```
 
-#### exists?
+Railsの `explain` は、関連の先読みに必要なクエリを実行してから各SQLの計画を取得する。`includes` がJOINになるか複数クエリになるかを手で決めない。挙動は [Rails GuidesのRunning EXPLAIN](https://guides.rubyonrails.org/active_record_querying.html#running-explain) で確認する。
 
-`exists?` は実行時に `order` / `select` / `distinct` を除去してからSQLを発行するため、`to_sql` で得たSQLとは異なる実行計画になりうる。正確なSQLはログから取得する:
+`exists?`、`pluck`、集計など、呼び出した時点でSQLを発行するメソッドは、テスト環境または承認済みの検証環境のRailsログからSQLとbind値を取得する。元のrelationの `to_sql` で代用しない。
 
-```ruby
-ActiveRecord::Base.logger = Logger.new(STDOUT)
-Model.where(...).exists?(['condition'])
-# ログに出力されたSELECT 1 AS one FROM ... LIMIT 1 を使う
+生SQLは、実際に渡すSQLとbind値を組にして扱う。書き込みを伴うメソッドは、計画を得るためだけに実行しない。`find_or_create_by` では検証環境のログから検索SQLを取得し、書き込み側の一意性は別に確認する。
+
+### 3. EXPLAINの取得
+
+データ量と統計が本番に近い、実行を許可された環境を使う。参照専用接続があれば優先する。利用できる環境がなければ、クエリごとに次を依頼する。
+
+```text
+次のクエリについて、データ量と統計が本番に近い検証環境でEXPLAINを取得してください。
+
+- 目的:
+- 実行箇所:
+- Railsの式またはSQL:
+- bind値:
+- 想定する呼び出し回数:
 ```
 
-#### pluck
+結果と一緒にMySQLのバージョン、対象テーブルのおおよその行数、取得した環境を記録する。
 
-`pluck` も実行時にSQLを組み立てるため、ログから取得する:
+### 4. 読み取り
 
-```ruby
-ActiveRecord::Base.logger = Logger.new(STDOUT)
-Model.where(...).pluck(:column_name)
-# ログに出力されたSELECT文を使う
-```
+[EXPLAIN読み方ガイド](references/explain-guide.md)に従う。`type` だけで良否を決めず、`key`、`rows`、`filtered`、`Extra`、テーブル規模、呼び出し回数を合わせて読む。MySQLの各列の定義は [EXPLAIN Output Format](https://dev.mysql.com/doc/refman/8.0/en/explain-output.html) を正本にする。
 
-#### eager_load（常にJOIN）
+### 5. 結論
 
-`eager_load` は常に `LEFT OUTER JOIN` を含む単一SQLを生成する。`to_sql` でEXPLAIN対象のSQLを取得できる:
-
-```ruby
-Model.eager_load(:assoc).where(...).to_sql
-```
-
-#### includes（場合分けが必要）
-
-`includes` は条件によって挙動が変わる:
-
-- **WHERE句やORDER句で関連テーブルを参照している場合** → `eager_load` と同様に `LEFT OUTER JOIN` の単一SQLになる。`to_sql` で取得可能
-- **関連テーブルを参照していない場合** → 別クエリ（preload）で発行される。ログから複数のSQLを取得する
-
-```ruby
-# JOINになるケース（to_sqlで取得可能）
-Model.includes(:assoc).where(assoc: { column: value }).to_sql
-
-# preloadになるケース（ログから取得）
-ActiveRecord::Base.logger = Logger.new(STDOUT)
-Model.includes(:assoc).where(column: value).load
-# メインクエリ + IN句のpreloadクエリ、それぞれをEXPLAIN
-```
-
-#### 生SQL
-
-`find_by_sql` や `connection.select_all` / `connection.exec_query` 等で直接SQL文字列を書いている場合は、そのSQLをそのままEXPLAIN対象として扱う。プレースホルダを使っている場合は、実際に評価するバインド値も合わせて記録する:
-
-```ruby
-sql = <<~SQL
-  SELECT users.*
-  FROM users
-  WHERE users.account_id = ?
-SQL
-
-User.find_by_sql([sql, account_id])
-# EXPLAINには実際に評価するSQLとバインド値を対応づけて渡す
-```
-
-### Step 3: EXPLAIN実行依頼
-
-生成したSQLスニペットをヒトに渡し、**本番相当のデータ量がある環境**のコンソールで実行してもらう。
-
-小規模なデータではフルスキャンでも高速に完了するため、MySQLオプティマイザがインデックスを使わない実行計画を選ぶことがある。テーブル統計と行数がオプティマイザの判断に影響するため、本番相当のデータ量がある環境での検証が必須。
-
-実行依頼テンプレート:
-
-```
-以下のSQLについて、本番相当のデータ量がある環境のRailsコンソールで
-ActiveRecord::Base.connection.explain(sql) を実行し、結果を共有してください。
-
-リードレプリカ等の参照専用接続がある場合はそちらを推奨します。
-
-1. [クエリの目的]
-   sql = "..."
-
-2. [クエリの目的]
-   sql = "..."
-```
-
-### Step 4: EXPLAIN結果の読み取り
-
-結果を `references/explain-guide.md` の判定基準に照らして分析する。
-
-主要な確認ポイント:
-
-1. **`type`列**: `ALL`（フルテーブルスキャン）がないか
-2. **`key`列**: 適切なインデックスが使われているか
-3. **`rows`列**: 走査行数が妥当か（テーブルの総行数に対する割合）
-4. **`Extra`列**: `Using filesort`, `Using temporary` がないか
-
-MySQL EXPLAIN出力の一次情報: https://dev.mysql.com/doc/refman/8.0/en/explain-output.html
-
-### Step 5: 結論の記述
-
-下記を含む分析結果をMarkdown形式で、一時ファイルを置くことが許可されたディレクトリに出力する。
-
-- 各クエリのEXPLAIN結果と読み取り
-- インデックスの要否判断と根拠
-- 必要な場合: マイグレーションの提案
-- ループ内で呼ばれるクエリがある場合: ピーク時の同時実行数を考慮した負荷見積もり
-
-出力テンプレート:
+結果はMarkdownで回答する。利用者がファイルを指定した場合だけ保存する。
 
 ```markdown
-# EXPLAIN Review
+# EXPLAINレビュー
 
-## Query 1: [クエリの目的]
-- SQL: `...`
+## クエリ1: [目的]
+
 - 実行箇所: `app/...`
-- EXPLAIN要約: `type=...`, `key=...`, `rows=...`, `Extra=...`
+- SQLとbind値: `...`
+- 呼び出し回数: ...
+- EXPLAIN: `type=...`, `key=...`, `rows=...`, `filtered=...`, `Extra=...`
 - 読み取り: ...
-- インデックス要否: 必要 / 不要
+- インデックス: 追加する / 追加しない / 判断保留
 - 根拠: ...
 
-## Query 2: [クエリの目的]
-- SQL: `...`
-- 実行箇所: `app/...`
-- EXPLAIN要約: `type=...`, `key=...`, `rows=...`, `Extra=...`
-- 読み取り: ...
-- インデックス要否: 必要 / 不要
-- 根拠: ...
+## 結論
 
-## Conclusion
-- 追加すべきインデックス:
-- 追加不要と判断した理由:
-- 残るリスク:
+- 追加するインデックス:
+- 追加しない理由:
+- 取得できていない情報:
 ```
 
-### Step 6: 自己確認
+インデックスを提案するときは、列順と対象クエリを示し、書き込み、容量、既存インデックスへの影響も書く。判断材料が足りなければ、追加か不要かを推測せず保留にする。
 
-出力前に `references/explain-guide.md` を見直し、各クエリについて少なくとも `type`, `key`, `rows`, `Extra`, インデックス要否の根拠が記述されていることを確認する。
+### 6. 確認
 
-## 判断基準サマリ
-
-| 状況 | 判断 |
-|------|------|
-| `type: ALL` かつ `rows` が数万以上 | インデックス追加を検討 |
-| `type: ref` または `eq_ref` | 通常は問題なし |
-| `type: range` | 範囲が広すぎないか `rows` を確認 |
-| `type: index`（フルインデックススキャン） | テーブルサイズ次第で要検討 |
-| `possible_keys` にキーがあり `key` がNULL | オプティマイザが使わなかった理由を調査 |
-| ループ内クエリで `type: ref` | 1回あたりは軽量でもN回の積算コストを評価 |
-
-詳細な判定基準は `references/explain-guide.md` を参照。
+各クエリに、実際のSQLとbind値、`type`、`key`、`rows`、`filtered`、`Extra`、呼び出し回数、インデックス判断の根拠があることを確認する。
