@@ -164,6 +164,36 @@ esac
   return { homeDir };
 }
 
+async function createFakeBrew(prefix: string, identity: string) {
+  const brewPath = path.join(prefix, "bin", "brew");
+  await writeTree(path.dirname(brewPath), {
+    brew: `#!/bin/sh
+set -eu
+prefix=${JSON.stringify(prefix)}
+printf '%s:%s\n' ${JSON.stringify(identity)} "\${1-}" >> "$BREW_LOG"
+case "\${1-}" in
+  shellenv)
+    printf 'export HOMEBREW_PREFIX="%s";\n' "$prefix"
+    printf 'export HOMEBREW_CELLAR="%s/Cellar";\n' "$prefix"
+    printf 'export HOMEBREW_REPOSITORY="%s/Library/.homebrew-is-managed-by-nix";\n' "$prefix"
+    printf 'export PATH="%s/bin:%s/sbin:$PATH";\n' "$prefix" "$prefix"
+    ;;
+  --prefix)
+    printf '%s\n' "$prefix"
+    ;;
+  --cellar)
+    printf '%s/Cellar\n' "$prefix"
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+`,
+  });
+  await chmod(brewPath, 0o755);
+  return brewPath;
+}
+
 async function preparePinnedZinitHome(tempDir: string, mismatchPlugin = "") {
   const fakeBin = path.join(tempDir, "bin");
   const gitLogPath = path.join(tempDir, "zinit-git.log");
@@ -248,6 +278,73 @@ describe("シェル設定", () => {
 
       expect(result.code).toBe(0);
       expect(result.stdout).toBe("loaded");
+    });
+  });
+
+  test("zshenvはnix-homebrewが選んだHomebrew環境だけを維持する", async () => {
+    await withTempDir("zshenv-homebrew", async (tempDir) => {
+      const homeDir = path.join(tempDir, "home");
+      const activePrefix = path.join(tempDir, "opt", "homebrew");
+      const intelPrefix = path.join(tempDir, "usr", "local");
+      const linuxPrefix = path.join(tempDir, "home", "linuxbrew", ".linuxbrew");
+      const brewLog = path.join(tempDir, "brew.log");
+      const activeBrew = await createFakeBrew(activePrefix, "active");
+      await createFakeBrew(intelPrefix, "intel");
+      await createFakeBrew(linuxPrefix, "linux");
+
+      const result = await runCommand(
+        "zsh",
+        [
+          "-f",
+          "-c",
+          [
+            "PATH=$TEST_BREW_PATH",
+            "rehash",
+            "source darwin/homebrew-shellenv.zsh",
+            "command -v brew",
+            "print -r -- $HOMEBREW_PREFIX",
+            "print -r -- $HOMEBREW_CELLAR",
+            "print -r -- $HOMEBREW_REPOSITORY",
+            "brew --prefix",
+            "brew --cellar",
+            "source home/.zshenv",
+            "print -r -- $HOMEBREW_PREFIX",
+            "print -r -- $HOMEBREW_CELLAR",
+            "print -r -- $HOMEBREW_REPOSITORY",
+            "print -r -- $path[(i)/run/current-system/sw/bin] $path[(i)$HOME/.local/share/mise/shims] $path[(i)$HOMEBREW_PREFIX/bin]",
+          ].join("; "),
+        ],
+        {
+          ...process.env,
+          BREW_LOG: brewLog,
+          HOME: homeDir,
+          TEST_BREW_PATH: [
+            path.join(activePrefix, "bin"),
+            path.join(intelPrefix, "bin"),
+            path.join(linuxPrefix, "bin"),
+            "/usr/bin",
+            "/bin",
+          ].join(":"),
+        },
+      );
+
+      expect(result.code).toBe(0);
+      const output = result.stdout.trim().split("\n");
+      expect(output.slice(0, 9)).toEqual([
+        activeBrew,
+        activePrefix,
+        path.join(activePrefix, "Cellar"),
+        path.join(activePrefix, "Library", ".homebrew-is-managed-by-nix"),
+        activePrefix,
+        path.join(activePrefix, "Cellar"),
+        activePrefix,
+        path.join(activePrefix, "Cellar"),
+        path.join(activePrefix, "Library", ".homebrew-is-managed-by-nix"),
+      ]);
+      const [nixIndex, miseIndex, brewIndex] = output[9].split(" ").map(Number);
+      expect(nixIndex).toBeLessThan(brewIndex);
+      expect(miseIndex).toBeLessThan(brewIndex);
+      expect(await readFile(brewLog, "utf8")).toBe("active:shellenv\nactive:--prefix\nactive:--cellar\n");
     });
   });
 

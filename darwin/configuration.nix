@@ -40,9 +40,12 @@ in
     enable = true;
     autoMigrate = false;
     enableRosetta = false;
+    enableZshIntegration = false;
     mutableTaps = false;
     user = primaryUser;
   };
+
+  programs.zsh.shellInit = builtins.readFile ./homebrew-shellenv.zsh;
 
   services.zundamonotify.enable = true;
 

@@ -4,11 +4,6 @@ setopt no_global_rcs
 
 export LANG=ja_JP.UTF-8
 
-# Set PATH, MANPATH, etc., for Homebrew.
-[ -f '/opt/homebrew/bin/brew' ] && eval "$(/opt/homebrew/bin/brew shellenv)"
-[ -f '/usr/local/bin/brew' ] && eval "$(/usr/local/bin/brew shellenv)"
-[ -f '/home/linuxbrew/.linuxbrew/bin/brew' ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
 typeset -U path PATH
 path=(
   /run/current-system/sw/bin
