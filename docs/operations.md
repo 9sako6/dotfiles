@@ -70,8 +70,9 @@ mise run test       # 契約テストを実行
 設定が壊れて `install:system` が失敗しても戻せる。特定の世代へ戻す場合は
 `sudo /run/current-system/sw/bin/darwin-rebuild --switch-generation <N>` を使う。
 
-`nix-collect-garbage` は古い世代を削除する。実行前に
-`install:system:generations` でロールバック候補を確認すること。
+Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 に実行し、14日を超えた世代を削除する。
+削除された世代へはロールバックできない。手動で `nix-collect-garbage` を実行する場合も、
+事前に `install:system:generations` でロールバック候補を確認すること。
 
 ## 検証
 

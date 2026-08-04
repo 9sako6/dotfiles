@@ -29,6 +29,15 @@ in
 
   nix = {
     enable = true;
+    gc = {
+      automatic = true;
+      interval = {
+        Weekday = 0;
+        Hour = 0;
+        Minute = 0;
+      };
+      options = "--delete-older-than 14d";
+    };
     package = pkgs.lix;
     settings.experimental-features = [
       "flakes"
@@ -116,4 +125,6 @@ in
     inherit primaryUser;
     stateVersion = 6;
   };
+
+  time.timeZone = "Asia/Tokyo";
 }
