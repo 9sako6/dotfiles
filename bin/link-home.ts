@@ -67,6 +67,7 @@ async function confirmApply(): Promise<boolean> {
     const finish = (confirmed: boolean) => {
       reader.removeAllListeners("data");
       reader.removeAllListeners("end");
+      reader.pause();
       process.stdout.write("\n");
       resolve(confirmed);
     };

@@ -175,6 +175,16 @@ describe("dot applyの確認", () => {
     });
   });
 
+  test("標準入力が開いた端末でも確認後に終了する", async () => {
+    await withDeploymentFixture("apply-open-stdin", async ({ homeDir, fixtureRoot }) => {
+      const result = await runLinkHomeWithOpenInput(fixtureRoot, homeDir, "yes\n");
+
+      expect(result.timedOut).toBe(false);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Applied 1 change.");
+    });
+  });
+
   test("yes以外では変更せず失敗終了する", async () => {
     await withDeploymentFixture("apply-cancel", async ({ homeDir, fixtureRoot }) => {
       const result = await runLinkHome(fixtureRoot, homeDir, "no\n");
@@ -306,6 +316,43 @@ async function runLinkHome(cwd: string, homeDir: string, input: string) {
     },
     input,
   );
+}
+
+async function runLinkHomeWithOpenInput(cwd: string, homeDir: string, input: string) {
+  const child = Bun.spawn(
+    [process.execPath, path.join(cwd, "bin/link-home.ts"), "--confirm"],
+    {
+      cwd,
+      env: {
+        ...process.env,
+        HOME: homeDir,
+        XDG_STATE_HOME: path.join(homeDir, ".state"),
+      },
+      stderr: "pipe",
+      stdin: "pipe",
+      stdout: "pipe",
+    },
+  );
+  const stdin = child.stdin;
+  if (stdin === undefined) {
+    throw new Error("child stdin is unavailable");
+  }
+  stdin.write(input);
+
+  const outcome = await Promise.race([
+    child.exited.then((exitCode) => ({ exitCode, timedOut: false })),
+    Bun.sleep(2_000).then(() => ({ exitCode: null, timedOut: true })),
+  ]);
+  if (outcome.timedOut) {
+    child.kill();
+  }
+  stdin.end();
+  const [exitCode, stdout, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  return { exitCode, stderr, stdout, timedOut: outcome.timedOut };
 }
 
 async function runProcess(
