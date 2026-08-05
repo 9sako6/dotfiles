@@ -3,7 +3,7 @@
 
   inputs = {
     nix-darwin = {
-      url = "github:nix-darwin/nix-darwin/56c666e108467d87d13508936aade6d567f2a501";
+      url = "github:nix-darwin/nix-darwin/c3e90c89649b07d1a96e4b9dd6cd0d6e44b91a74";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nix-homebrew.url = "github:zhaofengli/nix-homebrew/937ce52c7d046310571f3a070713804ead496843";
