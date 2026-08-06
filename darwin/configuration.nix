@@ -60,6 +60,7 @@ in
   services.zundamonotify.enable = true;
 
   system = {
+    build.homebrewBrewfile = pkgs.writeText "Brewfile" config.homebrew.brewfile;
     activationScripts = {
       # スクリーンショット保存先のディレクトリを用意する
       screenshotDirectory.text = ''
