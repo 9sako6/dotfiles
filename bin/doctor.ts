@@ -10,6 +10,7 @@ import {
   inspectHomebrew,
   inspectMise,
   inspectSystem,
+  parseHomebrewDeclarationNames,
   runDoctor,
 } from "../lib/doctor";
 import { planLinkActions, summarizeLinkPlan } from "../lib/link-home";
@@ -40,7 +41,7 @@ async function main() {
       title: "system",
     },
     {
-      inspect: () => inspectHomebrewInstallations(repoRoot),
+      inspect: () => inspectHomebrewInstallations(repoRoot, homeDir),
       title: "homebrew",
     },
   ]);
@@ -147,7 +148,10 @@ async function inspectMiseInstallations(homeDir: string): Promise<DoctorSectionC
   };
 }
 
-async function inspectHomebrewInstallations(repoRoot: string): Promise<DoctorSectionContent> {
+async function inspectHomebrewInstallations(
+  repoRoot: string,
+  homeDir: string,
+): Promise<DoctorSectionContent> {
   const nixPath = await findNix();
   const brewPath = Bun.which("brew");
   if (!nixPath) {
@@ -158,16 +162,32 @@ async function inspectHomebrewInstallations(repoRoot: string): Promise<DoctorSec
     };
   }
 
-  const declarations = JSON.parse(await run(nixPath, [
-    "--extra-experimental-features",
-    "nix-command flakes",
-    "eval",
-    "--json",
-    "--file",
-    path.join(repoRoot, "darwin", "homebrew-packages.nix"),
-  ])) as { brews: string[]; casks: string[] };
-  const declaredCasks = new Set(declarations.casks);
-  const declaredFormulae = new Set(declarations.brews);
+  const source = await inspectSelectedSystemSource({
+    dataRoot: systemSourceDataRoot(homeDir, Bun.env.XDG_DATA_HOME),
+    publicDirectory: path.join(repoRoot, "darwin"),
+    selectionPath: "/etc/nix-darwin/flake.nix",
+  });
+  const evaluate = async (option: "brews" | "casks") => {
+    const args = [
+      "--extra-experimental-features",
+      "nix-command flakes",
+      "eval",
+      "--json",
+    ];
+    if (source.kind === "default") args.push("--impure");
+    args.push(
+      `path:${source.directory}#darwinConfigurations.current.config.homebrew.${option}`,
+    );
+    return parseHomebrewDeclarationNames(await run(
+      nixPath,
+      args,
+      source.kind === "default" ? { DARWIN_PRIMARY_USER: userInfo().username } : undefined,
+    ));
+  };
+  const [declaredCasks, declaredFormulae] = await Promise.all([
+    evaluate("casks"),
+    evaluate("brews"),
+  ]);
   const installedFormulae = brewPath ? lines(await run(brewPath, ["leaves"])) : [];
   const installedCasks = brewPath ? lines(await run(brewPath, ["list", "--cask"])) : [];
   const homebrewInventory = inspectHomebrew({

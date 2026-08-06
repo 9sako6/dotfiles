@@ -136,7 +136,10 @@ case "$2" in
 esac
 `);
       await makeExecutable(path.join(fakeBin, "nix"), `#!/bin/sh
-printf '%s\n' '{"brews":[],"casks":[]}'
+case "$*" in
+  *config.homebrew.brews | *config.homebrew.casks) printf '%s\n' '[]' ;;
+  *) printf '%s\n' /nix/store/expected-system ;;
+esac
 `);
       await makeExecutable(path.join(fakeBin, "brew"), `#!/bin/sh
 exit 0
