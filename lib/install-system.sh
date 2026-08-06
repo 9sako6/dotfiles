@@ -165,6 +165,32 @@ install_system_confirm_apply() {
   fi
 }
 
+install_system_start_sudo_refresh() {
+  sudo_bin="$1"
+  "$sudo_bin" -v
+  install_system_sudo_refresh_owner=$$
+  (
+    trap 'exit 0' HUP INT TERM
+    refresh_after=0
+    while /bin/kill -0 "$install_system_sudo_refresh_owner" 2>/dev/null; do
+      if [ "$refresh_after" -eq 0 ]; then
+        "$sudo_bin" -n -v >/dev/null 2>&1 || exit
+        refresh_after=60
+      fi
+      /bin/sleep 1
+      refresh_after=$((refresh_after - 1))
+    done
+  ) &
+  install_system_sudo_refresh_pid=$!
+}
+
+install_system_stop_sudo_refresh() {
+  [ -n "${install_system_sudo_refresh_pid:-}" ] || return 0
+  /bin/kill "$install_system_sudo_refresh_pid" 2>/dev/null || true
+  wait "$install_system_sudo_refresh_pid" 2>/dev/null || true
+  install_system_sudo_refresh_pid=
+}
+
 install_system_show_homebrew_cleanup() {
   brew_bin="$1"
   brewfile_path="$2"
@@ -197,6 +223,27 @@ install_system_activate_built_system() {
     SUDO_USER="$primary_user" \
     "$rebuild_bin" activate
 }
+
+install_system_apply_built_system() (
+  sudo_bin="$1"
+  env_bin="$2"
+  nix_bin="$3"
+  primary_user="$4"
+  system_path="$5"
+  selection_path="$6"
+  expected_target="$7"
+  desired_target="$8"
+
+  install_system_start_sudo_refresh "$sudo_bin"
+  trap 'install_system_stop_sudo_refresh' 0
+  trap 'exit 1' HUP INT TERM
+  install_system_activate_built_system \
+    "$sudo_bin" "$env_bin" "$nix_bin" "$primary_user" "$system_path"
+  install_system_select_source \
+    "$sudo_bin" "$selection_path" "$expected_target" "$desired_target"
+  install_system_stop_sudo_refresh
+  trap - 0 HUP INT TERM
+)
 
 install_system_select_source() {
   sudo_bin="$1"

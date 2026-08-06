@@ -58,7 +58,6 @@ sudo_bin="$(install_system_resolve_sudo)" ||
   install_system_fail "trusted /usr/bin/sudo was not found"
 env_bin="$(install_system_resolve_env)" ||
   install_system_fail "trusted /usr/bin/env was not found"
-install_system_activate_built_system \
-  "$sudo_bin" "$env_bin" "$nix_bin" "$primary_user" "$system_path"
-install_system_select_source \
-  "$sudo_bin" /etc/nix-darwin/flake.nix "$expected_target" "$desired_target"
+install_system_apply_built_system \
+  "$sudo_bin" "$env_bin" "$nix_bin" "$primary_user" "$system_path" \
+  /etc/nix-darwin/flake.nix "$expected_target" "$desired_target"

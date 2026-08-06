@@ -300,6 +300,68 @@ exit "\${BREW_EXIT_STATUS}"
     }
   });
 
+  test("system apply中だけsudo認証を更新して停止する", async () => {
+    await withTempDir("system-sudo-refresh", async (tempDir) => {
+      const sudoBin = path.join(tempDir, "sudo");
+      const logPath = path.join(tempDir, "sudo.log");
+      await makeExecutable(sudoBin, `#!/bin/sh
+printf '<%s>' "$@" >> "$SYSTEM_INSTALL_LOG"
+printf '\n' >> "$SYSTEM_INSTALL_LOG"
+`);
+
+      const result = await runInstallSystemFunction(
+        `install_system_start_sudo_refresh "$1"
+refresh_pid="$install_system_sudo_refresh_pid"
+/bin/sleep 0.1
+install_system_stop_sudo_refresh
+if /bin/kill -0 "$refresh_pid" 2>/dev/null; then
+  exit 1
+fi`,
+        [sudoBin],
+        { SYSTEM_INSTALL_LOG: logPath },
+      );
+
+      expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
+      expect(await readFile(logPath, "utf8")).toBe("<-v>\n<-n><-v>\n");
+    });
+  });
+
+  test("一度のsudo認証でactivationとsource選択を完了する", async () => {
+    await withTempDir("apply-system", async (tempDir) => {
+      const sudoBin = path.join(tempDir, "sudo");
+      const nixBin = path.join(tempDir, "lix", "bin", "nix");
+      const nixEnvBin = path.join(tempDir, "lix", "bin", "nix-env");
+      const systemPath = path.join(tempDir, "system");
+      const rebuildBin = path.join(systemPath, "sw", "bin", "darwin-rebuild");
+      const selection = path.join(tempDir, "etc", "flake.nix");
+      const credentialLog = path.join(tempDir, "sudo.log");
+      await makeExecutable(sudoBin, `#!/bin/sh
+if [ "$#" -eq 1 ] && [ "$1" = -v ]; then
+  printf '%s\n' validate >> "$SYSTEM_INSTALL_LOG"
+  exit 0
+fi
+if [ "$#" -eq 2 ] && [ "$1" = -n ] && [ "$2" = -v ]; then
+  printf '%s\n' refresh >> "$SYSTEM_INSTALL_LOG"
+  exit 0
+fi
+exec "$@"
+`);
+      await makeExecutable(nixBin, "#!/bin/sh\n");
+      await makeExecutable(nixEnvBin, "#!/bin/sh\n");
+      await makeExecutable(rebuildBin, "#!/bin/sh\n");
+
+      const result = await runInstallSystemFunction(
+        'install_system_apply_built_system "$1" /usr/bin/env "$2" test-user "$3" "$4" missing /source/flake.nix',
+        [sudoBin, nixBin, systemPath, selection],
+        { SYSTEM_INSTALL_LOG: credentialLog },
+      );
+
+      expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
+      expect(await readFile(credentialLog, "utf8")).toBe("validate\nrefresh\n");
+      expect(await readlink(selection)).toBe("/source/flake.nix");
+    });
+  });
+
   test("build済み世代を再評価せずprofileへ設定してactivateする", async () => {
     await withTempDir("activate-system", async (tempDir) => {
       const sudoBin = path.join(tempDir, "sudo");

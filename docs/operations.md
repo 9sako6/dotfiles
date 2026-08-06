@@ -83,7 +83,8 @@ mise run system:apply --default    # 公開sourceへ戻す
 `system:plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
 変更しない。Lix がなければ失敗する。`system:apply` は必要なら Lix を導入し、表示した同じ build 済み
 世代だけを activation する。plan には system closure の差分と Homebrew cleanup 候補が現れる。
-fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。
+fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。`system:apply` は処理中だけ
+`sudo` の認証を更新し、長い activation の間も同じ認証を維持する。
 
 private repository は `darwin/flake.nix.template` を root の `flake.nix` としてコピーし、
 `primaryUser` を実際の macOS account name に置き換える。公開できない差分だけを `modules` に追加し、
