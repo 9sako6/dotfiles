@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, lstat, mkdir, rm } from "node:fs/promises";
+import { access, lstat, mkdir, readlink, rm } from "node:fs/promises";
 import path from "node:path";
 
 export type SystemSourceRequest =
@@ -35,6 +35,13 @@ export function managedCheckoutPath(dataRoot: string, gitUrl: string): string {
 }
 
 export type RunGit = (args: string[]) => Promise<string>;
+
+export type PreparedSystemSource = {
+  directory: string;
+  kind: "default" | "remote";
+  revision: string;
+  url: string | null;
+};
 
 export async function runGit(args: string[]): Promise<string> {
   const process = Bun.spawn(["git", ...args], {
@@ -90,6 +97,65 @@ export async function prepareRemoteCheckout(
     if (created) await rm(directory, { recursive: true, force: true });
     throw error;
   }
+}
+
+export async function resolveSystemSource(
+  request: SystemSourceRequest,
+  paths: { dataRoot: string; publicDirectory: string; selectionPath: string },
+  git: RunGit = runGit,
+): Promise<PreparedSystemSource> {
+  const publicFlake = path.join(paths.publicDirectory, "flake.nix");
+  const selected = await inspectSelection(publicFlake, paths.dataRoot, paths.selectionPath, git);
+  const desired = request.type === "current" ? selected : request;
+
+  if (desired.type === "default") {
+    await access(publicFlake);
+    return {
+      directory: paths.publicDirectory,
+      kind: "default",
+      revision: await git(["-C", paths.publicDirectory, "rev-parse", "HEAD"]),
+      url: null,
+    };
+  }
+
+  const prepared = await prepareRemoteCheckout(paths.dataRoot, desired.url, git);
+  return { ...prepared, kind: "remote", url: desired.url };
+}
+
+async function inspectSelection(
+  publicFlake: string,
+  dataRoot: string,
+  selectionPath: string,
+  git: RunGit,
+): Promise<{ type: "default" } | { type: "remote"; url: string }> {
+  let target: string;
+  try {
+    const stat = await lstat(selectionPath);
+    if (!stat.isSymbolicLink()) throw new Error("system source selection is not a symlink");
+    const value = await readlink(selectionPath);
+    target = path.resolve(path.dirname(selectionPath), value);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return { type: "default" };
+    }
+    throw error;
+  }
+
+  if (target === publicFlake) return { type: "default" };
+  const checkout = path.dirname(target);
+  if (
+    path.basename(target) !== "flake.nix" ||
+    path.dirname(checkout) !== dataRoot ||
+    !/^[0-9a-f]{24}$/.test(path.basename(checkout))
+  ) {
+    throw new Error("system source selection is not managed by dotfiles");
+  }
+  const url = await git(["-C", checkout, "remote", "get-url", "origin"]);
+  validateGitUrl(url);
+  if (managedCheckoutPath(dataRoot, url) !== checkout) {
+    throw new Error("system source selection does not match its origin");
+  }
+  return { type: "remote", url };
 }
 
 function validateGitUrl(value: string): void {
