@@ -18,6 +18,26 @@
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
+      mkDarwinSystem = {
+        configurationRevision ? null,
+        modules ? [ ],
+        primaryUser,
+      }:
+        nix-darwin.lib.darwinSystem {
+          modules = [
+            self.darwinModules.default
+            {
+              nixpkgs.hostPlatform = system;
+              system = {
+                inherit configurationRevision primaryUser;
+              };
+            }
+          ] ++ modules;
+        };
+      publicSystem = mkDarwinSystem {
+        inherit primaryUser;
+        configurationRevision = self.rev or self.dirtyRev or null;
+      };
     in
     {
       apps.${system}.darwin-rebuild = {
@@ -25,19 +45,21 @@
         program = "${nix-darwin.packages.${system}.darwin-rebuild}/bin/darwin-rebuild";
       };
 
-      darwinConfigurations.${system} = nix-darwin.lib.darwinSystem {
-        specialArgs = {
-          inherit primaryUser;
-        };
-        modules = [
+      darwinConfigurations = {
+        current = publicSystem;
+        ${system} = publicSystem;
+      };
+
+      darwinModules.default = {
+        imports = [
           nix-homebrew.darwinModules.nix-homebrew
           zundamonotify.darwinModules.default
           ./configuration.nix
-          {
-            nixpkgs.hostPlatform = system;
-            system.configurationRevision = self.rev or self.dirtyRev or null;
-          }
         ];
+      };
+
+      lib = {
+        inherit mkDarwinSystem;
       };
     };
 }
