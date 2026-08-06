@@ -77,7 +77,7 @@ export async function prepareRemoteCheckout(
     if (await git(["-C", directory, "remote", "get-url", "origin"]) !== gitUrl) {
       throw new Error("managed checkout origin does not match its source URL");
     }
-    if (await git(["-C", directory, "status", "--porcelain"]) !== "") {
+    if (!created && await git(["-C", directory, "status", "--porcelain"]) !== "") {
       throw new Error("managed checkout contains local changes");
     }
     await git(["-C", directory, "fetch", "--quiet", "origin"]);
