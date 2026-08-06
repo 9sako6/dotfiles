@@ -134,7 +134,9 @@ describe("公開bootstrap", () => {
 
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(logPath, "utf8")).toBe(
-        "install-mise\nmise <trust>\nmise <bootstrap> <--yes>\n",
+        "install-mise\nmise <trust>\nmise <install>\n" +
+          "mise <run> <system:apply>\nmise <run> <apply>\n" +
+          "mise <bootstrap> <--yes> <--verbose>\n",
       );
     });
   });
@@ -208,7 +210,9 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
         tempDir,
       )).toBe("origin/master");
       expect(await readFile(logPath, "utf8")).toBe(
-        "install-mise\nmise <trust>\nmise <bootstrap> <--yes>\n",
+        "install-mise\nmise <trust>\nmise <install>\n" +
+          "mise <run> <system:apply>\nmise <run> <apply>\n" +
+          "mise <bootstrap> <--yes> <--verbose>\n",
       );
 
       await writeFile(path.join(sourceDir, "after-bootstrap.txt"), "updated\n");
@@ -342,7 +346,9 @@ printf '\n' >> "$BOOTSTRAP_LOG"
         tempDir,
       )).toBe("origin/master");
       expect(await readFile(logPath, "utf8")).toBe(
-        "mise <trust>\nmise <bootstrap> <--yes>\n",
+        "mise <trust>\nmise <install>\n" +
+          "mise <run> <system:apply>\nmise <run> <apply>\n" +
+          "mise <bootstrap> <--yes> <--verbose>\n",
       );
     });
   });
