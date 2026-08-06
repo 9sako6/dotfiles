@@ -99,41 +99,6 @@ describe("applyの確認", () => {
   });
 });
 
-async function withGitRepositories(
-  name: string,
-  run: (repositories: { local: string; seed: string }) => Promise<void>,
-) {
-  await withTempDir(name, async (tempDir) => {
-    const remote = path.join(tempDir, "remote.git");
-    const seed = path.join(tempDir, "seed");
-    const local = path.join(tempDir, "local");
-    await git(tempDir, ["init", "--bare", "--initial-branch=master", remote]);
-    await git(tempDir, ["init", "--initial-branch=master", seed]);
-    await configureGit(seed);
-    await writeFile(path.join(seed, "managed.txt"), "initial\n");
-    await git(seed, ["add", "managed.txt"]);
-    await git(seed, ["commit", "-m", "initial"]);
-    await git(seed, ["remote", "add", "origin", remote]);
-    await git(seed, ["push", "-u", "origin", "master"]);
-    await git(tempDir, ["clone", "--quiet", remote, local]);
-    await configureGit(local);
-    await run({ local, seed });
-  });
-}
-
-async function configureGit(repo: string) {
-  await git(repo, ["config", "user.email", "dot-test@example.test"]);
-  await git(repo, ["config", "user.name", "Dot Test"]);
-}
-
-async function git(cwd: string, args: string[]) {
-  const result = await runProcess(["git", ...args], cwd);
-  if (result.exitCode !== 0) {
-    throw new Error(`git ${args.join(" ")} failed: ${result.stderr}`);
-  }
-  return result.stdout.trim();
-}
-
 async function withDeploymentFixture(
   name: string,
   run: (fixture: { fixtureRoot: string; homeDir: string }) => Promise<void>,
