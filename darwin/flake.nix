@@ -40,15 +40,7 @@
       };
     in
     {
-      apps.${system}.darwin-rebuild = {
-        type = "app";
-        program = "${nix-darwin.packages.${system}.darwin-rebuild}/bin/darwin-rebuild";
-      };
-
-      darwinConfigurations = {
-        current = publicSystem;
-        ${system} = publicSystem;
-      };
+      darwinConfigurations.current = publicSystem;
 
       darwinModules.default = {
         imports = [
