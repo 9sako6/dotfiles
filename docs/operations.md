@@ -65,6 +65,29 @@ mise run test                  # 契約テストを実行
 
 他の task は `mise tasks` で一覧できる。
 
+## system source
+
+引数なしでは現在選択中の source を使う。未選択時は公開 dotfiles の local checkout が既定になる。
+公開 source は自動で pull しない。private source は、最後に選択した credential を含まない SSH または
+HTTPS clone URL の remote default branch を取得し、push 済みの最新 commit を使う。
+
+```sh
+mise run system:plan <clone-url>   # 別sourceを試すが選択は変えない
+mise run system:apply <clone-url>  # 成功後にsourceを選択する
+mise run system:plan --default     # 公開sourceを試す
+mise run system:apply --default    # 公開sourceへ戻す
+```
+
+`system:plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
+変更しない。Lix がなければ失敗する。`system:apply` は必要なら Lix を導入し、表示した同じ build 済み
+世代だけを activation する。plan には system closure の差分と Homebrew cleanup 候補が現れる。
+fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。
+
+private repository は root に `flake.nix` と commit 済みの `flake.lock` を置き、
+`darwinConfigurations.current` を公開する。例は [darwin のガイド](../darwin/README.md)を参照する。
+source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけであり、未知の既存ファイルや symlink は
+明示引数があっても置換しない。
+
 ## ロールバック
 
 `mise run system:rollback` は remote の取得や flake の評価をせず、保持済みの直前の世代へ戻す。
