@@ -33,9 +33,11 @@ jobs:
         run: |
           "$HOME/.local/bin/mise" trust
           "$HOME/.local/bin/mise" install
-          "$HOME/.local/bin/mise" run install:user
+          printf 'yes\n' | "$HOME/.local/bin/mise" run apply
+          cd "$HOME"
+          "$HOME/.local/bin/mise" bootstrap --yes --verbose
 
-      - name: Verify zinit plugins converged by install:user
+      - name: Verify zinit plugins converged by bootstrap
         run: '"$HOME/.local/bin/mise" bootstrap repos status --missing'
 
       - name: Verify zinit plugins load in an interactive shell
@@ -59,7 +61,7 @@ jobs:
         run: ./bin/install-lix.sh
 
       - name: Build system configuration
-        run: ./bin/build-system.sh
+        run: '"$HOME/.local/bin/mise" run system:plan --default'
 
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
@@ -70,7 +72,6 @@ jobs:
           mise exec -- atuin --version
           mise exec -- bun --version
           mise exec -- codex --version
-          dot --help
           mise exec -- fd --version
           mise exec -- fzf --version
           mise exec -- gh --version
