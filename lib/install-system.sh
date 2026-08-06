@@ -165,32 +165,6 @@ install_system_confirm_apply() {
   fi
 }
 
-install_system_start_sudo_refresh() {
-  sudo_bin="$1"
-  "$sudo_bin" -v
-  install_system_sudo_refresh_owner=$$
-  (
-    trap 'exit 0' HUP INT TERM
-    refresh_after=0
-    while /bin/kill -0 "$install_system_sudo_refresh_owner" 2>/dev/null; do
-      if [ "$refresh_after" -eq 0 ]; then
-        "$sudo_bin" -n -v >/dev/null 2>&1 || exit
-        refresh_after=60
-      fi
-      /bin/sleep 1
-      refresh_after=$((refresh_after - 1))
-    done
-  ) &
-  install_system_sudo_refresh_pid=$!
-}
-
-install_system_stop_sudo_refresh() {
-  [ -n "${install_system_sudo_refresh_pid:-}" ] || return 0
-  /bin/kill "$install_system_sudo_refresh_pid" 2>/dev/null || true
-  wait "$install_system_sudo_refresh_pid" 2>/dev/null || true
-  install_system_sudo_refresh_pid=
-}
-
 install_system_show_homebrew_cleanup() {
   brew_bin="$1"
   brewfile_path="$2"
@@ -205,25 +179,6 @@ install_system_show_homebrew_cleanup() {
   esac
 }
 
-install_system_activate_built_system() {
-  sudo_bin="$1"
-  env_bin="$2"
-  nix_bin="$3"
-  primary_user="$4"
-  system_path="$5"
-  nix_env_bin="${nix_bin%/nix}/nix-env"
-  rebuild_bin="${system_path}/sw/bin/darwin-rebuild"
-
-  [ -x "$nix_env_bin" ] || install_system_fail "built Lix has no nix-env"
-  [ -x "$rebuild_bin" ] || install_system_fail "built system has no darwin-rebuild"
-  "$sudo_bin" "$nix_env_bin" \
-    -p /nix/var/nix/profiles/system \
-    --set "$system_path"
-  "$sudo_bin" "$env_bin" \
-    SUDO_USER="$primary_user" \
-    "$rebuild_bin" activate
-}
-
 install_system_apply_built_system() (
   sudo_bin="$1"
   env_bin="$2"
@@ -234,40 +189,89 @@ install_system_apply_built_system() (
   expected_target="$7"
   desired_target="$8"
 
-  install_system_start_sudo_refresh "$sudo_bin"
-  trap 'install_system_stop_sudo_refresh' 0
-  trap 'exit 1' HUP INT TERM
-  install_system_activate_built_system \
-    "$sudo_bin" "$env_bin" "$nix_bin" "$primary_user" "$system_path"
-  install_system_select_source \
-    "$sudo_bin" "$selection_path" "$expected_target" "$desired_target"
-  install_system_stop_sudo_refresh
-  trap - 0 HUP INT TERM
+  nix_env_bin="${nix_bin%/nix}/nix-env"
+  rebuild_bin="${system_path}/sw/bin/darwin-rebuild"
+
+  [ -x "$nix_env_bin" ] || install_system_fail "built Lix has no nix-env"
+  [ -x "$rebuild_bin" ] || install_system_fail "built system has no darwin-rebuild"
+  "$sudo_bin" "$env_bin" SUDO_USER="$primary_user" /bin/sh -eu -c '
+    nix_env_bin="$1"
+    rebuild_bin="$2"
+    system_path="$3"
+    selection_path="$4"
+    expected_target="$5"
+    desired_target="$6"
+
+    selection_dir="$(/usr/bin/dirname -- "$selection_path")"
+    lock_path="${selection_path}.apply.lock"
+    lock_candidate="${lock_path}.$$.candidate"
+    /bin/mkdir -p -- "$selection_dir"
+    while :; do
+      /bin/rm -f -- "$lock_candidate"
+      printf "%s\n" "$$" > "$lock_candidate"
+      if /bin/ln -- "$lock_candidate" "$lock_path" 2>/dev/null; then
+        /bin/rm -f -- "$lock_candidate"
+        break
+      fi
+      /bin/rm -f -- "$lock_candidate"
+      [ -e "$lock_path" ] || {
+        printf "system: could not acquire system apply lock\n" >&2
+        exit 1
+      }
+
+      lock_owner="$(/bin/cat -- "$lock_path" 2>/dev/null || :)"
+      case "$lock_owner" in
+        "" | *[!0-9]*) ;;
+        *)
+          if /bin/kill -0 "$lock_owner" 2>/dev/null; then
+            printf "system: system apply is already running\n" >&2
+            exit 1
+          fi
+          ;;
+      esac
+
+      stale_lock="${lock_path}.$$.stale"
+      if /bin/mv -- "$lock_path" "$stale_lock" 2>/dev/null; then
+        /bin/rm -f -- "$stale_lock"
+      fi
+    done
+    install_system_release_apply_lock() {
+      lock_owner="$(/bin/cat -- "$lock_path" 2>/dev/null || :)"
+      if [ "$lock_owner" = "$$" ]; then
+        /bin/rm -f -- "$lock_path"
+      fi
+    }
+    trap install_system_release_apply_lock 0
+    trap "exit 1" HUP INT TERM
+
+    "$nix_env_bin" -p /nix/var/nix/profiles/system --set "$system_path"
+    "$rebuild_bin" activate
+
+    if [ "$expected_target" = missing ]; then
+      if [ -e "$selection_path" ] || [ -L "$selection_path" ]; then
+        printf "system: system source selection changed during apply\n" >&2
+        exit 1
+      fi
+    else
+      if [ ! -L "$selection_path" ] ||
+        [ "$(/usr/bin/readlink -- "$selection_path")" != "$expected_target" ]
+      then
+        printf "system: system source selection changed during apply\n" >&2
+        exit 1
+      fi
+    fi
+
+    temporary_path="${selection_dir}/.flake.nix.$$"
+    /bin/ln -s -- "$desired_target" "$temporary_path" || {
+      printf "system: could not stage system source selection\n" >&2
+      exit 1
+    }
+    if ! /bin/mv -f -- "$temporary_path" "$selection_path"; then
+      /bin/rm -f -- "$temporary_path"
+      printf "system: could not persist system source selection\n" >&2
+      exit 1
+    fi
+  ' install-system-apply \
+    "$nix_env_bin" "$rebuild_bin" "$system_path" "$selection_path" \
+    "$expected_target" "$desired_target"
 )
-
-install_system_select_source() {
-  sudo_bin="$1"
-  selection_path="$2"
-  expected_target="$3"
-  desired_target="$4"
-
-  if [ "$expected_target" = missing ]; then
-    [ ! -e "$selection_path" ] && [ ! -L "$selection_path" ] ||
-      install_system_fail "system source selection changed during apply"
-  else
-    [ -L "$selection_path" ] ||
-      install_system_fail "system source selection changed during apply"
-    [ "$(/usr/bin/readlink -- "$selection_path")" = "$expected_target" ] ||
-      install_system_fail "system source selection changed during apply"
-  fi
-
-  selection_dir="$(/usr/bin/dirname -- "$selection_path")"
-  temporary_path="${selection_dir}/.flake.nix.$$"
-  "$sudo_bin" /bin/mkdir -p -- "$selection_dir"
-  "$sudo_bin" /bin/ln -s -- "$desired_target" "$temporary_path" ||
-    install_system_fail "could not stage system source selection"
-  if ! "$sudo_bin" /bin/mv -f -- "$temporary_path" "$selection_path"; then
-    "$sudo_bin" /bin/rm -f -- "$temporary_path"
-    install_system_fail "could not persist system source selection"
-  fi
-}

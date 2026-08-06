@@ -300,33 +300,7 @@ exit "\${BREW_EXIT_STATUS}"
     }
   });
 
-  test("system apply中だけsudo認証を更新して停止する", async () => {
-    await withTempDir("system-sudo-refresh", async (tempDir) => {
-      const sudoBin = path.join(tempDir, "sudo");
-      const logPath = path.join(tempDir, "sudo.log");
-      await makeExecutable(sudoBin, `#!/bin/sh
-printf '<%s>' "$@" >> "$SYSTEM_INSTALL_LOG"
-printf '\n' >> "$SYSTEM_INSTALL_LOG"
-`);
-
-      const result = await runInstallSystemFunction(
-        `install_system_start_sudo_refresh "$1"
-refresh_pid="$install_system_sudo_refresh_pid"
-/bin/sleep 0.1
-install_system_stop_sudo_refresh
-if /bin/kill -0 "$refresh_pid" 2>/dev/null; then
-  exit 1
-fi`,
-        [sudoBin],
-        { SYSTEM_INSTALL_LOG: logPath },
-      );
-
-      expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
-      expect(await readFile(logPath, "utf8")).toBe("<-v>\n<-n><-v>\n");
-    });
-  });
-
-  test("一度のsudo認証でactivationとsource選択を完了する", async () => {
+  test("activationとsource選択を一度のsudo実行で完了する", async () => {
     await withTempDir("apply-system", async (tempDir) => {
       const sudoBin = path.join(tempDir, "sudo");
       const nixBin = path.join(tempDir, "lix", "bin", "nix");
@@ -334,87 +308,107 @@ fi`,
       const systemPath = path.join(tempDir, "system");
       const rebuildBin = path.join(systemPath, "sw", "bin", "darwin-rebuild");
       const selection = path.join(tempDir, "etc", "flake.nix");
+      const applyLock = `${selection}.apply.lock`;
       const credentialLog = path.join(tempDir, "sudo.log");
+      const systemLog = path.join(tempDir, "system.log");
       await makeExecutable(sudoBin, `#!/bin/sh
-if [ "$#" -eq 1 ] && [ "$1" = -v ]; then
-  printf '%s\n' validate >> "$SYSTEM_INSTALL_LOG"
-  exit 0
-fi
-if [ "$#" -eq 2 ] && [ "$1" = -n ] && [ "$2" = -v ]; then
-  printf '%s\n' refresh >> "$SYSTEM_INSTALL_LOG"
-  exit 0
-fi
+printf '%s\n' sudo >> "$SYSTEM_INSTALL_LOG"
 exec "$@"
 `);
       await makeExecutable(nixBin, "#!/bin/sh\n");
-      await makeExecutable(nixEnvBin, "#!/bin/sh\n");
-      await makeExecutable(rebuildBin, "#!/bin/sh\n");
+      await makeExecutable(nixEnvBin, `#!/bin/sh
+printf 'nix-env' >> "$SYSTEM_APPLY_LOG"
+printf '<%s>' "$@" >> "$SYSTEM_APPLY_LOG"
+printf '\n' >> "$SYSTEM_APPLY_LOG"
+`);
+      await makeExecutable(rebuildBin, `#!/bin/sh
+printf 'rebuild:user=%s' "$SUDO_USER" >> "$SYSTEM_APPLY_LOG"
+printf '<%s>' "$@" >> "$SYSTEM_APPLY_LOG"
+printf '\n' >> "$SYSTEM_APPLY_LOG"
+`);
+      await mkdir(path.dirname(selection), { recursive: true });
+      await writeFile(applyLock, "2147483647\n");
 
       const result = await runInstallSystemFunction(
         'install_system_apply_built_system "$1" /usr/bin/env "$2" test-user "$3" "$4" missing /source/flake.nix',
         [sudoBin, nixBin, systemPath, selection],
-        { SYSTEM_INSTALL_LOG: credentialLog },
+        { SYSTEM_APPLY_LOG: systemLog, SYSTEM_INSTALL_LOG: credentialLog },
       );
 
       expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
-      expect(await readFile(credentialLog, "utf8")).toBe("validate\nrefresh\n");
-      expect(await readlink(selection)).toBe("/source/flake.nix");
-    });
-  });
-
-  test("build済み世代を再評価せずprofileへ設定してactivateする", async () => {
-    await withTempDir("activate-system", async (tempDir) => {
-      const sudoBin = path.join(tempDir, "sudo");
-      const nixBin = path.join(tempDir, "lix", "bin", "nix");
-      const nixEnvBin = path.join(tempDir, "lix", "bin", "nix-env");
-      const rebuildBin = path.join(tempDir, "system", "sw", "bin", "darwin-rebuild");
-      const logPath = path.join(tempDir, "system.log");
-      await makeExecutable(sudoBin, "#!/bin/sh\nexec \"$@\"\n");
-      await makeExecutable(nixBin, "#!/bin/sh\n");
-      await makeExecutable(nixEnvBin, `#!/bin/sh
-printf 'nix-env' >> "$SYSTEM_INSTALL_LOG"
-printf '<%s>' "$@" >> "$SYSTEM_INSTALL_LOG"
-printf '\n' >> "$SYSTEM_INSTALL_LOG"
-`);
-      await makeExecutable(rebuildBin, `#!/bin/sh
-printf 'rebuild:user=%s' "$SUDO_USER" >> "$SYSTEM_INSTALL_LOG"
-printf '<%s>' "$@" >> "$SYSTEM_INSTALL_LOG"
-printf '\n' >> "$SYSTEM_INSTALL_LOG"
-`);
-
-      const result = await runInstallSystemFunction(
-        'install_system_activate_built_system "$1" /usr/bin/env "$2" test-user "$3"',
-        [sudoBin, nixBin, path.join(tempDir, "system")],
-        { SYSTEM_INSTALL_LOG: logPath },
-      );
-
-      expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
-      expect(await readFile(logPath, "utf8")).toBe([
-        `nix-env<-p></nix/var/nix/profiles/system><--set><${path.join(tempDir, "system")}>`,
+      expect(await readFile(credentialLog, "utf8")).toBe("sudo\n");
+      expect(await readFile(systemLog, "utf8")).toBe([
+        `nix-env<-p></nix/var/nix/profiles/system><--set><${systemPath}>`,
         "rebuild:user=test-user<activate>",
         "",
       ].join("\n"));
+      expect(await readlink(selection)).toBe("/source/flake.nix");
+      expect(await Bun.file(applyLock).exists()).toBe(false);
+
+      const refused = await runInstallSystemFunction(
+        'install_system_apply_built_system "$1" /usr/bin/env "$2" test-user "$3" "$4" /other/flake.nix /new/flake.nix',
+        [sudoBin, nixBin, systemPath, selection],
+        { SYSTEM_APPLY_LOG: systemLog, SYSTEM_INSTALL_LOG: credentialLog },
+      );
+      expect(refused.exitCode).not.toBe(0);
+      expect(refused.stderr).toContain("system source selection changed during apply");
+      expect(await readlink(selection)).toBe("/source/flake.nix");
     });
   });
 
-  test("確認した値から変わったsource selectionを上書きしない", async () => {
-    await withTempDir("select-system-source", async (tempDir) => {
+  test("実行中のsystem applyと同じsource selectionを使うapplyを拒否する", async () => {
+    await withTempDir("concurrent-system-apply", async (tempDir) => {
       const sudoBin = path.join(tempDir, "sudo");
+      const nixBin = path.join(tempDir, "lix", "bin", "nix");
+      const nixEnvBin = path.join(tempDir, "lix", "bin", "nix-env");
+      const systemPath = path.join(tempDir, "system");
+      const rebuildBin = path.join(systemPath, "sw", "bin", "darwin-rebuild");
       const selection = path.join(tempDir, "etc", "flake.nix");
-      await makeExecutable(sudoBin, "#!/bin/sh\nexec \"$@\"\n");
+      const entered = path.join(tempDir, "activation-entered");
+      const activationOwner = path.join(tempDir, "activation-owner");
+      const release = path.join(tempDir, "activation-release");
 
-      const applied = await runInstallSystemFunction(
-        'install_system_select_source "$1" "$2" missing /source/flake.nix',
-        [sudoBin, selection],
+      await makeExecutable(sudoBin, "#!/bin/sh\nexec \"$@\"\n");
+      await makeExecutable(nixBin, "#!/bin/sh\n");
+      await makeExecutable(nixEnvBin, "#!/bin/sh\n");
+      await makeExecutable(rebuildBin, `#!/bin/sh
+if /bin/mkdir "$SYSTEM_ACTIVATION_OWNER" 2>/dev/null; then
+  : > "$SYSTEM_ACTIVATION_ENTERED"
+  while [ ! -e "$SYSTEM_ACTIVATION_RELEASE" ]; do
+    /bin/sleep 0.01
+  done
+fi
+`);
+      const env = {
+        SYSTEM_ACTIVATION_ENTERED: entered,
+        SYSTEM_ACTIVATION_OWNER: activationOwner,
+        SYSTEM_ACTIVATION_RELEASE: release,
+      };
+      const command =
+        'install_system_apply_built_system "$1" /usr/bin/env "$2" test-user "$3" "$4" missing /source/flake.nix';
+
+      const firstPromise = runInstallSystemFunction(
+        command,
+        [sudoBin, nixBin, systemPath, selection],
+        env,
       );
-      expect(applied.exitCode).toBe(0);
-      expect(await readlink(selection)).toBe("/source/flake.nix");
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        if (await Bun.file(entered).exists()) break;
+        await Bun.sleep(10);
+      }
+      expect(await Bun.file(entered).exists()).toBe(true);
 
       const refused = await runInstallSystemFunction(
-        'install_system_select_source "$1" "$2" /other/flake.nix /new/flake.nix',
-        [sudoBin, selection],
+        command,
+        [sudoBin, nixBin, systemPath, selection],
+        env,
       );
+      await writeFile(release, "");
+      const first = await firstPromise;
+
+      expect(first).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
       expect(refused.exitCode).not.toBe(0);
+      expect(refused.stderr).toContain("system apply is already running");
       expect(await readlink(selection)).toBe("/source/flake.nix");
     });
   });
