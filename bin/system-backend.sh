@@ -33,7 +33,7 @@ system_path="$(install_system_build_source_output \
   darwinConfigurations.current.system)"
 brewfile_path="$(install_system_build_source_output \
   "$nix_bin" "$primary_user" "$source_dir" "$source_kind" \
-  darwinConfigurations.current.config.system.build.homebrewBrewfile)"
+  darwinConfigurations.current.homebrewBrewfile)"
 
 printf 'system generation: %s\n' "$system_path"
 if [ -e /run/current-system ]; then

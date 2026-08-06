@@ -23,16 +23,23 @@
         modules ? [ ],
         primaryUser,
       }:
-        nix-darwin.lib.darwinSystem {
-          modules = [
-            self.darwinModules.default
-            {
-              nixpkgs.hostPlatform = system;
-              system = {
-                inherit configurationRevision primaryUser;
-              };
-            }
-          ] ++ modules;
+        let
+          darwinSystem = nix-darwin.lib.darwinSystem {
+            modules = [
+              self.darwinModules.default
+              {
+                nixpkgs.hostPlatform = system;
+                system = {
+                  inherit configurationRevision primaryUser;
+                };
+              }
+            ] ++ modules;
+          };
+        in
+        darwinSystem // {
+          homebrewBrewfile = darwinSystem.pkgs.writeText
+            "Brewfile"
+            darwinSystem.config.homebrew.brewfile;
         };
       publicSystem = mkDarwinSystem {
         inherit primaryUser;
