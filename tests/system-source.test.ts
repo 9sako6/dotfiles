@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
   managedCheckoutPath,
   parseSystemSourceRequest,
   prepareRemoteCheckout,
+  resolveSystemSource,
   runGit,
   systemSourceDataRoot,
 } from "../lib/system-source";
@@ -126,6 +127,65 @@ describe("managed system source checkout", () => {
       await Bun.write(path.join(prepared.directory, "local.txt"), "keep\n");
       await expect(prepareRemoteCheckout(dataRoot, source))
         .rejects.toThrow("contains local changes");
+    });
+  });
+});
+
+describe("selected system source", () => {
+  test("selectionがなければ公開flakeを使う", async () => {
+    await withGitSource(async (source, dataRoot) => {
+      const resolved = await resolveSystemSource(
+        { type: "current" },
+        {
+          dataRoot,
+          publicDirectory: source,
+          selectionPath: path.join(path.dirname(source), "missing", "flake.nix"),
+        },
+      );
+      expect(resolved.kind).toBe("default");
+      expect(resolved.directory).toBe(source);
+    });
+  });
+
+  test("管理symlinkからremote URLを復元する", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "system-selection-test-"));
+    try {
+      const url = "git@example.test:owner/config.git";
+      const dataRoot = path.join(root, "data");
+      const checkout = managedCheckoutPath(dataRoot, url);
+      const selectionPath = path.join(root, "etc", "flake.nix");
+      await mkdir(path.join(checkout, ".git"), { recursive: true });
+      await Bun.write(path.join(checkout, "flake.nix"), "{}\n");
+      await mkdir(path.dirname(selectionPath), { recursive: true });
+      await symlink(path.join(checkout, "flake.nix"), selectionPath);
+      const git = async (args: string[]) => {
+        if (args.includes("get-url")) return url;
+        if (args.includes("rev-parse")) return "0123456789abcdef";
+        return "";
+      };
+
+      const resolved = await resolveSystemSource(
+        { type: "current" },
+        { dataRoot, publicDirectory: path.join(root, "public"), selectionPath },
+        git,
+      );
+      expect(resolved.kind).toBe("remote");
+      expect(resolved.url).toBe(url);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("未知のselectionは明示defaultでも上書きしない", async () => {
+    await withGitSource(async (source, dataRoot) => {
+      const selectionPath = path.join(path.dirname(source), "etc", "flake.nix");
+      await mkdir(path.dirname(selectionPath), { recursive: true });
+      await symlink(path.join(path.dirname(source), "unknown", "flake.nix"), selectionPath);
+
+      await expect(resolveSystemSource(
+        { type: "default" },
+        { dataRoot, publicDirectory: source, selectionPath },
+      )).rejects.toThrow("not managed by dotfiles");
     });
   });
 });
