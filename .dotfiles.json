@@ -3,7 +3,6 @@
     ".config",
     ".gitconfig",
     ".gitignore_global",
-    ".local/bin/dot",
     ".zsh.d",
     ".zshenv",
     ".zshrc",
