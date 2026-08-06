@@ -3,6 +3,7 @@ import { access, mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises"
 import os from "node:os";
 import path from "node:path";
 import {
+  inspectSelectedSystemSource,
   managedCheckoutPath,
   parseSystemCommandArgs,
   parseSystemSourceRequest,
@@ -202,11 +203,20 @@ describe("selected system source", () => {
       await Bun.write(path.join(checkout, "flake.nix"), "{}\n");
       await mkdir(path.dirname(selectionPath), { recursive: true });
       await symlink(path.join(checkout, "flake.nix"), selectionPath);
+      const commands: string[][] = [];
       const git = async (args: string[]) => {
+        commands.push(args);
         if (args.includes("get-url")) return url;
         if (args.includes("rev-parse")) return "0123456789abcdef";
         return "";
       };
+
+      const observed = await inspectSelectedSystemSource(
+        { dataRoot, publicDirectory: path.join(root, "public"), selectionPath },
+        git,
+      );
+      expect(observed.url).toBe(url);
+      expect(commands.some((args) => args.includes("fetch"))).toBe(false);
 
       const resolved = await resolveSystemSource(
         { type: "current" },
@@ -215,6 +225,7 @@ describe("selected system source", () => {
       );
       expect(resolved.kind).toBe("remote");
       expect(resolved.url).toBe(url);
+      expect(commands.some((args) => args.includes("fetch"))).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
