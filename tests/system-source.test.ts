@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -125,6 +125,19 @@ describe("system source paths", () => {
 });
 
 describe("managed system source checkout", () => {
+  test("初回cloneが失敗したpartial checkoutだけを後始末する", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "system-clone-failure-test-"));
+    try {
+      const dataRoot = path.join(root, "data");
+      const missingSource = path.join(root, "missing");
+      const checkout = managedCheckoutPath(dataRoot, missingSource);
+      await expect(prepareRemoteCheckout(dataRoot, missingSource)).rejects.toThrow();
+      await expect(access(checkout)).rejects.toThrow();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test("remote既定branchの最新commitへdetached checkoutを揃える", async () => {
     await withGitSource(async (source, dataRoot) => {
       const first = await prepareRemoteCheckout(dataRoot, source);

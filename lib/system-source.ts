@@ -103,8 +103,8 @@ export async function prepareRemoteCheckout(
       if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
         throw error;
       }
-      await git(["clone", "--filter=blob:none", "--no-checkout", "--", gitUrl, directory]);
       created = true;
+      await git(["clone", "--filter=blob:none", "--no-checkout", "--", gitUrl, directory]);
     }
 
     await access(path.join(directory, ".git"));
