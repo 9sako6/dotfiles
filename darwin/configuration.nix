@@ -123,7 +123,6 @@ in
       # Caps LockをControlとして使う
       remapCapsLockToControl = true;
     };
-    inherit primaryUser;
     stateVersion = 6;
   };
 
