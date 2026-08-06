@@ -131,16 +131,20 @@ export async function resolveSystemSource(
   paths: { dataRoot: string; publicDirectory: string; selectionPath: string },
   git: RunGit = runGit,
 ): Promise<PreparedSystemSource> {
-  const publicFlake = path.join(paths.publicDirectory, "flake.nix");
-  const selected = await inspectSelection(publicFlake, paths.dataRoot, paths.selectionPath, git);
-  const desired = request.type === "current" ? selected.request : request;
+  const selected = await inspectSelectedSystemSource(paths, git);
+  const desired = request.type === "current"
+    ? selected.kind === "default" ? { type: "default" as const } : {
+      type: "remote" as const,
+      url: selected.url!,
+    }
+    : request;
 
   if (desired.type === "default") {
-    await access(publicFlake);
+    await access(path.join(paths.publicDirectory, "flake.nix"));
     return {
       directory: paths.publicDirectory,
       kind: "default",
-      previousTarget: selected.target,
+      previousTarget: selected.previousTarget,
       revision: await git(["-C", paths.publicDirectory, "rev-parse", "HEAD"]),
       url: null,
     };
@@ -150,8 +154,35 @@ export async function resolveSystemSource(
   return {
     ...prepared,
     kind: "remote",
-    previousTarget: selected.target,
+    previousTarget: selected.previousTarget,
     url: desired.url,
+  };
+}
+
+export async function inspectSelectedSystemSource(
+  paths: { dataRoot: string; publicDirectory: string; selectionPath: string },
+  git: RunGit = runGit,
+): Promise<PreparedSystemSource> {
+  const publicFlake = path.join(paths.publicDirectory, "flake.nix");
+  const selected = await inspectSelection(publicFlake, paths.dataRoot, paths.selectionPath, git);
+  if (selected.request.type === "default") {
+    await access(publicFlake);
+    return {
+      directory: paths.publicDirectory,
+      kind: "default",
+      previousTarget: selected.target,
+      revision: await git(["-C", paths.publicDirectory, "rev-parse", "HEAD"]),
+      url: null,
+    };
+  }
+  const directory = managedCheckoutPath(paths.dataRoot, selected.request.url);
+  await access(path.join(directory, "flake.nix"));
+  return {
+    directory,
+    kind: "remote",
+    previousTarget: selected.target,
+    revision: await git(["-C", directory, "rev-parse", "HEAD"]),
+    url: selected.request.url,
   };
 }
 
