@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pullDotfiles } from "../lib/dot";
 import { withTempDir, writeTree } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
@@ -237,7 +236,6 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
       expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir))
         .toBe(updatedRevision);
       expect(await readFile(path.join(dotfilesDir, "after-bootstrap.txt"), "utf8")).toBe("updated\n");
-      await expect(pullDotfiles(dotfilesDir)).resolves.toBe("Dotfiles are up to date.");
     });
   });
 
@@ -303,7 +301,6 @@ fi
           ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
           tempDir,
         )).toBe("origin/master");
-        await expect(pullDotfiles(dotfilesDir)).resolves.toBe("Dotfiles are up to date.");
       });
     });
   }

@@ -6,7 +6,6 @@ import {
   dotCommands,
   formatDotHelp,
   parseDotCommand,
-  pullDotfiles,
 } from "../lib/dot";
 import { withTempDir, writeTree } from "./test-helpers";
 
@@ -96,69 +95,7 @@ describe("dotのコマンド契約", () => {
   });
 });
 
-describe("dot pull", () => {
-  test("origin/masterと同一なら変更しない", async () => {
-    await withGitRepositories("pull-current", async ({ local }) => {
-      await expect(pullDotfiles(local)).resolves.toBe("Dotfiles are up to date.");
-    });
-  });
-
-  test("origin/masterの変更をfast-forwardする", async () => {
-    await withGitRepositories("pull-behind", async ({ local, seed }) => {
-      await writeFile(path.join(seed, "managed.txt"), "remote\n");
-      await git(seed, ["add", "managed.txt"]);
-      await git(seed, ["commit", "-m", "remote change"]);
-      await git(seed, ["push", "origin", "master"]);
-
-      const output = await pullDotfiles(local);
-
-      expect(await readFile(path.join(local, "managed.txt"), "utf8")).toBe("remote\n");
-      expect(output).toMatch(/^Updated dotfiles: [0-9a-f]{7} → [0-9a-f]{7} \(1 commit\)\.\n/);
-      expect(output).toContain("Run 'dot plan' to review deployment changes.");
-    });
-  });
-
-  test("ローカルが先行していれば変更せず成功する", async () => {
-    await withGitRepositories("pull-ahead", async ({ local }) => {
-      await writeFile(path.join(local, "local.txt"), "local\n");
-      await git(local, ["add", "local.txt"]);
-      await git(local, ["commit", "-m", "local change"]);
-
-      await expect(pullDotfiles(local)).resolves.toBe(
-        "Dotfiles are 1 commit ahead of origin/master; nothing to pull.",
-      );
-    });
-  });
-
-  test("未コミット変更と分岐を拒否する", async () => {
-    await withGitRepositories("pull-refuse", async ({ local, seed }) => {
-      await writeFile(path.join(local, "dirty.txt"), "dirty\n");
-      await expect(pullDotfiles(local)).rejects.toThrow("pull requires a clean worktree");
-
-      await git(local, ["add", "dirty.txt"]);
-      await git(local, ["commit", "-m", "local change"]);
-      await writeFile(path.join(seed, "remote.txt"), "remote\n");
-      await git(seed, ["add", "remote.txt"]);
-      await git(seed, ["commit", "-m", "remote change"]);
-      await git(seed, ["push", "origin", "master"]);
-
-      await expect(pullDotfiles(local)).rejects.toThrow(
-        "local master and origin/master have diverged",
-      );
-    });
-  });
-
-  test("master以外のbranchを拒否する", async () => {
-    await withGitRepositories("pull-branch", async ({ local }) => {
-      await git(local, ["switch", "-c", "topic"]);
-      await expect(pullDotfiles(local)).rejects.toThrow(
-        "pull requires branch 'master'; current checkout is 'topic'",
-      );
-    });
-  });
-});
-
-describe("dot applyの確認", () => {
+describe("applyの確認", () => {
   test("標準入力のyesで表示済み計画を適用する", async () => {
     await withDeploymentFixture("apply-confirm", async ({ homeDir, fixtureRoot }) => {
       const result = await runLinkHome(fixtureRoot, homeDir, "yes\n");
