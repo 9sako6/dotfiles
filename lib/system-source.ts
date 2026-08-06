@@ -39,6 +39,7 @@ export type RunGit = (args: string[]) => Promise<string>;
 export type PreparedSystemSource = {
   directory: string;
   kind: "default" | "remote";
+  previousTarget: string | null;
   revision: string;
   url: string | null;
 };
@@ -106,20 +107,26 @@ export async function resolveSystemSource(
 ): Promise<PreparedSystemSource> {
   const publicFlake = path.join(paths.publicDirectory, "flake.nix");
   const selected = await inspectSelection(publicFlake, paths.dataRoot, paths.selectionPath, git);
-  const desired = request.type === "current" ? selected : request;
+  const desired = request.type === "current" ? selected.request : request;
 
   if (desired.type === "default") {
     await access(publicFlake);
     return {
       directory: paths.publicDirectory,
       kind: "default",
+      previousTarget: selected.target,
       revision: await git(["-C", paths.publicDirectory, "rev-parse", "HEAD"]),
       url: null,
     };
   }
 
   const prepared = await prepareRemoteCheckout(paths.dataRoot, desired.url, git);
-  return { ...prepared, kind: "remote", url: desired.url };
+  return {
+    ...prepared,
+    kind: "remote",
+    previousTarget: selected.target,
+    url: desired.url,
+  };
 }
 
 async function inspectSelection(
@@ -127,7 +134,10 @@ async function inspectSelection(
   dataRoot: string,
   selectionPath: string,
   git: RunGit,
-): Promise<{ type: "default" } | { type: "remote"; url: string }> {
+): Promise<{
+  request: { type: "default" } | { type: "remote"; url: string };
+  target: string | null;
+}> {
   let target: string;
   try {
     const stat = await lstat(selectionPath);
@@ -136,12 +146,12 @@ async function inspectSelection(
     target = path.resolve(path.dirname(selectionPath), value);
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return { type: "default" };
+      return { request: { type: "default" }, target: null };
     }
     throw error;
   }
 
-  if (target === publicFlake) return { type: "default" };
+  if (target === publicFlake) return { request: { type: "default" }, target };
   const checkout = path.dirname(target);
   if (
     path.basename(target) !== "flake.nix" ||
@@ -155,7 +165,7 @@ async function inspectSelection(
   if (managedCheckoutPath(dataRoot, url) !== checkout) {
     throw new Error("system source selection does not match its origin");
   }
-  return { type: "remote", url };
+  return { request: { type: "remote", url }, target };
 }
 
 function validateGitUrl(value: string): void {
