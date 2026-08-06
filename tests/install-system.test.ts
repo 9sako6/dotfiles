@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, readlink, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { withTempDir } from "./test-helpers";
 
@@ -243,6 +243,63 @@ exit 1
 });
 
 describe("install:system", () => {
+  test("build済み世代を再評価せずprofileへ設定してactivateする", async () => {
+    await withTempDir("activate-system", async (tempDir) => {
+      const sudoBin = path.join(tempDir, "sudo");
+      const nixBin = path.join(tempDir, "lix", "bin", "nix");
+      const nixEnvBin = path.join(tempDir, "lix", "bin", "nix-env");
+      const rebuildBin = path.join(tempDir, "system", "sw", "bin", "darwin-rebuild");
+      const logPath = path.join(tempDir, "system.log");
+      await makeExecutable(sudoBin, "#!/bin/sh\nexec \"$@\"\n");
+      await makeExecutable(nixBin, "#!/bin/sh\n");
+      await makeExecutable(nixEnvBin, `#!/bin/sh
+printf 'nix-env' >> "$SYSTEM_INSTALL_LOG"
+printf '<%s>' "$@" >> "$SYSTEM_INSTALL_LOG"
+printf '\n' >> "$SYSTEM_INSTALL_LOG"
+`);
+      await makeExecutable(rebuildBin, `#!/bin/sh
+printf 'rebuild:user=%s' "$SUDO_USER" >> "$SYSTEM_INSTALL_LOG"
+printf '<%s>' "$@" >> "$SYSTEM_INSTALL_LOG"
+printf '\n' >> "$SYSTEM_INSTALL_LOG"
+`);
+
+      const result = await runInstallSystemFunction(
+        'install_system_activate_built_system "$1" /usr/bin/env "$2" test-user "$3"',
+        [sudoBin, nixBin, path.join(tempDir, "system")],
+        { SYSTEM_INSTALL_LOG: logPath },
+      );
+
+      expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
+      expect(await readFile(logPath, "utf8")).toBe([
+        `nix-env<-p></nix/var/nix/profiles/system><--set><${path.join(tempDir, "system")}>`,
+        "rebuild:user=test-user<activate>",
+        "",
+      ].join("\n"));
+    });
+  });
+
+  test("確認した値から変わったsource selectionを上書きしない", async () => {
+    await withTempDir("select-system-source", async (tempDir) => {
+      const sudoBin = path.join(tempDir, "sudo");
+      const selection = path.join(tempDir, "etc", "flake.nix");
+      await makeExecutable(sudoBin, "#!/bin/sh\nexec \"$@\"\n");
+
+      const applied = await runInstallSystemFunction(
+        'install_system_select_source "$1" "$2" missing /source/flake.nix',
+        [sudoBin, selection],
+      );
+      expect(applied.exitCode).toBe(0);
+      expect(await readlink(selection)).toBe("/source/flake.nix");
+
+      const refused = await runInstallSystemFunction(
+        'install_system_select_source "$1" "$2" /other/flake.nix /new/flake.nix',
+        [sudoBin, selection],
+      );
+      expect(refused.exitCode).not.toBe(0);
+      expect(await readlink(selection)).toBe("/source/flake.nix");
+    });
+  });
+
   test("公開sourceだけprimary userを渡してimpure buildする", async () => {
     await withTempDir("build-system-source", async (tempDir) => {
       const nixBin = path.join(tempDir, "nix");
