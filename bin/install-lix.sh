@@ -8,7 +8,7 @@ LIX_INSTALLER_VERSION="3.95.0"
 temp_dir=""
 
 fail() {
-  printf 'install:system: %s\n' "$*" >&2
+  printf 'system: %s\n' "$*" >&2
   exit 1
 }
 

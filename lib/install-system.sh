@@ -1,7 +1,7 @@
 #!/bin/sh
 
 install_system_fail() {
-  printf 'install:system: %s\n' "$*" >&2
+  printf 'system: %s\n' "$*" >&2
   exit 1
 }
 
