@@ -52,10 +52,7 @@ else
 fi
 
 [ "$mode" = apply ] || exit 0
-printf 'Apply this system plan? Type yes: '
-if ! IFS= read -r answer || [ "$answer" != yes ]; then
-  install_system_fail "system apply cancelled"
-fi
+install_system_confirm_apply
 
 sudo_bin="$(install_system_resolve_sudo)" ||
   install_system_fail "trusted /usr/bin/sudo was not found"

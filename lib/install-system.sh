@@ -158,6 +158,13 @@ install_system_build_source_output() {
   esac
 }
 
+install_system_confirm_apply() {
+  printf 'Apply this system plan? Type yes: '
+  if ! IFS= read -r answer || [ "$answer" != yes ]; then
+    install_system_fail "system apply cancelled"
+  fi
+}
+
 install_system_activate_built_system() {
   sudo_bin="$1"
   env_bin="$2"

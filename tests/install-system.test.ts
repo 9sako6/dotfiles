@@ -90,6 +90,7 @@ async function runInstallSystemFunction(
   command: string,
   args: string[],
   env: Record<string, string> = {},
+  input?: string,
 ) {
   const proc = Bun.spawn(
     [
@@ -106,9 +107,15 @@ ${command}`,
       cwd: repoRoot,
       env: { ...process.env, ...env },
       stderr: "pipe",
+      stdin: input === undefined ? "ignore" : "pipe",
       stdout: "pipe",
     },
   );
+  if (input !== undefined) {
+    if (!proc.stdin) throw new Error("test stdin is unavailable");
+    proc.stdin.write(input);
+    proc.stdin.end();
+  }
 
   const [exitCode, stderr, stdout] = await Promise.all([
     proc.exited,
@@ -243,6 +250,28 @@ exit 1
 });
 
 describe("install:system", () => {
+  test("system applyは標準入力の正確なyesだけを受け付ける", async () => {
+    const accepted = await runInstallSystemFunction(
+      "install_system_confirm_apply",
+      [],
+      {},
+      "yes\n",
+    );
+    expect(accepted).toMatchObject({ exitCode: 0, stderr: "" });
+    expect(accepted.stdout).toBe("Apply this system plan? Type yes: ");
+
+    for (const input of ["no\n", ""]) {
+      const refused = await runInstallSystemFunction(
+        "install_system_confirm_apply",
+        [],
+        {},
+        input,
+      );
+      expect(refused.exitCode).not.toBe(0);
+      expect(refused.stderr).toContain("system apply cancelled");
+    }
+  });
+
   test("build済み世代を再評価せずprofileへ設定してactivateする", async () => {
     await withTempDir("activate-system", async (tempDir) => {
       const sudoBin = path.join(tempDir, "sudo");
