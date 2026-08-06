@@ -194,6 +194,52 @@ install_system_build_source_output() {
   esac
 }
 
+install_system_activate_built_system() {
+  sudo_bin="$1"
+  env_bin="$2"
+  nix_bin="$3"
+  primary_user="$4"
+  system_path="$5"
+  nix_env_bin="${nix_bin%/nix}/nix-env"
+  rebuild_bin="${system_path}/sw/bin/darwin-rebuild"
+
+  [ -x "$nix_env_bin" ] || install_system_fail "built Lix has no nix-env"
+  [ -x "$rebuild_bin" ] || install_system_fail "built system has no darwin-rebuild"
+  "$sudo_bin" "$nix_env_bin" \
+    -p /nix/var/nix/profiles/system \
+    --set "$system_path"
+  "$sudo_bin" "$env_bin" \
+    SUDO_USER="$primary_user" \
+    "$rebuild_bin" activate
+}
+
+install_system_select_source() {
+  sudo_bin="$1"
+  selection_path="$2"
+  expected_target="$3"
+  desired_target="$4"
+
+  if [ "$expected_target" = missing ]; then
+    [ ! -e "$selection_path" ] && [ ! -L "$selection_path" ] ||
+      install_system_fail "system source selection changed during apply"
+  else
+    [ -L "$selection_path" ] ||
+      install_system_fail "system source selection changed during apply"
+    [ "$(/usr/bin/readlink -- "$selection_path")" = "$expected_target" ] ||
+      install_system_fail "system source selection changed during apply"
+  fi
+
+  selection_dir="$(/usr/bin/dirname -- "$selection_path")"
+  temporary_path="${selection_dir}/.flake.nix.$$"
+  "$sudo_bin" /bin/mkdir -p -- "$selection_dir"
+  "$sudo_bin" /bin/ln -s -- "$desired_target" "$temporary_path" ||
+    install_system_fail "could not stage system source selection"
+  if ! "$sudo_bin" /bin/mv -f -- "$temporary_path" "$selection_path"; then
+    "$sudo_bin" /bin/rm -f -- "$temporary_path"
+    install_system_fail "could not persist system source selection"
+  fi
+}
+
 install_system_main() {
   script_dir="$1"
   repo_dir="$(/usr/bin/dirname -- "$script_dir")"
