@@ -5,6 +5,7 @@ import {
   inspectHomebrew,
   inspectMise,
   inspectSystem,
+  parseHomebrewDeclarationNames,
   runDoctor,
 } from "../lib/doctor";
 import { withTempDir } from "./test-helpers";
@@ -191,6 +192,19 @@ describe("doctorのmise診断", () => {
 });
 
 describe("doctorのHomebrew診断", () => {
+  test("nix-darwinの文字列と詳細指定からpackage名を得る", () => {
+    expect(parseHomebrewDeclarationNames(JSON.stringify([
+      "git",
+      { name: "mas", restart_service: true },
+    ]))).toEqual(new Set(["git", "mas"]));
+  });
+
+  test("名前を持たないHomebrew宣言を拒否する", () => {
+    expect(() => parseHomebrewDeclarationNames(JSON.stringify([{}]))).toThrow(
+      "has no package name",
+    );
+  });
+
   test("宣言済み、未導入、宣言外を区別する", () => {
     const result = inspectHomebrew({
       declaredCasks: new Set(["bitwarden", "ghostty"]),

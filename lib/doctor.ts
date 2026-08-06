@@ -80,6 +80,26 @@ export function inspectHomebrew(options: {
   return { missing, unmanaged };
 }
 
+export function parseHomebrewDeclarationNames(raw: string): Set<string> {
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error("Homebrew declarations are not a list");
+  }
+  const names = parsed.map((entry) => {
+    if (typeof entry === "string") return entry;
+    if (
+      typeof entry === "object" &&
+      entry !== null &&
+      "name" in entry &&
+      typeof entry.name === "string"
+    ) {
+      return entry.name;
+    }
+    throw new Error("Homebrew declaration has no package name");
+  });
+  return new Set(names);
+}
+
 export function inspectSystem(options: {
   activeStorePath: string | null;
   expectedStorePath: string;
