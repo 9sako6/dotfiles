@@ -1,13 +1,14 @@
-{ pkgs, primaryUser, ... }:
+{ config, pkgs, ... }:
 
 let
   homebrewPackages = import ./homebrew-packages.nix;
+  primaryUser = config.system.primaryUser;
 in
 {
   assertions = [
     {
       assertion = primaryUser != "";
-      message = "install:system must provide the primary macOS user";
+      message = "system.primaryUser must name the primary macOS user";
     }
   ];
 
