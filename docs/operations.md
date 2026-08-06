@@ -86,7 +86,30 @@ mise run system:apply --default    # 公開sourceへ戻す
 fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。
 
 private repository は root に `flake.nix` と commit 済みの `flake.lock` を置き、
-`darwinConfigurations.current` を公開する。例は [darwin のガイド](../darwin/README.md)を参照する。
+`darwinConfigurations.current` を公開する。公開できない差分だけを次のように追加する。
+
+```nix
+{
+  inputs.dotfiles.url = "github:9sako6/dotfiles?dir=darwin";
+
+  outputs = { self, dotfiles, ... }: {
+    darwinConfigurations.current = dotfiles.lib.mkDarwinSystem {
+      configurationRevision = self.rev or self.dirtyRev or null;
+      primaryUser = "account-name";
+      modules = [
+        {
+          homebrew.casks = [
+            "private-app"
+          ];
+        }
+      ];
+    };
+  };
+}
+```
+
+公開側は `darwinModules.default` と `lib.mkDarwinSystem` を提供する。public source だけが実行時の
+macOS account name を受け取るため、private root flake では `primaryUser` を明示する。
 source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけであり、未知の既存ファイルや symlink は
 明示引数があっても置換しない。
 
