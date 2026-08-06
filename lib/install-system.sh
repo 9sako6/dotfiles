@@ -164,6 +164,36 @@ install_system_run_darwin_build() {
     "path:${darwin_dir}#darwinConfigurations.${host_platform}.system"
 }
 
+install_system_build_source_output() {
+  nix_bin="$1"
+  primary_user="$2"
+  source_dir="$3"
+  source_kind="$4"
+  output="$5"
+
+  case "$source_kind" in
+    default)
+      DARWIN_PRIMARY_USER="$primary_user" \
+        "$nix_bin" \
+        --extra-experimental-features "nix-command flakes" \
+        build \
+        --impure \
+        --no-link \
+        --print-out-paths \
+        "path:${source_dir}#${output}"
+      ;;
+    remote)
+      "$nix_bin" \
+        --extra-experimental-features "nix-command flakes" \
+        build \
+        --no-link \
+        --print-out-paths \
+        "path:${source_dir}#${output}"
+      ;;
+    *) install_system_fail "unknown system source kind: $source_kind" ;;
+  esac
+}
+
 install_system_main() {
   script_dir="$1"
   repo_dir="$(/usr/bin/dirname -- "$script_dir")"
