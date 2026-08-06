@@ -18,11 +18,13 @@ flowchart TD
     boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
     boundary -->|"home-managed user tools"| home["skill には配備先でも使える一般ルールだけを書く"]
     boundary -->|"system configuration"| system["Mac 全体の設定は darwin/ に置く"]
+    boundary -->|"private system configuration"| private["公開できない差分だけを別の root flake に置く"]
     boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
     boundary -->|"secrets"| secrets["repo と home/ に入れず、最終判断をユーザーに確認する"]
     repo --> change["変更に進む"]
     home --> change
     system --> change
+    private --> change
 ```
 
 ### 生成物
@@ -106,14 +108,15 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
-2. `home-managed user tools` を変更する場合は、`dot plan` で配備状況を確認
+2. `home-managed user tools` を変更する場合は、`mise run plan` で配備状況を確認
 3. 必要な変更を入れる
 4. 「検証」の手順を実施
 5. 変更した管理区分に応じて反映
-   - `home-managed user tools` — `dot apply`
-   - `system configuration` — `mise run install:system`
+   - `home-managed user tools` — `mise run apply`
+   - `system configuration` — `mise run system:apply`
+   - `private system configuration` — private repository を push して `mise run system:apply`
 
-`repo runtime` の変更に反映コマンドはない。`install:system` の初回実行では、
+`repo runtime` の変更に反映コマンドはない。`system:apply` の初回実行では、
 Lix を導入するため途中で `sudo` の認証を求められる。
 
 Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理する。
