@@ -128,42 +128,6 @@ install_system_ensure_lix() {
   printf '%s\n' "$nix_bin"
 }
 
-install_system_run_darwin_rebuild() {
-  sudo_bin="$1"
-  env_bin="$2"
-  nix_bin="$3"
-  primary_user="$4"
-  darwin_dir="$5"
-  host_platform="$6"
-
-  "$sudo_bin" "$env_bin" \
-    DARWIN_PRIMARY_USER="$primary_user" \
-    "$nix_bin" \
-    --extra-experimental-features "nix-command flakes" \
-    run \
-    --impure \
-    "path:${darwin_dir}#darwin-rebuild" \
-    -- \
-    switch \
-    --flake "path:${darwin_dir}#${host_platform}" \
-    --impure
-}
-
-install_system_run_darwin_build() {
-  nix_bin="$1"
-  primary_user="$2"
-  darwin_dir="$3"
-  host_platform="$4"
-
-  DARWIN_PRIMARY_USER="$primary_user" \
-    "$nix_bin" \
-    --extra-experimental-features "nix-command flakes" \
-    build \
-    --impure \
-    --no-link \
-    "path:${darwin_dir}#darwinConfigurations.${host_platform}.system"
-}
-
 install_system_build_source_output() {
   nix_bin="$1"
   primary_user="$2"
@@ -238,56 +202,4 @@ install_system_select_source() {
     "$sudo_bin" /bin/rm -f -- "$temporary_path"
     install_system_fail "could not persist system source selection"
   fi
-}
-
-install_system_main() {
-  script_dir="$1"
-  repo_dir="$(/usr/bin/dirname -- "$script_dir")"
-  darwin_dir="${repo_dir}/darwin"
-  install_lix_script="${script_dir}/install-lix.sh"
-
-  host_platform="$(
-    install_system_host_platform \
-      "$(/usr/bin/uname -s)" \
-      "$(/usr/bin/uname -m)"
-  )"
-
-  if [ "$(/usr/bin/id -u)" = "0" ]; then
-    [ -n "${SUDO_USER:-}" ] ||
-      install_system_fail "run this task as a regular user; it will request sudo itself"
-    primary_user="$SUDO_USER"
-  else
-    primary_user="$(/usr/bin/id -un)"
-  fi
-
-  sudo_bin="$(install_system_resolve_sudo)" ||
-    install_system_fail "trusted /usr/bin/sudo was not found"
-  env_bin="$(install_system_resolve_env)" ||
-    install_system_fail "trusted /usr/bin/env was not found"
-  nix_bin="$(install_system_ensure_lix "$install_lix_script")"
-
-  install_system_run_darwin_rebuild \
-    "$sudo_bin" \
-    "$env_bin" \
-    "$nix_bin" \
-    "$primary_user" \
-    "$darwin_dir" \
-    "$host_platform"
-}
-
-install_system_build_main() {
-  script_dir="$1"
-  repo_dir="$(/usr/bin/dirname -- "$script_dir")"
-  host_platform="$(
-    install_system_host_platform \
-      "$(/usr/bin/uname -s)" \
-      "$(/usr/bin/uname -m)"
-  )"
-  nix_bin="$(install_system_require_lix)"
-
-  install_system_run_darwin_build \
-    "$nix_bin" \
-    "$(/usr/bin/id -un)" \
-    "${repo_dir}/darwin" \
-    "$host_platform"
 }
