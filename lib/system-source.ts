@@ -7,6 +7,32 @@ export type SystemSourceRequest =
   | { type: "default" }
   | { type: "remote"; url: string };
 
+export function parseSystemCommandArgs(args: string[]): {
+  mode: "apply" | "plan";
+  request: SystemSourceRequest;
+} {
+  const [mode, ...sourceArgs] = args;
+  if (mode !== "plan" && mode !== "apply") {
+    throw new Error("usage: system.ts <plan|apply> [--default|git-url]");
+  }
+
+  let gitUrl: string | undefined;
+  let useDefault: string | undefined;
+  for (const argument of sourceArgs) {
+    if (argument === "--default") {
+      if (useDefault) throw new Error("--default may only be specified once");
+      useDefault = "true";
+    } else if (argument.startsWith("-")) {
+      throw new Error(`unknown option: ${argument}`);
+    } else if (gitUrl) {
+      throw new Error("only one Git URL may be specified");
+    } else {
+      gitUrl = argument;
+    }
+  }
+  return { mode, request: parseSystemSourceRequest(gitUrl, useDefault) };
+}
+
 export function parseSystemSourceRequest(
   gitUrl: string | undefined,
   useDefault: string | undefined,

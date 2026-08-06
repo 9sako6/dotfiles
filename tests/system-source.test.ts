@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   managedCheckoutPath,
+  parseSystemCommandArgs,
   parseSystemSourceRequest,
   prepareRemoteCheckout,
   resolveSystemSource,
@@ -38,6 +39,36 @@ async function withGitSource(
 }
 
 describe("system source request", () => {
+  test("system commandのmodeとsourceを一つの契約として読む", () => {
+    expect(parseSystemCommandArgs(["plan"])).toEqual({
+      mode: "plan",
+      request: { type: "current" },
+    });
+    expect(parseSystemCommandArgs(["apply", "--default"])).toEqual({
+      mode: "apply",
+      request: { type: "default" },
+    });
+    expect(parseSystemCommandArgs([
+      "plan",
+      "git@example.test:owner/config.git",
+    ])).toEqual({
+      mode: "plan",
+      request: { type: "remote", url: "git@example.test:owner/config.git" },
+    });
+  });
+
+  test("未知のmode、option、複数sourceを拒否する", () => {
+    for (const args of [
+      [],
+      ["build"],
+      ["plan", "--yes"],
+      ["plan", "--default", "--default"],
+      ["apply", "git@example.test:a.git", "git@example.test:b.git"],
+    ]) {
+      expect(() => parseSystemCommandArgs(args)).toThrow();
+    }
+  });
+
   test("引数なし、default、remoteを異なる状態として扱う", () => {
     expect(parseSystemSourceRequest(undefined, undefined)).toEqual({ type: "current" });
     expect(parseSystemSourceRequest(undefined, "true")).toEqual({ type: "default" });

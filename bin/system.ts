@@ -4,40 +4,22 @@ import { userInfo } from "node:os";
 import path from "node:path";
 import { resolveRepoRoot } from "../lib/paths";
 import {
-  parseSystemSourceRequest,
+  parseSystemCommandArgs,
   resolveSystemSource,
   systemSourceDataRoot,
 } from "../lib/system-source";
 
 async function main(): Promise<void> {
-  const [mode, ...args] = Bun.argv.slice(2);
-  if (mode !== "plan" && mode !== "apply") {
-    throw new Error("usage: system.ts <plan|apply> [--default|git-url]");
-  }
+  const { mode, request } = parseSystemCommandArgs(Bun.argv.slice(2));
   if (process.getuid?.() === 0) {
     throw new Error("run system tasks as the login user; sudo is requested when needed");
-  }
-
-  let gitUrl: string | undefined;
-  let useDefault: string | undefined;
-  for (const argument of args) {
-    if (argument === "--default") {
-      if (useDefault) throw new Error("--default may only be specified once");
-      useDefault = "true";
-    } else if (argument.startsWith("-")) {
-      throw new Error(`unknown option: ${argument}`);
-    } else if (gitUrl) {
-      throw new Error("only one Git URL may be specified");
-    } else {
-      gitUrl = argument;
-    }
   }
 
   const homeDir = Bun.env.HOME;
   if (!homeDir) throw new Error("HOME is not set");
   const repoRoot = await resolveRepoRoot(import.meta.path);
   const source = await resolveSystemSource(
-    parseSystemSourceRequest(gitUrl, useDefault),
+    request,
     {
       dataRoot: systemSourceDataRoot(homeDir, Bun.env.XDG_DATA_HOME),
       publicDirectory: path.join(repoRoot, "darwin"),
