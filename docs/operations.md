@@ -47,32 +47,32 @@ curl -fsSL https://dot.9sako6.com | sh
 ```
 
 既存ファイルは `~/.dotfiles-backups/` に退避される。
+system と home に変更がある場合は、それぞれ表示された plan に対して正確に `yes` と入力する。
+`curl | sh` では確認入力だけを制御端末から読み、download 中の script を回答として消費しない。
 
 ## 日常コマンド
 
 ```sh
-dot pull            # origin/master の変更を fast-forward で取得
-dot plan            # 配備計画を表示（filesystem は変更しない）
-dot apply           # 計画を確認して home/ を home directory に反映
-dot doctor          # 配備、mise、system、Homebrewのドリフトを診断
-mise run install:system # Lix と nix-darwin で macOS の設定を反映
-mise run test       # 契約テストを実行
+git pull                       # 公開dotfilesを通常のGit操作で更新
+mise run apply                 # home planを確認して反映
+mise run doctor                # 配備、mise、system、Homebrewを診断
+mise run plan                  # home planを表示
+mise run system:apply          # 選択中のsystem sourceを確認して反映
+mise run system:plan           # 選択中のsystem sourceのplanを表示
+mise run system:rollback       # 直前のnix-darwin世代へ戻す
+mise run test                  # 契約テストを実行
 ```
 
 他の task は `mise tasks` で一覧できる。
 
 ## ロールバック
 
-- `mise run install:system:generations` — nix-darwin の世代一覧を表示
-- `mise run install:system:rollback` — 直前の世代へ戻して再 activation する
-
-`install:system:rollback` は flake を評価せず、保持済みの世代へ切り替えるため、
-設定が壊れて `install:system` が失敗しても戻せる。特定の世代へ戻す場合は
-`sudo /run/current-system/sw/bin/darwin-rebuild --switch-generation <N>` を使う。
+`mise run system:rollback` は remote の取得や flake の評価をせず、保持済みの直前の世代へ戻す。
+system source の選択は変えないため、次の `system:plan` は同じ source を診断する。
 
 Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 に実行し、14日を超えた世代を削除する。
 削除された世代へはロールバックできない。手動で `nix-collect-garbage` を実行する場合も、
-事前に `install:system:generations` でロールバック候補を確認すること。
+削除対象に必要な世代が含まれないことを確認してから実行する。
 
 ## 検証
 
