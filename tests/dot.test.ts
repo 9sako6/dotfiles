@@ -6,6 +6,15 @@ import { withTempDir, writeTree } from "./test-helpers";
 const repoRoot = path.resolve(import.meta.dir, "..");
 
 describe("applyの確認", () => {
+  test("entrypointの引数なしapplyを拒否する", async () => {
+    const result = await runProcess(
+      [process.execPath, path.join(repoRoot, "bin/link-home.ts")],
+      repoRoot,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Unknown link-home arguments");
+  });
+
   test("標準入力のyesで表示済み計画を適用する", async () => {
     await withDeploymentFixture("apply-confirm", async ({ homeDir, fixtureRoot }) => {
       const result = await runLinkHome(fixtureRoot, homeDir, "yes\n");

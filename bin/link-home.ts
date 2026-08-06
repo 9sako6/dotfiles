@@ -32,28 +32,22 @@ async function main() {
 
   await withDeploymentLock(statePath, async () => {
     const plan = await createPlan();
-    if (mode === "confirm") {
-      console.log(formatPlan(plan));
-      const actionCount = plan.actions.filter((action) => action.type !== "noop").length;
-      if (actionCount === 0) {
-        return;
-      }
-      if (!(await confirmApply())) {
-        console.log("Apply cancelled.");
-        process.exitCode = 1;
-        return;
-      }
-      await runLinkPlan(plan);
-      console.log(`Applied ${actionCount} ${actionCount === 1 ? "change" : "changes"}.`);
+    console.log(formatPlan(plan));
+    const actionCount = plan.actions.filter((action) => action.type !== "noop").length;
+    if (actionCount === 0) {
+      return;
+    }
+    if (!(await confirmApply())) {
+      console.log("Apply cancelled.");
+      process.exitCode = 1;
       return;
     }
     await runLinkPlan(plan);
-    console.log(formatPlan(plan));
+    console.log(`Applied ${actionCount} ${actionCount === 1 ? "change" : "changes"}.`);
   });
 }
 
-function parseMode(args: string[]): "apply" | "confirm" | "plan" {
-  if (args.length === 0) return "apply";
+function parseMode(args: string[]): "confirm" | "plan" {
   if (args.length === 1 && args[0] === "--check") return "plan";
   if (args.length === 1 && args[0] === "--confirm") return "confirm";
   throw new Error(`Unknown link-home arguments: ${args.join(" ")}`);
