@@ -14,6 +14,10 @@ import {
 } from "../lib/doctor";
 import { planLinkActions, summarizeLinkPlan } from "../lib/link-home";
 import { managedHomeRoot, resolveRepoRoot } from "../lib/paths";
+import {
+  inspectSelectedSystemSource,
+  systemSourceDataRoot,
+} from "../lib/system-source";
 
 async function main() {
   const homeDir = process.env.HOME;
@@ -32,7 +36,7 @@ async function main() {
       title: "mise",
     },
     {
-      inspect: () => inspectSystemConfiguration(repoRoot),
+      inspect: () => inspectSystemConfiguration(repoRoot, homeDir),
       title: "system",
     },
     {
@@ -46,24 +50,37 @@ async function main() {
   }
 }
 
-async function inspectSystemConfiguration(repoRoot: string): Promise<DoctorSectionContent> {
+async function inspectSystemConfiguration(
+  repoRoot: string,
+  homeDir: string,
+): Promise<DoctorSectionContent> {
   const nixPath = await findNix();
   if (!nixPath) {
     return {
       findings: ["system declarations cannot be evaluated"],
-      nextSteps: ["mise run install:system"],
+      nextSteps: ["mise run system:apply"],
       summary: "Nix is unavailable",
     };
   }
 
-  const expectedStorePath = (await run(nixPath, [
+  const source = await inspectSelectedSystemSource({
+    dataRoot: systemSourceDataRoot(homeDir, Bun.env.XDG_DATA_HOME),
+    publicDirectory: path.join(repoRoot, "darwin"),
+    selectionPath: "/etc/nix-darwin/flake.nix",
+  });
+  const nixArgs = [
     "--extra-experimental-features",
     "nix-command flakes",
     "eval",
     "--raw",
-    "--impure",
-    `path:${path.join(repoRoot, "darwin")}#darwinConfigurations.aarch64-darwin.system`,
-  ], { DARWIN_PRIMARY_USER: userInfo().username })).trim();
+  ];
+  if (source.kind === "default") nixArgs.push("--impure");
+  nixArgs.push(`path:${source.directory}#darwinConfigurations.current.system`);
+  const expectedStorePath = (await run(
+    nixPath,
+    nixArgs,
+    source.kind === "default" ? { DARWIN_PRIMARY_USER: userInfo().username } : undefined,
+  )).trim();
   const currentSystem = "/run/current-system";
   const activeStorePath = await exists(currentSystem) ? await realpath(currentSystem) : null;
   const inventory = inspectSystem({ activeStorePath, expectedStorePath });
@@ -79,7 +96,7 @@ async function inspectSystemConfiguration(repoRoot: string): Promise<DoctorSecti
     findings: [inventory.status === "missing"
       ? "no active nix-darwin system was found"
       : "active system does not match repository declarations"],
-    nextSteps: ["mise run install:system"],
+    nextSteps: ["mise run system:apply"],
     summary: "system configuration is not active",
   };
 }
