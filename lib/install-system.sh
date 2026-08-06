@@ -165,6 +165,20 @@ install_system_confirm_apply() {
   fi
 }
 
+install_system_show_homebrew_cleanup() {
+  brew_bin="$1"
+  brewfile_path="$2"
+  cleanup_status=0
+  cleanup_output="$(
+    HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" bundle cleanup --file "$brewfile_path" 2>&1
+  )" || cleanup_status=$?
+  [ -z "$cleanup_output" ] || printf '%s\n' "$cleanup_output"
+  case "$cleanup_status" in
+    0 | 1) ;;
+    *) install_system_fail "Homebrew cleanup plan failed" ;;
+  esac
+}
+
 install_system_activate_built_system() {
   sudo_bin="$1"
   env_bin="$2"

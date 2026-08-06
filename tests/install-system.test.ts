@@ -250,6 +250,34 @@ exit 1
 });
 
 describe("install:system", () => {
+  test("Homebrew cleanupの候補ありと実行失敗を区別する", async () => {
+    await withTempDir("homebrew-cleanup-plan", async (tempDir) => {
+      const brewBin = path.join(tempDir, "brew");
+      await makeExecutable(brewBin, `#!/bin/sh
+printf '%s\n' 'Would uninstall: unmanaged'
+exit "\${BREW_EXIT_STATUS}"
+`);
+      const candidates = await runInstallSystemFunction(
+        'install_system_show_homebrew_cleanup "$1" /Brewfile',
+        [brewBin],
+        { BREW_EXIT_STATUS: "1" },
+      );
+      expect(candidates).toMatchObject({
+        exitCode: 0,
+        stderr: "",
+        stdout: "Would uninstall: unmanaged\n",
+      });
+
+      const failure = await runInstallSystemFunction(
+        'install_system_show_homebrew_cleanup "$1" /Brewfile',
+        [brewBin],
+        { BREW_EXIT_STATUS: "2" },
+      );
+      expect(failure.exitCode).not.toBe(0);
+      expect(failure.stderr).toContain("Homebrew cleanup plan failed");
+    });
+  });
+
   test("system applyは標準入力の正確なyesだけを受け付ける", async () => {
     const accepted = await runInstallSystemFunction(
       "install_system_confirm_apply",

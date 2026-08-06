@@ -46,7 +46,7 @@ fi
 
 if brew_bin="$(command -v brew 2>/dev/null)"; then
   printf 'Homebrew cleanup candidates:\n'
-  HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" bundle cleanup --file "$brewfile_path"
+  install_system_show_homebrew_cleanup "$brew_bin" "$brewfile_path"
 else
   printf 'Homebrew cleanup candidates: brew is not active yet\n'
 fi
