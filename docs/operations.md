@@ -85,27 +85,18 @@ mise run system:apply --default    # 公開sourceへ戻す
 世代だけを activation する。plan には system closure の差分と Homebrew cleanup 候補が現れる。
 fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。
 
-private repository は root に `flake.nix` と commit 済みの `flake.lock` を置き、
-`darwinConfigurations.current` を公開する。公開できない差分だけを次のように追加する。
+private repository は `darwin/flake.nix.template` を root の `flake.nix` としてコピーし、
+`primaryUser` を実際の macOS account name に置き換える。公開できない差分だけを `modules` に追加し、
+`nix flake lock` で生成した `flake.lock` と一緒に commit する。
 
 ```nix
-{
-  inputs.dotfiles.url = "github:9sako6/dotfiles?dir=darwin";
-
-  outputs = { self, dotfiles, ... }: {
-    darwinConfigurations.current = dotfiles.lib.mkDarwinSystem {
-      configurationRevision = self.rev or self.dirtyRev or null;
-      primaryUser = "account-name";
-      modules = [
-        {
-          homebrew.casks = [
-            "private-app"
-          ];
-        }
-      ];
-    };
-  };
-}
+modules = [
+  {
+    homebrew.casks = [
+      "private-app"
+    ];
+  }
+];
 ```
 
 公開側は `darwinModules.default` と `lib.mkDarwinSystem` を提供する。public source だけが実行時の
