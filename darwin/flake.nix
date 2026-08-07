@@ -3,13 +3,13 @@
 
   inputs = {
     nix-darwin = {
-      url = "github:nix-darwin/nix-darwin/c3e90c89649b07d1a96e4b9dd6cd0d6e44b91a74";
+      url = "github:nix-darwin/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nix-homebrew.url = "github:zhaofengli/nix-homebrew/937ce52c7d046310571f3a070713804ead496843";
-    nixpkgs.url = "github:NixOS/nixpkgs/705e9929918b43bd7b715dc0a878ac870449bb03";
+    nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     zundamonotify = {
-      url = "github:9sako6/zundamonotify/47910c54e5eaf2f7c5464f7c36686f1870e5db16";
+      url = "github:9sako6/zundamonotify";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

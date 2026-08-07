@@ -1,0 +1,35 @@
+#!/usr/bin/env bun
+
+import path from "node:path";
+import { resolveRepoRoot } from "../lib/paths";
+
+async function run(command: string[], cwd: string): Promise<void> {
+  console.log(`$ ${command.join(" ")}`);
+  const process = Bun.spawn(command, {
+    cwd,
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  const exitCode = await process.exited;
+  if (exitCode !== 0) {
+    throw new Error(`${command[0]} exited with status ${exitCode}`);
+  }
+}
+
+async function main(): Promise<void> {
+  const repoRoot = await resolveRepoRoot(import.meta.path);
+  const publicFlake = path.join(repoRoot, "darwin");
+
+  console.log("==> update public nix-darwin inputs");
+  await run(["nix", "flake", "update", "--flake", publicFlake], repoRoot);
+
+  console.log("==> validate public system");
+  await run(["mise", "run", "system:plan", "--default"], repoRoot);
+  await run(["mise", "run", "test"], repoRoot);
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
+});
