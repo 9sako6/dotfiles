@@ -62,6 +62,10 @@ description = "Build and show a macOS system plan"
 run = "./bin/system-rollback.sh"
 description = "Switch to the previous nix-darwin generation"
 
+[tasks."system:update"]
+run = "./bin/system-update.ts"
+description = "Update macOS system flake inputs, then validate"
+
 [tasks.test]
 run = [
   "bun install --frozen-lockfile",
