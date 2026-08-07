@@ -58,8 +58,8 @@ git push
 初回は credential を含まない SSH または HTTPS clone URL を指定する。
 
 ```sh
-mise run system:plan ssh://git@example.com/owner/private-dotfiles.git
-mise run system:apply ssh://git@example.com/owner/private-dotfiles.git
+mise run system:plan git@example.com/owner/private-dotfiles.git
+mise run system:apply git@example.com/owner/private-dotfiles.git
 ```
 
 `system:plan` は build と差分表示だけを行い、使用する source を変更しない。
