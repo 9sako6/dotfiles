@@ -88,17 +88,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1786107150,
+        "lastModified": 1786108629,
         "narHash": "sha256-hia1wKgsevyGowDUSmto245sjcRbRJl5ueWq3sBJ7sY=",
         "owner": "9sako6",
         "repo": "zundamonotify",
-        "rev": "f8c462286da33ec5531032d1aa915cad914f788c",
+        "rev": "47910c54e5eaf2f7c5464f7c36686f1870e5db16",
         "type": "github"
       },
       "original": {
         "owner": "9sako6",
         "repo": "zundamonotify",
-        "rev": "f8c462286da33ec5531032d1aa915cad914f788c",
+        "rev": "47910c54e5eaf2f7c5464f7c36686f1870e5db16",
         "type": "github"
       }
     }
