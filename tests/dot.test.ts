@@ -41,6 +41,16 @@ describe("applyの確認", () => {
     });
   });
 
+  test("標準入力が開いた端末からCRだけで確定できる", async () => {
+    await withDeploymentFixture("apply-open-stdin-cr", async ({ homeDir, fixtureRoot }) => {
+      const result = await runLinkHomeWithOpenInput(fixtureRoot, homeDir, "yes\r");
+
+      expect(result.timedOut).toBe(false);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Applied 1 change.");
+    });
+  });
+
   test("yes以外では変更せず失敗終了する", async () => {
     await withDeploymentFixture("apply-cancel", async ({ homeDir, fixtureRoot }) => {
       const result = await runLinkHome(fixtureRoot, homeDir, "no\n");

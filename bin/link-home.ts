@@ -67,9 +67,9 @@ async function confirmApply(): Promise<boolean> {
     };
     reader.on("data", (chunk: string) => {
       input += chunk;
-      const newlineIndex = input.indexOf("\n");
+      const newlineIndex = input.search(/[\r\n]/);
       if (newlineIndex !== -1) {
-        finish(input.slice(0, newlineIndex).replace(/\r$/, "") === "yes");
+        finish(input.slice(0, newlineIndex) === "yes");
       }
     });
     reader.on("end", () => finish(input.replace(/\r$/, "") === "yes"));
