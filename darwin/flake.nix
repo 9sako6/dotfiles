@@ -9,7 +9,7 @@
     nix-homebrew.url = "github:zhaofengli/nix-homebrew/937ce52c7d046310571f3a070713804ead496843";
     nixpkgs.url = "github:NixOS/nixpkgs/705e9929918b43bd7b715dc0a878ac870449bb03";
     zundamonotify = {
-      url = "github:9sako6/zundamonotify/7fde2f46791c4664ebf363c89d1319e17e19b698";
+      url = "github:9sako6/zundamonotify/f8c462286da33ec5531032d1aa915cad914f788c";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
