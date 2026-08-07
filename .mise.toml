@@ -17,21 +17,34 @@ description = "Install an agents skill via apm, then build agents resources"
 run = "./bin/build-agents.ts remove-local"
 description = "Remove a repository-owned local agents skill, then build agents resources"
 
-[tasks."agents:update"]
-run = "./bin/build-agents.ts update"
-description = "Update an agents skill via apm, then build agents resources"
-
 [tasks."agents:uninstall"]
 run = "./bin/build-agents.ts uninstall"
 description = "Uninstall an agents skill via apm, then build agents resources"
 
-[tasks."mybin:build"]
-run = "./bin/build-tada.sh"
-description = "Build reproducible mybin assets"
+[tasks."agents:update"]
+run = "./bin/build-agents.ts update"
+description = "Update an agents skill via apm, then build agents resources"
 
 [tasks.apply]
 run = "./bin/link-home.ts --confirm"
 description = "Apply the managed home tree to the home directory"
+
+[tasks.doctor]
+run = "./bin/doctor.ts"
+description = "Diagnose deployment, system, and package-manager drift"
+
+[tasks."herdr:integrations:apply"]
+run = [
+  "herdr integration install claude",
+  "herdr integration install codex",
+  "herdr integration install hermes",
+  "herdr integration install opencode",
+]
+description = "Reconcile Herdr integrations"
+
+[tasks."mybin:build"]
+run = "./bin/build-tada.sh"
+description = "Build reproducible mybin assets"
 
 [tasks.plan]
 run = "./bin/link-home.ts --check"
@@ -56,7 +69,3 @@ run = [
   "bun test ./tests ./home/.apm/skills/create-anki-cards/tools/anki-cards.test.ts",
 ]
 description = "Run the dotfiles test suite"
-
-[tasks.doctor]
-run = "./bin/doctor.ts"
-description = "Diagnose deployment, system, and package-manager drift"
