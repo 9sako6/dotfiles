@@ -96,19 +96,20 @@ Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理す�
 
 ## 公開側の依存を更新する
 
-`nix-darwin`、`nix-homebrew`、`nixpkgs`、`zundamonotify` を更新するときは、
-`flake.nix` の参照先を commit SHA で指定し直してから lock file を更新する。
+`nix-darwin`、`nix-homebrew`、`nixpkgs`、`zundamonotify` の具体的な revision は
+`flake.lock` で固定する。通常は `flake.nix` に commit SHA を書かない。
 
 ```sh
-nix flake lock ./darwin
-mise run system:plan --default
-mise run test
-mise run system:apply --default
+mise run system:update
 ```
 
-`flake.lock` は手で編集しない。更新後は `flake.nix` と `flake.lock` の差分を一緒に確認する。
-private source を使い続ける場合は、公開側を push した後、private repository でも
-`nix flake lock`、commit、push を行ってから private source を反映する。
+この task は `darwin/flake.lock` を更新したあと、公開構成の `system:plan --default` と test suite を実行する。
+commit、push、apply は行わないため、差分を確認してから明示的に実行する。
+
+private repository など、この公開設定へ依存する flake の更新は依存側で管理する。
+public repository 側は依存先の repository 名、配置、更新方法を持たない。
+
+`flake.lock` は手で編集しない。
 
 ## ロールバック
 
