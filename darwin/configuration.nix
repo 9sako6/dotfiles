@@ -3,6 +3,7 @@
 let
   homebrewPackages = import ./homebrew-packages.nix;
   primaryUser = config.system.primaryUser;
+  screenshotDirectory = "/Users/${primaryUser}/screenshots";
 in
 {
   assertions = [
@@ -63,7 +64,7 @@ in
     activationScripts = {
       # スクリーンショット保存先のディレクトリを用意する
       screenshotDirectory.text = ''
-        install -d -o "${primaryUser}" -g "$(id -gn "${primaryUser}")" "/Users/${primaryUser}/screenshots"
+        install -d -o "${primaryUser}" -g "$(id -gn "${primaryUser}")" "${screenshotDirectory}"
       '';
     };
 
@@ -115,7 +116,7 @@ in
       };
 
       # スクリーンショットの保存先
-      screencapture.location = "~/screenshots";
+      screencapture.location = screenshotDirectory;
     };
     keyboard = {
       # キーの割り当て変更を有効にする
