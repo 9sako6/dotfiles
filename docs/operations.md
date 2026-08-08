@@ -86,7 +86,7 @@ mise run apply --default    # 公開sourceへ戻す
 `plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
 変更しない。Lix がなければ失敗する。`apply` は必要なら Lix を導入し、表示した同じ build 済み
 世代だけを activation する。Home Manager の activation もこの system activation に含まれる。
-plan には system closure の差分と Homebrew cleanup 候補が現れる。
+plan には system closure の差分、Homebrew の未導入dependency、cleanup候補が現れる。
 fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。`apply` は activation と
 source 選択を一度の `sudo` 実行で完了し、長い activation の後に認証を再要求しない。同じ source
 selection を使う `apply` が実行中なら、後から開始した処理を拒否する。
