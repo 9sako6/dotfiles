@@ -26,12 +26,8 @@ run = "./bin/build-agents.ts update"
 description = "Update an agents skill via apm, then build agents resources"
 
 [tasks.apply]
-run = "./bin/link-home.ts --confirm"
-description = "Apply the managed home tree to the home directory"
-
-[tasks.doctor]
-run = "./bin/doctor.ts"
-description = "Diagnose deployment, system, and package-manager drift"
+run = "./bin/system.ts apply"
+description = "Plan and apply the macOS system and home configuration"
 
 [tasks."herdr:integrations:apply"]
 run = [
@@ -47,16 +43,8 @@ run = "./bin/build-tada.sh"
 description = "Build reproducible mybin assets"
 
 [tasks.plan]
-run = "./bin/link-home.ts --check"
-description = "Show planned deploy actions without changing the filesystem"
-
-[tasks."system:apply"]
-run = "./bin/system.ts apply"
-description = "Plan and apply a macOS system source"
-
-[tasks."system:plan"]
 run = "./bin/system.ts plan"
-description = "Build and show a macOS system plan"
+description = "Build and show the macOS system and home plan"
 
 [tasks."system:rollback"]
 run = "./bin/system-rollback.sh"

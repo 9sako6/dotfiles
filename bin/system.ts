@@ -22,7 +22,7 @@ async function main(): Promise<void> {
     request,
     {
       dataRoot: systemSourceDataRoot(homeDir, Bun.env.XDG_DATA_HOME),
-      publicDirectory: path.join(repoRoot, "darwin"),
+      publicDirectory: repoRoot,
       selectionPath: "/etc/nix-darwin/flake.nix",
     },
   );
@@ -41,6 +41,10 @@ async function main(): Promise<void> {
     source.previousTarget ?? "missing",
     path.join(source.directory, "flake.nix"),
   ], {
+    env: {
+      ...Bun.env,
+      DOTFILES_DIR: repoRoot,
+    },
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
