@@ -18,10 +18,10 @@ describe("doctorの診断実行", () => {
     const result = await runDoctor([
       {
         inspect: async () => {
-          visited.push("deployment");
+          visited.push("system");
           return { findings: [], nextSteps: [], summary: "converged" };
         },
-        title: "deployment",
+        title: "system",
       },
       {
         inspect: async () => {
@@ -39,10 +39,10 @@ describe("doctorの診断実行", () => {
       },
     ]);
 
-    expect(visited.sort()).toEqual(["deployment", "homebrew", "mise"]);
+    expect(visited.sort()).toEqual(["homebrew", "mise", "system"]);
     expect(result.failed).toBe(true);
     expect(result.output).toBe([
-      "[deployment]",
+      "[system]",
       "  converged",
       "",
       "[mise]",
@@ -75,10 +75,10 @@ describe("doctorの診断実行", () => {
 
       expect(exitCode).toBe(1);
       expect(stderr).toBe("");
-      expect(stdout).toContain("[deployment]\n");
       expect(stdout).toContain("[mise]\n  diagnosis failed\n");
       expect(stdout).toContain("[system]\n");
       expect(stdout).toContain("[homebrew]\n");
+      expect(stdout).not.toContain("[deployment]\n");
     });
   });
 
@@ -102,10 +102,10 @@ describe("doctorの診断実行", () => {
 
       expect(exitCode).toBe(1);
       expect(stderr).toBe("");
-      expect(stdout).toContain("[deployment]\n");
       expect(stdout).toContain("[mise]\n  diagnosis failed\n");
       expect(stdout).toContain("[system]\n");
       expect(stdout).toContain("[homebrew]\n");
+      expect(stdout).not.toContain("[deployment]\n");
     });
   });
 
@@ -117,7 +117,7 @@ describe("doctorの診断実行", () => {
           nextSteps: [],
           summary: "1 finding",
         }),
-        title: "deployment",
+        title: "system",
       },
     ]);
 
