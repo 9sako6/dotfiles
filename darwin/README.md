@@ -23,7 +23,7 @@ Home Manager は nix-darwin module として組み込む。通常の設定ファ
 
 APMが生成する `.agents`、`.claude`、`.codex` はNix store由来のleaf linkにして、agentが管理対象ファイルへ書き込んでもsource repositoryへ逆流しないようにする。どちらの方式でもディレクトリ自体は占有せず、local-only、secrets、runtime fileと共存できる。
 
-home の反映も `plan` / `apply` に含まれる。これは `system:plan` / `system:apply` のaliasであり、standaloneのhome deployerは使わない。
+home の計画と反映も `plan` / `apply` に含まれる。standaloneのhome deployerや別名taskは使わない。
 
 ## 公開設定を変更する
 
@@ -31,7 +31,6 @@ home の反映も `plan` / `apply` に含まれる。これは `system:plan` / `
 2. `mise run plan --default` で、Mac へ反映せずに build と差分を確認する。
 3. `mise run test` を実行する。
 4. `mise run apply --default` で反映する。
-5. `mise run doctor` で未反映の設定がないことを確認する。
 
 `apply` は必要に応じて Lix を導入し、`sudo` の認証を求める。
 設定の反映には `darwin-rebuild` を直接実行せず、この task を使う。
