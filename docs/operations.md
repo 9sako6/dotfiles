@@ -17,7 +17,7 @@ flowchart TD
     proposal --> ask["ユーザーに確認する"]
     boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
     boundary -->|"home-managed user tools"| home["skill には配備先でも使える一般ルールだけを書く"]
-    boundary -->|"system configuration"| system["Mac 全体の設定は darwin/ に置く"]
+    boundary -->|"system configuration"| system["Mac 全体の設定は root flake と darwin/ に置く"]
     boundary -->|"private system configuration"| private["公開できない差分だけを別の root flake に置く"]
     boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
     boundary -->|"secrets"| secrets["repo と home/ に入れず、最終判断をユーザーに確認する"]
@@ -48,24 +48,27 @@ flowchart TD
 curl -fsSL https://dot.9sako6.com | sh
 ```
 
-既存ファイルは `~/.dotfiles-backups/` に退避される。
-system と home に変更がある場合は、それぞれ表示された plan に対して正確に `yes` と入力する。
+Home Manager は nix-darwin module として組み込まれているため、system と home は同じ `apply` で反映する。
+旧 home deployer から初めて移行するとき、Home Manager が管理する既存ファイルとの衝突は `.pre-home-manager` suffix へ退避される。
 `curl | sh` では確認入力だけを制御端末から読み、download 中の script を回答として消費しない。
 
 ## 日常コマンド
 
 ```sh
 git pull                       # 公開dotfilesを通常のGit操作で更新
-mise run apply                 # home planを確認して反映
-mise run doctor                # 配備、mise、system、Homebrewを診断
-mise run plan                  # home planを表示
-mise run system:apply          # 選択中のsystem sourceを確認して反映
-mise run system:plan           # 選択中のsystem sourceのplanを表示
+mise run apply                 # system + Home Managerを確認して反映
+mise run plan                  # system + Home Managerをbuildしてplanを表示
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
 mise run test                  # 契約テストを実行
 ```
 
-他の task は `mise tasks` で一覧できる。
+他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
+
+公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。同じflakeが両方を所有するため、Home Managerはtracked `home/` treeをflake sourceから列挙できる。
+
+通常の設定ファイルと `.config`、`.zsh.d`、`mybin` はlive dotfiles checkoutへのout-of-store linkにして、編集を即時反映する。
+APMが生成する `.agents`、`.claude`、`.codex` はNix store由来のleaf linkにして、Claude CodeやCodexなどによる書き込みがsource repositoryへ逆流しないようにする。いずれもディレクトリ自体は占有しないため、local-only、secrets、runtime fileと共存できる。
+public system は `plan` / `apply` を実行している checkout を自動で使う。private root flake が既定の `~/dotfiles` 以外を使う場合は、`lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
 
 ## system source
 
@@ -74,18 +77,19 @@ mise run test                  # 契約テストを実行
 HTTPS clone URL の remote default branch を取得し、push 済みの最新 commit を使う。
 
 ```sh
-mise run system:plan <clone-url>   # 別sourceを試すが選択は変えない
-mise run system:apply <clone-url>  # 成功後にsourceを選択する
-mise run system:plan --default     # 公開sourceを試す
-mise run system:apply --default    # 公開sourceへ戻す
+mise run plan <clone-url>   # 別sourceを試すが選択は変えない
+mise run apply <clone-url>  # 成功後にsourceを選択する
+mise run plan --default     # 公開sourceを試す
+mise run apply --default    # 公開sourceへ戻す
 ```
 
-`system:plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
-変更しない。Lix がなければ失敗する。`system:apply` は必要なら Lix を導入し、表示した同じ build 済み
-世代だけを activation する。plan には system closure の差分と Homebrew cleanup 候補が現れる。
-fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。`system:apply` は activation と
+`plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
+変更しない。Lix がなければ失敗する。`apply` は必要なら Lix を導入し、表示した同じ build 済み
+世代だけを activation する。Home Manager の activation もこの system activation に含まれる。
+plan には system closure の差分、Homebrew の未導入dependency、cleanup候補が現れる。
+fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。`apply` は activation と
 source 選択を一度の `sudo` 実行で完了し、長い activation の後に認証を再要求しない。同じ source
-selection を使う `system:apply` が実行中なら、後から開始した処理を拒否する。
+selection を使う `apply` が実行中なら、後から開始した処理を拒否する。
 
 private repository は `darwin/flake.nix.template` を root の `flake.nix` としてコピーし、
 `primaryUser` を実際の macOS account name に置き換える。公開できない差分だけを `modules` に追加し、
@@ -102,14 +106,14 @@ modules = [
 ```
 
 公開側は `darwinModules.default` と `lib.mkDarwinSystem` を提供する。public source だけが実行時の
-macOS account name を受け取るため、private root flake では `primaryUser` を明示する。
+macOS account name と live dotfiles checkout を受け取るため、private root flake では `primaryUser` を明示する。
 source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけであり、未知の既存ファイルや symlink は
-明示引数があっても置換しない。
+明示引数があっても置換しない。旧公開sourceの `darwin/flake.nix` を指すselectionは、次の成功したapplyでroot `flake.nix`へ移行する。
 
 ## ロールバック
 
 `mise run system:rollback` は remote の取得や flake の評価をせず、保持済みの直前の世代へ戻す。
-system source の選択は変えないため、次の `system:plan` は同じ source を診断する。
+system source の選択は変えないため、次の `plan` は同じ source を診断する。
 
 Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 に実行し、14日を超えた世代を削除する。
 削除された世代へはロールバックできない。手動で `nix-collect-garbage` を実行する場合も、
@@ -124,24 +128,17 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
-2. `home-managed user tools` を変更する場合は、`mise run plan` で配備状況を確認
+2. `home-managed user tools` を変更する場合は、`mise run plan` で配備を含む system generation を確認
 3. 必要な変更を入れる
 4. 「検証」の手順を実施
 5. 変更した管理区分に応じて反映
    - `home-managed user tools` — `mise run apply`
-   - `system configuration` — `mise run system:apply`
-   - `private system configuration` — private repository を push して `mise run system:apply`
+   - `system configuration` — `mise run apply`
+   - `private system configuration` — private repository を push して `mise run apply`
 
-`repo runtime` の変更に反映コマンドはない。`system:apply` の初回実行では、
+`repo runtime` の変更に反映コマンドはない。`apply` の初回実行では、
 Lix を導入するため途中で `sudo` の認証を求められる。
 
-Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理する。
+Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、home directory の共有設定は Home Manager が管理する。
 
-GitHub-hosted macOS runner には管理外の Homebrew が導入済みのため、CI は system derivation の
-build までを検証し、activation は行わない。新規 Mac への activation の E2E は、Homebrew のない
-VM または実機で確認する。公開インストールの smoke test も user environment の導入と system
-derivation の build を分けて検証する。
-
-`apply` は配備したファイルを local state に記録する。後から `home/` のファイルを削除すると、
-未変更の配備先は次回の `plan` に退避対象として現れ、`apply` でバックアップへ移る。
-配備後に差し替えたり編集したファイルは自動では移動せず、ドリフトとして報告される。
+GitHub-hosted macOS runner ではHome Managerのuser activationとsystem derivationのbuildを分けて検証し、nix-darwinのsystem activationは行わない。新規 Mac へのactivation E2Eは、HomebrewのないVMまたは実機で確認する。

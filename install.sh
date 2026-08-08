@@ -46,7 +46,6 @@ main() {
   cd "$DOTFILES_DIR"
   "$MISE_BIN" trust
   "$MISE_BIN" install
-  "$MISE_BIN" run system:apply
   "$MISE_BIN" run apply
 
   cd "$HOME"

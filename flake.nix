@@ -1,7 +1,11 @@
 {
-  description = "Declarative macOS system configuration";
+  description = "Declarative macOS system and home configuration";
 
   inputs = {
+    home-manager = {
+      url = "github:nix-community/home-manager/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nix-darwin = {
       url = "github:nix-darwin/nix-darwin/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,17 +18,22 @@
     };
   };
 
-  outputs = { self, nix-darwin, nix-homebrew, zundamonotify, ... }:
+  outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, ... }:
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
+      dotfilesSourceHome = self.outPath + "/home";
       mkDarwinSystem = {
         configurationRevision ? null,
+        dotfilesDirectory ? "/Users/${primaryUser}/dotfiles",
         modules ? [ ],
         primaryUser,
       }:
         let
           darwinSystem = nix-darwin.lib.darwinSystem {
+            specialArgs = {
+              inherit dotfilesDirectory dotfilesSourceHome;
+            };
             modules = [
               self.darwinModules.default
               {
@@ -41,9 +50,15 @@
             "Brewfile"
             darwinSystem.config.homebrew.brewfile;
         };
+      publicDotfilesDirectory =
+        let
+          configured = builtins.getEnv "DOTFILES_DIR";
+        in
+        if configured == "" then "/Users/${primaryUser}/dotfiles" else configured;
       publicSystem = mkDarwinSystem {
         inherit primaryUser;
         configurationRevision = self.rev or self.dirtyRev or null;
+        dotfilesDirectory = publicDotfilesDirectory;
       };
     in
     {
@@ -51,9 +66,11 @@
 
       darwinModules.default = {
         imports = [
+          home-manager.darwinModules.home-manager
           nix-homebrew.darwinModules.nix-homebrew
           zundamonotify.darwinModules.default
-          ./configuration.nix
+          ./darwin/home-manager.nix
+          ./darwin/configuration.nix
         ];
       };
 

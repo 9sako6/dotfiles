@@ -165,6 +165,29 @@ install_system_confirm_apply() {
   fi
 }
 
+install_system_show_homebrew_missing() {
+  brew_bin="$1"
+  brewfile_path="$2"
+  check_status=0
+  check_output="$(
+    HOMEBREW_NO_AUTO_UPDATE=1 \
+      "$brew_bin" bundle check --verbose --file "$brewfile_path" 2>&1
+  )" || check_status=$?
+  case "$check_status" in
+    0)
+      if [ -n "$check_output" ]; then
+        printf '%s\n' "$check_output"
+      else
+        printf 'none\n'
+      fi
+      ;;
+    1)
+      [ -z "$check_output" ] || printf '%s\n' "$check_output"
+      ;;
+    *) install_system_fail "Homebrew dependency plan failed" ;;
+  esac
+}
+
 install_system_show_homebrew_cleanup() {
   brew_bin="$1"
   brewfile_path="$2"

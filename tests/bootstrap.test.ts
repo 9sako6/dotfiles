@@ -134,7 +134,7 @@ describe("公開bootstrap", () => {
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\nmise <trust>\nmise <install>\n" +
-          "mise <run> <system:apply>\nmise <run> <apply>\n" +
+          "mise <run> <apply>\n" +
           "mise <bootstrap> <--yes> <--verbose>\n",
       );
     });
@@ -210,7 +210,7 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
       )).toBe("origin/master");
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\nmise <trust>\nmise <install>\n" +
-          "mise <run> <system:apply>\nmise <run> <apply>\n" +
+          "mise <run> <apply>\n" +
           "mise <bootstrap> <--yes> <--verbose>\n",
       );
 
@@ -334,7 +334,7 @@ printf '\n' >> "$BOOTSTRAP_LOG"
 
       expect(result.exitCode).toBe(0);
       expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir))
-        .toBe(await runCommand("git", ["rev-parse", "HEAD"], repoRoot));
+        .toBe(await runCommand("git", ["rev-parse", "refs/heads/master"], repoRoot));
       expect(await runCommand("git", ["-C", dotfilesDir, "branch", "--show-current"], tempDir))
         .toBe("master");
       expect(await runCommand(
@@ -344,7 +344,7 @@ printf '\n' >> "$BOOTSTRAP_LOG"
       )).toBe("origin/master");
       expect(await readFile(logPath, "utf8")).toBe(
         "mise <trust>\nmise <install>\n" +
-          "mise <run> <system:apply>\nmise <run> <apply>\n" +
+          "mise <run> <apply>\n" +
           "mise <bootstrap> <--yes> <--verbose>\n",
       );
     });
