@@ -6,7 +6,6 @@ let
     config.lib.file.mkOutOfStoreSymlink "${homeRoot}/${relativePath}";
   liveLink = relativePath: {
     source = outOfStore relativePath;
-    force = true;
   };
 in
 {
