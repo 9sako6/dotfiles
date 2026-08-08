@@ -45,9 +45,12 @@ else
 fi
 
 if brew_bin="$(command -v brew 2>/dev/null)"; then
+  printf 'Homebrew missing dependencies:\n'
+  install_system_show_homebrew_missing "$brew_bin" "$brewfile_path"
   printf 'Homebrew cleanup candidates:\n'
   install_system_show_homebrew_cleanup "$brew_bin" "$brewfile_path"
 else
+  printf 'Homebrew missing dependencies: brew is not active yet\n'
   printf 'Homebrew cleanup candidates: brew is not active yet\n'
 fi
 
