@@ -1,7 +1,6 @@
-{ config, dotfilesDirectory, ... }:
+{ config, dotfilesDirectory, dotfilesSourceHome, ... }:
 
 let
-  sourceHome = ../home;
   homeRoot = "${dotfilesDirectory}/home";
   outOfStore = relativePath:
     config.lib.file.mkOutOfStoreSymlink "${homeRoot}/${relativePath}";
@@ -9,10 +8,13 @@ let
     source = outOfStore relativePath;
   };
   collectLiveFiles = relativeRoot: sourceRoot:
+    let
+      entries = builtins.readDir sourceRoot;
+    in
     builtins.foldl'
       (files: name:
         let
-          entryType = (builtins.readDir sourceRoot).${name};
+          entryType = entries.${name};
           relativePath = "${relativeRoot}/${name}";
           sourcePath = sourceRoot + "/${name}";
         in
@@ -23,10 +25,10 @@ let
             { ${relativePath} = liveLink relativePath; }
         ))
       { }
-      (builtins.attrNames (builtins.readDir sourceRoot));
+      (builtins.attrNames entries);
   mutableTrees = builtins.foldl'
     (files: relativeRoot:
-      files // collectLiveFiles relativeRoot (sourceHome + "/${relativeRoot}"))
+      files // collectLiveFiles relativeRoot "${dotfilesSourceHome}/${relativeRoot}")
     { }
     [
       ".agents"
