@@ -24,11 +24,15 @@
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
       mkDarwinSystem = {
         configurationRevision ? null,
+        dotfilesDirectory ? "/Users/${primaryUser}/dotfiles",
         modules ? [ ],
         primaryUser,
       }:
         let
           darwinSystem = nix-darwin.lib.darwinSystem {
+            specialArgs = {
+              inherit dotfilesDirectory;
+            };
             modules = [
               self.darwinModules.default
               {
@@ -45,9 +49,15 @@
             "Brewfile"
             darwinSystem.config.homebrew.brewfile;
         };
+      publicDotfilesDirectory =
+        let
+          configured = builtins.getEnv "DOTFILES_DIR";
+        in
+        if configured == "" then "/Users/${primaryUser}/dotfiles" else configured;
       publicSystem = mkDarwinSystem {
         inherit primaryUser;
         configurationRevision = self.rev or self.dirtyRev or null;
+        dotfilesDirectory = publicDotfilesDirectory;
       };
     in
     {
