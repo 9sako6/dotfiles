@@ -29,10 +29,6 @@ description = "Update an agents skill via apm, then build agents resources"
 run = "./bin/system.ts apply"
 description = "Plan and apply the macOS system and home configuration"
 
-[tasks.doctor]
-run = "./bin/doctor.ts"
-description = "Diagnose system, mise, and package-manager drift"
-
 [tasks."herdr:integrations:apply"]
 run = [
   "herdr integration install claude",
