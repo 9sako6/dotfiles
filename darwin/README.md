@@ -1,23 +1,33 @@
 # macOS のシステム設定
 
-このディレクトリでは、nix-darwin で Mac 全体へ反映する公開設定を管理する。
+このディレクトリでは、root flakeから読み込むnix-darwin moduleとHome Manager moduleを管理する。
 初回セットアップや詳しい挙動は [運用ガイド](../docs/operations.md) を参照する。
 
 ## ファイル
 
+- `../flake.lock`: root `flake.nix` から生成する依存のロック
+- `../flake.nix`: nix-darwin / Home Manager が使う依存と公開出力
 - `configuration.nix`: macOS の既定値、サービス、Nix、システムパッケージ
-- `flake.lock`: `flake.nix` から生成する依存のロック
-- `flake.nix`: nix-darwin が使う依存と構成
 - `flake.nix.template`: private repository の root flake のひな型
+- `home-manager.nix`: nix-darwin と Home Manager の統合
+- `home.nix`: `home/` から home directory へ配備する Home Manager 設定
 - `homebrew-packages.nix`: 公開してよい Homebrew の formula と cask
 - `homebrew-shellenv.zsh`: nix-homebrew が管理する Homebrew を zsh から使うための設定
 
 マシン固有の設定や認証情報はここへ置かない。Mac 全体へ反映したいが公開できない設定は、
 別の private repository で管理する。
 
+## Home Manager
+
+Home Manager は nix-darwin module として組み込む。`home/` の既存設定ファイルは当面 Nix 式へ書き換えず、`mkOutOfStoreSymlink` で live dotfiles checkout を参照する。
+
+管理対象のディレクトリはtracked treeからleaf fileを列挙してlinkする。ディレクトリ自体は占有しないため、local-only、secrets、runtime fileと共存できる。
+
+home の反映も `system:plan` / `system:apply` に含まれる。standalone の home deployer は使わない。
+
 ## 公開設定を変更する
 
-1. 対象の Nix ファイルを編集する。
+1. 対象の Nix ファイルまたは `home/` を編集する。
 2. `mise run system:plan --default` で、Mac へ反映せずに build と差分を確認する。
 3. `mise run test` を実行する。
 4. `mise run system:apply --default` で反映する。
@@ -96,14 +106,14 @@ Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理す�
 
 ## 公開側の依存を更新する
 
-`nix-darwin`、`nix-homebrew`、`nixpkgs`、`zundamonotify` の具体的な revision は
-`flake.lock` で固定する。通常は `flake.nix` に commit SHA を書かない。
+`home-manager`、`nix-darwin`、`nix-homebrew`、`nixpkgs`、`zundamonotify` の具体的な revision は
+root `flake.lock` で固定する。通常は `flake.nix` に commit SHA を書かない。
 
 ```sh
 mise run system:update
 ```
 
-この task は `darwin/flake.lock` を更新したあと、公開構成の `system:plan --default` と test suite を実行する。
+この task は root `flake.lock` を更新したあと、公開構成の `system:plan --default` と test suite を実行する。
 commit、push、apply は行わないため、差分を確認してから明示的に実行する。
 
 private repository など、この公開設定へ依存する flake の更新は依存側で管理する。
