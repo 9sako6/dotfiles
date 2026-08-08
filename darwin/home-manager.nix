@@ -1,4 +1,4 @@
-{ config, dotfilesDirectory, ... }:
+{ config, dotfilesDirectory, dotfilesSourceHome, ... }:
 
 let
   primaryUser = config.system.primaryUser;
@@ -10,7 +10,7 @@ in
     useGlobalPkgs = true;
     backupFileExtension = "pre-home-manager";
     extraSpecialArgs = {
-      inherit dotfilesDirectory;
+      inherit dotfilesDirectory dotfilesSourceHome;
     };
     users.${primaryUser} = import ./home.nix;
   };
