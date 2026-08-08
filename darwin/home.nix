@@ -26,7 +26,7 @@ let
         ))
       { }
       (builtins.attrNames entries);
-  mutableTrees = builtins.foldl'
+  managedTrees = builtins.foldl'
     (files: relativeRoot:
       files // collectLiveFiles relativeRoot (dotfilesSourceHome + "/${relativeRoot}"))
     { }
@@ -34,20 +34,20 @@ let
       ".agents"
       ".claude"
       ".codex"
+      ".config"
+      ".zsh.d"
+      "mybin"
     ];
 in
 {
   home.stateVersion = "26.05";
 
   home.file = {
-    ".config" = liveLink ".config";
     ".gitconfig" = liveLink ".gitconfig";
     ".gitignore_global" = liveLink ".gitignore_global";
-    ".zsh.d" = liveLink ".zsh.d";
     ".zshenv" = liveLink ".zshenv";
     ".zshrc" = liveLink ".zshrc";
     "apm.lock.yaml" = liveLink "apm.lock.yaml";
     "apm.yml" = liveLink "apm.yml";
-    "mybin" = liveLink "mybin";
-  } // mutableTrees;
+  } // managedTrees;
 }
