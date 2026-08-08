@@ -2,6 +2,10 @@
   description = "Declarative macOS system configuration";
 
   inputs = {
+    home-manager = {
+      url = "github:nix-community/home-manager/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nix-darwin = {
       url = "github:nix-darwin/nix-darwin/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,7 +18,7 @@
     };
   };
 
-  outputs = { self, nix-darwin, nix-homebrew, zundamonotify, ... }:
+  outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, ... }:
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
@@ -51,8 +55,10 @@
 
       darwinModules.default = {
         imports = [
+          home-manager.darwinModules.home-manager
           nix-homebrew.darwinModules.nix-homebrew
           zundamonotify.darwinModules.default
+          ./home-manager.nix
           ./configuration.nix
         ];
       };
