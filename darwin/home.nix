@@ -26,18 +26,29 @@ let
         ))
       { }
       (builtins.attrNames entries);
-  managedFiles = builtins.foldl'
+  liveFiles = builtins.foldl'
     (files: relativeRoot:
       files // collectLiveFiles relativeRoot (dotfilesSourceHome + "/${relativeRoot}"))
     { }
     [
-      ".agents"
-      ".claude"
-      ".codex"
       ".config"
       ".zsh.d"
       "mybin"
     ];
+  storeBackedAgentFiles = {
+    ".agents" = {
+      source = dotfilesSourceHome + "/.agents";
+      recursive = true;
+    };
+    ".claude" = {
+      source = dotfilesSourceHome + "/.claude";
+      recursive = true;
+    };
+    ".codex" = {
+      source = dotfilesSourceHome + "/.codex";
+      recursive = true;
+    };
+  };
 in
 {
   home.stateVersion = "26.05";
@@ -49,5 +60,5 @@ in
     ".zshrc" = liveLink ".zshrc";
     "apm.lock.yaml" = liveLink "apm.lock.yaml";
     "apm.yml" = liveLink "apm.yml";
-  } // managedFiles;
+  } // liveFiles // storeBackedAgentFiles;
 }
