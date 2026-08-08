@@ -164,7 +164,16 @@ export async function inspectSelectedSystemSource(
   git: RunGit = runGit,
 ): Promise<PreparedSystemSource> {
   const publicFlake = path.join(paths.publicDirectory, "flake.nix");
-  const selected = await inspectSelection(publicFlake, paths.dataRoot, paths.selectionPath, git);
+  const acceptedPublicFlakes = [
+    publicFlake,
+    path.join(paths.publicDirectory, "darwin", "flake.nix"),
+  ];
+  const selected = await inspectSelection(
+    acceptedPublicFlakes,
+    paths.dataRoot,
+    paths.selectionPath,
+    git,
+  );
   if (selected.request.type === "default") {
     await access(publicFlake);
     return {
@@ -187,7 +196,7 @@ export async function inspectSelectedSystemSource(
 }
 
 async function inspectSelection(
-  publicFlake: string,
+  publicFlakes: readonly string[],
   dataRoot: string,
   selectionPath: string,
   git: RunGit,
@@ -208,7 +217,7 @@ async function inspectSelection(
     throw error;
   }
 
-  if (target === publicFlake) return { request: { type: "default" }, target };
+  if (publicFlakes.includes(target)) return { request: { type: "default" }, target };
   const checkout = path.dirname(target);
   if (
     path.basename(target) !== "flake.nix" ||
