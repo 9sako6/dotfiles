@@ -56,20 +56,21 @@ Home Manager は nix-darwin module として組み込まれているため、sys
 
 ```sh
 git pull                       # 公開dotfilesを通常のGit操作で更新
+mise run apply                 # system + Home Managerを確認して反映
 mise run doctor                # mise、system、Homebrewを診断
-mise run system:apply          # system + Home Managerを確認して反映
-mise run system:plan           # system + Home Managerをbuildしてplanを表示
+mise run plan                  # system + Home Managerをbuildしてplanを表示
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
 mise run test                  # 契約テストを実行
 ```
 
+`apply` と `plan` は、それぞれ `system:apply` と `system:plan` の task alias。scriptや依存関係から呼ぶ場合はcanonical nameを使う。
 他の task は `mise tasks` で一覧できる。
 
 公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。同じflakeが両方を所有するため、Home Managerはtracked `home/` treeをflake sourceから列挙できる。
 
-Home Manager は `home/` の設定を live dotfiles checkout への out-of-store link として管理する。
-`.agents`、`.claude`、`.codex`、`.config`、`.zsh.d`、`mybin` は各leaf fileだけをlinkするため、ディレクトリ自体はlocal-only、secrets、runtime fileと共存できる。
-public system は `system:plan` / `system:apply` を実行している checkout を自動で使う。private root flake が既定の `~/dotfiles` 以外を使う場合は、`lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
+通常の設定ファイルと `.config`、`.zsh.d`、`mybin` はlive dotfiles checkoutへのout-of-store linkにして、編集を即時反映する。
+APMが生成する `.agents`、`.claude`、`.codex` はNix store由来のleaf linkにして、Claude CodeやCodexなどによる書き込みがsource repositoryへ逆流しないようにする。いずれもディレクトリ自体は占有しないため、local-only、secrets、runtime fileと共存できる。
+public system は `plan` / `apply` を実行している checkout を自動で使う。private root flake が既定の `~/dotfiles` 以外を使う場合は、`lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
 
 ## system source
 
@@ -78,19 +79,19 @@ public system は `system:plan` / `system:apply` を実行している checkout 
 HTTPS clone URL の remote default branch を取得し、push 済みの最新 commit を使う。
 
 ```sh
-mise run system:plan <clone-url>   # 別sourceを試すが選択は変えない
-mise run system:apply <clone-url>  # 成功後にsourceを選択する
-mise run system:plan --default     # 公開sourceを試す
-mise run system:apply --default    # 公開sourceへ戻す
+mise run plan <clone-url>   # 別sourceを試すが選択は変えない
+mise run apply <clone-url>  # 成功後にsourceを選択する
+mise run plan --default     # 公開sourceを試す
+mise run apply --default    # 公開sourceへ戻す
 ```
 
-`system:plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
-変更しない。Lix がなければ失敗する。`system:apply` は必要なら Lix を導入し、表示した同じ build 済み
+`plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
+変更しない。Lix がなければ失敗する。`apply` は必要なら Lix を導入し、表示した同じ build 済み
 世代だけを activation する。Home Manager の activation もこの system activation に含まれる。
 plan には system closure の差分と Homebrew cleanup 候補が現れる。
-fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。`system:apply` は activation と
+fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。`apply` は activation と
 source 選択を一度の `sudo` 実行で完了し、長い activation の後に認証を再要求しない。同じ source
-selection を使う `system:apply` が実行中なら、後から開始した処理を拒否する。
+selection を使う `apply` が実行中なら、後から開始した処理を拒否する。
 
 private repository は `darwin/flake.nix.template` を root の `flake.nix` としてコピーし、
 `primaryUser` を実際の macOS account name に置き換える。公開できない差分だけを `modules` に追加し、
@@ -114,7 +115,7 @@ source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけであ�
 ## ロールバック
 
 `mise run system:rollback` は remote の取得や flake の評価をせず、保持済みの直前の世代へ戻す。
-system source の選択は変えないため、次の `system:plan` は同じ source を診断する。
+system source の選択は変えないため、次の `plan` は同じ source を診断する。
 
 Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 に実行し、14日を超えた世代を削除する。
 削除された世代へはロールバックできない。手動で `nix-collect-garbage` を実行する場合も、
@@ -129,15 +130,15 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
-2. `home-managed user tools` を変更する場合は、`mise run system:plan` で配備を含む system generation を確認
+2. `home-managed user tools` を変更する場合は、`mise run plan` で配備を含む system generation を確認
 3. 必要な変更を入れる
 4. 「検証」の手順を実施
 5. 変更した管理区分に応じて反映
-   - `home-managed user tools` — `mise run system:apply`
-   - `system configuration` — `mise run system:apply`
-   - `private system configuration` — private repository を push して `mise run system:apply`
+   - `home-managed user tools` — `mise run apply`
+   - `system configuration` — `mise run apply`
+   - `private system configuration` — private repository を push して `mise run apply`
 
-`repo runtime` の変更に反映コマンドはない。`system:apply` の初回実行では、
+`repo runtime` の変更に反映コマンドはない。`apply` の初回実行では、
 Lix を導入するため途中で `sudo` の認証を求められる。
 
 Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、home directory の共有設定は Home Manager が管理する。
