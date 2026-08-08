@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 
-import path from "node:path";
 import { resolveRepoRoot } from "../lib/paths";
 
 async function run(command: string[], cwd: string): Promise<void> {
@@ -19,10 +18,9 @@ async function run(command: string[], cwd: string): Promise<void> {
 
 async function main(): Promise<void> {
   const repoRoot = await resolveRepoRoot(import.meta.path);
-  const publicFlake = path.join(repoRoot, "darwin");
 
-  console.log("==> update public nix-darwin inputs");
-  await run(["nix", "flake", "update", "--flake", publicFlake], repoRoot);
+  console.log("==> update public nix-darwin and Home Manager inputs");
+  await run(["nix", "flake", "update", "--flake", repoRoot], repoRoot);
 
   console.log("==> validate public system");
   await run(["mise", "run", "system:plan", "--default"], repoRoot);
