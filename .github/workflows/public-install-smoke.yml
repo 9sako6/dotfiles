@@ -38,7 +38,7 @@ jobs:
         run: ./bin/install-lix.sh
 
       - name: Build system configuration
-        run: '"$HOME/.local/bin/mise" run system:plan --default'
+        run: '"$HOME/.local/bin/mise" run plan --default'
 
       - name: Activate Home Manager user environment
         run: |
