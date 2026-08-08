@@ -22,6 +22,7 @@
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
+      dotfilesSourceHome = "${self.sourceInfo.outPath}/home";
       mkDarwinSystem = {
         configurationRevision ? null,
         dotfilesDirectory ? "/Users/${primaryUser}/dotfiles",
@@ -31,7 +32,7 @@
         let
           darwinSystem = nix-darwin.lib.darwinSystem {
             specialArgs = {
-              inherit dotfilesDirectory;
+              inherit dotfilesDirectory dotfilesSourceHome;
             };
             modules = [
               self.darwinModules.default
