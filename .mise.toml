@@ -26,12 +26,12 @@ run = "./bin/build-agents.ts update"
 description = "Update an agents skill via apm, then build agents resources"
 
 [tasks.apply]
-run = "./bin/link-home.ts --confirm"
-description = "Apply the managed home tree to the home directory"
+run = "printf '%s\n' 'home files are managed by Home Manager via system:apply'"
+description = "Compatibility notice for the retired standalone home deployer"
 
 [tasks.doctor]
 run = "./bin/doctor.ts"
-description = "Diagnose deployment, system, and package-manager drift"
+description = "Diagnose system, mise, and package-manager drift"
 
 [tasks."herdr:integrations:apply"]
 run = [
@@ -45,10 +45,6 @@ description = "Reconcile Herdr integrations"
 [tasks."mybin:build"]
 run = "./bin/build-tada.sh"
 description = "Build reproducible mybin assets"
-
-[tasks.plan]
-run = "./bin/link-home.ts --check"
-description = "Show planned deploy actions without changing the filesystem"
 
 [tasks."system:apply"]
 run = "./bin/system.ts apply"

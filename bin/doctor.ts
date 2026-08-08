@@ -3,8 +3,6 @@
 import { access, realpath } from "node:fs/promises";
 import { userInfo } from "node:os";
 import path from "node:path";
-import { loadDotfilesConfig } from "../lib/dotfiles-config";
-import { deploymentStatePath } from "../lib/deployment-state";
 import {
   type DoctorSectionContent,
   inspectHomebrew,
@@ -13,8 +11,7 @@ import {
   parseHomebrewDeclarationNames,
   runDoctor,
 } from "../lib/doctor";
-import { planLinkActions, summarizeLinkPlan } from "../lib/link-home";
-import { managedHomeRoot, resolveRepoRoot } from "../lib/paths";
+import { resolveRepoRoot } from "../lib/paths";
 import {
   inspectSelectedSystemSource,
   systemSourceDataRoot,
@@ -29,7 +26,11 @@ async function main() {
   const repoRoot = await resolveRepoRoot(import.meta.path);
   const report = await runDoctor([
     {
-      inspect: () => inspectDeployment(repoRoot, homeDir),
+      inspect: async () => ({
+        findings: [],
+        nextSteps: [],
+        summary: "home files are managed by Home Manager",
+      }),
       title: "deployment",
     },
     {
@@ -99,30 +100,6 @@ async function inspectSystemConfiguration(
       : "active system does not match repository declarations"],
     nextSteps: ["mise run system:apply"],
     summary: "system configuration is not active",
-  };
-}
-
-async function inspectDeployment(
-  repoRoot: string,
-  homeDir: string,
-): Promise<DoctorSectionContent> {
-  const sourceRoot = managedHomeRoot(repoRoot);
-  const { copyPaths, prunePaths, symlinkPaths } = await loadDotfilesConfig(repoRoot, sourceRoot);
-  const plan = await planLinkActions({
-    copyPaths,
-    homeDir,
-    prunePaths,
-    sourceRoot,
-    statePath: deploymentStatePath(homeDir, process.env.XDG_STATE_HOME),
-    symlinkPaths,
-  });
-  const deployment = summarizeLinkPlan(plan);
-  return {
-    findings: deployment.changeCount === 0 ? [] : deployment.findings,
-    nextSteps: [],
-    summary: deployment.changeCount === 0
-      ? `${deployment.managedCount} managed files are converged`
-      : `${deployment.changeCount} change or drift item(s) detected`,
   };
 }
 
