@@ -28,7 +28,7 @@ let
       (builtins.attrNames entries);
   mutableTrees = builtins.foldl'
     (files: relativeRoot:
-      files // collectLiveFiles relativeRoot "${dotfilesSourceHome}/${relativeRoot}")
+      files // collectLiveFiles relativeRoot (dotfilesSourceHome + "/${relativeRoot}"))
     { }
     [
       ".agents"
