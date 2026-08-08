@@ -59,7 +59,7 @@ async function inspectSystemConfiguration(
 
   const source = await inspectSelectedSystemSource({
     dataRoot: systemSourceDataRoot(homeDir, Bun.env.XDG_DATA_HOME),
-    publicDirectory: path.join(repoRoot, "darwin"),
+    publicDirectory: repoRoot,
     selectionPath: "/etc/nix-darwin/flake.nix",
   });
   const nixArgs = [
@@ -73,7 +73,10 @@ async function inspectSystemConfiguration(
   const expectedStorePath = (await run(
     nixPath,
     nixArgs,
-    source.kind === "default" ? { DARWIN_PRIMARY_USER: userInfo().username } : undefined,
+    source.kind === "default" ? {
+      DARWIN_PRIMARY_USER: userInfo().username,
+      DOTFILES_DIR: repoRoot,
+    } : undefined,
   )).trim();
   const currentSystem = "/run/current-system";
   const activeStorePath = await exists(currentSystem) ? await realpath(currentSystem) : null;
@@ -133,7 +136,7 @@ async function inspectHomebrewInstallations(
 
   const source = await inspectSelectedSystemSource({
     dataRoot: systemSourceDataRoot(homeDir, Bun.env.XDG_DATA_HOME),
-    publicDirectory: path.join(repoRoot, "darwin"),
+    publicDirectory: repoRoot,
     selectionPath: "/etc/nix-darwin/flake.nix",
   });
   const evaluate = async (option: "brews" | "casks") => {
@@ -150,7 +153,10 @@ async function inspectHomebrewInstallations(
     return parseHomebrewDeclarationNames(await run(
       nixPath,
       args,
-      source.kind === "default" ? { DARWIN_PRIMARY_USER: userInfo().username } : undefined,
+      source.kind === "default" ? {
+        DARWIN_PRIMARY_USER: userInfo().username,
+        DOTFILES_DIR: repoRoot,
+      } : undefined,
     ));
   };
   const [declaredCasks, declaredFormulae] = await Promise.all([
