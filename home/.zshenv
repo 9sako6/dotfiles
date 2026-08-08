@@ -3,6 +3,7 @@
 setopt no_global_rcs
 
 export LANG=ja_JP.UTF-8
+export GHQ_ROOT="${GHQ_ROOT:-$HOME/ghq}"
 
 typeset -U path PATH
 path=(
