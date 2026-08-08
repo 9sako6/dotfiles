@@ -17,7 +17,7 @@ flowchart TD
     proposal --> ask["ユーザーに確認する"]
     boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
     boundary -->|"home-managed user tools"| home["skill には配備先でも使える一般ルールだけを書く"]
-    boundary -->|"system configuration"| system["Mac 全体の設定は darwin/ に置く"]
+    boundary -->|"system configuration"| system["Mac 全体の設定は root flake と darwin/ に置く"]
     boundary -->|"private system configuration"| private["公開できない差分だけを別の root flake に置く"]
     boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
     boundary -->|"secrets"| secrets["repo と home/ に入れず、最終判断をユーザーに確認する"]
@@ -65,8 +65,10 @@ mise run test                  # 契約テストを実行
 
 他の task は `mise tasks` で一覧できる。
 
+公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。同じflakeが両方を所有するため、Home Managerはtracked `home/` treeをflake sourceから列挙できる。
+
 Home Manager は `home/` の設定を live dotfiles checkout への out-of-store link として管理する。
-`.agents`、`.claude`、`.codex` は tracked tree を Nix 側で列挙して各 leaf file だけを link するため、ディレクトリ自体は runtime file と共存できる。
+`.agents`、`.claude`、`.codex`、`.config`、`.zsh.d`、`mybin` は各leaf fileだけをlinkするため、ディレクトリ自体はlocal-only、secrets、runtime fileと共存できる。
 public system は `system:plan` / `system:apply` を実行している checkout を自動で使う。private root flake が既定の `~/dotfiles` 以外を使う場合は、`lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
 
 ## system source
@@ -107,7 +109,7 @@ modules = [
 公開側は `darwinModules.default` と `lib.mkDarwinSystem` を提供する。public source だけが実行時の
 macOS account name と live dotfiles checkout を受け取るため、private root flake では `primaryUser` を明示する。
 source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけであり、未知の既存ファイルや symlink は
-明示引数があっても置換しない。
+明示引数があっても置換しない。旧公開sourceの `darwin/flake.nix` を指すselectionは、次の成功したapplyでroot `flake.nix`へ移行する。
 
 ## ロールバック
 
@@ -140,7 +142,4 @@ Lix を導入するため途中で `sudo` の認証を求められる。
 
 Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、home directory の共有設定は Home Manager が管理する。
 
-GitHub-hosted macOS runner には管理外の Homebrew が導入済みのため、CI は system derivation の
-build までを検証し、activation は行わない。新規 Mac への activation の E2E は、Homebrew のない
-VM または実機で確認する。公開インストールの smoke test も user environment の導入と system
-derivation の build を分けて検証する。
+GitHub-hosted macOS runner ではHome Managerのuser activationとsystem derivationのbuildを分けて検証し、nix-darwinのsystem activationは行わない。新規 Mac へのactivation E2Eは、HomebrewのないVMまたは実機で確認する。
