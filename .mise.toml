@@ -43,10 +43,12 @@ run = "./bin/build-tada.sh"
 description = "Build reproducible mybin assets"
 
 [tasks."system:apply"]
+alias = "apply"
 run = "./bin/system.ts apply"
 description = "Plan and apply a macOS system source"
 
 [tasks."system:plan"]
+alias = "plan"
 run = "./bin/system.ts plan"
 description = "Build and show a macOS system plan"
 
