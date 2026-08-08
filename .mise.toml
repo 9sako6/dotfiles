@@ -25,10 +25,6 @@ description = "Uninstall an agents skill via apm, then build agents resources"
 run = "./bin/build-agents.ts update"
 description = "Update an agents skill via apm, then build agents resources"
 
-[tasks.apply]
-run = "printf '%s\n' 'home files are managed by Home Manager via system:apply'"
-description = "Compatibility notice for the retired standalone home deployer"
-
 [tasks.doctor]
 run = "./bin/doctor.ts"
 description = "Diagnose system, mise, and package-manager drift"
