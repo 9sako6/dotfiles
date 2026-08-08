@@ -22,7 +22,7 @@
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
-      dotfilesSourceHome = "${self.sourceInfo.outPath}/home";
+      dotfilesSourceHome = self.sourceInfo.outPath + "/home";
       mkDarwinSystem = {
         configurationRevision ? null,
         dotfilesDirectory ? "/Users/${primaryUser}/dotfiles",
