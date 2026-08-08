@@ -29,11 +29,33 @@ jobs:
       - name: Install mise
         run: ./bin/install-mise.sh
 
-      - name: Install user environment
+      - name: Install repository tools
         run: |
           "$HOME/.local/bin/mise" trust
           "$HOME/.local/bin/mise" install
-          printf 'yes\n' | "$HOME/.local/bin/mise" run apply
+
+      - name: Install Lix
+        run: ./bin/install-lix.sh
+
+      - name: Build system configuration
+        run: '"$HOME/.local/bin/mise" run system:plan --default'
+
+      - name: Activate Home Manager user environment
+        run: |
+          nix_bin=/nix/var/nix/profiles/default/bin/nix
+          primary_user="$(id -un)"
+          activation_package="$(
+            DARWIN_PRIMARY_USER="$primary_user" \
+            DOTFILES_DIR="$GITHUB_WORKSPACE" \
+            "$nix_bin" \
+              --extra-experimental-features "nix-command flakes" \
+              build \
+              --impure \
+              --no-link \
+              --print-out-paths \
+              "path:$GITHUB_WORKSPACE#darwinConfigurations.current.config.home-manager.users.$primary_user.home.activationPackage"
+          )"
+          HOME_MANAGER_BACKUP_EXT=pre-home-manager "$activation_package/activate"
           cd "$HOME"
           "$HOME/.local/bin/mise" bootstrap --yes --verbose
 
@@ -56,12 +78,6 @@ jobs:
           "$HOME/.local/bin/mise" run agents:build
           git diff --exit-code -- home
           test -z "$(git status --short --untracked-files=all -- home)"
-
-      - name: Install Lix
-        run: ./bin/install-lix.sh
-
-      - name: Build system configuration
-        run: '"$HOME/.local/bin/mise" run system:plan --default'
 
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
