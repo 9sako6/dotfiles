@@ -25,6 +25,10 @@ description = "Uninstall an agents skill via apm, then build agents resources"
 run = "./bin/build-agents.ts update"
 description = "Update an agents skill via apm, then build agents resources"
 
+[tasks.apply]
+run = "./bin/system.ts apply"
+description = "Plan and apply the macOS system and home configuration"
+
 [tasks.doctor]
 run = "./bin/doctor.ts"
 description = "Diagnose system, mise, and package-manager drift"
@@ -42,15 +46,9 @@ description = "Reconcile Herdr integrations"
 run = "./bin/build-tada.sh"
 description = "Build reproducible mybin assets"
 
-[tasks."system:apply"]
-alias = "apply"
-run = "./bin/system.ts apply"
-description = "Plan and apply a macOS system source"
-
-[tasks."system:plan"]
-alias = "plan"
+[tasks.plan]
 run = "./bin/system.ts plan"
-description = "Build and show a macOS system plan"
+description = "Build and show the macOS system and home plan"
 
 [tasks."system:rollback"]
 run = "./bin/system-rollback.sh"
