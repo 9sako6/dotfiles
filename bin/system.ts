@@ -41,6 +41,10 @@ async function main(): Promise<void> {
     source.previousTarget ?? "missing",
     path.join(source.directory, "flake.nix"),
   ], {
+    env: {
+      ...Bun.env,
+      DOTFILES_DIR: repoRoot,
+    },
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
