@@ -48,7 +48,7 @@ flowchart TD
 curl -fsSL https://dot.9sako6.com | sh
 ```
 
-Home Manager は nix-darwin module として組み込まれているため、system と home は同じ `system:apply` で反映する。
+Home Manager は nix-darwin module として組み込まれているため、system と home は同じ `apply` で反映する。
 旧 home deployer から初めて移行するとき、Home Manager が管理する既存ファイルとの衝突は `.pre-home-manager` suffix へ退避される。
 `curl | sh` では確認入力だけを制御端末から読み、download 中の script を回答として消費しない。
 
@@ -57,14 +57,12 @@ Home Manager は nix-darwin module として組み込まれているため、sys
 ```sh
 git pull                       # 公開dotfilesを通常のGit操作で更新
 mise run apply                 # system + Home Managerを確認して反映
-mise run doctor                # mise、system、Homebrewを診断
 mise run plan                  # system + Home Managerをbuildしてplanを表示
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
 mise run test                  # 契約テストを実行
 ```
 
-`apply` と `plan` は、それぞれ `system:apply` と `system:plan` の task alias。scriptや依存関係から呼ぶ場合はcanonical nameを使う。
-他の task は `mise tasks` で一覧できる。
+他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
 
 公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。同じflakeが両方を所有するため、Home Managerはtracked `home/` treeをflake sourceから列挙できる。
 
