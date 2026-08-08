@@ -52,7 +52,7 @@ async function inspectSystemConfiguration(
   if (!nixPath) {
     return {
       findings: ["system declarations cannot be evaluated"],
-      nextSteps: ["mise run system:apply"],
+      nextSteps: ["mise run apply"],
       summary: "Nix is unavailable",
     };
   }
@@ -93,7 +93,7 @@ async function inspectSystemConfiguration(
     findings: [inventory.status === "missing"
       ? "no active nix-darwin system was found"
       : "active system does not match repository declarations"],
-    nextSteps: ["mise run system:apply"],
+    nextSteps: ["mise run apply"],
     summary: "system configuration is not active",
   };
 }
