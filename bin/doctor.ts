@@ -26,14 +26,6 @@ async function main() {
   const repoRoot = await resolveRepoRoot(import.meta.path);
   const report = await runDoctor([
     {
-      inspect: async () => ({
-        findings: [],
-        nextSteps: [],
-        summary: "home files are managed by Home Manager",
-      }),
-      title: "deployment",
-    },
-    {
       inspect: () => inspectMiseInstallations(homeDir),
       title: "mise",
     },
