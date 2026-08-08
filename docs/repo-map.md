@@ -24,11 +24,12 @@
 
 - `bin/` は直接実行する repository entrypoint、`lib/` は entrypoint が利用する内部実装を所有する。
 - `install.sh` は新しい Mac を一発で構築する唯一の入口とし、repo tools、system + Home Manager、user tools と repositories の順序を所有する。
-- `.mise.toml` の task は日常的に個別実行する操作だけを公開し、bootstrap の順序を再構成しない。
+- `.mise.toml` の task は日常的に個別実行する操作だけを公開し、bootstrap の順序を再構成しない。`plan` / `apply` は `system:plan` / `system:apply` のaliasに留める。
 - `system:plan` は Lix や active system を変更しない。`system:apply` だけが Lix 導入、build 済み世代の activation、Home Manager activation、source 選択の永続化を行う。
 - public source は実行ユーザーと local dotfiles checkout を入力にして root flake を評価する。private source はユーザーを root flake で明示し、committed lock file から pure に評価する。
 - system source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけとし、独自の sidecar state を持たない。
 - user 向け install task は `home/` ではなく `~/` を入力にする。`system:apply` 後の home directory 上の設定を使って実行し、repo 内の管理元パスを直接参照しない。
+- 編集を即時反映する設定はlive checkoutへのout-of-store link、APMが生成するagent resourcesはNix store由来のleaf linkとし、source repositoryへの書き戻しを防ぐ。どちらも親directoryは占有しない。
 - 標準機能で足りる home 配備は Home Manager に任せ、独自の配置 state や deploy engine を持たない。その他は標準コマンドで足りる処理を shell で書き、薄いラッパーで包まない。TypeScript を使うのは repo 固有のロジックがあるときだけ。
 - bootstrap の正しさは e2e で確認する。shell の順序や導線の確認を、内部手順を固定する unit test に逃がさない。
 
