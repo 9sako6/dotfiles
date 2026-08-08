@@ -21,7 +21,7 @@ curl -fsSL https://dot.9sako6.com | sh
 
 `install.sh` は mise を用意したあと `system:apply` を実行する。Home Manager は nix-darwin module として組み込まれているため、Mac 全体の設定と `home/` の配備は同じ system generation で反映される。
 
-旧 home deployer から Home Manager へ初めて移行するとき、既存の通常ファイルと衝突した場合は `.pre-home-manager` suffix へ退避する。旧 deployer が作った既知の top-level symlink は Home Manager が置き換える。
+旧 home deployer から Home Manager へ初めて移行するとき、既存の通常ファイルと衝突した場合は `.pre-home-manager` suffix へ退避する。既存 symlink が予期した管理元を指していない場合は activation を止め、対象を確認してから再実行する。
 
 ## 日常コマンド
 
@@ -35,15 +35,13 @@ mise run system:update         # public flake inputsを更新して検証
 mise run test                  # 契約テストを実行
 ```
 
-`mise run apply` は旧 standalone home deployer 廃止後の互換案内だけを残している。home の反映には `system:apply` を使う。
-
 ## Home Manager
 
 `home/` の共有設定は `darwin/home.nix` から Home Manager の `home.file` へ宣言する。現段階では設定ファイルの中身を Nix 式へ移さず、`mkOutOfStoreSymlink` で live dotfiles checkout を参照する。
 
-旧 deployer で symlink だった top-level path はそのまま live symlink として管理する。`.agents`、`.claude`、`.codex` は runtime file と共存できるよう recursive file deployment を使い、管理対象の leaf file だけを link する。
+旧 deployer で symlink だった top-level path は live symlink として管理する。`.agents`、`.claude`、`.codex` は runtime file と共存できるよう recursive file deployment を使い、管理対象の leaf file だけを link する。
 
-live checkout の既定位置は `~/dotfiles`。別の場所を使う場合は nix-darwin module の `programs.dotfiles.repositoryDirectory` を上書きする。
+public system は `system:plan` / `system:apply` を実行している dotfiles checkout を自動で Home Manager へ渡す。`install.sh` の `DOTFILES_DIR` で checkout 先を変更した場合も同じ path を使う。private root flake が既定の `~/dotfiles` 以外を使う場合は `lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
 
 ## system source
 
