@@ -26,7 +26,7 @@ let
         ))
       { }
       (builtins.attrNames entries);
-  managedTrees = builtins.foldl'
+  managedFiles = builtins.foldl'
     (files: relativeRoot:
       files // collectLiveFiles relativeRoot (dotfilesSourceHome + "/${relativeRoot}"))
     { }
@@ -49,5 +49,5 @@ in
     ".zshrc" = liveLink ".zshrc";
     "apm.lock.yaml" = liveLink "apm.lock.yaml";
     "apm.yml" = liveLink "apm.yml";
-  } // managedTrees;
+  } // managedFiles;
 }
