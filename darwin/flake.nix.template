@@ -1,7 +1,7 @@
 {
   description = "Private macOS system configuration";
 
-  inputs.dotfiles.url = "github:9sako6/dotfiles?dir=darwin";
+  inputs.dotfiles.url = "github:9sako6/dotfiles";
 
   outputs = { self, dotfiles, ... }: {
     darwinConfigurations.current = dotfiles.lib.mkDarwinSystem {
