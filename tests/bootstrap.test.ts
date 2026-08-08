@@ -334,7 +334,7 @@ printf '\n' >> "$BOOTSTRAP_LOG"
 
       expect(result.exitCode).toBe(0);
       expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir))
-        .toBe(await runCommand("git", ["rev-parse", "HEAD"], repoRoot));
+        .toBe(await runCommand("git", ["rev-parse", "refs/heads/master"], repoRoot));
       expect(await runCommand("git", ["-C", dotfilesDir, "branch", "--show-current"], tempDir))
         .toBe("master");
       expect(await runCommand(
