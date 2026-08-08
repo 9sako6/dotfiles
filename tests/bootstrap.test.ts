@@ -134,7 +134,7 @@ describe("公開bootstrap", () => {
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\nmise <trust>\nmise <install>\n" +
-          "mise <run> <system:apply>\n" +
+          "mise <run> <apply>\n" +
           "mise <bootstrap> <--yes> <--verbose>\n",
       );
     });
@@ -210,7 +210,7 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
       )).toBe("origin/master");
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\nmise <trust>\nmise <install>\n" +
-          "mise <run> <system:apply>\n" +
+          "mise <run> <apply>\n" +
           "mise <bootstrap> <--yes> <--verbose>\n",
       );
 
@@ -344,7 +344,7 @@ printf '\n' >> "$BOOTSTRAP_LOG"
       )).toBe("origin/master");
       expect(await readFile(logPath, "utf8")).toBe(
         "mise <trust>\nmise <install>\n" +
-          "mise <run> <system:apply>\n" +
+          "mise <run> <apply>\n" +
           "mise <bootstrap> <--yes> <--verbose>\n",
       );
     });
