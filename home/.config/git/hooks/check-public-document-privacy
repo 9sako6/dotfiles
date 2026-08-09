@@ -2,7 +2,7 @@
 
 set -eu
 
-pattern='(/Users/[^[:space:]`)<"'"'"']*|/home/[^[:space:]`)<"'"'"']*|file://[^[:space:]`)<"'"'"']+|vscode://[^[:space:]`)<"'"'"']+)'
+pattern='(^|[^[:alnum:]_./-])(/Users/[[:alnum:]_][[:alnum:]_.-]*|/home/[[:alnum:]_][[:alnum:]_.-]*|file://[^[:space:]`)<"'"'"']+|vscode://[^[:space:]`)<"'"'"']+)'
 report_file="${TMPDIR:-/tmp}/check-public-document-privacy.$$"
 
 trap 'rm -f "$report_file"' EXIT HUP INT TERM
@@ -13,9 +13,32 @@ git diff --cached --name-only --diff-filter=ACMR -- '*.md' |
 while IFS= read -r path; do
   [ -n "$path" ] || continue
 
-  matches="$(git show ":$path" | grep -nE "$pattern" || true)"
+  matches="$(git diff --cached --no-color --unified=0 -- "$path" |
+    awk -v pattern="$pattern" -v path="$path" '
+      /^@@ / {
+        hunk = $0
+        sub(/^.* \+/, "", hunk)
+        sub(/ .*/, "", hunk)
+        split(hunk, range, ",")
+        line_number = range[1] + 0
+        in_hunk = 1
+        next
+      }
+      !in_hunk { next }
+      /^\+\+\+ / { next }
+      /^\+/ {
+        text = substr($0, 2)
+        if (text ~ pattern) {
+          printf "%s:%d:%s\n", path, line_number, text
+        }
+        line_number++
+        next
+      }
+      /^-/ { next }
+      { line_number++ }
+    ' || true)"
   if [ -n "$matches" ]; then
-    printf '%s\n' "$matches" | sed "s|^|$path:|" >>"$report_file"
+    printf '%s\n' "$matches" >>"$report_file"
   fi
 done
 
