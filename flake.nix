@@ -12,13 +12,17 @@
     };
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    steipete-homebrew-tap = {
+      url = "github:steipete/homebrew-tap";
+      flake = false;
+    };
     zundamonotify = {
       url = "github:9sako6/zundamonotify";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, ... }:
+  outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, steipete-homebrew-tap, ... }:
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
@@ -71,6 +75,9 @@
           zundamonotify.darwinModules.default
           ./darwin/home-manager.nix
           ./darwin/configuration.nix
+          {
+            nix-homebrew.taps."steipete/homebrew-tap" = steipete-homebrew-tap;
+          }
         ];
       };
 
