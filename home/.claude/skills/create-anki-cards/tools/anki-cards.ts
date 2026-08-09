@@ -31,7 +31,6 @@ type TagPolicy =
 
 type CommonContract = {
   output: string;
-  preview: string;
   deck: string;
   noteType: string;
   html: boolean;
@@ -295,7 +294,6 @@ function parseProject(raw: unknown): Project {
       "mode",
       "noteType",
       "output",
-      "preview",
       "tagPolicy",
       ...(mode === "create" ? ["guidPolicy"] : []),
       ...(mode === "update" ? ["identityField"] : []),
@@ -305,7 +303,6 @@ function parseProject(raw: unknown): Project {
       errors.push("contract.mode: createまたはupdateが必要です");
     }
     const output = parseNonEmptyString(rawContract.output, "contract.output", errors);
-    const preview = parseNonEmptyString(rawContract.preview, "contract.preview", errors);
     const deck = parseNonEmptyString(rawContract.deck, "contract.deck", errors);
     const noteType = parseNonEmptyString(rawContract.noteType, "contract.noteType", errors);
     const html = parseBoolean(rawContract.html, "contract.html", errors);
@@ -323,7 +320,6 @@ function parseProject(raw: unknown): Project {
       }
       if (
         output !== undefined &&
-        preview !== undefined &&
         deck !== undefined &&
         noteType !== undefined &&
         html !== undefined &&
@@ -339,7 +335,6 @@ function parseProject(raw: unknown): Project {
           mode,
           noteType,
           output,
-          preview,
           tagPolicy,
         };
       }
@@ -351,7 +346,6 @@ function parseProject(raw: unknown): Project {
       );
       if (
         output !== undefined &&
-        preview !== undefined &&
         deck !== undefined &&
         noteType !== undefined &&
         html !== undefined &&
@@ -367,7 +361,6 @@ function parseProject(raw: unknown): Project {
           mode,
           noteType,
           output,
-          preview,
           tagPolicy,
         };
       }
@@ -607,34 +600,6 @@ function readGuidMap(
   return guidsByIdentity;
 }
 
-function renderPreview(project: Project): string {
-  const lines = [
-    `# ${project.contract.deck} Ankiカードプレビュー`,
-    "",
-    `- ノートタイプ: ${project.contract.noteType}`,
-    `- カード数: ${project.cards.length}`,
-    "",
-  ];
-  for (const card of project.cards) {
-    lines.push(`## ${card.id}`, "");
-    for (const field of project.contract.fields) {
-      lines.push(`### ${field.name}`, "", card.fields[field.name] || "_空欄_", "");
-    }
-    lines.push("### タグ", "", card.tags.join(", ") || "_なし_", "");
-    lines.push("### 一次資料", "");
-    lines.push(
-      ...(card.sources.length
-        ? card.sources.map((source) => `- ${source}`)
-        : ["_なし_"]),
-      "",
-    );
-    if (card.notes) {
-      lines.push("### 注記", "", card.notes, "");
-    }
-  }
-  return `${lines.join("\n").trimEnd()}\n`;
-}
-
 async function replaceOutputs(
   projectDirectory: string,
   outputs: ReadonlyArray<{
@@ -760,13 +725,13 @@ async function resolveOutputTargets(
   projectDirectory: string,
   inputPath: string,
   outputs: ReadonlyArray<{
-    name: "output" | "preview";
+    name: "output";
     destination: string;
     content: string;
   }>,
 ): Promise<
   Array<{
-    name: "output" | "preview";
+    name: "output";
     parent: string;
     filename: string;
     identity: string;
@@ -800,9 +765,6 @@ async function resolveOutputTargets(
 
   if (resolved.some(({ identity }) => identity === inputPath)) {
     throw new Error("正規データ自身を上書きできません");
-  }
-  if (resolved[0].identity === resolved[1].identity) {
-    throw new Error("contract.preview: outputとは異なる実体pathを指定してください");
   }
   return resolved;
 }
@@ -863,10 +825,7 @@ function validateProject(project: Project): {
       );
     }
   }
-  for (const [name, value] of [
-    ["output", project.contract.output],
-    ["preview", project.contract.preview],
-  ] as const) {
+  for (const [name, value] of [["output", project.contract.output]] as const) {
     const normalized = path.normalize(value);
     if (
       !value ||
@@ -880,9 +839,6 @@ function validateProject(project: Project): {
         `contract.${name}: 作業ディレクトリ内の相対パスを指定してください`,
       );
     }
-  }
-  if (project.contract.output === project.contract.preview) {
-    errors.push("contract.preview: outputとは異なるパスを指定してください");
   }
   const seenFieldNames = new Set<string>();
   for (let index = 0; index < project.contract.fields.length; index += 1) {
@@ -1127,7 +1083,6 @@ async function build(
     : undefined;
   const directory = path.dirname(realInputPath);
   const outputPath = path.resolve(directory, project.contract.output);
-  const previewPath = path.resolve(directory, project.contract.preview);
   const assignedGuids = assignMissingGuids(project);
   const resolvedOutputs = await resolveOutputTargets(
     directory,
@@ -1137,11 +1092,6 @@ async function build(
         name: "output",
         destination: outputPath,
         content: renderTsv(project, guidsByIdentity),
-      },
-      {
-        name: "preview",
-        destination: previewPath,
-        content: renderPreview(project),
       },
     ],
   );

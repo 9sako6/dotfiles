@@ -1,6 +1,6 @@
 ---
 name: create-anki-cards
-description: 学習対象と既存のAnki構成を調べ、答えやすさと継続性を優先した暗記カードを設計し、検証済みのテキストインポートTSVとMarkdownプレビューを生成・更新する。技術知識や業務知識などをAnkiで覚えたい、既存カードを学習履歴を保って改稿したい、Anki用TSVやカード案を作成・監査してほしいと依頼されたときに使う。
+description: 学習対象と既存のAnki構成を調べ、答えやすさと継続性を優先した暗記カードを設計し、検証済みのテキストインポートTSVを生成・更新する。技術知識や業務知識などをAnkiで覚えたい、既存カードを学習履歴を保って改稿したい、Anki用TSVやカード案を作成・監査してほしいと依頼されたときに使う。
 ---
 
 # Ankiカード作成
@@ -18,7 +18,6 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
 - [ ] anki.jsonへカードを書く
 - [ ] 表面と短答の日本語を対でレビューする
 - [ ] checkとbuildを実行する
-- [ ] プレビューをレビューして修正する
 - [ ] インポート方法と確認項目を渡す
 ```
 
@@ -35,7 +34,7 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
 
 複数回に分ける案件では `ANKI_PLAN.md` に到達目標、判断理由、未解決事項、弾ごとの進捗を記録する。CLIが読む契約は `anki.json` だけに置き、PLANへ複製しない。規約を変えたら、既存カードにも遡って適用する。
 
-到達目標、苦手領域、1弾の枚数を作成前に確認する。枚数の指定がなければ20〜30枚から始め、最初のプレビューへの反応を見て増減する。
+到達目標、苦手領域、1弾の枚数を作成前に確認する。枚数の指定がなければ20〜30枚から始め、最初の弾への反応を見て増減する。
 
 ### 2. 事実と前提
 
@@ -49,7 +48,7 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
 
 ### 3. 正規データ
 
-`anki.json` を唯一の正規データにする。TSVとプレビューは手編集しない。
+`anki.json` を唯一の正規データにする。TSVは手編集しない。TSVはバックアップとしてAnkiへ取り込むための出力であり、最新である保証はない。Anki側を正本に倒したい場合は、Ankiからテキストを書き出して `update` モードで再生成する。
 
 ```json
 {
@@ -57,7 +56,6 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
   "contract": {
     "mode": "create",
     "output": "cards.tsv",
-    "preview": "cards.preview.md",
     "deck": "学習対象",
     "noteType": "使用中のノートタイプ",
     "html": true,
@@ -107,6 +105,31 @@ description: 学習対象と既存のAnki構成を調べ、答えやすさと継
 
 `generate` では、カードの `guid` が空なら `build` が生成して `anki.json` へ保存する。一度保存したGUIDは再生成しない。GUIDを安定させるため、生成後の `anki.json` も必ず変更対象へ含める。
 
+#### 0コスト開始
+
+`anki.json` がまだない場合は、次をコピーして始める。`deck` と `noteType` は実際のAnki構成に合わせる。
+
+```json
+{
+  "version": 1,
+  "contract": {
+    "mode": "create",
+    "output": "cards.tsv",
+    "deck": "Default",
+    "noteType": "Basic",
+    "html": false,
+    "fields": [
+      { "name": "表面", "role": "question", "required": true },
+      { "name": "裏面", "role": "answer", "required": true }
+    ],
+    "tagPolicy": { "mode": "open", "requireAtLeastOne": false }
+  },
+  "cards": []
+}
+```
+
+旧 `anki.json` に `contract.preview` が残っている場合は、その1行を削除する。
+
 ### 4. 検査と生成
 
 スキルディレクトリにあるBun CLIを使う。
@@ -118,7 +141,7 @@ bun <skill-directory>/tools/anki-cards.ts build <project>/anki.json
 
 `check` は構造、一意性、フィールド、タグ、一次資料、制御文字を検査する。複数回答や長すぎる答えは警告する。警告を機械的に無視せず、カードを読むか、妥当な例外の理由を `notes` または `ANKI_PLAN.md` に残す。
 
-`build` は同じ検査に成功した場合だけ、`output` のTSVと `preview` のMarkdownを生成する。出力は `anki.json` の実体と同じproject directory内の相対パスに限る。symlinkを経由してproject外へ出るパスは使わない。
+`build` は同じ検査に成功した場合だけ、`output` のTSVを生成する。出力は `anki.json` の実体と同じproject directory内の相対パスに限る。symlinkを経由してproject外へ出るパスは使わない。
 
 カード本文は日本語レビューを終えてから最終生成する。CLIでは目的の欠落や、疑問詞と短答の意味上の不一致を判定できないため、警告0件でも通読を省略しない。
 
@@ -151,7 +174,7 @@ Ankiの実データベースを直接編集しない。インポート前に復�
 
 ### 6. レビュー
 
-利用者にはTSVではなくプレビューを先に見せ、レビューIDで修正を受ける。修正は `anki.json` に入れ、TSVとプレビューを再生成する。
+`anki.json` のカードを直接レビューし、レビューIDで修正を受ける。修正は `anki.json` に入れ、TSVを再生成する。
 
 [カード設計規約](references/card-design.md)の「7. レビュー」を一枚ずつ行う。不一致が見つかった観点では、同じ弾の全カードを見直す。
 
