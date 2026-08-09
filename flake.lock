@@ -126,7 +126,7 @@
     "steipete-homebrew-tap": {
       "locked": {
         "lastModified": 1786235782,
-        "narHash": "sha256-a3QbEt1rh1novT5nVD5ONWcnuAYkOFMsjRergyyii7w=",
+        "narHash": "sha256-U2xMW0t15j11yGpnyjsHzr4gEV/CzWTt1xq2ZU5UQpc=",
         "owner": "steipete",
         "repo": "homebrew-tap",
         "rev": "fd2088ffbe19a903b5d6fa9018e048b8ad9accc9",
