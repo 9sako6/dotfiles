@@ -702,6 +702,66 @@ printf '<%s>' "$@" > "$GITLEAKS_LOG"
     });
   });
 
+  test("公開文書の検査は変更していない既存行を再検査しない", async () => {
+    await withTempDir("public-document-privacy-checker-existing-leak", async (tempDir) => {
+      const repoDir = await initPlainRepo(tempDir);
+
+      await writeRepoFile(repoDir, "README.md", "/Users/example/private/project\n");
+      expect((await runCommand("git", ["add", "README.md"], process.env, { cwd: repoDir })).code).toBe(0);
+      expect(
+        (await runCommand("git", ["commit", "--no-verify", "-m", "initial"], process.env, { cwd: repoDir }))
+          .code,
+      ).toBe(0);
+
+      await writeRepoFile(repoDir, "README.md", "/Users/example/private/project\nsafe addition\n");
+      expect((await runCommand("git", ["add", "README.md"], process.env, { cwd: repoDir })).code).toBe(0);
+
+      const checkResult = await runPublicDocumentPrivacyChecker(repoDir);
+
+      expect(checkResult.code).toBe(0);
+      expect(checkResult.stderr).toBe("");
+    });
+  });
+
+  test("公開文書の検査は単語中のhomeと汎用placeholderを許可する", async () => {
+    await withTempDir("public-document-privacy-checker-placeholders", async (tempDir) => {
+      const repoDir = await initPlainRepo(tempDir);
+
+      await writeRepoFile(
+        repoDir,
+        "docs/guide.md",
+        "application/home/config\n/Users/.../project\n/home/<user>/project\n",
+      );
+      expect((await runCommand("git", ["add", "docs/guide.md"], process.env, { cwd: repoDir })).code).toBe(0);
+
+      const checkResult = await runPublicDocumentPrivacyChecker(repoDir);
+
+      expect(checkResult.code).toBe(0);
+      expect(checkResult.stderr).toBe("");
+    });
+  });
+
+  test("公開文書の検査は追加された環境固有パスの行番号を報告する", async () => {
+    await withTempDir("public-document-privacy-checker-added-line", async (tempDir) => {
+      const repoDir = await initPlainRepo(tempDir);
+
+      await writeRepoFile(repoDir, "README.md", "safe line\n");
+      expect((await runCommand("git", ["add", "README.md"], process.env, { cwd: repoDir })).code).toBe(0);
+      expect(
+        (await runCommand("git", ["commit", "--no-verify", "-m", "initial"], process.env, { cwd: repoDir }))
+          .code,
+      ).toBe(0);
+
+      await writeRepoFile(repoDir, "README.md", "safe line\nsee /home/example/private/project\n");
+      expect((await runCommand("git", ["add", "README.md"], process.env, { cwd: repoDir })).code).toBe(0);
+
+      const checkResult = await runPublicDocumentPrivacyChecker(repoDir);
+
+      expect(checkResult.code).toBe(1);
+      expect(checkResult.stderr).toContain("README.md:2:see /home/example/private/project");
+    });
+  });
+
   test("公開文書の検査は環境固有のパスを含まないステージ済みMarkdownを許可する", async () => {
     await withTempDir("public-document-privacy-checker-safe", async (tempDir) => {
       const repoDir = await initPlainRepo(tempDir);
