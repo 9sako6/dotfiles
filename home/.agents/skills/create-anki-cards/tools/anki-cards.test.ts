@@ -56,7 +56,6 @@ function validProject() {
     contract: {
       mode: "create",
       output: "cards.tsv",
-      preview: "cards.preview.md",
       deck: "投資",
       noteType: "基本",
       html: true,
@@ -87,7 +86,7 @@ function validProject() {
 }
 
 describe("カードの生成", () => {
-  test("任意のフィールド順を保ち、安全な新規作成TSVとプレビューを生成する", async () => {
+  test("任意のフィールド順を保ち、安全な新規作成TSVを生成する", async () => {
     const { directory, inputPath } = await createProject(validProject());
 
     const result = await runTool(directory, "build", inputPath);
@@ -107,14 +106,6 @@ describe("カードの生成", () => {
       ].join("\n"),
     );
     expect(tsv).not.toContain("#guid column:");
-
-    const preview = await readFile(
-      path.join(directory, "cards.preview.md"),
-      "utf8",
-    );
-    expect(preview).toContain("## market-001");
-    expect(preview).toContain("### 表面");
-    expect(preview).toContain("https://example.com/primary");
   });
 
   test("Anki互換GUIDを生成して正規データへ保存し、再生成でも維持する", async () => {
@@ -283,38 +274,33 @@ describe("カードの生成", () => {
     );
   });
 
-  test("検証に失敗したとき既存の生成物を変更しない", async () => {
+  test("検証に失敗したとき既存の生成物をTSVを変更しない", async () => {
     const project = validProject();
     project.cards.push(structuredClone(project.cards[0]));
     const { directory, inputPath } = await createProject(project);
     const tsvPath = path.join(directory, "cards.tsv");
-    const previewPath = path.join(directory, "cards.preview.md");
     await writeFile(tsvPath, "以前のTSV\n");
-    await writeFile(previewPath, "以前のプレビュー\n");
 
     const result = await runTool(directory, "build", inputPath);
 
     expect(result.exitCode).toBe(1);
     expect(await readFile(tsvPath, "utf8")).toBe("以前のTSV\n");
-    expect(await readFile(previewPath, "utf8")).toBe("以前のプレビュー\n");
   });
 
   test("一つの出力先を置き換えられない場合は正規データと既存出力を変更しない", async () => {
     const project: any = validProject();
     project.contract.guidPolicy = "generate";
-    project.contract.preview = "preview";
     const { directory, inputPath } = await createProject(project);
     const original = await readFile(inputPath, "utf8");
     const tsvPath = path.join(directory, "cards.tsv");
-    await writeFile(tsvPath, "以前のTSV\n");
-    await mkdir(path.join(directory, "preview"));
+    await rm(tsvPath, { force: true });
+    await mkdir(tsvPath);
 
     const result = await runTool(directory, "build", inputPath);
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("出力先をdirectoryで置き換えられません");
     expect(await readFile(inputPath, "utf8")).toBe(original);
-    expect(await readFile(tsvPath, "utf8")).toBe("以前のTSV\n");
   });
 
   test("正規データ自身を出力先に指定できない", async () => {
@@ -345,33 +331,16 @@ describe("カードの生成", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("出力先の親directoryがproject外です");
     expect(await readFile(outsideOutput, "utf8")).toBe("変更前\n");
-    expect(Bun.file(path.join(directory, "cards.preview.md")).size).toBe(0);
-  });
-
-  test("outputとpreviewが同じ実体pathを指す場合は拒否する", async () => {
-    const project = validProject();
-    const { directory, inputPath } = await createProject(project);
-    const shared = path.join(directory, "shared.txt");
-    await writeFile(shared, "変更前\n");
-    await symlink("shared.txt", path.join(directory, "cards.tsv"));
-    await symlink("shared.txt", path.join(directory, "cards.preview.md"));
-
-    const result = await runTool(directory, "build", inputPath);
-
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("outputとは異なる実体path");
-    expect(await readFile(shared, "utf8")).toBe("変更前\n");
+    expect(Bun.file(path.join(directory, "cards.tsv")).size).toBe(0);
   });
 
   test("project内の通常directoryではatomic replacementを維持する", async () => {
     const project = validProject();
     project.contract.output = "generated/cards.tsv";
-    project.contract.preview = "generated/cards.preview.md";
     const { directory, inputPath } = await createProject(project);
     const generated = path.join(directory, "generated");
     await mkdir(generated);
     await writeFile(path.join(generated, "cards.tsv"), "変更前\n");
-    await writeFile(path.join(generated, "cards.preview.md"), "変更前\n");
 
     const result = await runTool(directory, "build", inputPath);
 
@@ -379,9 +348,6 @@ describe("カードの生成", () => {
     expect(await readFile(path.join(generated, "cards.tsv"), "utf8")).toContain(
       "#separator:tab",
     );
-    expect(
-      await readFile(path.join(generated, "cards.preview.md"), "utf8"),
-    ).toContain("Ankiカードプレビュー");
   });
 });
 
