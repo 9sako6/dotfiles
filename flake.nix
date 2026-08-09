@@ -22,7 +22,7 @@
     };
   };
 
-  outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, steipete-homebrew-tap, ... }:
+  outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, ... }@inputs:
     let
       system = "aarch64-darwin";
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
@@ -76,7 +76,7 @@
           ./darwin/home-manager.nix
           ./darwin/configuration.nix
           {
-            nix-homebrew.taps."steipete/homebrew-tap" = steipete-homebrew-tap;
+            nix-homebrew.taps."steipete/homebrew-tap" = inputs.steipete-homebrew-tap;
           }
         ];
       };
