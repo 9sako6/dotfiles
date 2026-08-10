@@ -9,8 +9,6 @@ description: >
 実現方法を決める前に、ユーザーが本当に欲しい体験を明らかにする。
 機能名や一般的な製品像に引っ張られない。
 
-## 進め方
-
 まず、誰が、どんな状況で、何に困り、
 体験後にどうなっていたいかを掘る。
 Purpose と Person & Context を一文で言える状態にする。
@@ -30,10 +28,21 @@ Purpose と Person & Context を一文で言える状態にする。
 実現方法の案が出たら、
 「それでどんな体験を実現したいか」に戻す。
 
-Apple HIG の Design Principles は必要なものだけ使う:
-Purpose, Agency, Responsibility, Familiarity, Flexibility,
-Simplicity, Craft, Delight.
-網羅せず、衝突したら Purpose に照らして優先する。
+Apple HIG の Design Principles を、質問と判断のたびに参照する。
+網羅するチェックリストではなく、
+競合する優先事項を量る道具として使う。
+
+- Purpose: 人にとって何が大切で、何に価値を生むか。
+- Agency: 自分のやり方で行動でき、状況を理解し、失敗から戻れるか。
+- Responsibility: 安全、プライバシー、透明性を守り、人の利益を優先するか。
+- Familiarity: 既知の概念や慣習を活かし、一貫した振る舞いを保つか。
+- Flexibility: 人、状況、デバイス、操作方法の違いに適応できるか。
+- Simplicity: 必要なものだけを残し、明確で直接的か。
+- Craft: 細部まで意図を持ち、試し、磨き、品質を保てるか。
+- Delight: ふさわしい感情を生み、装飾のために目的を邪魔していないか。
+
+原則が衝突したら、誰がどんな状況で何を達成したいかに戻り、
+この体験で優先するものを決める。すべてを最大化しない。
 
 主要な Experience invariants が矛盾なく説明でき、
 残りが実現方法の検討へ渡せる内容になり、
