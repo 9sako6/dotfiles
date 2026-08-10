@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-08-09T11:34:48.255790+00:00'
+generated_at: '2026-08-10T13:48:18.481056+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -45,6 +45,20 @@ dependencies:
     .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
   source: local
   local_path: ./.apm/skills/create-anki-cards
+- repo_url: _local/design-it
+  name: design-it
+  version: 0.0.0
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/design-it
+  - .agents/skills/design-it/SKILL.md
+  - .claude/skills/design-it
+  - .claude/skills/design-it/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/design-it/SKILL.md: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
+    .claude/skills/design-it/SKILL.md: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
+  source: local
+  local_path: ./.apm/skills/design-it
 - repo_url: _local/rails-mysql-explain
   name: rails-mysql-explain
   version: 0.0.0
@@ -333,6 +347,26 @@ deployments:
   - .
   active_owner: ./.apm/skills/create-anki-cards
   content_hash: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
+- kind: project-relative
+  target: claude
+  value: .claude/skills/design-it
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/design-it
+  - .
+  active_owner: ./.apm/skills/design-it
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/design-it/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/design-it
+  - .
+  active_owner: ./.apm/skills/design-it
+  content_hash: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
 - kind: project-relative
   target: claude
   value: .claude/skills/gpt-tasteskill
@@ -802,6 +836,26 @@ deployments:
   content_hash: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
 - kind: project-relative
   target: codex
+  value: .agents/skills/design-it
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/design-it
+  - .
+  active_owner: ./.apm/skills/design-it
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/design-it/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/design-it
+  - .
+  active_owner: ./.apm/skills/design-it
+  content_hash: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
+- kind: project-relative
+  target: codex
   value: .agents/skills/gpt-tasteskill
   runtime: null
   scope: project
@@ -1187,6 +1241,8 @@ local_deployed_files:
 - .agents/skills/create-anki-cards/references/card-design.md
 - .agents/skills/create-anki-cards/tools/anki-cards.test.ts
 - .agents/skills/create-anki-cards/tools/anki-cards.ts
+- .agents/skills/design-it
+- .agents/skills/design-it/SKILL.md
 - .agents/skills/rails-mysql-explain
 - .agents/skills/rails-mysql-explain/SKILL.md
 - .agents/skills/rails-mysql-explain/references/explain-guide.md
@@ -1196,6 +1252,8 @@ local_deployed_files:
 - .claude/skills/create-anki-cards/references/card-design.md
 - .claude/skills/create-anki-cards/tools/anki-cards.test.ts
 - .claude/skills/create-anki-cards/tools/anki-cards.ts
+- .claude/skills/design-it
+- .claude/skills/design-it/SKILL.md
 - .claude/skills/rails-mysql-explain
 - .claude/skills/rails-mysql-explain/SKILL.md
 - .claude/skills/rails-mysql-explain/references/explain-guide.md
@@ -1204,6 +1262,7 @@ local_deployed_file_hashes:
   .agents/skills/create-anki-cards/references/card-design.md: sha256:43557563894aaecdd4a2344c1dec4e156fb4094ae97e779e8027a8fd588365a7
   .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:c82cfa811314ea3293d7c7ea6f1f3a05ec4a57d5a2ef17a7c9eb37fdaee10fd8
   .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
+  .agents/skills/design-it/SKILL.md: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .claude/rules/global.md: sha256:2d92e1b2d111ffe4d13ed45d03c06ee32c85e2b04573f026b51b45a8c82a56a4
@@ -1211,5 +1270,6 @@ local_deployed_file_hashes:
   .claude/skills/create-anki-cards/references/card-design.md: sha256:43557563894aaecdd4a2344c1dec4e156fb4094ae97e779e8027a8fd588365a7
   .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:c82cfa811314ea3293d7c7ea6f1f3a05ec4a57d5a2ef17a7c9eb37fdaee10fd8
   .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
+  .claude/skills/design-it/SKILL.md: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
   .claude/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
