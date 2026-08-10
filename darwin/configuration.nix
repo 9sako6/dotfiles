@@ -14,6 +14,10 @@ in
   ];
 
   environment.systemPackages = [
+    pkgs.colima
+    pkgs.docker
+    pkgs.docker-buildx
+    pkgs.docker-compose
     pkgs.git
   ];
 
