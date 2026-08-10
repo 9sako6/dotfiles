@@ -9,14 +9,31 @@ description: ユーザーの欲求を掘り下げて、実現したい体験の�
 
 質問は一つずつしてください。
 
-Apple Human Interface GuidelinesのDesign Principlesを評価軸とする。
+Apple Human Interface GuidelinesのDesign Principlesを
+設計について考えるときに、見落としてはいけない問いとして使う。
+原則をチェックリストとして網羅したり、すべてを最大化したりしない。
+Purpose に照らして重要な原則を見極め、原則同士が衝突する場合はトレードオフを明らかにして優先順位を決める。
 
-- Purpose
-- Agency
-- Responsibility
-- Familiarity
-- Flexibility
-- Simplicity
-- Craft
-- Delight
+```mermaid
+flowchart TD
+    P["Purpose"]
+
+    P --> A["Agency<br/>主導権"]
+    P --> F["Familiarity<br/>親しみやすさ"]
+    P --> X["Flexibility<br/>柔軟性"]
+    P --> S["Simplicity<br/>シンプルさ"]
+    P --> C["Craft<br/>丁寧さ・品質"]
+    P --> D["Delight<br/>喜び"]
+
+    A --> E["理想の体験"]
+    F --> E
+    X --> E
+    S --> E
+    C --> E
+    D --> E
+
+    R["Responsibility<br/>安全・プライバシー・信頼<br/>越えてはいけない境界"] -.-> E
+
+    E --> G["Experience Goal"]
+```
 
