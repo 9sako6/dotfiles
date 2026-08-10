@@ -25,7 +25,7 @@ Apple Human Interface Guidelines の Design Principles を使う: Purpose, Agenc
 
 ## 終了
 
-Purpose と Person & Context が一文で言え、主要な Experience invariants が矛盾なく説明でき、残りが実装設計に渡せる内容になったら質問を止める。質問を続けること自体を目的にしない。
+Purpose と Person & Context が一文で言え、主要な Experience invariants が矛盾なく説明でき、残りが実装設計に渡せる内容になったら質問を止める。次の質問で Experience Brief がほぼ変わらないなら聞かない。
 
 最後に技術非依存の Experience Brief を出す。Purpose、Person & Context、Desired Experience、Experience invariants、Non-goals など、必要な項目だけ残す。
 
