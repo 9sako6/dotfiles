@@ -30,3 +30,6 @@ deno.lock
 # APM dependencies
 apm_modules/
 home/.gitignore
+
+# Rust
+cli/target/
