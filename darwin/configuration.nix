@@ -58,6 +58,12 @@ in
 
   programs.zsh.shellInit = builtins.readFile ./homebrew-shellenv.zsh;
 
+  # Fixed SSH agent socket so nix-daemon (root) can reuse the user's SSH keys
+  # for git+ssh flake inputs (e.g. private hermes). The socket itself is
+  # created on demand by home/.zsh.d/ssh-agent.zsh.
+  launchd.daemons.nix-daemon.serviceConfig.EnvironmentVariables.SSH_AUTH_SOCK =
+    "/Users/${primaryUser}/.ssh/agent.sock";
+
   services.zundamonotify.enable = true;
 
   system = {
