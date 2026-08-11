@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-08-10T13:48:18.481056+00:00'
+generated_at: '2026-08-11T01:40:26.595698+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -55,8 +55,8 @@ dependencies:
   - .claude/skills/design-it
   - .claude/skills/design-it/SKILL.md
   deployed_file_hashes:
-    .agents/skills/design-it/SKILL.md: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
-    .claude/skills/design-it/SKILL.md: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
+    .agents/skills/design-it/SKILL.md: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
+    .claude/skills/design-it/SKILL.md: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
   source: local
   local_path: ./.apm/skills/design-it
 - repo_url: _local/rails-mysql-explain
@@ -77,6 +77,20 @@ dependencies:
     .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   source: local
   local_path: ./.apm/skills/rails-mysql-explain
+- repo_url: _local/resolve-it
+  name: resolve-it
+  version: 0.0.0
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/resolve-it
+  - .agents/skills/resolve-it/SKILL.md
+  - .claude/skills/resolve-it
+  - .claude/skills/resolve-it/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
+    .claude/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
+  source: local
+  local_path: ./.apm/skills/resolve-it
 - repo_url: cursor/plugins
   name: thermo-nuclear-code-quality-review
   host: github.com
@@ -366,7 +380,7 @@ deployments:
   - ./.apm/skills/design-it
   - .
   active_owner: ./.apm/skills/design-it
-  content_hash: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
+  content_hash: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
 - kind: project-relative
   target: claude
   value: .claude/skills/gpt-tasteskill
@@ -559,6 +573,26 @@ deployments:
   - leonxlnx/taste-skill
   active_owner: leonxlnx/taste-skill
   content_hash: sha256:98ad3e5b051bfb71b2795f7e8a6aa0d32b51ee095606c098a4b2822ac07926c9
+- kind: project-relative
+  target: claude
+  value: .claude/skills/resolve-it
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/resolve-it
+  - .
+  active_owner: ./.apm/skills/resolve-it
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/resolve-it/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/resolve-it
+  - .
+  active_owner: ./.apm/skills/resolve-it
+  content_hash: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
 - kind: project-relative
   target: claude
   value: .claude/skills/soft-skill
@@ -853,7 +887,7 @@ deployments:
   - ./.apm/skills/design-it
   - .
   active_owner: ./.apm/skills/design-it
-  content_hash: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
+  content_hash: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
 - kind: project-relative
   target: codex
   value: .agents/skills/gpt-tasteskill
@@ -1046,6 +1080,26 @@ deployments:
   - leonxlnx/taste-skill
   active_owner: leonxlnx/taste-skill
   content_hash: sha256:98ad3e5b051bfb71b2795f7e8a6aa0d32b51ee095606c098a4b2822ac07926c9
+- kind: project-relative
+  target: codex
+  value: .agents/skills/resolve-it
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/resolve-it
+  - .
+  active_owner: ./.apm/skills/resolve-it
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/resolve-it/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/resolve-it
+  - .
+  active_owner: ./.apm/skills/resolve-it
+  content_hash: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
 - kind: project-relative
   target: codex
   value: .agents/skills/soft-skill
@@ -1246,6 +1300,8 @@ local_deployed_files:
 - .agents/skills/rails-mysql-explain
 - .agents/skills/rails-mysql-explain/SKILL.md
 - .agents/skills/rails-mysql-explain/references/explain-guide.md
+- .agents/skills/resolve-it
+- .agents/skills/resolve-it/SKILL.md
 - .claude/rules/global.md
 - .claude/skills/create-anki-cards
 - .claude/skills/create-anki-cards/SKILL.md
@@ -1257,19 +1313,23 @@ local_deployed_files:
 - .claude/skills/rails-mysql-explain
 - .claude/skills/rails-mysql-explain/SKILL.md
 - .claude/skills/rails-mysql-explain/references/explain-guide.md
+- .claude/skills/resolve-it
+- .claude/skills/resolve-it/SKILL.md
 local_deployed_file_hashes:
   .agents/skills/create-anki-cards/SKILL.md: sha256:1c9bfdfcbc93b8edd2c164c623843e3ff453f21f14fa4d51f46308cec10f7b98
   .agents/skills/create-anki-cards/references/card-design.md: sha256:43557563894aaecdd4a2344c1dec4e156fb4094ae97e779e8027a8fd588365a7
   .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:c82cfa811314ea3293d7c7ea6f1f3a05ec4a57d5a2ef17a7c9eb37fdaee10fd8
   .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
-  .agents/skills/design-it/SKILL.md: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
+  .agents/skills/design-it/SKILL.md: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
+  .agents/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
   .claude/rules/global.md: sha256:2d92e1b2d111ffe4d13ed45d03c06ee32c85e2b04573f026b51b45a8c82a56a4
   .claude/skills/create-anki-cards/SKILL.md: sha256:1c9bfdfcbc93b8edd2c164c623843e3ff453f21f14fa4d51f46308cec10f7b98
   .claude/skills/create-anki-cards/references/card-design.md: sha256:43557563894aaecdd4a2344c1dec4e156fb4094ae97e779e8027a8fd588365a7
   .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:c82cfa811314ea3293d7c7ea6f1f3a05ec4a57d5a2ef17a7c9eb37fdaee10fd8
   .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
-  .claude/skills/design-it/SKILL.md: sha256:cdae6d8fee5632c1935170e4544cdffbf574434223bce80f7f410de08757a4b6
+  .claude/skills/design-it/SKILL.md: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
   .claude/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
+  .claude/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
