@@ -46,7 +46,8 @@ main() {
   cd "$DOTFILES_DIR"
   "$MISE_BIN" trust
   "$MISE_BIN" install
-  "$MISE_BIN" run apply
+  DOTFILES_DIR="$DOTFILES_DIR" "$MISE_BIN" exec -- \
+    cargo run --locked --manifest-path "$DOTFILES_DIR/cli/Cargo.toml" -- apply
 
   cd "$HOME"
   "$MISE_BIN" bootstrap --yes --verbose
