@@ -6,25 +6,23 @@
 ## ファイル
 
 - `configuration.nix`: macOS の既定値、サービス、Nix、システムパッケージ
-- `flake.lock`: `flake.nix` から生成する依存のロック
-- `flake.nix`: nix-darwin が使う依存と構成
 - `flake.nix.template`: private repository の root flake のひな型
 - `homebrew-packages.nix`: 公開してよい Homebrew の formula と cask
 - `homebrew-shellenv.zsh`: nix-homebrew が管理する Homebrew を zsh から使うための設定
 
+公開 flake は repository root の `flake.nix` / `flake.lock` にある。
 マシン固有の設定や認証情報はここへ置かない。Mac 全体へ反映したいが公開できない設定は、
 別の private repository で管理する。
 
 ## 公開設定を変更する
 
 1. 対象の Nix ファイルを編集する。
-2. `mise run system:plan --default` で、Mac へ反映せずに build と差分を確認する。
-3. `mise run test` を実行する。
-4. `mise run system:apply --default` で反映する。
-5. `mise run doctor` で未反映の設定がないことを確認する。
+2. `dotfiles plan --default` で、Mac へ反映せずに build と差分を確認する。
+3. `dotfiles test` を実行する。
+4. `dotfiles apply --default` で反映する。
 
-`system:apply` は必要に応じて Lix を導入し、`sudo` の認証を求める。
-設定の反映には `darwin-rebuild` を直接実行せず、この task を使う。
+`apply` は必要に応じて Lix を導入し、`sudo` の認証を求める。
+設定の反映には `darwin-rebuild` を直接実行せず、`dotfiles apply` を使う。
 
 ## private 設定を作る
 
@@ -58,16 +56,16 @@ git push
 初回は credential を含まない SSH または HTTPS clone URL を指定する。
 
 ```sh
-mise run system:plan git@example.com/owner/private-dotfiles.git
-mise run system:apply git@example.com/owner/private-dotfiles.git
+dotfiles plan git@example.com/owner/private-dotfiles.git
+dotfiles apply git@example.com/owner/private-dotfiles.git
 ```
 
-`system:plan` は build と差分表示だけを行い、使用する source を変更しない。
-`system:apply` が成功すると private source が選択される。以後は URL を省略できる。
+`plan` は build と差分表示だけを行い、使用する source を変更しない。
+`apply` が成功すると private source が選択される。以後は URL を省略できる。
 
 ```sh
-mise run system:plan
-mise run system:apply
+dotfiles plan
+dotfiles apply
 ```
 
 公開設定へ戻す場合は `--default` を指定する。
@@ -89,7 +87,7 @@ GUI アプリは `casks` に入れ、それぞれアルファベット順を保�
 ```
 
 公開できないものは private repository の `modules` に追加する。追加後は lock file を必要に応じて更新し、
-commit、push してから `system:plan` と `system:apply` を実行する。
+commit、push してから `dotfiles plan` と `dotfiles apply` を実行する。
 
 Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理する。
 バージョンを固定したい開発 CLI は Homebrew ではなく、mise の `[tools]` または Nix で管理する。
@@ -97,13 +95,13 @@ Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理す�
 ## 公開側の依存を更新する
 
 `nix-darwin`、`nix-homebrew`、`nixpkgs`、`zundamonotify` の具体的な revision は
-`flake.lock` で固定する。通常は `flake.nix` に commit SHA を書かない。
+root の `flake.lock` で固定する。通常は `flake.nix` に commit SHA を書かない。
 
 ```sh
 mise run system:update
 ```
 
-この task は `darwin/flake.lock` を更新したあと、公開構成の `system:plan --default` と test suite を実行する。
+この task は root の `flake.lock` を更新したあと、公開構成の `dotfiles plan --default` と `dotfiles test` を実行する。
 commit、push、apply は行わないため、差分を確認してから明示的に実行する。
 
 private repository など、この公開設定へ依存する flake の更新は依存側で管理する。
