@@ -5,7 +5,6 @@
   ];
   casks = [
     "bitwarden"
-    "codexbar"
     "ghostty"
     "raycast"
   ];

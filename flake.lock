@@ -99,24 +99,7 @@
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs",
-        "steipete-homebrew-tap": "steipete-homebrew-tap",
         "zundamonotify": "zundamonotify"
-      }
-    },
-    "steipete-homebrew-tap": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1786235782,
-        "narHash": "sha256-U2xMW0t15j11yGpnyjsHzr4gEV/CzWTt1xq2ZU5UQpc=",
-        "owner": "steipete",
-        "repo": "homebrew-tap",
-        "rev": "fd2088ffbe19a903b5d6fa9018e048b8ad9accc9",
-        "type": "github"
-      },
-      "original": {
-        "owner": "steipete",
-        "repo": "homebrew-tap",
-        "type": "github"
       }
     },
     "zundamonotify": {
