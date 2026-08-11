@@ -22,9 +22,16 @@
     };
   };
 
-  outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, ... }@inputs:
+  outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, nixpkgs, ... }@inputs:
     let
       system = "aarch64-darwin";
+      pkgs = nixpkgs.legacyPackages.${system};
+      dotfilesPackage = pkgs.rustPlatform.buildRustPackage {
+        pname = "dotfiles";
+        version = "0.1.0";
+        src = ./cli;
+        cargoLock.lockFile = ./cli/Cargo.lock;
+      };
       primaryUser = builtins.getEnv "DARWIN_PRIMARY_USER";
       dotfilesSourceHome = self.outPath + "/home";
       mkDarwinSystem = {
@@ -40,6 +47,7 @@
             };
             modules = [
               self.darwinModules.default
+              { environment.systemPackages = [ dotfilesPackage ]; }
               {
                 nixpkgs.hostPlatform = system;
                 system = {
@@ -66,6 +74,9 @@
       };
     in
     {
+      packages.${system}.dotfiles = dotfilesPackage;
+      packages.${system}.default = dotfilesPackage;
+
       darwinConfigurations.current = publicSystem;
 
       darwinModules.default = {
