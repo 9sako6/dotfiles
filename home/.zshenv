@@ -21,5 +21,7 @@ path=(
 )
 export PATH
 
+export SSH_AUTH_SOCK="${SSH_AUTH_SOCK:-$HOME/.ssh/agent.sock}"
+
 # Set secret environment variables
 [ -e "${HOME}/.zsh.d/secrets.zsh" ] && source "${HOME}/.zsh.d/secrets.zsh"

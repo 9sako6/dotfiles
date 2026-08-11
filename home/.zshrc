@@ -82,6 +82,9 @@ fi
 # prompt
 [ -e "${HOME}/.zsh.d/prompt.zsh" ] && source "${HOME}/.zsh.d/prompt.zsh"
 
+# ssh-agent (fixed socket for nix-daemon)
+[ -e "${HOME}/.zsh.d/ssh-agent.zsh" ] && source "${HOME}/.zsh.d/ssh-agent.zsh"
+
 # alias
 [ -e "${HOME}/.zsh.d/alias.zsh" ] && source "${HOME}/.zsh.d/alias.zsh"
 
