@@ -6,6 +6,7 @@ dependencies:
   apm:
   - ./.apm/skills/create-anki-cards
   - ./.apm/skills/design-it
+  - ./.apm/skills/resolve-it
   - ./.apm/skills/rails-mysql-explain
   - mattpocock/skills/skills/productivity/grill-me
   - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review
