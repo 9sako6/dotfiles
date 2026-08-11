@@ -56,13 +56,14 @@ Home Manager は nix-darwin module として組み込まれているため、sys
 
 ```sh
 git pull                       # 公開dotfilesを通常のGit操作で更新
-mise run apply                 # system + Home Managerを確認して反映
-mise run plan                  # system + Home Managerをbuildしてplanを表示
+dotfiles apply                 # system + Home Managerを確認して反映
+dotfiles plan                  # system + Home Managerをbuildしてplanを表示
+dotfiles test                  # 契約テストとRustテストを実行
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
-mise run test                  # 契約テストを実行
 ```
 
-他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
+`apply` と `test` は mise task として公開しない。日常操作の正本は Rust 製の `dotfiles` CLI とする。
+その他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
 
 公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。同じflakeが両方を所有するため、Home Managerはtracked `home/` treeをflake sourceから列挙できる。
 
@@ -77,10 +78,10 @@ public system は `plan` / `apply` を実行している checkout を自動で�
 HTTPS clone URL の remote default branch を取得し、push 済みの最新 commit を使う。
 
 ```sh
-mise run plan <clone-url>   # 別sourceを試すが選択は変えない
-mise run apply <clone-url>  # 成功後にsourceを選択する
-mise run plan --default     # 公開sourceを試す
-mise run apply --default    # 公開sourceへ戻す
+dotfiles plan <clone-url>   # 別sourceを試すが選択は変えない
+dotfiles apply <clone-url>  # 成功後にsourceを選択する
+dotfiles plan --default     # 公開sourceを試す
+dotfiles apply --default    # 公開sourceへ戻す
 ```
 
 `plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
@@ -121,20 +122,20 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 
 ## 検証
 
-変更した振る舞いをコマンドやスクリプトで観測してから、`mise run test` を実行する。振る舞いをテストできない場合は、観測可能な境界を作ってから変更する。
+変更した振る舞いをコマンドやスクリプトで観測してから、`dotfiles test` を実行する。振る舞いをテストできない場合は、観測可能な境界を作ってから変更する。
 
 設定ファイルやソースの文面を直接検査するテストは書かない。
 
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
-2. `home-managed user tools` を変更する場合は、`mise run plan` で配備を含む system generation を確認
+2. `home-managed user tools` を変更する場合は、`dotfiles plan` で配備を含む system generation を確認
 3. 必要な変更を入れる
 4. 「検証」の手順を実施
 5. 変更した管理区分に応じて反映
-   - `home-managed user tools` — `mise run apply`
-   - `system configuration` — `mise run apply`
-   - `private system configuration` — private repository を push して `mise run apply`
+   - `home-managed user tools` — `dotfiles apply`
+   - `system configuration` — `dotfiles apply`
+   - `private system configuration` — private repository を push して `dotfiles apply`
 
 `repo runtime` の変更に反映コマンドはない。`apply` の初回実行では、
 Lix を導入するため途中で `sudo` の認証を求められる。
