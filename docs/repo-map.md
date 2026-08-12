@@ -5,7 +5,7 @@
 ファイルは次の 6 区分で扱う。共有してよい設定と共有してはいけない情報を同じ repo に混ぜないための境界。
 
 - `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
-- `home-managed user tools` — `home/` に置く共有ユーザー設定。root flake の Home Manager moduleから system generation と一緒に反映する。
+- `home-managed user tools` — `home/` に置く共有ユーザー設定。通常は root flake の Home Manager module から system generation と一緒に反映し、devcontainer から実ファイルとして見える必要があるものだけ `.dotfiles.json` の `copy` で配備する。
 - `system configuration` — root の `flake.nix` / `flake.lock` と `darwin/` に置く macOS module。nix-darwin で Mac 全体へ反映し、Homebrew 本体と cask もここで管理する。
 - `private system configuration` — 公開できない追加設定だけを別の root flake に置く。公開 `darwinModules.default` と `lib.mkDarwinSystem` を利用し、共有設定を複製しない。
 - `local-only` — マシン固有の設定。repo に入れず、各マシンに手で置く（例: `~/.zsh.d/local.zsh`）。
@@ -27,12 +27,14 @@
 - `dotfiles` CLI は日常の system plan/apply と repository test の正本とする。`apply` と `test` は mise task として重複公開しない。
 - `.mise.toml` は tool version と補助 task を所有する。bootstrap や `dotfiles` CLI の処理を task 側へ複製しない。
 - `dotfiles` CLI の repo 固有ロジックは `cli/` の Rust 実装へ集める。標準コマンドの実行自体は外部プロセスへ委ねても、引数検証、source 選択、手順、失敗時の扱いは Rust 側を正本とする。
-- `plan` は Lix や active system を変更しない。`apply` だけが Lix 導入、build 済み世代の activation、Home Manager activation、source 選択の永続化を行う。
+- `plan` は Lix や active system を変更せず、`.dotfiles.json` の home copy 定義も検証と表示だけ行う。`apply` だけが Lix 導入、build 済み世代の activation、Home Manager activation、source 選択の永続化、home copy の反映を行う。
 - public source は実行ユーザーと local dotfiles checkout を入力にして root flake を評価する。private source はユーザーを root flake で明示し、committed lock file から pure に評価する。
 - system source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけとし、独自の sidecar state を持たない。
 - user 向け install task は `home/` ではなく `~/` を入力にする。`apply` 後の home directory 上の設定を使って実行し、repo 内の管理元パスを直接参照しない。
-- 編集を即時反映する設定はlive checkoutへのout-of-store link、APMが生成するagent resourcesはNix store由来のleaf linkとし、source repositoryへの書き戻しを防ぐ。どちらも親directoryは占有しない。
-- 標準機能で足りる home 配備は Home Manager に任せ、独自の配置 state や deploy engine を持たない。
+- 編集を即時反映する通常設定は live checkout への out-of-store link とする。
+- devcontainer から参照する agent resources は `/nix/store` や host 固有の絶対 symlink にしない。`.dotfiles.json` の `copy` に列挙したファイルまたはディレクトリだけを `$HOME` へ実体配備する。列挙したディレクトリは dotfiles がそのディレクトリ以下を所有し、同期時に source にない子を削除するが、親ディレクトリや兄弟の runtime file は触らない。
+- `.dotfiles.json` は `copy` だけを受け付け、パスは重複なし、アルファベット順、相対パス、相互に非包含とする。未知の key や不正な path は system plan/apply より前に拒否する。
+- 標準機能で足りる home 配備は Home Manager に任せる。`.dotfiles.json` の copy は devcontainer 境界を越えるための限定的な例外とし、別の manifest や配置 state は持たない。
 - bootstrap の正しさは e2e で確認する。shell の順序や導線の確認を、内部手順を固定する unit test に逃がさない。
 
 ## バージョンピン留め

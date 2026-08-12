@@ -1,0 +1,9 @@
+{
+  "copy": [
+    ".agents/skills",
+    ".claude/rules",
+    ".claude/settings.json",
+    ".claude/skills",
+    ".codex/AGENTS.md"
+  ]
+}
