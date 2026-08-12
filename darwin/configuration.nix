@@ -16,8 +16,7 @@ in
   environment.systemPackages = [
     pkgs.colima
     pkgs.docker
-    pkgs.docker-buildx
-    pkgs.docker-compose
+    pkgs.docker-credential-helpers
     pkgs.git
   ];
 
@@ -103,7 +102,7 @@ in
         # パスバーを表示する
         ShowPathbar = true;
         # ステータスバーを表示する
-        ShowStatusBar = true;
+        ShowStatusbar = true;
         # ゴミ箱に入れてから30日が過ぎた項目を自動で削除する
         FXRemoveOldTrashItems = true;
         # Finderの新しいウィンドウでホームフォルダを開く
