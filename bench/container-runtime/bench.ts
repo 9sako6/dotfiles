@@ -183,6 +183,12 @@ function dockerContext(options: Options): string {
   throw new Error(`Docker context for Colima profile ${options.colimaProfile} was not found`);
 }
 
+function ensureAppleSystem() {
+  if (spawn(["container", "system", "status"]).exitCode !== 0) {
+    checked(["container", "system", "start"], {}, true);
+  }
+}
+
 function machineExists(name: string): boolean {
   return spawn(["container", "machine", "inspect", name]).exitCode === 0;
 }
@@ -305,7 +311,7 @@ function runAppleLocal(options: Options): MetricRow[] {
   if (options.repo) {
     const sharedRepo = machineSharedPath(options, options.repo);
     repo = `${scratch}/repo`;
-    const setup = `rm -rf ${shellQuote(repo)} && mkdir -p ${shellQuote(scratch)} && git clone --quiet --no-local ${shellQuote(sharedRepo)} ${shellQuote(repo)}`;
+    const setup = `rm -rf ${shellQuote(repo)} && mkdir -p ${shellQuote(repo)} && cp -a ${shellQuote(`${sharedRepo}/.`)} ${shellQuote(`${repo}/`)}`;
     checked(["container", "machine", "run", "-n", options.appleMachine, "--", "sh", "-lc", setup]);
   }
   const env = workloadEnv(options, "apple-local", scratch, repo);
@@ -449,9 +455,7 @@ function metadata(options: Options): Record<string, unknown> {
 function prepare(options: Options) {
   if (process.platform !== "darwin") throw new Error("container runtime benchmark preparation must run on macOS");
   requireCommands(["colima", "container", "docker"]);
-  if (spawn(["container", "system", "status"]).exitCode !== 0) {
-    checked(["container", "system", "start"], {}, true);
-  }
+  ensureAppleSystem();
 
   startColima(options);
   const context = dockerContext(options);
@@ -487,6 +491,7 @@ function prepare(options: Options) {
 function runBenchmark(options: Options) {
   if (process.platform !== "darwin") throw new Error("container runtime benchmark must run on macOS");
   requireCommands(["colima", "container", "docker", "rustc", "cargo"]);
+  ensureAppleSystem();
   if (!machineExists(options.appleMachine)) throw new Error("Apple benchmark machine is missing; run prepare first");
   if (options.repo) resolvePathInHome(hostHome, options.repo);
 
