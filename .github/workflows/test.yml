@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -49,5 +50,8 @@ jobs:
           "$HOME/.local/bin/mise" trust
           "$HOME/.local/bin/mise" install
 
-      - name: Run contract tests
-        run: '"$HOME/.local/bin/mise" run test'
+      - name: Build dotfiles CLI
+        run: '"$HOME/.local/bin/mise" exec -- cargo build --locked --manifest-path cli/Cargo.toml'
+
+      - name: Run dotfiles tests
+        run: 'DOTFILES_DIR="$GITHUB_WORKSPACE" ./cli/target/debug/dotfiles test'

@@ -23,8 +23,8 @@ async function main(): Promise<void> {
   await run(["nix", "flake", "update", "--flake", repoRoot], repoRoot);
 
   console.log("==> validate public system");
-  await run(["mise", "run", "plan", "--default"], repoRoot);
-  await run(["mise", "run", "test"], repoRoot);
+  await run(["dotfiles", "plan", "--default"], repoRoot);
+  await run(["dotfiles", "test"], repoRoot);
 }
 
 main().catch((error) => {
