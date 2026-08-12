@@ -17,18 +17,19 @@ struct CopyEntry {
 }
 
 impl CopyPlan {
-    pub fn print(&self) {
+    pub fn preview(&self) -> String {
         if self.entries.is_empty() {
-            return;
+            return String::new();
         }
-        println!("home copies:");
-        for entry in &self.entries {
-            println!(
+        let mut lines = vec!["home copy plan:".to_owned()];
+        lines.extend(self.entries.iter().map(|entry| {
+            format!(
                 "  {} -> {}",
                 entry.relative.display(),
                 entry.destination.display()
-            );
-        }
+            )
+        }));
+        lines.join("\n")
     }
 
     pub fn apply(&self) -> Result<()> {

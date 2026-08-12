@@ -54,6 +54,10 @@ else
   printf 'Homebrew cleanup candidates: brew is not active yet\n'
 fi
 
+if [ -n "${DOTFILES_HOME_COPY_PLAN:-}" ]; then
+  printf '%s\n' "$DOTFILES_HOME_COPY_PLAN"
+fi
+
 [ "$mode" = apply ] || exit 0
 install_system_confirm_apply
 
