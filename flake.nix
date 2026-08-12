@@ -12,6 +12,12 @@
     };
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # mutableTaps is disabled, so third-party taps must be materialized by
+    # nix-homebrew instead of letting `brew bundle` clone into Library/Taps.
+    steipete-homebrew-tap = {
+      url = "github:steipete/homebrew-tap";
+      flake = false;
+    };
     zundamonotify = {
       url = "github:9sako6/zundamonotify";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -82,6 +88,11 @@
           zundamonotify.darwinModules.default
           ./darwin/home-manager.nix
           ./darwin/configuration.nix
+          {
+            # Keep the tap writable policy immutable while making the tap
+            # available to downstream modules such as Hermes.
+            nix-homebrew.taps."steipete/homebrew-tap" = inputs.steipete-homebrew-tap;
+          }
         ];
       };
 
