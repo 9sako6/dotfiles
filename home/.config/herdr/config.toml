@@ -70,8 +70,9 @@ description = "rename agent display"
 [ui]
 [ui.sidebar.agents]
 rows = [
-  ["state_icon", "$name", "tab"],
-  ["workspace", "agent"],
+  ["state_icon", "tab"],
+  [{ token = "$name", dim = false }],
+  ["agent"],
 ]
 # Sidebar width (auto-scaled based on workspace names, this sets the default)
 # sidebar_width = 26
