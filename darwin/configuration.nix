@@ -102,7 +102,7 @@ in
         # パスバーを表示する
         ShowPathbar = true;
         # ステータスバーを表示する
-        ShowStatusbar = true;
+        ShowStatusBar = true;
         # ゴミ箱に入れてから30日が過ぎた項目を自動で削除する
         FXRemoveOldTrashItems = true;
         # Finderの新しいウィンドウでホームフォルダを開く
