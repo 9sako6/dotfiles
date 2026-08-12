@@ -116,19 +116,24 @@ run_fio_metrics() {
   i=1
   while [ "$i" -le "$ITERATIONS" ]; do
     fio_file="$SCRATCH/fio-$i.dat"
-    result=$(fio --name=seqwrite --filename="$fio_file" --size="${IO_MIB}M" --rw=write --bs=1M --direct=1 --ioengine=sync --output-format=json 2>/dev/null)
-    value=$(printf '%s' "$result" | jq -r '.jobs[0].write.bw_bytes / 1048576')
-    emit fio_seq_write_mib_s "$value" MiB/s "$i"
+    if result=$(fio --name=seqwrite --filename="$fio_file" --size="${IO_MIB}M" --rw=write --bs=1M --direct=1 --ioengine=sync --output-format=json 2>/dev/null); then
+      value=$(printf '%s' "$result" | jq -r '.jobs[0].write.bw_bytes / 1048576')
+      emit fio_seq_write_mib_s "$value" MiB/s "$i"
 
-    result=$(fio --name=seqread --filename="$fio_file" --size="${IO_MIB}M" --rw=read --bs=1M --direct=1 --ioengine=sync --output-format=json 2>/dev/null)
-    value=$(printf '%s' "$result" | jq -r '.jobs[0].read.bw_bytes / 1048576')
-    emit fio_seq_read_mib_s "$value" MiB/s "$i"
+      if result=$(fio --name=seqread --filename="$fio_file" --size="${IO_MIB}M" --rw=read --bs=1M --direct=1 --ioengine=sync --output-format=json 2>/dev/null); then
+        value=$(printf '%s' "$result" | jq -r '.jobs[0].read.bw_bytes / 1048576')
+        emit fio_seq_read_mib_s "$value" MiB/s "$i"
+      fi
 
-    result=$(fio --name=randrw --filename="$fio_file" --size="${IO_MIB}M" --rw=randrw --rwmixread=50 --bs=4k --direct=1 --ioengine=sync --iodepth=1 --runtime=5 --time_based=1 --output-format=json 2>/dev/null)
-    value=$(printf '%s' "$result" | jq -r '.jobs[0].read.iops')
-    emit fio_randread_iops "$value" IOPS "$i"
-    value=$(printf '%s' "$result" | jq -r '.jobs[0].write.iops')
-    emit fio_randwrite_iops "$value" IOPS "$i"
+      if result=$(fio --name=randrw --filename="$fio_file" --size="${IO_MIB}M" --rw=randrw --rwmixread=50 --bs=4k --direct=1 --ioengine=sync --iodepth=1 --runtime=5 --time_based=1 --output-format=json 2>/dev/null); then
+        value=$(printf '%s' "$result" | jq -r '.jobs[0].read.iops')
+        emit fio_randread_iops "$value" IOPS "$i"
+        value=$(printf '%s' "$result" | jq -r '.jobs[0].write.iops')
+        emit fio_randwrite_iops "$value" IOPS "$i"
+      fi
+    else
+      printf 'fio direct I/O is unavailable for %s; skipping fio metrics\n' "$TARGET" >&2
+    fi
     rm -f "$fio_file"
     i=$((i + 1))
   done
