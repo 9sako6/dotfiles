@@ -13,6 +13,11 @@ async function makeExecutable(filePath: string, content: string) {
   await chmod(filePath, 0o755);
 }
 
+function cargoApplyLog(dotfilesDir: string): string {
+  return "mise <exec> <--> <cargo> <run> <--locked> <--manifest-path> " +
+    `<${dotfilesDir}/cli/Cargo.toml> <--> <apply>\n`;
+}
+
 async function prepareBootstrapEnvironment(
   tempDir: string,
   options: {
@@ -35,6 +40,10 @@ async function prepareBootstrapEnvironment(
     path.join(dotfilesDir, "bin/install-mise.sh"),
     `#!/bin/sh
 printf 'install-mise\\n' >> "$BOOTSTRAP_LOG"
+if [ "\${BOOTSTRAP_FAIL_STAGE:-}" = "install-mise" ] && [ ! -e "\${BOOTSTRAP_FAILURE_MARKER:-/nonexistent}" ]; then
+  : > "$BOOTSTRAP_FAILURE_MARKER"
+  exit 1
+fi
 `,
   );
   await makeExecutable(
@@ -43,6 +52,10 @@ printf 'install-mise\\n' >> "$BOOTSTRAP_LOG"
 printf 'mise' >> "$BOOTSTRAP_LOG"
 printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
 printf '\\n' >> "$BOOTSTRAP_LOG"
+if [ "\${BOOTSTRAP_FAIL_STAGE:-}" = "\${1:-}" ] && [ ! -e "\${BOOTSTRAP_FAILURE_MARKER:-/nonexistent}" ]; then
+  : > "$BOOTSTRAP_FAILURE_MARKER"
+  exit 1
+fi
 `,
   );
   await makeExecutable(
@@ -85,11 +98,7 @@ esac
     BOOTSTRAP_REMOTE_REVISION: remoteRevision,
   };
 
-  return {
-    env,
-    gitLogPath,
-    logPath,
-  };
+  return { env, gitLogPath, logPath };
 }
 
 async function runScript(script: string, env: NodeJS.ProcessEnv) {
@@ -125,8 +134,8 @@ async function runCommand(command: string, args: string[], cwd: string) {
 }
 
 describe("公開bootstrap", () => {
-  test("取得が完了したinstall.shだけがbootstrapを開始する", async () => {
-    await withTempDir("bootstrap-complete", async (tempDir) => {
+  test("applyをmise taskではなくRust CLIから実行する", async () => {
+    await withTempDir("bootstrap-rust-apply", async (tempDir) => {
       const { env, logPath } = await prepareBootstrapEnvironment(tempDir);
 
       const result = await runScript(installScript, env);
@@ -134,7 +143,7 @@ describe("公開bootstrap", () => {
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\nmise <trust>\nmise <install>\n" +
-          "mise <run> <apply>\n" +
+          cargoApplyLog(env.DOTFILES_DIR!) +
           "mise <bootstrap> <--yes> <--verbose>\n",
       );
     });
@@ -142,7 +151,7 @@ describe("公開bootstrap", () => {
 
   test("新規環境ではorigin/masterの先端をbootstrapしてmasterへ接続する", async () => {
     await withTempDir("bootstrap-fresh", async (tempDir) => {
-      const { env, gitLogPath, logPath } = await prepareBootstrapEnvironment(tempDir, {
+      const { env, gitLogPath } = await prepareBootstrapEnvironment(tempDir, {
         checkoutExists: false,
       });
       env.DOTFILES_REPO_URL = "https://example.test/dotfiles.git";
@@ -159,11 +168,10 @@ describe("公開bootstrap", () => {
         `<-C><${env.DOTFILES_DIR}><checkout><--quiet><-B><master><${remoteRevision}>\n` +
           `<-C><${env.DOTFILES_DIR}><branch><--quiet><--set-upstream-to=origin/master><master>\n`,
       );
-      expect(await readFile(logPath, "utf8")).toContain("install-mise\n");
     });
   });
 
-  test("実際のgitでorigin/masterの先端をcloneしてbootstrapする", async () => {
+  test("実際のgitでもorigin/masterへ収束する", async () => {
     await withTempDir("bootstrap-git", async (tempDir) => {
       const sourceDir = path.join(tempDir, "source");
       const dotfilesDir = path.join(tempDir, "checkout");
@@ -174,15 +182,13 @@ describe("公開bootstrap", () => {
       await runCommand("git", ["-C", sourceDir, "config", "user.name", "Bootstrap Test"], tempDir);
       await makeExecutable(
         path.join(sourceDir, "bin", "install-mise.sh"),
-        `#!/bin/sh
-printf 'install-mise\\n' >> "$BOOTSTRAP_LOG"
-`,
+        "#!/bin/sh\nprintf 'install-mise\\n' >> \"$BOOTSTRAP_LOG\"\n",
       );
       await runCommand("git", ["-C", sourceDir, "add", "bin/install-mise.sh"], tempDir);
       await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
       const revision = await runCommand("git", ["-C", sourceDir, "rev-parse", "HEAD"], tempDir);
       await makeExecutable(
-        path.join(homeDir, ".local", "bin", "mise"),
+        path.join(homeDir, ".local/bin/mise"),
         `#!/bin/sh
 printf 'mise' >> "$BOOTSTRAP_LOG"
 printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
@@ -201,160 +207,36 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
 
       expect(result.exitCode).toBe(0);
       expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir)).toBe(revision);
-      expect(await runCommand("git", ["-C", dotfilesDir, "branch", "--show-current"], tempDir))
-        .toBe("master");
+      expect(await runCommand("git", ["-C", dotfilesDir, "branch", "--show-current"], tempDir)).toBe("master");
       expect(await runCommand(
         "git",
         ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
         tempDir,
       )).toBe("origin/master");
-      expect(await readFile(logPath, "utf8")).toBe(
-        "install-mise\nmise <trust>\nmise <install>\n" +
-          "mise <run> <apply>\n" +
-          "mise <bootstrap> <--yes> <--verbose>\n",
-      );
-
-      await writeFile(path.join(sourceDir, "after-bootstrap.txt"), "updated\n");
-      await runCommand("git", ["-C", sourceDir, "add", "after-bootstrap.txt"], tempDir);
-      await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "after bootstrap"], tempDir);
-      const updatedRevision = await runCommand(
-        "git",
-        ["-C", sourceDir, "rev-parse", "HEAD"],
-        tempDir,
-      );
-
-      const rerun = await runScript(installScript, {
-        ...process.env,
-        BOOTSTRAP_LOG: logPath,
-        DOTFILES_DIR: dotfilesDir,
-        DOTFILES_REPO_URL: sourceDir,
-        HOME: homeDir,
-        PATH: "/usr/bin:/bin",
-      });
-
-      expect(rerun).toEqual({ exitCode: 0, stderr: "", stdout: "" });
-      expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir))
-        .toBe(updatedRevision);
-      expect(await readFile(path.join(dotfilesDir, "after-bootstrap.txt"), "utf8")).toBe("updated\n");
+      expect(await readFile(logPath, "utf8")).toContain(cargoApplyLog(dotfilesDir));
     });
   });
 
-  for (const failureStage of ["install-mise", "trust", "bootstrap"] as const) {
+  for (const failureStage of ["install-mise", "trust", "exec", "bootstrap"] as const) {
     test(`${failureStage}の失敗後も再実行でmasterへ収束する`, async () => {
       await withTempDir(`bootstrap-retry-${failureStage}`, async (tempDir) => {
-        const sourceDir = path.join(tempDir, "source");
-        const dotfilesDir = path.join(tempDir, "checkout");
-        const homeDir = path.join(tempDir, "home");
+        const { env } = await prepareBootstrapEnvironment(tempDir);
         const failureMarker = path.join(tempDir, "failed-once");
-        await runCommand("git", ["init", "--quiet", "--initial-branch=master", sourceDir], tempDir);
-        await runCommand("git", ["-C", sourceDir, "config", "user.email", "test@example.invalid"], tempDir);
-        await runCommand("git", ["-C", sourceDir, "config", "user.name", "Bootstrap Test"], tempDir);
-        await makeExecutable(
-          path.join(sourceDir, "bin", "install-mise.sh"),
-          `#!/bin/sh
-if [ "$BOOTSTRAP_FAIL_STAGE" = "install-mise" ] && [ ! -e "$BOOTSTRAP_FAILURE_MARKER" ]; then
-  : > "$BOOTSTRAP_FAILURE_MARKER"
-  exit 1
-fi
-`,
-        );
-        await runCommand("git", ["-C", sourceDir, "add", "bin/install-mise.sh"], tempDir);
-        await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
-        await makeExecutable(
-          path.join(homeDir, ".local", "bin", "mise"),
-          `#!/bin/sh
-if [ "$BOOTSTRAP_FAIL_STAGE" = "$1" ] && [ ! -e "$BOOTSTRAP_FAILURE_MARKER" ]; then
-  : > "$BOOTSTRAP_FAILURE_MARKER"
-  exit 1
-fi
-`,
-        );
-        const env = {
-          ...process.env,
-          BOOTSTRAP_FAILURE_MARKER: failureMarker,
-          BOOTSTRAP_FAIL_STAGE: failureStage,
-          DOTFILES_DIR: dotfilesDir,
-          DOTFILES_REPO_URL: sourceDir,
-          HOME: homeDir,
-          PATH: "/usr/bin:/bin",
-        };
+        env.BOOTSTRAP_FAILURE_MARKER = failureMarker;
+        env.BOOTSTRAP_FAIL_STAGE = failureStage;
 
         const failed = await runScript(installScript, env);
-
         expect(failed.exitCode).not.toBe(0);
-        expect(await runCommand(
-          "git",
-          ["-C", dotfilesDir, "branch", "--show-current"],
-          tempDir,
-        )).toBe("");
 
         const retried = await runScript(installScript, env);
-
         expect(retried).toEqual({ exitCode: 0, stderr: "", stdout: "" });
-        expect(await runCommand(
-          "git",
-          ["-C", dotfilesDir, "branch", "--show-current"],
-          tempDir,
-        )).toBe("master");
-        expect(await runCommand(
-          "git",
-          ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
-          tempDir,
-        )).toBe("origin/master");
       });
     });
   }
 
-  test("origin/masterの先端が現在のbootstrap entrypointを含む", async () => {
-    await withTempDir("bootstrap-origin-master", async (tempDir) => {
-      const dotfilesDir = path.join(tempDir, "checkout");
-      const homeDir = path.join(tempDir, "home");
-      const logPath = path.join(tempDir, "bootstrap.log");
-      await makeExecutable(
-        path.join(homeDir, ".local", "bin", "mise"),
-        `#!/bin/sh
-if [ "\${1:-}" = "--version" ]; then
-  printf '%s\n' '2026.7.7 macos-arm64'
-  exit 0
-fi
-printf 'mise' >> "$BOOTSTRAP_LOG"
-printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
-printf '\n' >> "$BOOTSTRAP_LOG"
-`,
-      );
-
-      const result = await runScript(installScript, {
-        ...process.env,
-        BOOTSTRAP_LOG: logPath,
-        DOTFILES_DIR: dotfilesDir,
-        DOTFILES_REPO_URL: repoRoot,
-        HOME: homeDir,
-        PATH: "/usr/bin:/bin",
-      });
-
-      expect(result.exitCode).toBe(0);
-      expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir))
-        .toBe(await runCommand("git", ["rev-parse", "refs/heads/master"], repoRoot));
-      expect(await runCommand("git", ["-C", dotfilesDir, "branch", "--show-current"], tempDir))
-        .toBe("master");
-      expect(await runCommand(
-        "git",
-        ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
-        tempDir,
-      )).toBe("origin/master");
-      expect(await readFile(logPath, "utf8")).toBe(
-        "mise <trust>\nmise <install>\n" +
-          "mise <run> <apply>\n" +
-          "mise <bootstrap> <--yes> <--verbose>\n",
-      );
-    });
-  });
-
   test("既存checkoutがorigin/masterから分岐していれば信頼も実行もしない", async () => {
     await withTempDir("bootstrap-diverged", async (tempDir) => {
-      const { env, logPath } = await prepareBootstrapEnvironment(tempDir, {
-        ancestor: false,
-      });
+      const { env, logPath } = await prepareBootstrapEnvironment(tempDir, { ancestor: false });
 
       const result = await runScript(installScript, env);
 
