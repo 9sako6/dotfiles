@@ -82,7 +82,7 @@ fn run_system_command(
 ) -> Result<ExitCode> {
     let home = env::var_os("HOME").context("HOME is not set")?;
     let copy_plan = home_copy::plan(dotfiles_dir, Path::new(&home))?;
-    copy_plan.print();
+    env::set_var("DOTFILES_HOME_COPY_PLAN", copy_plan.preview());
 
     let exit = system::run(
         mode,
