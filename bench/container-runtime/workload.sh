@@ -173,7 +173,7 @@ run_portable_io_metrics() {
 
 run_repo_metrics() {
   [ -n "$REPO" ] || return 0
-  [ -d "$REPO/.git" ] || return 0
+  [ -e "$REPO/.git" ] || return 0
 
   i=1
   while [ "$i" -le "$ITERATIONS" ]; do
