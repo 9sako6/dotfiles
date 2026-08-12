@@ -48,7 +48,8 @@ flowchart TD
 curl -fsSL https://dot.9sako6.com | sh
 ```
 
-Home Manager は nix-darwin module として組み込まれているため、system と home は同じ `apply` で反映する。
+Home Manager は nix-darwin module として組み込まれているため、system と通常の home 設定は同じ `apply` で反映する。
+`.dotfiles.json` の `copy` 対象は system activation が成功した後に Rust CLI が `$HOME` へ実体配備する。
 旧 home deployer から初めて移行するとき、Home Manager が管理する既存ファイルとの衝突は `.pre-home-manager` suffix へ退避される。
 `curl | sh` では確認入力だけを制御端末から読み、download 中の script を回答として消費しない。
 
@@ -56,8 +57,8 @@ Home Manager は nix-darwin module として組み込まれているため、sys
 
 ```sh
 git pull                       # 公開dotfilesを通常のGit操作で更新
-dotfiles apply                 # system + Home Managerを確認して反映
-dotfiles plan                  # system + Home Managerをbuildしてplanを表示
+dotfiles apply                 # system + homeを確認して反映
+dotfiles plan                  # system + homeのplanを表示
 dotfiles test                  # 契約テストとRustテストを実行
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
 ```
@@ -65,10 +66,14 @@ mise run system:rollback       # 直前のnix-darwin世代へ戻す
 `apply` と `test` は mise task として公開しない。日常操作の正本は Rust 製の `dotfiles` CLI とする。
 その他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
 
-公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。同じflakeが両方を所有するため、Home Managerはtracked `home/` treeをflake sourceから列挙できる。
+公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。
 
-通常の設定ファイルと `.config`、`.zsh.d`、`mybin` はlive dotfiles checkoutへのout-of-store linkにして、編集を即時反映する。
-APMが生成する `.agents`、`.claude`、`.codex` はNix store由来のleaf linkにして、Claude CodeやCodexなどによる書き込みがsource repositoryへ逆流しないようにする。いずれもディレクトリ自体は占有しないため、local-only、secrets、runtime fileと共存できる。
+通常の設定ファイルと `.config`、`.zsh.d`、`mybin` は live dotfiles checkout への out-of-store link にして、編集を即時反映する。
+一方、devcontainer から読む agent resources は symlink にしない。repository root の `.dotfiles.json` に列挙した `.agents/skills`、`.claude/rules`、`.claude/settings.json`、`.claude/skills`、`.codex/AGENTS.md` を `$HOME` へ実体コピーする。これにより host 側の `/nix/store` や `/Users/...` を container 側から解決する必要がない。
+
+`copy` にディレクトリを指定した場合、そのディレクトリ以下は dotfiles の管理対象となり、source に存在しない子は次の `apply` で削除する。指定した親の兄弟は触らないため、たとえば `~/.claude/skills` を同期しても `~/.claude` 配下の runtime file は残る。
+`.dotfiles.json` は未知の key、重複、非アルファベット順、絶対 path、`..`、互いに包含する path を拒否する。`plan` は定義と source の存在を検証して配備先を表示するだけで、copy は行わない。`apply` は system activation が成功した場合だけ copy を実行する。
+
 public system は `plan` / `apply` を実行している checkout を自動で使う。private root flake が既定の `~/dotfiles` 以外を使う場合は、`lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
 
 ## system source
@@ -84,10 +89,10 @@ dotfiles plan --default     # 公開sourceを試す
 dotfiles apply --default    # 公開sourceへ戻す
 ```
 
-`plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択を
+`plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択、home copy を
 変更しない。Lix がなければ失敗する。`apply` は必要なら Lix を導入し、表示した同じ build 済み
-世代だけを activation する。Home Manager の activation もこの system activation に含まれる。
-plan には system closure の差分、Homebrew の未導入dependency、cleanup候補が現れる。
+世代だけを activation する。Home Manager の activation もこの system activation に含まれ、成功後に home copy を反映する。
+plan には system closure の差分、Homebrew の未導入dependency、cleanup候補と home copy 対象が現れる。
 fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。`apply` は activation と
 source 選択を一度の `sudo` 実行で完了し、長い activation の後に認証を再要求しない。同じ source
 selection を使う `apply` が実行中なら、後から開始した処理を拒否する。
@@ -129,7 +134,7 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
-2. `home-managed user tools` を変更する場合は、`dotfiles plan` で配備を含む system generation を確認
+2. `home-managed user tools` を変更する場合は、`dotfiles plan` で Home Manager と copy 対象を確認
 3. 必要な変更を入れる
 4. 「検証」の手順を実施
 5. 変更した管理区分に応じて反映
@@ -140,6 +145,6 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 `repo runtime` の変更に反映コマンドはない。`apply` の初回実行では、
 Lix を導入するため途中で `sudo` の認証を求められる。
 
-Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、home directory の共有設定は Home Manager が管理する。
+Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、通常の home directory 設定は Home Manager、devcontainer-visible な copy 対象は Rust CLI が管理する。
 
 GitHub-hosted macOS runner ではHome Managerのuser activationとsystem derivationのbuildを分けて検証し、nix-darwinのsystem activationは行わない。新規 Mac へのactivation E2Eは、HomebrewのないVMまたは実機で確認する。
