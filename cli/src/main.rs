@@ -1,3 +1,4 @@
+mod home_copy;
 mod system;
 mod test_runner;
 
@@ -68,18 +69,30 @@ fn run() -> Result<ExitCode> {
 
     let dotfiles_dir = resolve_dotfiles_dir()?;
     match command {
-        Commands::Plan { source } => system::run(
-            system::Mode::Plan,
-            system::source_request(source.default, source.url)?,
-            &dotfiles_dir,
-        ),
-        Commands::Apply { source } => system::run(
-            system::Mode::Apply,
-            system::source_request(source.default, source.url)?,
-            &dotfiles_dir,
-        ),
+        Commands::Plan { source } => run_system_command(system::Mode::Plan, source, &dotfiles_dir),
+        Commands::Apply { source } => run_system_command(system::Mode::Apply, source, &dotfiles_dir),
         Commands::Test => test_runner::run(&dotfiles_dir),
     }
+}
+
+fn run_system_command(
+    mode: system::Mode,
+    source: SourceArgs,
+    dotfiles_dir: &Path,
+) -> Result<ExitCode> {
+    let home = env::var_os("HOME").context("HOME is not set")?;
+    let copy_plan = home_copy::plan(dotfiles_dir, Path::new(&home))?;
+    copy_plan.print();
+
+    let exit = system::run(
+        mode,
+        system::source_request(source.default, source.url)?,
+        dotfiles_dir,
+    )?;
+    if matches!(mode, system::Mode::Apply) && exit == ExitCode::SUCCESS {
+        copy_plan.apply()?;
+    }
+    Ok(exit)
 }
 
 fn resolve_dotfiles_dir() -> Result<PathBuf> {
