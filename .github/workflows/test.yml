@@ -35,20 +35,15 @@ jobs:
 
   contract-test:
     runs-on: macos-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
-
-      - name: Install mise
-        run: ./bin/install-mise.sh
-
-      - name: Install mise exceptions
-        run: |
-          "$HOME/.local/bin/mise" trust
-          "$HOME/.local/bin/mise" install
 
       - name: Install Lix
         run: |
@@ -57,10 +52,19 @@ jobs:
           fi
           echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
-      - name: Build and test with Nix-managed tools
+      - name: Enable Nix binary cache
+        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+        with:
+          diagnostic-endpoint: ""
+          use-flakehub: false
+          use-gha-cache: true
+
+      - name: Run repository tests with Nix-managed tools
         run: |
           nix --extra-experimental-features "nix-command flakes" shell .#userTools --command /bin/bash -c '
-            export PATH="$HOME/.local/bin:$PATH"
-            cargo build --locked --manifest-path cli/Cargo.toml
-            DOTFILES_DIR="$GITHUB_WORKSPACE" ./cli/target/debug/dotfiles test
+            set -eu
+            bun install --frozen-lockfile
+            bun run tsc --noEmit
+            bun test ./tests ./home/.apm/skills/create-anki-cards/tools/anki-cards.test.ts
+            cargo test --locked --manifest-path cli/Cargo.toml
           '
