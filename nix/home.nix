@@ -1,7 +1,8 @@
-{ config, dotfilesDirectory, dotfilesSourceHome, ... }:
+{ config, pkgs, dotfilesDirectory, dotfilesSourceHome, ... }:
 
 let
   homeRoot = "${dotfilesDirectory}/home";
+  toolset = import ./packages.nix { inherit pkgs; };
   outOfStore = relativePath:
     config.lib.file.mkOutOfStoreSymlink "${homeRoot}/${relativePath}";
   liveLink = relativePath: {
@@ -37,9 +38,8 @@ let
     ];
 in
 {
-  imports = [ ./packages.nix ];
-
   home.stateVersion = "26.05";
+  home.packages = toolset.packages;
 
   home.file = {
     ".gitconfig" = liveLink ".gitconfig";
