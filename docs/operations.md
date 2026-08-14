@@ -59,11 +59,10 @@ Home Manager は nix-darwin module として組み込まれているため、sys
 git pull                       # 公開dotfilesを通常のGit操作で更新
 dotfiles apply                 # system + homeを確認して反映
 dotfiles plan                  # system + homeのplanを表示
-dotfiles test                  # 契約テストとRustテストを実行
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
 ```
 
-`apply` と `test` は mise task として公開しない。日常操作の正本は Rust 製の `dotfiles` CLI とする。
+system の日常操作の正本は Rust 製の `dotfiles` CLI の `plan` / `apply` とする。repository test をまとめる `dotfiles` サブコマンドは持たない。
 その他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
 
 公開構成の flake root は repository root の `flake.nix` / `flake.lock`。Nix で宣言する system / home 設定は `nix/`、共有設定ファイルの実体は `home/` に置く。
@@ -127,7 +126,14 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 
 ## 検証
 
-変更した振る舞いをコマンドやスクリプトで観測してから、`dotfiles test` を実行する。振る舞いをテストできない場合は、観測可能な境界を作ってから変更する。
+変更した振る舞いをコマンドやスクリプトで観測する。repository 全体を検証するときは wrapper を挟まず、CI と同じ test command を直接実行する。
+
+```sh
+bun install --frozen-lockfile
+bun run tsc --noEmit
+bun test ./tests ./home/.apm/skills/create-anki-cards/tools/anki-cards.test.ts
+cargo test --locked --manifest-path cli/Cargo.toml
+```
 
 設定ファイルやソースの文面を直接検査するテストは書かない。
 
@@ -147,4 +153,4 @@ Lix を導入するため途中で `sudo` の認証を求められる。
 
 Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、通常の home directory 設定は Home Manager、devcontainer-visible な copy 対象は Rust CLI が管理する。
 
-GitHub-hosted macOS runner ではHome Managerのuser activationとsystem derivationのbuildを分けて検証し、nix-darwinのsystem activationは行わない。新規 Mac へのactivation E2Eは、HomebrewのないVMまたは実機で確認する。
+GitHub-hosted macOS runner では Home Manager の user activation と system derivation の build を分けて検証し、nix-darwin の system activation は行わない。Nix store path は GitHub Actions の binary cache を利用して workflow 間で再利用する。新規 Mac への activation E2E は、Homebrew のない VM または実機で確認する。
