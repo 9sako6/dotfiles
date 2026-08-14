@@ -4,6 +4,10 @@ let
   homebrewPackages = import ./homebrew-packages.nix;
   primaryUser = config.system.primaryUser;
   screenshotDirectory = "/Users/${primaryUser}/screenshots";
+  rustToolchain = pkgs.rustPackages_1_97;
+  expectedRustVersion = "1.97.1";
+  goPackage = pkgs.go_1_26;
+  expectedGoVersion = "1.26.5";
 in
 {
   assertions = [
@@ -11,11 +15,28 @@ in
       assertion = primaryUser != "";
       message = "system.primaryUser must name the primary macOS user";
     }
+    {
+      assertion = rustToolchain.rustc.version == expectedRustVersion;
+      message = "Rust version drifted: expected ${expectedRustVersion}, got ${rustToolchain.rustc.version}";
+    }
+    {
+      assertion = goPackage.version == expectedGoVersion;
+      message = "Go version drifted: expected ${expectedGoVersion}, got ${goPackage.version}";
+    }
   ];
 
   environment.systemPackages = [
     pkgs.git
     pkgs.quint
+
+    # Rust 1.97.1
+    rustToolchain.rustc
+    rustToolchain.cargo
+    rustToolchain.rustfmt
+    rustToolchain.clippy
+
+    # Go 1.26.5
+    goPackage
   ];
 
   homebrew = {
@@ -98,7 +119,7 @@ in
 
       finder = {
         # ファイル拡張子を常に表示する
-        AppleShowAllExtensions = true;
+        ShowAllExtensions = true;
         # 隠しファイルも表示する
         AppleShowAllFiles = true;
         # Finderに「終了」メニューを追加する
