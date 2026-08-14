@@ -1,6 +1,5 @@
 mod home_copy;
 mod system;
-mod test_runner;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -33,8 +32,6 @@ enum Commands {
         #[command(flatten)]
         source: SourceArgs,
     },
-    /// Run the dotfiles contract and Rust test suites
-    Test,
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -71,7 +68,6 @@ fn run() -> Result<ExitCode> {
     match command {
         Commands::Plan { source } => run_system_command(system::Mode::Plan, source, &dotfiles_dir),
         Commands::Apply { source } => run_system_command(system::Mode::Apply, source, &dotfiles_dir),
-        Commands::Test => test_runner::run(&dotfiles_dir),
     }
 }
 
