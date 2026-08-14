@@ -15,6 +15,7 @@ in
 
   environment.systemPackages = [
     pkgs.git
+    pkgs.quint
   ];
 
   homebrew = {
