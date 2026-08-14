@@ -45,13 +45,22 @@ jobs:
       - name: Install mise
         run: ./bin/install-mise.sh
 
-      - name: Install test tools
+      - name: Install mise exceptions
         run: |
           "$HOME/.local/bin/mise" trust
           "$HOME/.local/bin/mise" install
 
-      - name: Build dotfiles CLI
-        run: '"$HOME/.local/bin/mise" exec -- cargo build --locked --manifest-path cli/Cargo.toml'
+      - name: Install Lix
+        run: |
+          if ! command -v nix >/dev/null 2>&1; then
+            ./bin/install-lix.sh
+          fi
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
-      - name: Run dotfiles tests
-        run: 'DOTFILES_DIR="$GITHUB_WORKSPACE" ./cli/target/debug/dotfiles test'
+      - name: Build and test with Nix-managed tools
+        run: |
+          nix shell .#userTools --command /bin/bash -c '
+            export PATH="$HOME/.local/bin:$PATH"
+            cargo build --locked --manifest-path cli/Cargo.toml
+            DOTFILES_DIR="$GITHUB_WORKSPACE" ./cli/target/debug/dotfiles test
+          '
