@@ -14,6 +14,9 @@ in
   ];
 
   environment.systemPackages = [
+    pkgs.colima
+    pkgs.docker
+    pkgs.docker-credential-helpers
     pkgs.git
     pkgs.quint
   ];
