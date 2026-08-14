@@ -18,9 +18,6 @@ permissions:
 jobs:
   public-install-smoke:
     runs-on: macos-latest
-    permissions:
-      contents: read
-      id-token: write
     env:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
@@ -30,14 +27,13 @@ jobs:
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
       - name: Install Lix
-        run: NIX_INSTALLER_EXTRA_CONF="trusted-users = root $(id -un)" ./bin/install-lix.sh
+        run: ./bin/install-lix.sh
 
-      - name: Enable Nix binary cache
-        uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+      - name: Restore and save Nix store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
         with:
-          diagnostic-endpoint: ""
-          use-flakehub: false
-          use-gha-cache: true
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
 
       - name: Install mise
         run: ./bin/install-mise.sh
