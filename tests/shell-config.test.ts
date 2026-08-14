@@ -330,7 +330,7 @@ describe("シェル設定", () => {
           [
             "PATH=$TEST_BREW_PATH",
             "rehash",
-            "source darwin/homebrew-shellenv.zsh",
+            "source nix/homebrew-shellenv.zsh",
             "command -v brew",
             "print -r -- $HOMEBREW_PREFIX",
             "print -r -- $HOMEBREW_CELLAR",
