@@ -17,7 +17,7 @@ flowchart TD
     proposal --> ask["ユーザーに確認する"]
     boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
     boundary -->|"home-managed user tools"| home["skill には配備先でも使える一般ルールだけを書く"]
-    boundary -->|"system configuration"| system["Mac 全体の設定は root flake と darwin/ に置く"]
+    boundary -->|"system configuration"| system["Mac 全体の設定は root flake と nix/system.nix に置く"]
     boundary -->|"private system configuration"| private["公開できない差分だけを別の root flake に置く"]
     boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
     boundary -->|"secrets"| secrets["repo と home/ に入れず、最終判断をユーザーに確認する"]
@@ -66,7 +66,7 @@ mise run system:rollback       # 直前のnix-darwin世代へ戻す
 `apply` と `test` は mise task として公開しない。日常操作の正本は Rust 製の `dotfiles` CLI とする。
 その他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
 
-公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。
+公開構成の flake root は repository root の `flake.nix` / `flake.lock`。Nix で宣言する system / home 設定は `nix/`、共有設定ファイルの実体は `home/` に置く。
 
 通常の設定ファイルと `.config`、`.zsh.d`、`mybin` は live dotfiles checkout への out-of-store link にして、編集を即時反映する。
 一方、devcontainer から読む agent resources は symlink にしない。repository root の `.dotfiles.json` に列挙した `.agents/skills`、`.claude/rules`、`.claude/settings.json`、`.claude/skills`、`.codex/AGENTS.md` を `$HOME` へ実体コピーする。これにより host 側の `/nix/store` や `/Users/...` を container 側から解決する必要がない。
@@ -97,7 +97,7 @@ fetch、認証、flake 評価に失敗した場合、古い cache へ fallback �
 source 選択を一度の `sudo` 実行で完了し、長い activation の後に認証を再要求しない。同じ source
 selection を使う `apply` が実行中なら、後から開始した処理を拒否する。
 
-private repository は `darwin/flake.nix.template` を root の `flake.nix` としてコピーし、
+private repository は `nix/flake.nix.template` を root の `flake.nix` としてコピーし、
 `primaryUser` を実際の macOS account name に置き換える。公開できない差分だけを `modules` に追加し、
 `nix flake lock` で生成した `flake.lock` と一緒に commit する。
 
