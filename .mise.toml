@@ -1,7 +1,3 @@
-[tools]
-# Nix exception: Swift 6.2.3 is not reasonably available from the pinned nixpkgs.
-swift = "6.2.3"
-
 [settings]
 auto_install = false
 
