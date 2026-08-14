@@ -1,0 +1,13 @@
+{
+  description = "Private macOS system configuration";
+
+  inputs.dotfiles.url = "github:9sako6/dotfiles";
+
+  outputs = { self, dotfiles, ... }: {
+    darwinConfigurations.current = dotfiles.lib.mkDarwinSystem {
+      configurationRevision = self.rev or self.dirtyRev or null;
+      primaryUser = "account-name";
+      modules = [ ];
+    };
+  };
+}
