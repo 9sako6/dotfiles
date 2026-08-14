@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-08-11T01:40:26.595698+00:00'
+generated_at: '2026-08-14T13:40:31.568472+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -55,8 +55,8 @@ dependencies:
   - .claude/skills/design-it
   - .claude/skills/design-it/SKILL.md
   deployed_file_hashes:
-    .agents/skills/design-it/SKILL.md: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
-    .claude/skills/design-it/SKILL.md: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
+    .agents/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
+    .claude/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
   source: local
   local_path: ./.apm/skills/design-it
 - repo_url: _local/rails-mysql-explain
@@ -380,7 +380,7 @@ deployments:
   - ./.apm/skills/design-it
   - .
   active_owner: ./.apm/skills/design-it
-  content_hash: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
+  content_hash: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
 - kind: project-relative
   target: claude
   value: .claude/skills/gpt-tasteskill
@@ -887,7 +887,7 @@ deployments:
   - ./.apm/skills/design-it
   - .
   active_owner: ./.apm/skills/design-it
-  content_hash: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
+  content_hash: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
 - kind: project-relative
   target: codex
   value: .agents/skills/gpt-tasteskill
@@ -1320,7 +1320,7 @@ local_deployed_file_hashes:
   .agents/skills/create-anki-cards/references/card-design.md: sha256:43557563894aaecdd4a2344c1dec4e156fb4094ae97e779e8027a8fd588365a7
   .agents/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:c82cfa811314ea3293d7c7ea6f1f3a05ec4a57d5a2ef17a7c9eb37fdaee10fd8
   .agents/skills/create-anki-cards/tools/anki-cards.ts: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
-  .agents/skills/design-it/SKILL.md: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
+  .agents/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .agents/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
@@ -1329,7 +1329,7 @@ local_deployed_file_hashes:
   .claude/skills/create-anki-cards/references/card-design.md: sha256:43557563894aaecdd4a2344c1dec4e156fb4094ae97e779e8027a8fd588365a7
   .claude/skills/create-anki-cards/tools/anki-cards.test.ts: sha256:c82cfa811314ea3293d7c7ea6f1f3a05ec4a57d5a2ef17a7c9eb37fdaee10fd8
   .claude/skills/create-anki-cards/tools/anki-cards.ts: sha256:bbe21e811b489a79bd4c7280db4729400921b46d817370024774b36803fa199c
-  .claude/skills/design-it/SKILL.md: sha256:fa7b10dfcbcaedef42a8b82be0c35cb9a302ffccc72ed9cede8367537a1103c3
+  .claude/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
   .claude/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .claude/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
