@@ -28,8 +28,8 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 - `bin/` は直接実行する repository entrypoint、`lib/` は entrypoint が利用する内部実装を所有する。
 - `install.sh` は新しい Mac を一発で構築する唯一の入口とし、repo tools、system + Home Manager、user tools と repositories の順序を所有する。
-- `dotfiles` CLI は日常の system plan/apply と repository test の正本とする。`apply` と `test` は mise task として重複公開しない。
-- Nix で合理的に管理できる CLI / toolchain は `nix/packages.nix` を正本とする。`.mise.toml` の `[tools]` は Nix で合理的に管理できない repo 固有の例外だけを持ち、補助 task の定義も所有する。
+- `dotfiles` CLI は日常の system plan/apply の正本とする。repository test の orchestration は CLI に持たせず、CI では各 test command を直接実行する。
+- Nix で合理的に管理できる CLI / toolchain は `nix/packages.nix` を正本とする。`.mise.toml` の `[tools]` は Nix で合理的に管理できない明示的な例外がある場合だけ使い、現時点では `[tools]` を持たない。mise は補助 task の定義を所有する。
 - `dotfiles` CLI の repo 固有ロジックは `cli/` の Rust 実装へ集める。標準コマンドの実行自体は外部プロセスへ委ねても、引数検証、source 選択、手順、失敗時の扱いは Rust 側を正本とする。
 - `plan` は Lix や active system を変更せず、`.dotfiles.json` の home copy 定義も検証と表示だけ行う。`apply` だけが Lix 導入、build 済み世代の activation、Home Manager activation、source 選択の永続化、home copy の反映を行う。
 - public source は実行ユーザーと local dotfiles checkout を入力にして root flake を評価する。private source はユーザーを root flake で明示し、committed lock file から pure に評価する。
@@ -38,7 +38,7 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - 編集を即時反映する通常設定は live checkout への out-of-store link とする。
 - Nix で宣言する system / home の設定は `nix/` に集める。nix-darwin と Home Manager は実現手段であり、トップレベルの配置境界にはしない。
 - ログインユーザーが常用するツールは `environment.systemPackages` ではなく `nix/packages.nix` で定義し、Home Manager の `home.packages` から利用する。
-- CI で同じ CLI / toolchain が必要な場合も、別のバージョン定義を持たず root flake が公開する同じ Nix toolset を使う。
+- CI で同じ CLI / toolchain が必要な場合も、別のバージョン定義を持たず root flake が公開する同じ Nix toolset を使う。GitHub Actions では binary cache を使い、同じ store path の再取得・再ビルドを避ける。
 - devcontainer から参照する agent resources は `/nix/store` や host 固有の絶対 symlink にしない。`.dotfiles.json` の `copy` に列挙したファイルまたはディレクトリだけを `$HOME` へ実体配備する。列挙したディレクトリは dotfiles がそのディレクトリ以下を所有し、同期時に source にない子を削除するが、親ディレクトリや兄弟の runtime file は触らない。
 - `.dotfiles.json` は `copy` だけを受け付け、パスは重複なし、アルファベット順、相対パス、相互に非包含とする。未知の key や不正な path は system plan/apply より前に拒否する。
 - 標準機能で足りる home 配備は Home Manager に任せる。`.dotfiles.json` の copy は devcontainer 境界を越えるための限定的な例外とし、別の manifest や配置 state は持たない。
