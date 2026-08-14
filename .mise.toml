@@ -1,5 +1,5 @@
 [tools]
-# Nix exception: the pinned nixpkgs does not provide the required Swift 6.2.3 toolchain.
+# Nix exception: Swift 6.2.3 is not reasonably available from the pinned nixpkgs.
 swift = "6.2.3"
 
 [settings]
