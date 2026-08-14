@@ -80,8 +80,7 @@
           home-manager.darwinModules.home-manager
           nix-homebrew.darwinModules.nix-homebrew
           zundamonotify.darwinModules.default
-          ./darwin/home-manager.nix
-          ./darwin/configuration.nix
+          ./nix
         ];
       };
 
