@@ -26,7 +26,7 @@
 Nix package は `flake.lock` だけにバージョン管理を委ねず、期待バージョンを `packages.nix` に明示して assertion する。
 versioned attribute がある場合はそれを使い、コメントにも完全なバージョンを残す。
 
-Nix で合理的に管理できないものだけ例外とし、Homebrew、mise、公式 installer など自然な方法を選ぶ。例外理由は設定やコメントに残す。現在は dotfiles が必要とする Swift 6.2.3 を pinned nixpkgs から合理的に取得できないため、`.mise.toml` に明示的な例外として残している。
+Nix で合理的に管理できないものだけ例外とし、Homebrew、mise、公式 installer など自然な方法を選ぶ。例外理由は設定やコメントに残す。現時点では root `.mise.toml` に tool 例外はなく、`[tools]` を持たない。
 
 ## Homebrew
 
@@ -48,7 +48,6 @@ private root flake からは公開側の `darwinModules.default` と `lib.mkDarw
 
 ```sh
 dotfiles plan --default
-dotfiles test
 dotfiles apply --default
 ```
 
