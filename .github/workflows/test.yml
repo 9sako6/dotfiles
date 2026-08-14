@@ -48,7 +48,7 @@ jobs:
       - name: Install Lix
         run: |
           if ! command -v nix >/dev/null 2>&1; then
-            ./bin/install-lix.sh
+            NIX_INSTALLER_EXTRA_CONF="trusted-users = root $(id -un)" ./bin/install-lix.sh
           fi
           echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
