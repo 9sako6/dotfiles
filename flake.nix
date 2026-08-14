@@ -22,6 +22,11 @@
     let
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
+      toolset = import ./nix/packages.nix { inherit pkgs; };
+      userToolsPackage = pkgs.buildEnv {
+        name = "dotfiles-user-tools";
+        paths = toolset.packages;
+      };
       dotfilesPackage = pkgs.rustPlatform.buildRustPackage {
         pname = "dotfiles";
         version = "0.1.0";
@@ -72,6 +77,7 @@
     {
       packages.${system}.dotfiles = dotfilesPackage;
       packages.${system}.default = dotfilesPackage;
+      packages.${system}.userTools = userToolsPackage;
 
       darwinConfigurations.current = publicSystem;
 
