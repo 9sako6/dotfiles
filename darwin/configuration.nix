@@ -119,7 +119,7 @@ in
 
       finder = {
         # ファイル拡張子を常に表示する
-        ShowAllExtensions = true;
+        AppleShowAllExtensions = true;
         # 隠しファイルも表示する
         AppleShowAllFiles = true;
         # Finderに「終了」メニューを追加する
