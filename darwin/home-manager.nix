@@ -12,6 +12,6 @@ in
     extraSpecialArgs = {
       inherit dotfilesDirectory dotfilesSourceHome;
     };
-    users.${primaryUser} = import ./home.nix;
+    users.${primaryUser} = import ../home-manager;
   };
 }
