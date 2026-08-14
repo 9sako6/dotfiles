@@ -75,9 +75,11 @@
       };
     in
     {
-      packages.${system}.dotfiles = dotfilesPackage;
-      packages.${system}.default = dotfilesPackage;
-      packages.${system}.userTools = userToolsPackage;
+      packages.${system} = {
+        dotfiles = dotfilesPackage;
+        default = dotfilesPackage;
+        userTools = userToolsPackage;
+      };
 
       darwinConfigurations.current = publicSystem;
 
