@@ -30,7 +30,7 @@ jobs:
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
       - name: Install Lix
-        run: ./bin/install-lix.sh
+        run: NIX_INSTALLER_EXTRA_CONF="trusted-users = root $(id -un)" ./bin/install-lix.sh
 
       - name: Enable Nix binary cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
