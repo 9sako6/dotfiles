@@ -4,18 +4,6 @@ let
   homebrewPackages = import ./homebrew-packages.nix;
   primaryUser = config.system.primaryUser;
   screenshotDirectory = "/Users/${primaryUser}/screenshots";
-
-  gitPackage = pkgs.git;
-  expectedGitVersion = "2.55.0";
-
-  quintPackage = pkgs.quint;
-  expectedQuintVersion = "0.32.0";
-
-  rustToolchain = pkgs.rustPackages_1_97;
-  expectedRustVersion = "1.97.1";
-
-  goPackage = pkgs.go_1_26;
-  expectedGoVersion = "1.26.5";
 in
 {
   assertions = [
@@ -23,39 +11,6 @@ in
       assertion = primaryUser != "";
       message = "system.primaryUser must name the primary macOS user";
     }
-    {
-      assertion = gitPackage.version == expectedGitVersion;
-      message = "Git version drifted: expected ${expectedGitVersion}, got ${gitPackage.version}";
-    }
-    {
-      assertion = quintPackage.version == expectedQuintVersion;
-      message = "Quint version drifted: expected ${expectedQuintVersion}, got ${quintPackage.version}";
-    }
-    {
-      assertion = rustToolchain.rustc.version == expectedRustVersion;
-      message = "Rust version drifted: expected ${expectedRustVersion}, got ${rustToolchain.rustc.version}";
-    }
-    {
-      assertion = goPackage.version == expectedGoVersion;
-      message = "Go version drifted: expected ${expectedGoVersion}, got ${goPackage.version}";
-    }
-  ];
-
-  environment.systemPackages = [
-    # Git 2.55.0
-    gitPackage
-
-    # Quint 0.32.0
-    quintPackage
-
-    # Rust 1.97.1
-    rustToolchain.rustc
-    rustToolchain.cargo
-    rustToolchain.rustfmt
-    rustToolchain.clippy
-
-    # Go 1.26.5
-    goPackage
   ];
 
   homebrew = {
