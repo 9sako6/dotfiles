@@ -2,7 +2,7 @@
 name = "dotfiles"
 version = "0.1.0"
 edition = "2021"
-description = "Global dotfiles entrypoint for system operations and repository tests"
+description = "Global dotfiles entrypoint for system operations"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
