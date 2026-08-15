@@ -4,6 +4,8 @@ let
   primaryUser = config.system.primaryUser;
 in
 {
+  imports = [ ./system.nix ];
+
   users.users.${primaryUser}.home = "/Users/${primaryUser}";
 
   home-manager = {

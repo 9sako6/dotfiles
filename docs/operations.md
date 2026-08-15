@@ -17,7 +17,7 @@ flowchart TD
     proposal --> ask["ユーザーに確認する"]
     boundary -->|"repo runtime"| repo["リポジトリ固有のルールは project rule に置く"]
     boundary -->|"home-managed user tools"| home["skill には配備先でも使える一般ルールだけを書く"]
-    boundary -->|"system configuration"| system["Mac 全体の設定は root flake と darwin/ に置く"]
+    boundary -->|"system configuration"| system["Mac 全体の設定は root flake と nix/system.nix に置く"]
     boundary -->|"private system configuration"| private["公開できない差分だけを別の root flake に置く"]
     boundary -->|"local-only"| local["repo に入れず、各マシンに置く"]
     boundary -->|"secrets"| secrets["repo と home/ に入れず、最終判断をユーザーに確認する"]
@@ -59,14 +59,13 @@ Home Manager は nix-darwin module として組み込まれているため、sys
 git pull                       # 公開dotfilesを通常のGit操作で更新
 dotfiles apply                 # system + homeを確認して反映
 dotfiles plan                  # system + homeのplanを表示
-dotfiles test                  # 契約テストとRustテストを実行
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
 ```
 
-`apply` と `test` は mise task として公開しない。日常操作の正本は Rust 製の `dotfiles` CLI とする。
+system の日常操作の正本は Rust 製の `dotfiles` CLI の `plan` / `apply` とする。repository test をまとめる `dotfiles` サブコマンドは持たない。
 その他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
 
-公開構成の flake root は repository root の `flake.nix` / `flake.lock`。macOS module は `darwin/`、共有ユーザー設定は `home/` に置く。
+公開構成の flake root は repository root の `flake.nix` / `flake.lock`。Nix で宣言する system / home 設定は `nix/`、共有設定ファイルの実体は `home/` に置く。
 
 通常の設定ファイルと `.config`、`.zsh.d`、`mybin` は live dotfiles checkout への out-of-store link にして、編集を即時反映する。
 一方、devcontainer から読む agent resources は symlink にしない。repository root の `.dotfiles.json` に列挙した `.agents/skills`、`.claude/rules`、`.claude/settings.json`、`.claude/skills`、`.codex/AGENTS.md` を `$HOME` へ実体コピーする。これにより host 側の `/nix/store` や `/Users/...` を container 側から解決する必要がない。
@@ -97,7 +96,7 @@ fetch、認証、flake 評価に失敗した場合、古い cache へ fallback �
 source 選択を一度の `sudo` 実行で完了し、長い activation の後に認証を再要求しない。同じ source
 selection を使う `apply` が実行中なら、後から開始した処理を拒否する。
 
-private repository は `darwin/flake.nix.template` を root の `flake.nix` としてコピーし、
+private repository は `nix/flake.nix.template` を root の `flake.nix` としてコピーし、
 `primaryUser` を実際の macOS account name に置き換える。公開できない差分だけを `modules` に追加し、
 `nix flake lock` で生成した `flake.lock` と一緒に commit する。
 
@@ -127,7 +126,14 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 
 ## 検証
 
-変更した振る舞いをコマンドやスクリプトで観測してから、`dotfiles test` を実行する。振る舞いをテストできない場合は、観測可能な境界を作ってから変更する。
+変更した振る舞いをコマンドやスクリプトで観測する。repository 全体を検証するときは wrapper を挟まず、CI と同じ test command を直接実行する。
+
+```sh
+bun install --frozen-lockfile
+bun run tsc --noEmit
+bun test ./tests ./home/.apm/skills/create-anki-cards/tools/anki-cards.test.ts
+cargo test --locked --manifest-path cli/Cargo.toml
+```
 
 設定ファイルやソースの文面を直接検査するテストは書かない。
 
@@ -147,4 +153,4 @@ Lix を導入するため途中で `sudo` の認証を求められる。
 
 Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、通常の home directory 設定は Home Manager、devcontainer-visible な copy 対象は Rust CLI が管理する。
 
-GitHub-hosted macOS runner ではHome Managerのuser activationとsystem derivationのbuildを分けて検証し、nix-darwinのsystem activationは行わない。新規 Mac へのactivation E2Eは、HomebrewのないVMまたは実機で確認する。
+GitHub-hosted macOS runner では Home Manager の user activation と system derivation の build を分けて検証し、nix-darwin の system activation は行わない。Nix store path は GitHub Actions の binary cache を利用して workflow 間で再利用する。新規 Mac への activation E2E は、Homebrew のない VM または実機で確認する。

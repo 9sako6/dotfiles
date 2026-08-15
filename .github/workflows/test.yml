@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: test-${{ github.ref }}
+  group: nix-test-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -42,16 +42,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install mise
-        run: ./bin/install-mise.sh
-
-      - name: Install test tools
+      - name: Install Lix
         run: |
-          "$HOME/.local/bin/mise" trust
-          "$HOME/.local/bin/mise" install
+          if ! command -v nix >/dev/null 2>&1; then
+            ./bin/install-lix.sh
+          fi
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
-      - name: Build dotfiles CLI
-        run: '"$HOME/.local/bin/mise" exec -- cargo build --locked --manifest-path cli/Cargo.toml'
+      - name: Restore and save Nix store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
 
-      - name: Run dotfiles tests
-        run: 'DOTFILES_DIR="$GITHUB_WORKSPACE" ./cli/target/debug/dotfiles test'
+      - name: Run repository tests with Nix-managed tools
+        run: |
+          nix --extra-experimental-features "nix-command flakes" shell .#userTools --command /bin/bash -c '
+            set -eu
+            bun install --frozen-lockfile
+            bun run tsc --noEmit
+            bun test ./tests ./home/.apm/skills/create-anki-cards/tools/anki-cards.test.ts
+            cargo test --locked --manifest-path cli/Cargo.toml
+          '

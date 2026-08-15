@@ -13,8 +13,9 @@ async function makeExecutable(filePath: string, content: string) {
   await chmod(filePath, 0o755);
 }
 
-function cargoApplyLog(dotfilesDir: string): string {
-  return "mise <exec> <--> <cargo> <run> <--locked> <--manifest-path> " +
+function nixApplyLog(dotfilesDir: string): string {
+  return "nix <--extra-experimental-features> <nix-command flakes> <shell> " +
+    `<path:${dotfilesDir}#userTools> <--command> <cargo> <run> <--locked> <--manifest-path> ` +
     `<${dotfilesDir}/cli/Cargo.toml> <--> <apply>\n`;
 }
 
@@ -32,6 +33,7 @@ async function prepareBootstrapEnvironment(
   const gitLogPath = path.join(tempDir, "git.log");
   const homeDir = path.join(tempDir, "home");
   const logPath = path.join(tempDir, "bootstrap.log");
+  const nixPath = path.join(fakeBin, "nix");
 
   if (options.checkoutExists !== false) {
     await mkdir(path.join(dotfilesDir, ".git"), { recursive: true });
@@ -46,6 +48,12 @@ if [ "\${BOOTSTRAP_FAIL_STAGE:-}" = "install-mise" ] && [ ! -e "\${BOOTSTRAP_FAI
 fi
 `,
   );
+  await writeTree(path.join(dotfilesDir, "lib"), {
+    "install-system.sh": `install_system_ensure_lix() {
+  printf '%s\\n' "$BOOTSTRAP_NIX_BIN"
+}
+`,
+  });
   await makeExecutable(
     path.join(homeDir, ".local/bin/mise"),
     `#!/bin/sh
@@ -53,6 +61,18 @@ printf 'mise' >> "$BOOTSTRAP_LOG"
 printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
 printf '\\n' >> "$BOOTSTRAP_LOG"
 if [ "\${BOOTSTRAP_FAIL_STAGE:-}" = "\${1:-}" ] && [ ! -e "\${BOOTSTRAP_FAILURE_MARKER:-/nonexistent}" ]; then
+  : > "$BOOTSTRAP_FAILURE_MARKER"
+  exit 1
+fi
+`,
+  );
+  await makeExecutable(
+    nixPath,
+    `#!/bin/sh
+printf 'nix' >> "$BOOTSTRAP_LOG"
+printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
+printf '\\n' >> "$BOOTSTRAP_LOG"
+if [ "\${BOOTSTRAP_FAIL_STAGE:-}" = "nix" ] && [ ! -e "\${BOOTSTRAP_FAILURE_MARKER:-/nonexistent}" ]; then
   : > "$BOOTSTRAP_FAILURE_MARKER"
   exit 1
 fi
@@ -90,6 +110,7 @@ esac
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     BOOTSTRAP_LOG: logPath,
+    BOOTSTRAP_NIX_BIN: nixPath,
     DOTFILES_DIR: dotfilesDir,
     HOME: homeDir,
     PATH: `${fakeBin}:/usr/bin:/bin`,
@@ -134,17 +155,17 @@ async function runCommand(command: string, args: string[], cwd: string) {
 }
 
 describe("公開bootstrap", () => {
-  test("applyをmise taskではなくRust CLIから実行する", async () => {
-    await withTempDir("bootstrap-rust-apply", async (tempDir) => {
+  test("LixのtoolsetからRust CLIを実行してapplyする", async () => {
+    await withTempDir("bootstrap-nix-apply", async (tempDir) => {
       const { env, logPath } = await prepareBootstrapEnvironment(tempDir);
 
       const result = await runScript(installScript, env);
 
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(logPath, "utf8")).toBe(
-        "install-mise\nmise <trust>\nmise <install>\n" +
-          cargoApplyLog(env.DOTFILES_DIR!) +
-          "mise <bootstrap> <--yes> <--verbose>\n",
+        "install-mise\n" +
+          nixApplyLog(env.DOTFILES_DIR!) +
+          "mise <trust>\nmise <install>\nmise <bootstrap> <--yes> <--verbose>\n",
       );
     });
   });
@@ -177,6 +198,7 @@ describe("公開bootstrap", () => {
       const dotfilesDir = path.join(tempDir, "checkout");
       const homeDir = path.join(tempDir, "home");
       const logPath = path.join(tempDir, "bootstrap.log");
+      const nixPath = path.join(tempDir, "nix");
       await runCommand("git", ["init", "--quiet", "--initial-branch=master", sourceDir], tempDir);
       await runCommand("git", ["-C", sourceDir, "config", "user.email", "test@example.invalid"], tempDir);
       await runCommand("git", ["-C", sourceDir, "config", "user.name", "Bootstrap Test"], tempDir);
@@ -184,7 +206,13 @@ describe("公開bootstrap", () => {
         path.join(sourceDir, "bin", "install-mise.sh"),
         "#!/bin/sh\nprintf 'install-mise\\n' >> \"$BOOTSTRAP_LOG\"\n",
       );
-      await runCommand("git", ["-C", sourceDir, "add", "bin/install-mise.sh"], tempDir);
+      await writeTree(path.join(sourceDir, "lib"), {
+        "install-system.sh": `install_system_ensure_lix() {
+  printf '%s\\n' "$BOOTSTRAP_NIX_BIN"
+}
+`,
+      });
+      await runCommand("git", ["-C", sourceDir, "add", "bin/install-mise.sh", "lib/install-system.sh"], tempDir);
       await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
       const revision = await runCommand("git", ["-C", sourceDir, "rev-parse", "HEAD"], tempDir);
       await makeExecutable(
@@ -195,10 +223,19 @@ printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
 printf '\\n' >> "$BOOTSTRAP_LOG"
 `,
       );
+      await makeExecutable(
+        nixPath,
+        `#!/bin/sh
+printf 'nix' >> "$BOOTSTRAP_LOG"
+printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
+printf '\\n' >> "$BOOTSTRAP_LOG"
+`,
+      );
 
       const result = await runScript(installScript, {
         ...process.env,
         BOOTSTRAP_LOG: logPath,
+        BOOTSTRAP_NIX_BIN: nixPath,
         DOTFILES_DIR: dotfilesDir,
         DOTFILES_REPO_URL: sourceDir,
         HOME: homeDir,
@@ -213,11 +250,11 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
         ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
         tempDir,
       )).toBe("origin/master");
-      expect(await readFile(logPath, "utf8")).toContain(cargoApplyLog(dotfilesDir));
+      expect(await readFile(logPath, "utf8")).toContain(nixApplyLog(dotfilesDir));
     });
   });
 
-  for (const failureStage of ["install-mise", "trust", "exec", "bootstrap"] as const) {
+  for (const failureStage of ["install-mise", "nix", "trust", "install", "bootstrap"] as const) {
     test(`${failureStage}の失敗後も再実行でmasterへ収束する`, async () => {
       await withTempDir(`bootstrap-retry-${failureStage}`, async (tempDir) => {
         const { env } = await prepareBootstrapEnvironment(tempDir);

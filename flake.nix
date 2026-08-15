@@ -22,6 +22,11 @@
     let
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
+      toolset = import ./nix/packages.nix { inherit pkgs; };
+      userToolsPackage = pkgs.buildEnv {
+        name = "dotfiles-user-tools";
+        paths = toolset.packages;
+      };
       dotfilesPackage = pkgs.rustPlatform.buildRustPackage {
         pname = "dotfiles";
         version = "0.1.0";
@@ -70,8 +75,11 @@
       };
     in
     {
-      packages.${system}.dotfiles = dotfilesPackage;
-      packages.${system}.default = dotfilesPackage;
+      packages.${system} = {
+        dotfiles = dotfilesPackage;
+        default = dotfilesPackage;
+        userTools = userToolsPackage;
+      };
 
       darwinConfigurations.current = publicSystem;
 
@@ -80,8 +88,7 @@
           home-manager.darwinModules.home-manager
           nix-homebrew.darwinModules.nix-homebrew
           zundamonotify.darwinModules.default
-          ./darwin/home-manager.nix
-          ./darwin/configuration.nix
+          ./nix
         ];
       };
 
