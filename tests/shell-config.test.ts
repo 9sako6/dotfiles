@@ -341,7 +341,7 @@ describe("シェル設定", () => {
             "print -r -- $HOMEBREW_PREFIX",
             "print -r -- $HOMEBREW_CELLAR",
             "print -r -- $HOMEBREW_REPOSITORY",
-            "print -r -- $path[(i)/run/current-system/sw/bin] $path[(i)$HOME/.local/share/mise/shims] $path[(i)$HOMEBREW_PREFIX/bin]",
+            "print -r -- $path[(i)$HOME/.nix-profile/bin] $path[(i)/run/current-system/sw/bin] $path[(i)$HOMEBREW_PREFIX/bin]",
           ].join("; "),
         ],
         {
@@ -371,69 +371,49 @@ describe("シェル設定", () => {
         path.join(activePrefix, "Cellar"),
         path.join(activePrefix, "Library", ".homebrew-is-managed-by-nix"),
       ]);
-      const [nixIndex, miseIndex, brewIndex] = output[9].split(" ").map(Number);
-      expect(nixIndex).toBeLessThan(brewIndex);
-      expect(miseIndex).toBeLessThan(brewIndex);
+      const [profileIndex, systemIndex, brewIndex] = output[9].split(" ").map(Number);
+      expect(profileIndex).toBeLessThan(brewIndex);
+      expect(systemIndex).toBeLessThan(brewIndex);
       expect(await readFile(brewLog, "utf8")).toBe("active:shellenv\nactive:--prefix\nactive:--cellar\n");
     });
   });
 
-  test("zshenvはNixのsystem packageをmacOS標準コマンドより先に解決する", async () => {
-    const result = await runCommand("zsh", [
-      "-f",
-      "-c",
-      "source home/.zshenv; printf '%s %s' $path[(i)/run/current-system/sw/bin] $path[(i)/usr/bin]",
-    ]);
-
-    expect(result.code).toBe(0);
-    const [nixIndex, systemIndex] = result.stdout.split(" ").map(Number);
-    expect(nixIndex).toBeLessThan(systemIndex);
-  });
-
-  test("非対話シェルでもmiseと管理対象のコマンドを解決する", async () => {
-    await withTempDir("zshenv-mise-path", async (tempDir) => {
+  test("非対話シェルではHome Manager packageをmise shimとmacOS標準コマンドより先に解決する", async () => {
+    await withTempDir("zshenv-home-manager-path", async (tempDir) => {
       const homeDir = path.join(tempDir, "home");
       const misePath = path.join(homeDir, ".local", "bin", "mise");
-      const rgPath = path.join(homeDir, ".local", "share", "mise", "shims", "rg");
+      const bunPath = path.join(homeDir, ".nix-profile", "bin", "bun");
+      const gitPath = path.join(homeDir, ".nix-profile", "bin", "git");
+      const bunShimPath = path.join(homeDir, ".local", "share", "mise", "shims", "bun");
 
       await writeTree(path.dirname(misePath), { mise: "#!/bin/sh\nexit 0\n" });
-      await writeTree(path.dirname(rgPath), { rg: "#!/bin/sh\nexit 0\n" });
+      await writeTree(path.dirname(bunPath), { bun: "#!/bin/sh\nexit 0\n" });
+      await writeTree(path.dirname(gitPath), { git: "#!/bin/sh\nexit 0\n" });
+      await writeTree(path.dirname(bunShimPath), { bun: "#!/bin/sh\nexit 0\n" });
       await chmod(misePath, 0o755);
-      await chmod(rgPath, 0o755);
+      await chmod(bunPath, 0o755);
+      await chmod(gitPath, 0o755);
+      await chmod(bunShimPath, 0o755);
 
       const result = await runCommand(
         "zsh",
-        ["-f", "-c", "source home/.zshenv; command -v mise; command -v rg"],
+        [
+          "-f",
+          "-c",
+          "source home/.zshenv; command -v mise; command -v bun; command -v git; print -r -- $path[(i)$HOME/.nix-profile/bin] $path[(i)/run/current-system/sw/bin] $path[(i)/usr/bin]; print -r -- ${(j.:.)path}",
+        ],
         { ...process.env, HOME: homeDir, PATH: "/usr/bin:/bin" },
       );
 
       expect(result.code).toBe(0);
-      expect(result.stdout).toBe(`${misePath}\n${rgPath}\n`);
-    });
-  });
-
-  test("mise有効化後もNixのsystem packageをmacOS標準コマンドより先に解決する", async () => {
-    await withTempDir("zshrc-nix-path", async (tempDir) => {
-      const { homeDir } = await createMinimalZshHome(tempDir);
-      const result = await runCommand(
-        "/bin/zsh",
-        [
-          "-f",
-          "-i",
-          "-c",
-          "source home/.zshenv; source home/.zshrc; printf '%s %s' $path[(i)/run/current-system/sw/bin] $path[(i)/usr/bin]",
-        ],
-        {
-          ...process.env,
-          DOTFILES_NO_BANNER: "1",
-          HOME: homeDir,
-          PATH: `${path.join(homeDir, ".local", "bin")}:/usr/bin:/run/current-system/sw/bin`,
-        },
-      );
-
-      expect(result.code).toBe(0);
-      const [nixIndex, systemIndex] = result.stdout.split(" ").map(Number);
+      const [resolvedMise, resolvedBun, resolvedGit, indices, resolvedPath] = result.stdout.trim().split("\n");
+      expect(resolvedMise).toBe(misePath);
+      expect(resolvedBun).toBe(bunPath);
+      expect(resolvedGit).toBe(gitPath);
+      const [profileIndex, nixIndex, systemIndex] = indices.split(" ").map(Number);
+      expect(profileIndex).toBeLessThan(nixIndex);
       expect(nixIndex).toBeLessThan(systemIndex);
+      expect(resolvedPath.split(":")).not.toContain(path.dirname(bunShimPath));
     });
   });
 
