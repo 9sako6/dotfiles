@@ -213,7 +213,7 @@ fn sync_directory(source: &Path, destination: &Path) -> Result<()> {
 
     let mut source_names = BTreeSet::new();
     let mut source_entries = read_entries(source)?;
-    source_entries.sort_by(|left, right| left.file_name().cmp(&right.file_name()));
+    source_entries.sort_by_key(|entry| entry.file_name());
     for entry in source_entries {
         let name = entry.file_name();
         source_names.insert(name.clone());
@@ -233,11 +233,11 @@ fn ensure_directory(path: &Path) -> Result<()> {
         Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => Ok(()),
         Ok(_) => {
             remove_entry(path)?;
-            fs::create_dir_all(path)
-                .with_context(|| format!("failed to create {}", path.display()))
+            fs::create_dir_all(path).with_context(|| format!("failed to create {}", path.display()))
         }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => fs::create_dir_all(path)
-            .with_context(|| format!("failed to create {}", path.display())),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            fs::create_dir_all(path).with_context(|| format!("failed to create {}", path.display()))
+        }
         Err(error) => Err(error).with_context(|| format!("failed to inspect {}", path.display())),
     }
 }
@@ -253,8 +253,7 @@ fn remove_entry(path: &Path) -> Result<()> {
     let metadata = fs::symlink_metadata(path)
         .with_context(|| format!("failed to inspect {}", path.display()))?;
     if metadata.is_dir() && !metadata.file_type().is_symlink() {
-        fs::remove_dir_all(path)
-            .with_context(|| format!("failed to remove {}", path.display()))
+        fs::remove_dir_all(path).with_context(|| format!("failed to remove {}", path.display()))
     } else {
         fs::remove_file(path).with_context(|| format!("failed to remove {}", path.display()))
     }
@@ -383,8 +382,7 @@ impl<'a> JsonParser<'a> {
             if !(0xdc00..=0xdfff).contains(&second) {
                 bail!(".dotfiles.json: invalid Unicode surrogate pair");
             }
-            let codepoint =
-                0x10000 + (((first as u32 - 0xd800) << 10) | (second as u32 - 0xdc00));
+            let codepoint = 0x10000 + (((first as u32 - 0xd800) << 10) | (second as u32 - 0xdc00));
             char::from_u32(codepoint).context(".dotfiles.json: invalid Unicode escape")
         } else if (0xdc00..=0xdfff).contains(&first) {
             bail!(".dotfiles.json: unexpected low Unicode surrogate")
@@ -453,11 +451,7 @@ mod tests {
         let repo = temp.path().join("repo");
         let home = temp.path().join("home-target");
         fs::create_dir_all(repo.join("home/.claude/skills/design-it")).unwrap();
-        fs::write(
-            repo.join("home/.claude/skills/design-it/SKILL.md"),
-            "new\n",
-        )
-        .unwrap();
+        fs::write(repo.join("home/.claude/skills/design-it/SKILL.md"), "new\n").unwrap();
         fs::write(
             repo.join(".dotfiles.json"),
             "{\n  \"copy\": [\n    \".claude/skills\"\n  ]\n}\n",
@@ -470,23 +464,17 @@ mod tests {
         let store_file = temp.path().join("store-skill");
         fs::write(&store_file, "store\n").unwrap();
         fs::create_dir_all(home.join(".claude/skills/design-it")).unwrap();
-        symlink(
-            &store_file,
-            home.join(".claude/skills/design-it/SKILL.md"),
-        )
-        .unwrap();
+        symlink(&store_file, home.join(".claude/skills/design-it/SKILL.md")).unwrap();
 
         let plan = plan(&repo, &home).unwrap();
         plan.apply().unwrap();
 
         let deployed = home.join(".claude/skills/design-it/SKILL.md");
         assert_eq!(fs::read_to_string(&deployed).unwrap(), "new\n");
-        assert!(
-            !fs::symlink_metadata(&deployed)
-                .unwrap()
-                .file_type()
-                .is_symlink()
-        );
+        assert!(!fs::symlink_metadata(&deployed)
+            .unwrap()
+            .file_type()
+            .is_symlink());
         assert!(!home.join(".claude/skills/old").exists());
         assert_eq!(
             fs::read_to_string(home.join(".claude/runtime.json")).unwrap(),
