@@ -13,11 +13,6 @@ in
     }
   ];
 
-  environment.systemPackages = [
-    pkgs.git
-    pkgs.quint
-  ];
-
   homebrew = {
     enable = true;
     inherit (homebrewPackages) brews casks;

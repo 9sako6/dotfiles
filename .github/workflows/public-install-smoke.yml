@@ -26,19 +26,27 @@ jobs:
       - name: Verify secrets are absent before install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
 
-      - name: Install mise
-        run: ./bin/install-mise.sh
-
-      - name: Install repository tools
-        run: |
-          "$HOME/.local/bin/mise" trust
-          "$HOME/.local/bin/mise" install
-
       - name: Install Lix
         run: ./bin/install-lix.sh
 
+      - name: Restore and save Nix store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+
+      - name: Install mise
+        run: ./bin/install-mise.sh
+
+      - name: Trust repository mise config
+        run: '"$HOME/.local/bin/mise" trust'
+
       - name: Build system configuration
-        run: '"$HOME/.local/bin/mise" run plan --default'
+        run: |
+          DOTFILES_DIR="$GITHUB_WORKSPACE" \
+            /nix/var/nix/profiles/default/bin/nix \
+              --extra-experimental-features "nix-command flakes" \
+              run .#dotfiles -- plan --default
 
       - name: Activate Home Manager user environment
         run: |
@@ -84,9 +92,10 @@ jobs:
 
       - name: Verify home-managed daily-use tools
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
+          export PATH="$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH"
           mise exec -- atuin --version
-          mise exec -- bun --version
+          bun --version
+          cargo --version
           mise exec -- codex --version
           mise exec -- fd --version
           mise exec -- fzf --version
@@ -94,7 +103,10 @@ jobs:
           mise exec -- ghq --version
           mise exec -- gitleaks version
           git --version
+          go version
           mise exec -- herdr --version
           mise exec -- pnpm --version
+          quint --version
           mise exec -- rg --version
+          rustc --version
           mise exec -- zoxide --version

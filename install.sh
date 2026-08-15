@@ -42,12 +42,17 @@ main() {
   git -C "$DOTFILES_DIR" checkout --quiet --detach "$bootstrap_revision"
 
   "$DOTFILES_DIR/bin/install-mise.sh"
+  . "$DOTFILES_DIR/lib/install-system.sh"
+  NIX_BIN="$(install_system_ensure_lix "$DOTFILES_DIR/bin/install-lix.sh")"
 
   cd "$DOTFILES_DIR"
+  DOTFILES_DIR="$DOTFILES_DIR" "$NIX_BIN" \
+    --extra-experimental-features "nix-command flakes" \
+    shell "path:$DOTFILES_DIR#userTools" --command \
+    cargo run --locked --manifest-path "$DOTFILES_DIR/cli/Cargo.toml" -- apply
+
   "$MISE_BIN" trust
   "$MISE_BIN" install
-  DOTFILES_DIR="$DOTFILES_DIR" "$MISE_BIN" exec -- \
-    cargo run --locked --manifest-path "$DOTFILES_DIR/cli/Cargo.toml" -- apply
 
   cd "$HOME"
   "$MISE_BIN" bootstrap --yes --verbose

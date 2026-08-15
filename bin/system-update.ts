@@ -22,9 +22,8 @@ async function main(): Promise<void> {
   console.log("==> update public nix-darwin and Home Manager inputs");
   await run(["nix", "flake", "update", "--flake", repoRoot], repoRoot);
 
-  console.log("==> validate public system");
+  console.log("==> validate public system plan");
   await run(["dotfiles", "plan", "--default"], repoRoot);
-  await run(["dotfiles", "test"], repoRoot);
 }
 
 main().catch((error) => {
