@@ -7,8 +7,8 @@ export GHQ_ROOT="${GHQ_ROOT:-$HOME/ghq}"
 
 typeset -U path PATH
 path=(
+  "$HOME/.nix-profile/bin"
   /run/current-system/sw/bin
-  "$HOME/.local/share/mise/shims"
   "$HOME/.local/bin"
   /usr/local/bin
   /usr/bin
