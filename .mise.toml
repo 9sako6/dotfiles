@@ -2,23 +2,23 @@
 auto_install = false
 
 [tasks."agents:build"]
-run = "./bin/build-agents.ts"
+run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- agents build"
 description = "Build agents resources via apm"
 
 [tasks."agents:install"]
-run = "./bin/build-agents.ts install"
+run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- agents install"
 description = "Install an agents skill via apm, then build agents resources"
 
 [tasks."agents:remove-local"]
-run = "./bin/build-agents.ts remove-local"
+run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- agents remove-local"
 description = "Remove a repository-owned local agents skill, then build agents resources"
 
 [tasks."agents:uninstall"]
-run = "./bin/build-agents.ts uninstall"
+run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- agents uninstall"
 description = "Uninstall an agents skill via apm, then build agents resources"
 
 [tasks."agents:update"]
-run = "./bin/build-agents.ts update"
+run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- agents update"
 description = "Update an agents skill via apm, then build agents resources"
 
 [tasks."herdr:integrations:apply"]
@@ -43,5 +43,5 @@ run = "./bin/system-rollback.sh"
 description = "Switch to the previous nix-darwin generation"
 
 [tasks."system:update"]
-run = "./bin/system-update.ts"
+run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- update"
 description = "Update macOS system flake inputs, then validate"

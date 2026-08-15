@@ -1,5 +1,7 @@
+mod agents;
 mod home_copy;
 mod system;
+mod update;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -22,6 +24,10 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    Agents {
+        #[command(subcommand)]
+        operation: agents::Operation,
+    },
     /// Build and show the macOS system and home plan without changing state
     Plan {
         #[command(flatten)]
@@ -32,6 +38,7 @@ enum Commands {
         #[command(flatten)]
         source: SourceArgs,
     },
+    Update,
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -66,8 +73,21 @@ fn run() -> Result<ExitCode> {
 
     let dotfiles_dir = resolve_dotfiles_dir()?;
     match command {
+        Commands::Agents { operation } => agents::run(operation, &dotfiles_dir),
         Commands::Plan { source } => run_system_command(system::Mode::Plan, source, &dotfiles_dir),
-        Commands::Apply { source } => run_system_command(system::Mode::Apply, source, &dotfiles_dir),
+        Commands::Apply { source } => {
+            run_system_command(system::Mode::Apply, source, &dotfiles_dir)
+        }
+        Commands::Update => update::run(&dotfiles_dir, |repo_root| {
+            run_system_command(
+                system::Mode::Plan,
+                SourceArgs {
+                    default: true,
+                    url: None,
+                },
+                repo_root,
+            )
+        }),
     }
 }
 

@@ -132,6 +132,8 @@ Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 �
 bun install --frozen-lockfile
 bun run tsc --noEmit
 bun test ./tests ./home/.apm/skills/create-anki-cards/tools/anki-cards.test.ts
+cargo fmt --check --manifest-path cli/Cargo.toml
+cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
 cargo test --locked --manifest-path cli/Cargo.toml
 ```
 
