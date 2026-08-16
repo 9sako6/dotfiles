@@ -10,6 +10,9 @@ let
   goPackage = pkgs.go_1_26;
   expectedGoVersion = "1.26.5";
 
+  nightlightPackage = pkgs.nightlight;
+  expectedNightlightVersion = "1.0.0";
+
   quintPackage = pkgs.quint;
   expectedQuintVersion = "0.32.0";
 
@@ -22,6 +25,8 @@ assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
   "Git version drifted: expected ${expectedGitVersion}, got ${gitPackage.version}";
 assert pkgs.lib.assertMsg (goPackage.version == expectedGoVersion)
   "Go version drifted: expected ${expectedGoVersion}, got ${goPackage.version}";
+assert pkgs.lib.assertMsg (nightlightPackage.version == expectedNightlightVersion)
+  "Nightlight version drifted: expected ${expectedNightlightVersion}, got ${nightlightPackage.version}";
 assert pkgs.lib.assertMsg (quintPackage.version == expectedQuintVersion)
   "Quint version drifted: expected ${expectedQuintVersion}, got ${quintPackage.version}";
 assert pkgs.lib.assertMsg (rustToolchain.rustc.version == expectedRustVersion)
@@ -36,6 +41,9 @@ assert pkgs.lib.assertMsg (rustToolchain.rustc.version == expectedRustVersion)
 
     # Go 1.26.5
     goPackage
+
+    # Nightlight 1.0.0
+    nightlightPackage
 
     # Quint 0.32.0
     quintPackage
