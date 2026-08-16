@@ -1,4 +1,4 @@
-{ config, pkgs, dotfilesDirectory, dotfilesSourceHome, ... }:
+{ config, lib, pkgs, dotfilesDirectory, dotfilesSourceHome, ... }:
 
 let
   homeRoot = "${dotfilesDirectory}/home";
@@ -36,8 +36,20 @@ let
       ".zsh.d"
       "mybin"
     ];
+  nightShift = {
+    schedule = {
+      start = "22:00";
+      end = "07:00";
+    };
+    temperature = 80;
+  };
 in
 {
+  home.activation.configureNightShift = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    ${pkgs.nightlight}/bin/nightlight schedule ${nightShift.schedule.start} ${nightShift.schedule.end}
+    ${pkgs.nightlight}/bin/nightlight temp ${toString nightShift.temperature}
+  '';
+
   home.stateVersion = "26.05";
   home.packages = toolset.packages;
 
