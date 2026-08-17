@@ -1,6 +1,12 @@
 { pkgs }:
 
 let
+  ankiConnectPackage = pkgs.ankiAddons.anki-connect;
+  expectedAnkiConnectVersion = "25.11.9.0";
+
+  ankiPackage = pkgs.anki-bin;
+  expectedAnkiVersion = "26.05";
+
   awscliPackage = pkgs.awscli2;
   expectedAwscliVersion = "2.35.11";
 
@@ -22,6 +28,10 @@ let
   rustToolchain = pkgs.rustPackages_1_97;
   expectedRustVersion = "1.97.1";
 in
+assert pkgs.lib.assertMsg (ankiConnectPackage.version == expectedAnkiConnectVersion)
+  "AnkiConnect version drifted: expected ${expectedAnkiConnectVersion}, got ${ankiConnectPackage.version}";
+assert pkgs.lib.assertMsg (ankiPackage.version == expectedAnkiVersion)
+  "Anki version drifted: expected ${expectedAnkiVersion}, got ${ankiPackage.version}";
 assert pkgs.lib.assertMsg (awscliPackage.version == expectedAwscliVersion)
   "AWS CLI version drifted: expected ${expectedAwscliVersion}, got ${awscliPackage.version}";
 assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
@@ -37,7 +47,12 @@ assert pkgs.lib.assertMsg (quintPackage.version == expectedQuintVersion)
 assert pkgs.lib.assertMsg (rustToolchain.rustc.version == expectedRustVersion)
   "Rust version drifted: expected ${expectedRustVersion}, got ${rustToolchain.rustc.version}";
 {
+  ankiConnect = ankiConnectPackage;
+
   packages = [
+    # Anki 26.05
+    ankiPackage
+
     # AWS CLI 2.35.11
     awscliPackage
 
