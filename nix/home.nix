@@ -1,6 +1,7 @@
 { config, lib, pkgs, dotfilesDirectory, dotfilesSourceHome, ... }:
 
 let
+  ankiConnectAddon = "${toolset.ankiConnect}/share/anki/addons/anki-connect";
   homeRoot = "${dotfilesDirectory}/home";
   toolset = import ./packages.nix { inherit pkgs; };
   outOfStore = relativePath:
@@ -58,6 +59,7 @@ in
     ".gitignore_global" = liveLink ".gitignore_global";
     ".zshenv" = liveLink ".zshenv";
     ".zshrc" = liveLink ".zshrc";
+    "Library/Application Support/Anki2/addons21/anki-connect".source = ankiConnectAddon;
     "apm.lock.yaml" = liveLink "apm.lock.yaml";
     "apm.yml" = liveLink "apm.yml";
   } // liveFiles;
