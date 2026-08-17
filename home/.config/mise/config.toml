@@ -29,6 +29,9 @@ uv = "0.12.1"
 xcodegen = "2.46.0"
 zoxide = "0.10.0"
 
+[settings]
+activate_aggressive = true
+
 [settings.github]
 credential_command = 'gh_path="$(mise which gh)"; exec "$gh_path" auth token'
 
