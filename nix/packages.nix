@@ -1,6 +1,9 @@
 { pkgs }:
 
 let
+  awscliPackage = pkgs.awscli2;
+  expectedAwscliVersion = "2.35.11";
+
   bunPackage = pkgs.bun;
   expectedBunVersion = "1.3.13";
 
@@ -19,6 +22,8 @@ let
   rustToolchain = pkgs.rustPackages_1_97;
   expectedRustVersion = "1.97.1";
 in
+assert pkgs.lib.assertMsg (awscliPackage.version == expectedAwscliVersion)
+  "AWS CLI version drifted: expected ${expectedAwscliVersion}, got ${awscliPackage.version}";
 assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
 assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
@@ -33,6 +38,9 @@ assert pkgs.lib.assertMsg (rustToolchain.rustc.version == expectedRustVersion)
   "Rust version drifted: expected ${expectedRustVersion}, got ${rustToolchain.rustc.version}";
 {
   packages = [
+    # AWS CLI 2.35.11
+    awscliPackage
+
     # Bun 1.3.13
     bunPackage
 
