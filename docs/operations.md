@@ -120,7 +120,7 @@ source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけであ�
 `mise run system:rollback` は remote の取得や flake の評価をせず、保持済みの直前の世代へ戻す。
 system source の選択は変えないため、次の `plan` は同じ source を診断する。
 
-Nix のガベージコレクションは日本時間で毎週日曜日の 0:00 に実行し、2日を超えた世代を削除する。
+Nix のガベージコレクションは日本時間で毎日 0:00 に実行し、2日を超えた世代を削除する。
 削除された世代へはロールバックできない。手動で `nix-collect-garbage` を実行する場合も、
 削除対象に必要な世代が含まれないことを確認してから実行する。
 
