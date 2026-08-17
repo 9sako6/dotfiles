@@ -65,7 +65,7 @@ in
   system = {
     activationScripts = {
       # スクリーンショット保存先のディレクトリを用意する
-      screenshotDirectory.text = ''
+      extraActivation.text = ''
         install -d -o "${primaryUser}" -g "$(id -gn "${primaryUser}")" "${screenshotDirectory}"
       '';
     };
