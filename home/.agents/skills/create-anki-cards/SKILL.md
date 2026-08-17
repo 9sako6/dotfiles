@@ -1,187 +1,215 @@
 ---
 name: create-anki-cards
-description: 学習対象と既存のAnki構成を調べ、答えやすさと継続性を優先した暗記カードを設計し、検証済みのテキストインポートTSVを生成・更新する。技術知識や業務知識などをAnkiで覚えたい、既存カードを学習履歴を保って改稿したい、Anki用TSVやカード案を作成・監査してほしいと依頼されたときに使う。
+description: 学びたいテーマとAnkiの既存ノートから現在地を組み立て、前提知識から自然につながる次の学習カードを設計し、承認後だけAnkiConnectで追加する。Ankiで新しいテーマを学び始めたい、同じテーマの続きを作りたい、既存カードとの重複を避けて少量ずつ学びたいときに使う。
 ---
 
 # Ankiカード作成
 
-デッキ、ノートタイプ、フィールド、タグ、カード形式を固定しない。既存の構成を調べ、不明な契約だけ利用者へ確認する。
+Ankiを唯一の正本にする。スキル自身は学習テーマの進捗を保存しない。
+
+毎回AnkiConnectからデッキ、タグ、ノートを読み、その時点のカードだけから何を学習済みとして扱うかを組み立て直す。`anki.json`、TSV、計画ファイル、バッチ番号、進捗タグを状態として持たない。
+
+カードを書く前に [references/card-design.md](references/card-design.md) をすべて読む。日本語のカードを作成するときは、`stop-ai-slop-jp` が利用できればその `SKILL.md` も読む。
 
 ## 進め方
 
-次のチェックリストで進捗を管理する。
-
 ```text
-- [ ] 既存の契約と進捗を確認する
-- [ ] 到達目標、範囲、分量を決める
+- [ ] 学びたい状態を明らかにする
+- [ ] AnkiConnectの接続と未完了書き込みを確認する
+- [ ] 既存デッキ、タグ、ノートから現在地を組み立てる
+- [ ] デッキ、継続タグ、ノートタイプを決める
 - [ ] 一次資料と前提知識を確認する
-- [ ] anki.jsonへカードを書く
-- [ ] 表面と短答の日本語を対でレビューする
-- [ ] checkとbuildを実行する
-- [ ] インポート方法と確認項目を渡す
+- [ ] 次のカード案を10枚作る
+- [ ] カード案をレビューする
+- [ ] 明示的な承認を得る
+- [ ] AnkiConnectで追加し、Anki上の結果を確認する
 ```
 
-### 1. 契約
+### 1. 学びたい状態
 
-次の順で確認する。
+新しいテーマでは、到達したい状態がまだ明らかでなければ `design-it` を使う。既に会話から分かっていることは聞き直さない。
 
-1. プロジェクトの指示ファイル
-2. 既存の `anki.json` と、継続案件なら `ANKI_PLAN.md`
-3. 既存TSVまたはAnkiから書き出したテキスト
-4. 利用者の回答
+「テーマ名を覚える」ではなく、何を説明できる、判断できる、実装できるようになりたいかを明らかにする。細かい章立てやカード枚数を先に固定しない。
 
-デッキ名、ノートタイプ、フィールド名と順序、各フィールドの役割、HTML、タグ規約、新規作成か既存更新か、GUIDをAnkiとリポジトリのどちらが所有するかを確定する。資料同士が矛盾する場合は推測せず確認する。
+継続時は、既存ノートと依頼内容から到達したい状態が十分に分かるなら、同じ確認をやり直さない。
 
-複数回に分ける案件では `ANKI_PLAN.md` に到達目標、判断理由、未解決事項、弾ごとの進捗を記録する。CLIが読む契約は `anki.json` だけに置き、PLANへ複製しない。規約を変えたら、既存カードにも遡って適用する。
+### 2. AnkiConnect
 
-到達目標、苦手領域、1弾の枚数を作成前に確認する。枚数の指定がなければ20〜30枚から始め、最初の弾への反応を見て増減する。
+スキルディレクトリのCLIを使う。
 
-### 2. 事実と前提
+```sh
+bun <skill-directory>/tools/anki-connect.ts snapshot
+bun <skill-directory>/tools/anki-connect.ts snapshot 'tag:quint'
+bun <skill-directory>/tools/anki-connect.ts model-fields 'Basic'
+bun <skill-directory>/tools/anki-connect.ts recover
+```
 
-コード、設定、仕様書、公式文書などの一次資料を直接読む。推測をカードへ書かない。カードごとに根拠を `sources` へ残す。共有する成果物では、ローカル絶対パスではなくリポジトリ相対パスまたは公開URLを使う。
+接続先の既定値は `http://127.0.0.1:8765`。`ANKI_CONNECT_URL` で変更できるが、CLIはloopback以外を拒否する。認証情報をリポジトリへ置かない。
 
-本編で使う語彙の前提を確認し、必要なら基礎カードを先に作る。技術領域では「一般概念→製品や基盤→対象システム」が使いやすいが、三階層へ固定しない。
+`snapshot` はAnkiConnectのAPI version、デッキ、タグ、ノートタイプを返す。検索式を渡した場合は該当ノートとカード情報も返す。
 
-カードを書く前に [references/card-design.md](references/card-design.md) をすべて読む。
+`pendingTransactions` が空でなければ、新しい追加へ進む前に `recover` を実行する。これは前回の書き込み結果をAnki自身から確認し、一時的な検証タグを外すための処理である。
 
-日本語のカードを作成または改稿するときは、`stop-ai-slop-jp` が利用できればその `SKILL.md` も読む。カードでは、主体の不在、文のねじれ、抽象語、翻訳調、不要な記号を直すために使う。一次資料に基づく断定を伝聞調へ弱めたり、主観や皮肉を加えたりしない。
+AnkiまたはAnkiConnectへ接続できない場合は、Ankiを変更しない。接続できなかった事実と、Anki起動、AnkiConnect有効化、loopbackの接続先など確認すべき点だけを示す。
 
-### 3. 正規データ
+### 3. デッキとタグ
 
-`anki.json` を唯一の正規データにする。TSVは手編集しない。TSVはバックアップとしてAnkiへ取り込むための出力であり、最新である保証はない。Anki側を正本に倒したい場合は、Ankiからテキストを書き出して `update` モードで再生成する。
+Anki公式の整理方針を優先する。
+
+- デッキは、別々に学習したい広いカテゴリに使う。
+- 細かい話題や複数軸の分類はタグにする。
+- 一つのノートへ複数タグを付けてよい。
+- `::` は明確な包含関係がある場合だけ使う。
+- 必要になるまで階層を増やさない。
+
+参考:
+
+- https://docs.ankiweb.net/getting-started.html#decks
+- https://docs.ankiweb.net/editing.html#using-decks-appropriately
+- https://docs.ankiweb.net/editing.html#using-tags
+
+既存のデッキ、タグ、ノートタイプを優先して使う。適切なものが複数ある、または存在しない場合は候補を示し、人間が決める。スキルが分類体系を黙って新設しない。
+
+新しいデッキを作る必要があり、人間が名前を決めた後だけ次を実行する。
+
+```sh
+bun <skill-directory>/tools/anki-connect.ts create-deck '技術'
+```
+
+#### 新しいタグの命名
+
+Anki公式が命名形式を定めていない部分だけ、ブレを防ぐため次をローカル規約とする。
+
+- 英小文字と数字を使う。
+- 単語区切りは `-`。
+- 階層区切りだけ `::`。
+- `_` は使わない。
+
+例:
+
+```text
+quint
+invariant
+temporal-logic
+formal-methods::quint
+```
+
+既に使われているタグは、上の規約と異なっていても勝手に改名しない。再利用するか整理するかは人間に確認する。
+
+### 4. 継続できる情報設計
+
+継続テーマには、人間にも意味のある安定したタグを一つ以上選ぶ。たとえばQuintを継続して学ぶノートには `quint` を付ける。
+
+このタグはスキル専用の管理情報ではなく、そのノートが何についての知識かを表す通常のAnkiタグである。必要なら `invariant`、`temporal-logic` のような別軸のタグも追加する。
+
+次のような進捗専用情報は作らない。
+
+```text
+batch-1
+batch-2
+progress-20
+next-up
+create-anki-cards::topic::quint
+```
+
+後日続きを作るときは、継続タグで既存ノートを検索する。
+
+```sh
+bun <skill-directory>/tools/anki-connect.ts snapshot 'tag:quint'
+```
+
+その結果から、毎回メモリ上で現在地を組み立てる。
+
+1. 各ノートの問題、答え、補足、タグを読む。
+2. 既に直接問われている事実や概念を列挙する。
+3. 既存カードが前提にしている語彙を確認する。
+4. 同じ事実の言い換えと、別の状況からの応用問題を区別する。
+5. 到達したい状態と一次資料を照らし、まだ覆っていない前提や概念を探す。
+6. 依存関係が自然につながる次のカードを選ぶ。
+
+この現在地は保存しない。次回もAnkiConnectの情報から作り直す。
+
+カードの並び順、作成日時、レビュー履歴だけを進捗の根拠にしない。内容と意味のあるタグを主な根拠にする。初版では正答率や学習履歴に基づく順番の最適化はしない。
+
+### 5. 事実とカード設計
+
+コード、設定、仕様書、公式文書などの一次資料を直接読む。推測をカードへ書かない。
+
+本編で使う語彙の前提を確認し、必要なら基礎カードを先に作る。知識の依存関係を考え、既存ノートの直後に自然につながる内容を選ぶ。
+
+枚数指定がなければ、一度に10枚を提案する。10枚に満たない方が自然なら無理に埋めない。
+
+カード形式、フィールド名、ノートタイプは固定しない。既存ノートの構成を調べ、それに合わせる。新しいノートタイプが必要なら人間に確認する。
+
+### 6. 重複確認
+
+候補を作る前に、継続タグに該当する既存ノートを読む。近隣概念を別タグで管理している場合は必要な範囲だけ追加検索する。
+
+次を重複として避ける。
+
+- 同じ事実を同じ想起方向で問うカード
+- 表記だけ変えた同義カード
+- 同じ根拠を同じ条件で答えさせるカード
+
+既存の事実を、判断や障害対応など別の状況から引き出すカードは、到達目標に必要なら重複とみなさない。
+
+### 7. レビューと承認
+
+カード案はAnkiへ追加する前に提示する。デッキ、ノートタイプ、タグも一緒に示す。
+
+[カード設計規約](references/card-design.md)のレビューを行い、明示的に承認されたカードだけを追加する。「進めて」「追加して」など、対象が明確な承認を得るまでAnkiを変更しない。
+
+一部だけ承認された場合は、そのカードだけ追加する。
+
+### 8. 追加と結果確認
+
+承認後、次の形式を標準入力へ渡す。
 
 ```json
 {
-  "version": 1,
-  "contract": {
-    "mode": "create",
-    "output": "cards.tsv",
-    "deck": "学習対象",
-    "noteType": "使用中のノートタイプ",
-    "html": true,
-    "guidPolicy": "generate",
-    "fields": [
-      { "name": "問題", "role": "question", "required": true },
-      { "name": "答え", "role": "answer", "required": true },
-      { "name": "参考", "role": "reference", "required": false }
-    ],
-    "tagPolicy": {
-      "mode": "restricted",
-      "allowed": ["基礎", "応用"],
-      "requireAtLeastOne": true
-    }
-  },
-  "cards": [
+  "notes": [
     {
-      "id": "topic-001",
-      "guid": "Rj&Z5m[>Zp",
+      "deckName": "技術",
+      "modelName": "Basic",
       "fields": {
-        "問題": "具体的な条件を満たす仕組みを何と呼ぶ？",
-        "答え": "用語",
-        "参考": "https://example.com/spec"
+        "Front": "条件を満たす仕組みを何と呼ぶ？",
+        "Back": "用語"
       },
-      "tags": ["基礎"],
-      "sources": ["https://example.com/spec"],
-      "notes": "必要な場合だけ判断理由を書く"
+      "tags": ["quint", "invariant"]
     }
   ]
 }
 ```
 
-`role` は `question`、`answer`、`reference`、`media`、`id`、`other` のいずれかにする。Ankiのフィールド名は制限しない。
-
-タグを制限しない場合は `tagPolicy` を次の形にする。
-
-```json
-{ "mode": "open", "requireAtLeastOne": false }
+```sh
+bun <skill-directory>/tools/anki-connect.ts add < notes.json
 ```
 
-カードの `id` はレビュー用であり、Ankiへ出力しない。一度付けたIDは文面を直しても変えない。
+`notes.json` は受け渡し例であり、永続的な正本ではない。stdinへ直接渡してもよい。
 
-`guidPolicy` は新規作成モードだけで使う。
+CLIは追加前に `canAddNotesWithErrorDetail` で検証し、追加時だけ一時的なトランザクションタグを付ける。追加後にそのタグでAnkiを再検索し、実際に存在するノートIDを確認してからタグを外す。
 
-- `anki` または省略: GUID列を出力せず、インポート時にAnkiへ生成させる。
-- `generate`: Ankiと同じ64bit乱数のbase91表現をCLIで生成し、GUID列を出力する。
+この一時タグは学習状態を表さず、通常は追加処理の中で消える。接続断などで確認が完了しなかった場合だけAnkiに残り、次回 `recover` で追加済みノートを特定するために使う。
 
-`generate` では、カードの `guid` が空なら `build` が生成して `anki.json` へ保存する。一度保存したGUIDは再生成しない。GUIDを安定させるため、生成後の `anki.json` も必ず変更対象へ含める。
+結果はCLIの `status` をそのまま解釈する。
 
-#### 0コスト開始
+- `added`: 全件をAnki上で確認し、一時タグも除去済み。
+- `blocked`: 追加前検証で失敗。Ankiへ追加していない。
+- `partial-or-recovered`: 一部失敗、または書き込み応答に問題があったが、Anki上で実際の追加件数を確認済み。
+- `verified-with-pending-cleanup`: 追加済みノートは確認できたが、一時タグの除去が残っている。
+- `pending-verification`: 接続断などでAnki上の確認まで完了していない。`transactionTag` を報告し、次回 `recover` で確定する。
 
-`anki.json` がまだない場合は、次をコピーして始める。`deck` と `noteType` は実際のAnki構成に合わせる。
+完了時は、追加を確認できた件数、失敗したカード、未解決のトランザクション有無を報告する。
 
-```json
-{
-  "version": 1,
-  "contract": {
-    "mode": "create",
-    "output": "cards.tsv",
-    "deck": "Default",
-    "noteType": "Basic",
-    "html": false,
-    "fields": [
-      { "name": "表面", "role": "question", "required": true },
-      { "name": "裏面", "role": "answer", "required": true }
-    ],
-    "tagPolicy": { "mode": "open", "requireAtLeastOne": false }
-  },
-  "cards": []
-}
-```
+## 扱わないこと
 
-旧 `anki.json` に `contract.preview` が残っている場合は、その1行を削除する。
+初版では次を行わない。
 
-### 4. 検査と生成
+- 正答率や復習履歴を使った順番の最適化
+- 既存カードの自動編集や削除
+- デッキ全体の一括整理
+- 承認なしの自動追加
+- 外部ネットワークからAnkiConnectへ接続する構成
+- ローカルファイルへ学習進捗を保存すること
 
-スキルディレクトリにあるBun CLIを使う。
-
-```text
-bun <skill-directory>/tools/anki-cards.ts check <project>/anki.json
-bun <skill-directory>/tools/anki-cards.ts build <project>/anki.json
-```
-
-`check` は構造、一意性、フィールド、タグ、一次資料、制御文字を検査する。複数回答や長すぎる答えは警告する。警告を機械的に無視せず、カードを読むか、妥当な例外の理由を `notes` または `ANKI_PLAN.md` に残す。
-
-`build` は同じ検査に成功した場合だけ、`output` のTSVを生成する。出力は `anki.json` の実体と同じproject directory内の相対パスに限る。symlinkを経由してproject外へ出るパスは使わない。
-
-カード本文は日本語レビューを終えてから最終生成する。CLIでは目的の欠落や、疑問詞と短答の意味上の不一致を判定できないため、警告0件でも通読を省略しない。
-
-### 5. GUIDと既存カードの更新
-
-GUIDの所有者をプロジェクトの契約に合わせる。
-
-Ankiを正本にする案件では `guidPolicy` を省略するか `anki` にし、新規カードをGUID列なしで生成する。この扱いは[Anki ManualのGUID Column](https://docs.ankiweb.net/importing/text-files.html#guid-column)に従う。
-
-テキストファイルを正本にし、インポート前から安定したGUIDが必要な案件では `guidPolicy` を `generate` にする。CLIは[Anki本体のGUID生成実装](https://github.com/ankitects/anki/blob/main/rslib/src/notes/mod.rs)と同じ文字表と変換方法でGUIDを生成し、`anki.json` とTSVの両方へ保存する。生成済みGUIDを手で変更しない。
-
-既存カードを更新する場合は、契約を `update` にして安定した識別フィールドを指定する。
-
-```json
-{
-  "mode": "update",
-  "identityField": "変更しない識別フィールド"
-}
-```
-
-Ankiの画面からGUIDを含むテキストを書き出し、次を実行する。
-
-```text
-bun <skill-directory>/tools/anki-cards.ts build <project>/anki.json --anki-export <exported.tsv>
-```
-
-CLIは識別値を一対一で完全照合する。不足、余剰、GUID重複、識別値重複があれば更新TSVを作らない。
-
-Ankiの実データベースを直接編集しない。インポート前に復元可能なバックアップを作り、Ankiの画面から読み込む。更新後は再度テキストを書き出し、更新件数、GUID、フィールド、タグ、ノートタイプ、学習状態に想定外の変化がないか確認する。
-
-### 6. レビュー
-
-`anki.json` のカードを直接レビューし、レビューIDで修正を受ける。修正は `anki.json` に入れ、TSVを再生成する。
-
-[カード設計規約](references/card-design.md)の「7. レビュー」を一枚ずつ行う。不一致が見つかった観点では、同じ弾の全カードを見直す。
-
-完了時に次を報告する。
-
-- 生成したカード数とファイル
-- `check` のエラー数と警告数
-- 新規作成か既存更新か
-- GUIDの所有方針
-- Ankiで選ぶインポート方法と、更新後に確認する項目
+カード作成を超えてデッキ整理、タグ整理、既存カード更新、学習状況の管理まで扱うようになったら、スキル名を `anki` などへ変えることを検討する。
