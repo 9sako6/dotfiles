@@ -47,13 +47,13 @@ bun <skill-directory>/tools/anki-connect.ts model-fields 'Basic'
 bun <skill-directory>/tools/anki-connect.ts recover
 ```
 
-接続先の既定値は `http://127.0.0.1:8765`。`ANKI_CONNECT_URL` で変更できるが、CLIはloopback以外を拒否する。認証情報をリポジトリへ置かない。
+接続先の既定値は `http://127.0.0.1:8765`。`ANKI_CONNECT_URL` で変更できるが、CLIが受け付けるホストはloopbackと `host.docker.internal` だけで、他のホストは拒否する。コンテナ内から実行するときは `ANKI_CONNECT_URL=http://host.docker.internal:8765` を使い、Ankiはコンテナのホスト側で起動しておく。認証情報をリポジトリへ置かない。
 
 `snapshot` はAnkiConnectのAPI version、デッキ、タグ、ノートタイプを返す。検索式を渡した場合は該当ノートとカード情報も返す。
 
 `pendingTransactions` が空でなければ、新しい追加へ進む前に `recover` を実行する。これは前回の書き込み結果をAnki自身から確認し、一時的な検証タグを外すための処理である。
 
-AnkiまたはAnkiConnectへ接続できない場合は、Ankiを変更しない。接続できなかった事実と、Anki起動、AnkiConnect有効化、loopbackの接続先など確認すべき点だけを示す。
+AnkiまたはAnkiConnectへ接続できない場合は、Ankiを変更しない。接続できなかった事実と、Anki起動、AnkiConnect有効化、`ANKI_CONNECT_URL` の接続先など確認すべき点だけを示す。
 
 ### 3. デッキとタグ
 
