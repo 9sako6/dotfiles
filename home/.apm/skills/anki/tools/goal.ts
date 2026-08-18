@@ -1,30 +1,20 @@
 #!/usr/bin/env bun
 
-import { AnkiConnectClient } from "./anki-connect";
+import {
+  AnkiConnectClient,
+  type CardInfo,
+  type NoteInfo,
+  notesWithExactTag,
+} from "./anki-connect.ts";
 
 const GOAL_MODEL_NAME = "Goal";
 const GOAL_FIELD_NAME = "Definition";
-const NEW_TAG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:::[a-z0-9]+(?:-[a-z0-9]+)*)*$/u;
 
 type JsonRecord = Record<string, unknown>;
 
-type NoteInfo = {
-  noteId: number;
-  modelName: string;
-  tags: string[];
-  fields: Record<string, { value: string; order: number }>;
-  cards: number[];
-};
-
-type CardInfo = {
-  cardId: number;
-  note: number;
-  deckName: string;
-};
-
 type GoalRecord = {
   noteId: number;
-  definition: string | null;
+  definition: string;
   tags: string[];
   cards: Array<{
     cardId: number;
@@ -39,35 +29,49 @@ type GoalState = {
   goals: GoalRecord[];
 };
 
-function requireTag(tag: string): string {
-  if (tag.length === 0 || /\s/u.test(tag)) {
-    throw new Error("tag must be a non-empty Anki tag without whitespace");
+function requireGoalFieldNames(fieldNames: string[], subject: string): void {
+  if (fieldNames.length !== 1 || fieldNames[0] !== GOAL_FIELD_NAME) {
+    throw new Error(
+      `${subject} is incompatible: expected only ${GOAL_FIELD_NAME}, got ${fieldNames.join(", ")}`,
+    );
   }
-  return tag;
+}
+
+function definitionFromGoalNote(note: NoteInfo): string {
+  requireGoalFieldNames(Object.keys(note.fields), `Goal note ${note.noteId}`);
+  const definition = note.fields[GOAL_FIELD_NAME].value;
+  if (definition.trim().length === 0) {
+    throw new Error(`Goal note ${note.noteId} has an empty ${GOAL_FIELD_NAME}`);
+  }
+  if (note.cards.length === 0) {
+    throw new Error(`Goal note ${note.noteId} does not generate a card`);
+  }
+  return definition;
 }
 
 async function readGoalRecords(client: AnkiConnectClient, tag: string): Promise<GoalRecord[]> {
-  const noteIds = await client.invoke<number[]>("findNotes", {
-    query: `tag:${requireTag(tag)} note:${GOAL_MODEL_NAME}`,
-  });
-  if (noteIds.length === 0) {
+  const goalNotes = (await notesWithExactTag(client, tag))
+    .filter((note) => note.modelName === GOAL_MODEL_NAME)
+    .map((note) => ({ note, definition: definitionFromGoalNote(note) }));
+  if (goalNotes.length === 0) {
     return [];
   }
 
-  const notes = await client.invoke<NoteInfo[]>("notesInfo", { notes: noteIds });
-  const cardIds = [...new Set(notes.flatMap((note) => note.cards))];
-  const cardInfos = cardIds.length === 0
-    ? []
-    : await client.invoke<CardInfo[]>("cardsInfo", { cards: cardIds });
-  const suspended = cardIds.length === 0
-    ? []
-    : await client.invoke<Array<boolean | null>>("areSuspended", { cards: cardIds });
+  const cardIds = [...new Set(goalNotes.flatMap(({ note }) => note.cards))];
+  const [cardInfos, suspended] = await Promise.all([
+    client.invoke<CardInfo[]>("cardsInfo", { cards: cardIds }),
+    client.invoke<Array<boolean | null>>("areSuspended", { cards: cardIds }),
+  ]);
+  if (cardInfos.length !== cardIds.length || suspended.length !== cardIds.length) {
+    throw new Error("Goal card state could not be read completely");
+  }
+
   const cardsById = new Map(cardInfos.map((card) => [card.cardId, card]));
   const suspendedById = new Map(cardIds.map((cardId, index) => [cardId, suspended[index] ?? null]));
 
-  return notes.map((note) => ({
+  return goalNotes.map(({ note, definition }) => ({
     noteId: note.noteId,
-    definition: note.fields[GOAL_FIELD_NAME]?.value ?? null,
+    definition,
     tags: note.tags,
     cards: note.cards.map((cardId) => ({
       cardId,
@@ -84,16 +88,6 @@ export async function getGoal(client: AnkiConnectClient, tag: string): Promise<G
     tag,
     goals,
   };
-}
-
-async function ensureTopicTag(client: AnkiConnectClient, tag: string): Promise<void> {
-  requireTag(tag);
-  const existing = new Set(await client.invoke<string[]>("getTags"));
-  if (!existing.has(tag) && !NEW_TAG_PATTERN.test(tag)) {
-    throw new Error(
-      `new tag ${JSON.stringify(tag)} must use lowercase letters, digits, hyphens, and :: only`,
-    );
-  }
 }
 
 async function ensureGoalModel(client: AnkiConnectClient): Promise<{ created: boolean }> {
@@ -129,32 +123,27 @@ async function ensureGoalModel(client: AnkiConnectClient): Promise<{ created: bo
   }
 
   const fields = await client.invoke<string[]>("modelFieldNames", { modelName: GOAL_MODEL_NAME });
-  if (fields.length !== 1 || fields[0] !== GOAL_FIELD_NAME) {
-    throw new Error(
-      `existing Goal note type is incompatible: expected only ${GOAL_FIELD_NAME}, got ${fields.join(", ")}`,
-    );
-  }
+  requireGoalFieldNames(fields, "existing Goal note type");
   return { created };
 }
 
-async function ensureCardsSuspended(
-  client: AnkiConnectClient,
-  cards: number[],
-): Promise<Array<boolean | null>> {
+async function ensureCardsSuspended(client: AnkiConnectClient, cards: number[]): Promise<void> {
   if (cards.length === 0) {
     throw new Error("Goal note must generate at least one card");
   }
 
   const before = await client.invoke<Array<boolean | null>>("areSuspended", { cards });
+  if (before.length !== cards.length) {
+    throw new Error("Goal card suspension state could not be read completely");
+  }
   const toSuspend = cards.filter((_, index) => before[index] === false);
   if (toSuspend.length > 0) {
     await client.invoke<boolean>("suspend", { cards: toSuspend });
   }
   const after = await client.invoke<Array<boolean | null>>("areSuspended", { cards });
-  if (after.some((value) => value !== true)) {
+  if (after.length !== cards.length || after.some((value) => value !== true)) {
     throw new Error("Goal card suspension could not be verified");
   }
-  return after;
 }
 
 function normalizeDefinition(value: string): string {
@@ -182,11 +171,40 @@ async function verifySingleGoal(
   return (await getGoal(client, tag)).goals[0];
 }
 
+async function deckCandidatesForTag(client: AnkiConnectClient, tag: string): Promise<string[]> {
+  const notes = (await notesWithExactTag(client, tag)).filter((note) => note.modelName !== GOAL_MODEL_NAME);
+  const cardIds = [...new Set(notes.flatMap((note) => note.cards))];
+  if (cardIds.length === 0) {
+    return [];
+  }
+  const cards = await client.invoke<CardInfo[]>("cardsInfo", { cards: cardIds });
+  return [...new Set(cards.map((card) => card.deckName))].sort();
+}
+
+async function resolveGoalDeck(
+  client: AnkiConnectClient,
+  tag: string,
+  requestedDeck?: string,
+): Promise<string | { status: "needs-deck"; tag: string; candidateDecks: string[] }> {
+  if (requestedDeck !== undefined) {
+    const decks = await client.invoke<string[]>("deckNames");
+    if (!decks.includes(requestedDeck)) {
+      throw new Error(`deck does not exist: ${requestedDeck}`);
+    }
+    return requestedDeck;
+  }
+
+  const candidateDecks = await deckCandidatesForTag(client, tag);
+  return candidateDecks.length === 1
+    ? candidateDecks[0]
+    : { status: "needs-deck", tag, candidateDecks };
+}
+
 export async function setGoal(
   client: AnkiConnectClient,
   tag: string,
-  deckName: string,
   rawDefinition: string,
+  deckName?: string,
 ): Promise<JsonRecord> {
   const definition = normalizeDefinition(rawDefinition);
   const current = await getGoal(client, tag);
@@ -201,7 +219,6 @@ export async function setGoal(
       return { status: "unchanged", tag, goal: (await getGoal(client, tag)).goals[0] };
     }
 
-    let updateError: string | null = null;
     try {
       await client.invoke("updateNoteFields", {
         note: {
@@ -209,63 +226,49 @@ export async function setGoal(
           fields: { [GOAL_FIELD_NAME]: definition },
         },
       });
-    } catch (error) {
-      updateError = error instanceof Error ? error.message : String(error);
+    } catch {
+      // Verify from Anki below; a transport error does not imply that the update failed.
     }
 
-    const goal = await verifySingleGoal(client, tag, definition);
-    return {
-      status: updateError === null ? "updated" : "updated-after-uncertain-response",
-      tag,
-      goal,
-      updateError,
-    };
+    return { status: "updated", tag, goal: await verifySingleGoal(client, tag, definition) };
   }
 
-  await ensureTopicTag(client, tag);
-  const decks = await client.invoke<string[]>("deckNames");
-  if (!decks.includes(deckName)) {
-    throw new Error(`deck does not exist: ${deckName}`);
+  const resolvedDeck = await resolveGoalDeck(client, tag, deckName);
+  if (typeof resolvedDeck !== "string") {
+    return resolvedDeck;
   }
   const model = await ensureGoalModel(client);
 
-  let addError: string | null = null;
   try {
     await client.invoke<number | null>("addNote", {
       note: {
-        deckName,
+        deckName: resolvedDeck,
         modelName: GOAL_MODEL_NAME,
         fields: { [GOAL_FIELD_NAME]: definition },
         tags: [tag],
         options: { allowDuplicate: true },
       },
     });
-  } catch (error) {
-    addError = error instanceof Error ? error.message : String(error);
+  } catch {
+    // Verify from Anki below; a transport error does not imply that the add failed.
   }
 
   const observed = await getGoal(client, tag);
   if (observed.status === "missing") {
-    throw new Error(
-      addError === null
-        ? "Goal creation could not be verified"
-        : `Goal creation failed and no Goal was observed: ${addError}`,
-    );
+    throw new Error("Goal creation could not be verified");
   }
   if (observed.status === "conflict") {
-    return { status: "conflict-after-write", tag, goals: observed.goals, addError };
+    return { status: "conflict", tag, goals: observed.goals };
   }
   if (observed.goals[0].definition !== definition) {
-    return { status: "concurrent-goal", tag, goal: observed.goals[0], addError };
+    return { status: "conflict", tag, goals: observed.goals };
   }
 
-  const goal = await verifySingleGoal(client, tag, definition);
   return {
-    status: addError === null ? "created" : "created-after-uncertain-response",
+    status: "created",
     tag,
-    goal,
+    goal: await verifySingleGoal(client, tag, definition),
     noteTypeCreated: model.created,
-    addError,
   };
 }
 
@@ -285,7 +288,7 @@ function usage(): never {
     [
       "usage:",
       "  goal.ts get TAG",
-      "  goal.ts set TAG DECK_NAME < definition.txt",
+      "  goal.ts set TAG [DECK_NAME] < definition.txt",
     ].join("\n"),
   );
 }
@@ -300,8 +303,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       result = await getGoal(client, args[0]);
       break;
     case "set":
-      if (args.length !== 2) usage();
-      result = await setGoal(client, args[0], args[1], await readStdinText());
+      if (args.length < 1 || args.length > 2) usage();
+      result = await setGoal(client, args[0], await readStdinText(), args[1]);
       break;
     default:
       usage();

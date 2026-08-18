@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "allowJs": false,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -11,7 +12,7 @@
     ]
   },
   "include": [
-    "home/.apm/skills/create-anki-cards/tools/**/*.ts",
+    "home/.apm/skills/anki/tools/**/*.ts",
     "tests/**/*.ts"
   ]
 }

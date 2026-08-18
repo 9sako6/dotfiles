@@ -5,8 +5,7 @@ import { randomUUID } from "node:crypto";
 const API_VERSION = 6;
 const DEFAULT_ENDPOINT = "http://127.0.0.1:8765";
 const ALLOWED_HOSTNAMES = ["127.0.0.1", "[::1]", "host.docker.internal", "localhost"];
-const TRANSACTION_TAG_PREFIX = "create-anki-cards-tx-";
-const NEW_TAG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:::[a-z0-9]+(?:-[a-z0-9]+)*)*$/u;
+const TRANSACTION_TAG_PREFIX = "anki-tx-";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -21,7 +20,7 @@ type AddInput = {
   notes: NoteInput[];
 };
 
-type NoteInfo = {
+export type NoteInfo = {
   noteId: number;
   modelName: string;
   tags: string[];
@@ -29,7 +28,7 @@ type NoteInfo = {
   cards: number[];
 };
 
-type CardInfo = {
+export type CardInfo = {
   cardId: number;
   note: number;
   deckName: string;
@@ -41,6 +40,22 @@ type CardInfo = {
 type CanAddResult = {
   canAdd: boolean;
   error: string | null;
+};
+
+type AddError = {
+  index?: number;
+  error: string;
+};
+
+export type AddResult =
+  | { status: "success"; noteIds: number[] }
+  | { status: "rejected"; noteIds: number[]; errors: AddError[] }
+  | { status: "partial"; noteIds: number[]; missing: number }
+  | { status: "indeterminate"; noteIds: number[]; error: string };
+
+type PendingTransaction = {
+  tag: string;
+  notes: NoteInfo[];
 };
 
 type FetchLike = typeof fetch;
@@ -89,6 +104,17 @@ function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isCanAddResult(value: unknown): value is CanAddResult {
+  return isRecord(value)
+    && typeof value.canAdd === "boolean"
+    && (value.error === null || typeof value.error === "string");
+}
+
+function isAddNotesResult(value: unknown): value is Array<number | null> {
+  return Array.isArray(value)
+    && value.every((noteId) => noteId === null || typeof noteId === "number");
+}
+
 export function parseAddInput(value: unknown): AddInput {
   if (!isRecord(value) || !Array.isArray(value.notes) || value.notes.length === 0) {
     throw new Error("stdin must be an object containing a non-empty notes array");
@@ -122,6 +148,30 @@ export function parseAddInput(value: unknown): AddInput {
   return { notes };
 }
 
+function requireTag(tag: string): string {
+  if (tag.length === 0 || /\s/u.test(tag)) {
+    throw new Error("tag must be a non-empty Anki tag without whitespace");
+  }
+  return tag;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+export function exactTagQuery(tag: string): string {
+  return `tag:re:^${escapeRegex(requireTag(tag))}$`;
+}
+
+function transactionTagQuery(): string {
+  return `tag:re:^${escapeRegex(TRANSACTION_TAG_PREFIX)}.*$`;
+}
+
+export async function notesWithExactTag(client: AnkiConnectClient, tag: string): Promise<NoteInfo[]> {
+  const noteIds = await client.invoke<number[]>("findNotes", { query: exactTagQuery(tag) });
+  return noteIds.length === 0 ? [] : client.invoke<NoteInfo[]>("notesInfo", { notes: noteIds });
+}
+
 function transactionTag(): string {
   return `${TRANSACTION_TAG_PREFIX}${randomUUID().replaceAll("-", "")}`;
 }
@@ -130,12 +180,19 @@ function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
-async function currentTransactionTags(client: AnkiConnectClient): Promise<string[]> {
-  const tags = await client.invoke<string[]>("getTags");
-  return tags.filter((tag) => tag.startsWith(TRANSACTION_TAG_PREFIX)).sort();
+function visibleTags(tags: string[]): string[] {
+  return tags.filter((tag) => !tag.startsWith(TRANSACTION_TAG_PREFIX));
 }
 
-export async function snapshot(client: AnkiConnectClient, query?: string): Promise<JsonRecord> {
+function visibleNote(note: NoteInfo): NoteInfo {
+  return { ...note, tags: visibleTags(note.tags) };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export async function snapshot(client: AnkiConnectClient, tag?: string): Promise<JsonRecord> {
   const [apiVersion, decks, tags, models] = await Promise.all([
     client.invoke<number>("version"),
     client.invoke<string[]>("deckNames"),
@@ -145,24 +202,21 @@ export async function snapshot(client: AnkiConnectClient, query?: string): Promi
 
   let notes: NoteInfo[] = [];
   let cards: CardInfo[] = [];
-  if (query !== undefined) {
-    const noteIds = await client.invoke<number[]>("findNotes", { query });
-    if (noteIds.length > 0) {
-      notes = await client.invoke<NoteInfo[]>("notesInfo", { notes: noteIds });
-      const cardIds = unique(notes.flatMap((note) => note.cards));
-      if (cardIds.length > 0) {
-        cards = await client.invoke<CardInfo[]>("cardsInfo", { cards: cardIds });
-      }
+  if (tag !== undefined) {
+    const matchedNotes = await notesWithExactTag(client, tag);
+    const cardIds = unique(matchedNotes.flatMap((note) => note.cards));
+    if (cardIds.length > 0) {
+      cards = await client.invoke<CardInfo[]>("cardsInfo", { cards: cardIds });
     }
+    notes = matchedNotes.map(visibleNote);
   }
 
   return {
     apiVersion,
     decks: [...decks].sort(),
-    tags: [...tags].sort(),
+    tags: visibleTags(tags).sort(),
     models: [...models].sort(),
-    pendingTransactions: tags.filter((tag) => tag.startsWith(TRANSACTION_TAG_PREFIX)).sort(),
-    ...(query === undefined ? {} : { query, notes, cards }),
+    ...(tag === undefined ? {} : { tag, notes, cards }),
   };
 }
 
@@ -182,28 +236,45 @@ export async function createDeck(client: AnkiConnectClient, deck: string): Promi
   return { deck, deckId, created: true };
 }
 
-async function validateTags(client: AnkiConnectClient, notes: NoteInput[]): Promise<void> {
-  const existing = new Set(await client.invoke<string[]>("getTags"));
+function assertNoReservedTags(notes: NoteInput[]): void {
   for (const [noteIndex, note] of notes.entries()) {
     for (const tag of note.tags) {
       if (tag.startsWith(TRANSACTION_TAG_PREFIX)) {
-        throw new Error(`notes[${noteIndex}].tags: reserved transaction tag prefix`);
-      }
-      if (existing.has(tag)) {
-        continue;
-      }
-      if (!NEW_TAG_PATTERN.test(tag)) {
-        throw new Error(
-          `notes[${noteIndex}].tags: new tag ${JSON.stringify(tag)} must use lowercase letters, digits, hyphens, and :: only`,
-        );
+        throw new Error(`notes[${noteIndex}].tags: reserved internal tag prefix`);
       }
     }
   }
 }
 
+async function pendingTransactions(client: AnkiConnectClient): Promise<PendingTransaction[]> {
+  const noteIds = await client.invoke<number[]>("findNotes", { query: transactionTagQuery() });
+  if (noteIds.length === 0) {
+    return [];
+  }
+
+  const notes = await client.invoke<NoteInfo[]>("notesInfo", { notes: noteIds });
+  const notesByTag = new Map<string, NoteInfo[]>();
+  for (const note of notes) {
+    for (const tag of note.tags) {
+      if (!tag.startsWith(TRANSACTION_TAG_PREFIX)) {
+        continue;
+      }
+      const taggedNotes = notesByTag.get(tag);
+      if (taggedNotes === undefined) {
+        notesByTag.set(tag, [note]);
+      } else {
+        taggedNotes.push(note);
+      }
+    }
+  }
+
+  return [...notesByTag.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([tag, taggedNotes]) => ({ tag, notes: taggedNotes }));
+}
+
 async function observeTransaction(client: AnkiConnectClient, tag: string): Promise<NoteInfo[]> {
-  const ids = await client.invoke<number[]>("findNotes", { query: `tag:${tag}` });
-  return ids.length === 0 ? [] : client.invoke<NoteInfo[]>("notesInfo", { notes: ids });
+  return notesWithExactTag(client, tag);
 }
 
 async function cleanupTransaction(client: AnkiConnectClient, tag: string, notes: NoteInfo[]): Promise<void> {
@@ -216,82 +287,118 @@ async function cleanupTransaction(client: AnkiConnectClient, tag: string, notes:
   });
 }
 
-export async function recover(client: AnkiConnectClient): Promise<JsonRecord> {
-  const tags = await currentTransactionTags(client);
-  const recovered: JsonRecord[] = [];
-  for (const tag of tags) {
-    const notes = await observeTransaction(client, tag);
-    await cleanupTransaction(client, tag, notes);
-    recovered.push({ transactionTag: tag, noteIds: notes.map((note) => note.noteId), notes });
+async function reconcilePendingTransactions(client: AnkiConnectClient): Promise<boolean> {
+  const transactions = await pendingTransactions(client);
+  for (const transaction of transactions) {
+    await cleanupTransaction(client, transaction.tag, transaction.notes);
   }
-  return { recovered };
+  return transactions.length > 0;
 }
 
-export async function add(client: AnkiConnectClient, input: AddInput): Promise<JsonRecord> {
-  await validateTags(client, input.notes);
+export async function add(client: AnkiConnectClient, input: AddInput): Promise<AddResult> {
+  assertNoReservedTags(input.notes);
+
+  let reconciled: boolean;
+  try {
+    reconciled = await reconcilePendingTransactions(client);
+  } catch (error) {
+    return { status: "indeterminate", noteIds: [], error: errorMessage(error) };
+  }
+  if (reconciled) {
+    return {
+      status: "rejected",
+      noteIds: [],
+      errors: [{ error: "A previous Anki write was reconciled. Read Anki again before retrying." }],
+    };
+  }
+
   const txTag = transactionTag();
   const notes = input.notes.map((note) => ({ ...note, tags: unique([...note.tags, txTag]) }));
-  const preflight = await client.invoke<CanAddResult[]>("canAddNotesWithErrorDetail", { notes });
-  const blocked = preflight
+
+  let rawPreflight: unknown;
+  try {
+    rawPreflight = await client.invoke<unknown>("canAddNotesWithErrorDetail", { notes });
+  } catch (error) {
+    return { status: "rejected", noteIds: [], errors: [{ error: errorMessage(error) }] };
+  }
+  if (!Array.isArray(rawPreflight)
+    || rawPreflight.length !== input.notes.length
+    || !rawPreflight.every(isCanAddResult)) {
+    return {
+      status: "rejected",
+      noteIds: [],
+      errors: [{ error: "Anki returned an invalid preflight result" }],
+    };
+  }
+  const errors = rawPreflight
     .map((result, index) => ({ ...result, index }))
-    .filter((result) => !result.canAdd);
-  if (blocked.length > 0) {
-    return { status: "blocked", added: [], blocked };
+    .filter((result) => !result.canAdd)
+    .map(({ index, error }) => ({ index, error: error ?? "Anki rejected the note" }));
+  if (errors.length > 0) {
+    return { status: "rejected", noteIds: [], errors };
   }
 
   let returnedIds: Array<number | null> | null = null;
-  let addError: string | null = null;
+  let writeError: string | null = null;
   try {
-    returnedIds = await client.invoke<Array<number | null>>("addNotes", { notes });
+    const rawResult = await client.invoke<unknown>("addNotes", { notes });
+    if (isAddNotesResult(rawResult)) {
+      returnedIds = rawResult;
+    } else {
+      writeError = "addNotes returned an invalid result";
+    }
   } catch (error) {
-    addError = error instanceof Error ? error.message : String(error);
+    writeError = errorMessage(error);
   }
 
   let observed: NoteInfo[];
   try {
     observed = await observeTransaction(client, txTag);
   } catch (error) {
-    return {
-      status: "pending-verification",
-      transactionTag: txTag,
-      addError,
-      verificationError: error instanceof Error ? error.message : String(error),
-      returnedIds,
-    };
+    return { status: "indeterminate", noteIds: [], error: errorMessage(error) };
   }
 
-  const observedIds = observed.map((note) => note.noteId).sort((a, b) => a - b);
-  const returnedAddedIds = (returnedIds ?? []).filter((id): id is number => id !== null).sort((a, b) => a - b);
-  const returnedFailures = (returnedIds ?? [])
-    .map((id, index) => ({ id, index }))
-    .filter(({ id }) => id === null)
-    .map(({ index }) => index);
-
+  const noteIds = observed.map((note) => note.noteId).sort((a, b) => a - b);
   try {
     await cleanupTransaction(client, txTag, observed);
-  } catch (error) {
+  } catch {
+    // A later add reconciles the leftover internal tag before considering a new write.
+  }
+
+  if (observed.length === input.notes.length) {
+    return { status: "success", noteIds };
+  }
+
+  if (observed.length > input.notes.length) {
     return {
-      status: "verified-with-pending-cleanup",
-      transactionTag: txTag,
-      addError,
-      returnedIds,
-      returnedFailures,
-      observedNoteIds: observedIds,
-      cleanupError: error instanceof Error ? error.message : String(error),
+      status: "indeterminate",
+      noteIds,
+      error: "Anki returned more notes than this request contained",
     };
   }
 
-  const idsAgree = returnedIds === null || JSON.stringify(returnedAddedIds) === JSON.stringify(observedIds);
+  if (observed.length > 0) {
+    return {
+      status: "partial",
+      noteIds,
+      missing: input.notes.length - observed.length,
+    };
+  }
+
+  if (returnedIds !== null
+    && returnedIds.length === input.notes.length
+    && returnedIds.every((id) => id === null)) {
+    return {
+      status: "rejected",
+      noteIds: [],
+      errors: [{ error: writeError ?? "Anki rejected all notes" }],
+    };
+  }
+
   return {
-    status:
-      addError !== null || returnedFailures.length > 0 || !idsAgree
-        ? "partial-or-recovered"
-        : "added",
-    addError,
-    returnedIds,
-    returnedFailures,
-    observedNoteIds: observedIds,
-    notes: observed,
+    status: "indeterminate",
+    noteIds: [],
+    error: writeError ?? "Anki write result could not be verified",
   };
 }
 
@@ -310,11 +417,10 @@ function usage(): never {
   throw new Error(
     [
       "usage:",
-      "  anki-connect.ts snapshot [QUERY]",
+      "  anki-connect.ts snapshot [TAG]",
       "  anki-connect.ts model-fields MODEL_NAME",
       "  anki-connect.ts create-deck DECK_NAME",
       "  anki-connect.ts add < notes.json",
-      "  anki-connect.ts recover",
     ].join("\n"),
   );
 }
@@ -322,7 +428,7 @@ function usage(): never {
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const client = new AnkiConnectClient();
   const [command, ...args] = argv;
-  let result: JsonRecord;
+  let result: unknown;
   switch (command) {
     case "snapshot":
       if (args.length > 1) usage();
@@ -339,10 +445,6 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     case "add":
       if (args.length !== 0) usage();
       result = await add(client, parseAddInput(await readStdinJson()));
-      break;
-    case "recover":
-      if (args.length !== 0) usage();
-      result = await recover(client);
       break;
     default:
       usage();
