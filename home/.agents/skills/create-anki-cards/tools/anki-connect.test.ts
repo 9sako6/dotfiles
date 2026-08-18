@@ -32,13 +32,20 @@ function fakeClient(
 }
 
 describe("endpoint", () => {
-  test("accepts loopback endpoints", () => {
+  test("accepts endpoints on the machine running Anki", () => {
     expect(() => assertLocalEndpoint("http://127.0.0.1:8765")).not.toThrow();
+    expect(() => assertLocalEndpoint("http://[::1]:8765")).not.toThrow();
+    expect(() => assertLocalEndpoint("http://host.docker.internal:8765")).not.toThrow();
     expect(() => assertLocalEndpoint("http://localhost:8765")).not.toThrow();
   });
 
-  test("rejects non-loopback endpoints", () => {
-    expect(() => assertLocalEndpoint("http://192.168.1.2:8765")).toThrow("loopback-only");
+  test("rejects endpoints on other hosts", () => {
+    expect(() => assertLocalEndpoint("http://192.168.1.2:8765")).toThrow(
+      "must be loopback or host.docker.internal",
+    );
+    expect(() => assertLocalEndpoint("http://anki.example.com:8765")).toThrow(
+      "must be loopback or host.docker.internal",
+    );
     expect(() => assertLocalEndpoint("https://127.0.0.1:8765")).toThrow("must use http");
   });
 });

@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 const API_VERSION = 6;
 const DEFAULT_ENDPOINT = "http://127.0.0.1:8765";
+const ALLOWED_HOSTNAMES = ["127.0.0.1", "[::1]", "host.docker.internal", "localhost"];
 const TRANSACTION_TAG_PREFIX = "create-anki-cards-tx-";
 const NEW_TAG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:::[a-z0-9]+(?:-[a-z0-9]+)*)*$/u;
 
@@ -76,8 +77,8 @@ export function assertLocalEndpoint(endpoint: string): void {
   if (url.protocol !== "http:") {
     throw new Error("AnkiConnect endpoint must use http");
   }
-  if (!["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
-    throw new Error("AnkiConnect endpoint must be loopback-only");
+  if (!ALLOWED_HOSTNAMES.includes(url.hostname)) {
+    throw new Error("AnkiConnect endpoint must be loopback or host.docker.internal");
   }
   if (url.username !== "" || url.password !== "") {
     throw new Error("AnkiConnect endpoint must not include credentials");
