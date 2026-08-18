@@ -21,6 +21,14 @@ description = "Uninstall an agents skill via apm, then build agents resources"
 run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- agents update"
 description = "Update an agents skill via apm, then build agents resources"
 
+[tasks."container-runtime:bench"]
+run = "bun bench/container-runtime/bench.ts run"
+description = "Benchmark macOS, Colima, and Apple container machine runtimes"
+
+[tasks."container-runtime:prepare"]
+run = "bun bench/container-runtime/bench.ts prepare"
+description = "Prepare isolated Colima and Apple container benchmark runtimes"
+
 [tasks."herdr:integrations:apply"]
 run = [
   "herdr integration install claude",
