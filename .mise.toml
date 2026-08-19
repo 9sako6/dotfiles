@@ -41,7 +41,3 @@ description = "Build and show the macOS system and home plan"
 [tasks."system:rollback"]
 run = "./bin/system-rollback.sh"
 description = "Switch to the previous nix-darwin generation"
-
-[tasks."system:update"]
-run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- update"
-description = "Update macOS system flake inputs, then validate"
