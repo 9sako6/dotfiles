@@ -1,0 +1,44 @@
+name: regenerate-anki-card-design
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install mise
+        run: ./bin/install-mise.sh
+
+      - name: Install APM
+        run: |
+          mkdir -p "$HOME/.config/mise"
+          cp home/.config/mise/config.toml "$HOME/.config/mise/config.toml"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/mise" install 'pipx:apm-cli@0.26.0'
+
+      - name: Regenerate agent resources
+        run: |
+          mise trust
+          mise run agents:build
+
+      - name: Commit generated changes
+        run: |
+          git add home/apm.lock.yaml home/.agents/skills/anki home/.claude/skills/anki
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'build(agents): Ankiカード設計の生成物を同期'
+          git push origin HEAD:master
