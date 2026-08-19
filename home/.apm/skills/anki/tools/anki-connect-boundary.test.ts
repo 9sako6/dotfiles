@@ -55,6 +55,33 @@ describe("public snapshot", () => {
 });
 
 describe("preflight boundary", () => {
+  test("does not write when a rejected preflight omits error", async () => {
+    const actions: string[] = [];
+    const client = fakeClient((action) => {
+      actions.push(action);
+      switch (action) {
+        case "findNotes": return response([]);
+        case "canAddNotesWithErrorDetail": return response([{ canAdd: false }]);
+        default: throw new Error(`unexpected action ${action}`);
+      }
+    });
+
+    const result = await add(client, {
+      notes: [{
+        deckName: "技術",
+        modelName: "Basic",
+        fields: { Front: "Q", Back: "A" },
+        tags: ["quint"],
+      }],
+    });
+
+    expect(result.status).toBe("rejected");
+    expect(result.status === "rejected" ? result.errors[0].error : "").toBe(
+      "Anki returned an invalid preflight result",
+    );
+    expect(actions).not.toContain("addNotes");
+  });
+
   test("does not write when Anki returns a result count different from the request", async () => {
     const actions: string[] = [];
     const client = fakeClient((action) => {

@@ -201,7 +201,7 @@ describe("add", () => {
     expect(actions).not.toContain("addNotes");
   });
 
-  test("adds normally and returns only the public result", async () => {
+  test("adds normally when a successful preflight omits error", async () => {
     let transactionTag = "";
     const client = fakeClient((action, params) => {
       switch (action) {
@@ -214,7 +214,7 @@ describe("add", () => {
         case "canAddNotesWithErrorDetail": {
           const notes = params?.notes as Array<{ tags: string[] }>;
           transactionTag = notes[0].tags.find((tag) => tag.startsWith("anki-tx-")) ?? "";
-          return response([{ canAdd: true, error: null }]);
+          return response([{ canAdd: true }]);
         }
         case "addNotes": return response([101]);
         case "notesInfo": return response([

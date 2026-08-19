@@ -39,7 +39,7 @@ export type CardInfo = {
 
 type CanAddResult = {
   canAdd: boolean;
-  error: string | null;
+  error?: string | null;
 };
 
 type AddError = {
@@ -107,7 +107,9 @@ function isRecord(value: unknown): value is JsonRecord {
 function isCanAddResult(value: unknown): value is CanAddResult {
   return isRecord(value)
     && typeof value.canAdd === "boolean"
-    && (value.error === null || typeof value.error === "string");
+    && (value.canAdd
+      ? value.error === undefined || value.error === null
+      : typeof value.error === "string");
 }
 
 function isAddNotesResult(value: unknown): value is Array<number | null> {
