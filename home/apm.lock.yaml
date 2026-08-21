@@ -290,7 +290,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:2d92e1b2d111ffe4d13ed45d03c06ee32c85e2b04573f026b51b45a8c82a56a4
+  content_hash: sha256:c65fee548325877eed1ddd89012d0316aaaacee4ad1c09c8d53ab40609895c13
 - kind: project-relative
   target: claude
   value: .claude/skills/anki
@@ -1409,7 +1409,7 @@ local_deployed_file_hashes:
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .agents/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
-  .claude/rules/global.md: sha256:2d92e1b2d111ffe4d13ed45d03c06ee32c85e2b04573f026b51b45a8c82a56a4
+  .claude/rules/global.md: sha256:c65fee548325877eed1ddd89012d0316aaaacee4ad1c09c8d53ab40609895c13
   .claude/skills/anki/SKILL.md: sha256:b713ab95fd99431b4be56084e251faa7e28a6785585a038bba095932547d368b
   .claude/skills/anki/references/card-design.md: sha256:1d037acfd7b4d3a5d0fbcc249eb0e1719e88e905949079124c29e60ea829b78a
   .claude/skills/anki/tools/anki-connect-boundary.test.ts: sha256:0a4a00bec3b8ba4f9a5f94ddf96523a727abfb895f68dd77b83e36bdbddc0cb2
