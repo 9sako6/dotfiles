@@ -1,6 +1,22 @@
 { config, pkgs, ... }:
 
 let
+  commandKeyTwiceDictationShortcut = ''
+    <dict>
+      <key>enabled</key>
+      <true/>
+      <key>value</key>
+      <dict>
+        <key>parameters</key>
+        <array>
+          <integer>1048576</integer>
+          <integer>18446744073708503039</integer>
+        </array>
+        <key>type</key>
+        <string>modifier</string>
+      </dict>
+    </dict>
+  '';
   homebrewPackages = import ./homebrew-packages.nix;
   primaryUser = config.system.primaryUser;
   screenshotDirectory = "/Users/${primaryUser}/screenshots";
@@ -67,6 +83,11 @@ in
       extraActivation.text = ''
         install -d -o "${primaryUser}" -g "$(id -gn "${primaryUser}")" "${screenshotDirectory}"
       '';
+      postActivation.text = ''
+        launchctl asuser "$(id -u -- "${primaryUser}")" sudo --user="${primaryUser}" -- \
+          defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 164 \
+          '${commandKeyTwiceDictationShortcut}'
+      '';
     };
 
     defaults = {
@@ -87,9 +108,10 @@ in
       # Dockの「最近使った項目」を非表示にする
       dock.show-recents = false;
 
+      hitoolbox.AppleFnUsageType = "Show Emoji & Symbols";
+
       # 音声入力を有効にする
       CustomUserPreferences."com.apple.assistant.support"."Dictation Enabled" = true;
-      hitoolbox.AppleFnUsageType = "Start Dictation";
 
       finder = {
         # ファイル拡張子を常に表示する
