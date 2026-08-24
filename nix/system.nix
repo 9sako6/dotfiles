@@ -89,6 +89,7 @@ in
 
       # 音声入力を有効にする
       CustomUserPreferences."com.apple.assistant.support"."Dictation Enabled" = true;
+      hitoolbox.AppleFnUsageType = "Start Dictation";
 
       finder = {
         # ファイル拡張子を常に表示する
