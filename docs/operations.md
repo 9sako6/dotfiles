@@ -65,6 +65,8 @@ mise run system:rollback       # 直前のnix-darwin世代へ戻す
 system の日常操作の正本は Rust 製の `dotfiles` CLI の `plan` / `apply` とする。repository test をまとめる `dotfiles` サブコマンドは持たない。
 その他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
 
+ユーザー単位の常設ツールは Nix 管理を原則とする。新しいツールを mise の `[tools]` へ追加しない。既存の mise 管理ツールを更新するときは Nix へ移せるかを先に確認し、合理的に移せる場合は `nix/packages.nix` と Home Manager へ移す。mise に残すのは Nix で合理的に管理できない例外だけとし、その理由を設定から判別できる状態にする。
+
 公開構成の flake root は repository root の `flake.nix` / `flake.lock`。Nix で宣言する system / home 設定は `nix/`、共有設定ファイルの実体は `home/` に置く。
 
 通常の設定ファイルと `.config`、`.zsh.d`、`mybin` は live dotfiles checkout への out-of-store link にして、編集を即時反映する。

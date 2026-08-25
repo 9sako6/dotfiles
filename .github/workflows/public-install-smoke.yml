@@ -104,7 +104,7 @@ jobs:
           mise exec -- gitleaks version
           git --version
           go version
-          mise exec -- herdr --version
+          herdr --version
           mise exec -- pnpm --version
           quint --version
           mise exec -- rg --version
