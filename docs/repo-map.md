@@ -29,7 +29,7 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - `bin/` は直接実行する repository entrypoint、`lib/` は entrypoint が利用する内部実装を所有する。
 - `install.sh` は新しい Mac を一発で構築する唯一の入口とし、repo tools、system + Home Manager、user tools と repositories の順序を所有する。
 - `dotfiles` CLI は日常の system plan/apply の正本とする。repository test の orchestration は CLI に持たせず、CI では各 test command を直接実行する。
-- Nix で合理的に管理できる CLI / toolchain は `nix/packages.nix` を正本とする。`.mise.toml` の `[tools]` は Nix で合理的に管理できない明示的な例外がある場合だけ使い、現時点では `[tools]` を持たない。mise は補助 task の定義を所有する。
+- Nix で合理的に管理できる CLI / toolchain は `nix/packages.nix` を正本とする。`home/.config/mise/config.toml` の `[tools]` は Nix へ移行中の既存ツールと、Nix で合理的に管理できない明示的な例外だけに限定する。新しいツールは追加せず、既存ツールのバージョンや配布元を変更するときは同じ変更で Nix へ移せるかを先に判断する。mise は残る例外と補助 task の実行を所有する。
 - `dotfiles` CLI の repo 固有ロジックは `cli/` の Rust 実装へ集める。標準コマンドの実行自体は外部プロセスへ委ねても、引数検証、source 選択、手順、失敗時の扱いは Rust 側を正本とする。
 - `plan` は Lix や active system を変更せず、`.dotfiles.json` の home copy 定義も検証と表示だけ行う。`apply` だけが Lix 導入、build 済み世代の activation、Home Manager activation、source 選択の永続化、home copy の反映を行う。
 - public source は実行ユーザーと local dotfiles checkout を入力にして root flake を評価する。private source はユーザーを root flake で明示し、committed lock file から pure に評価する。
@@ -61,7 +61,7 @@ Nix flake は `flake.nix` に追従先の意図を書き、具体的な revision
 
 Nix でユーザー常設ツールを管理するときは、`flake.lock` による取得元の固定だけでなく、`nix/packages.nix` に期待バージョンを明示して assertion する。利用できる場合は `go_1_26` や `rustPackages_1_97` のような versioned attribute を選び、コメントにも完全なバージョンを残す。nixpkgs 更新で実バージョンが変わった場合は、期待バージョンを意図的に更新するまで評価を失敗させる。
 
-Homebrew の formula と cask は `nix/homebrew-packages.nix` に集める。ユーザー単位で常設する CLI は Nix 管理を原則とし、Nix で合理的に管理できないものだけ mise / Homebrew / 公式 installer など、そのツールに自然な方法を例外として使う。例外理由は設定やコメントから分かる状態にする。
+Homebrew の formula と cask は `nix/homebrew-packages.nix` に集める。ユーザー単位で常設する CLI は Nix 管理を原則とし、Nix で合理的に管理できないものだけ mise / Homebrew / 公式 installer など、そのツールに自然な方法を例外として使う。mise の `[tools]` は縮小する移行対象であり、例外を残す場合は理由を設定やコメントから分かる状態にする。
 
 `install.sh` だけはバージョン管理ツールの導入前に動く。コミット自身の SHA を既定値として埋め込まず、
 実行時に `origin/master` の先端を取得する。既存 checkout にローカル変更、別 branch、または
