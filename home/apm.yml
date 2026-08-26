@@ -6,7 +6,6 @@ dependencies:
   apm:
   - ./.apm/skills/anki
   - ./.apm/skills/design-it
-  - ./.apm/skills/rails-mysql-explain
   - ./.apm/skills/resolve-it
   - 9sako6/-/skills/minus#57ea40323b813642d5ae6b3dd69834b5311cfccd
   - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review#6f2e0c63189ce3b661040153d82a32a2038560ba
