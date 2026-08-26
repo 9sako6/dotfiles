@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-08-19T05:16:28.707328+00:00'
+generated_at: '2026-08-26T11:22:42.752735+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -72,24 +72,6 @@ dependencies:
     .claude/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
   source: local
   local_path: ./.apm/skills/design-it
-- repo_url: _local/rails-mysql-explain
-  name: rails-mysql-explain
-  version: 0.0.0
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/rails-mysql-explain
-  - .agents/skills/rails-mysql-explain/SKILL.md
-  - .agents/skills/rails-mysql-explain/references/explain-guide.md
-  - .claude/skills/rails-mysql-explain
-  - .claude/skills/rails-mysql-explain/SKILL.md
-  - .claude/skills/rails-mysql-explain/references/explain-guide.md
-  deployed_file_hashes:
-    .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
-    .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
-    .claude/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
-    .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
-  source: local
-  local_path: ./.apm/skills/rails-mysql-explain
 - repo_url: _local/resolve-it
   name: resolve-it
   version: 0.0.0
@@ -282,6 +264,33 @@ dependencies:
     .claude/skills/grill-me/SKILL.md: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
   content_hash: sha256:784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea
 deployments:
+- kind: project-relative
+  target: agents
+  value: .agents/skills/rails-mysql-explain
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/rails-mysql-explain/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
+- kind: project-relative
+  target: agents
+  value: .agents/skills/rails-mysql-explain/references/explain-guide.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
 - kind: project-relative
   target: claude
   value: .claude/rules/global.md
@@ -571,36 +580,6 @@ deployments:
   - leonxlnx/taste-skill
   active_owner: leonxlnx/taste-skill
   content_hash: sha256:e5bf48b1ae561511439cf71672209a10a88cee0968cc925909ff861dfa0a96a7
-- kind: project-relative
-  target: claude
-  value: .claude/skills/rails-mysql-explain
-  runtime: null
-  scope: project
-  owners:
-  - ./.apm/skills/rails-mysql-explain
-  - .
-  active_owner: ./.apm/skills/rails-mysql-explain
-  content_hash: null
-- kind: project-relative
-  target: claude
-  value: .claude/skills/rails-mysql-explain/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - ./.apm/skills/rails-mysql-explain
-  - .
-  active_owner: ./.apm/skills/rails-mysql-explain
-  content_hash: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
-- kind: project-relative
-  target: claude
-  value: .claude/skills/rails-mysql-explain/references/explain-guide.md
-  runtime: null
-  scope: project
-  owners:
-  - ./.apm/skills/rails-mysql-explain
-  - .
-  active_owner: ./.apm/skills/rails-mysql-explain
-  content_hash: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
 - kind: project-relative
   target: claude
   value: .claude/skills/redesign-skill
@@ -1110,36 +1089,6 @@ deployments:
   content_hash: sha256:e5bf48b1ae561511439cf71672209a10a88cee0968cc925909ff861dfa0a96a7
 - kind: project-relative
   target: codex
-  value: .agents/skills/rails-mysql-explain
-  runtime: null
-  scope: project
-  owners:
-  - ./.apm/skills/rails-mysql-explain
-  - .
-  active_owner: ./.apm/skills/rails-mysql-explain
-  content_hash: null
-- kind: project-relative
-  target: codex
-  value: .agents/skills/rails-mysql-explain/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - ./.apm/skills/rails-mysql-explain
-  - .
-  active_owner: ./.apm/skills/rails-mysql-explain
-  content_hash: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
-- kind: project-relative
-  target: codex
-  value: .agents/skills/rails-mysql-explain/references/explain-guide.md
-  runtime: null
-  scope: project
-  owners:
-  - ./.apm/skills/rails-mysql-explain
-  - .
-  active_owner: ./.apm/skills/rails-mysql-explain
-  content_hash: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
-- kind: project-relative
-  target: codex
   value: .agents/skills/redesign-skill
   runtime: null
   scope: project
@@ -1392,9 +1341,6 @@ local_deployed_files:
 - .claude/skills/anki/tools/goal.ts
 - .claude/skills/design-it
 - .claude/skills/design-it/SKILL.md
-- .claude/skills/rails-mysql-explain
-- .claude/skills/rails-mysql-explain/SKILL.md
-- .claude/skills/rails-mysql-explain/references/explain-guide.md
 - .claude/skills/resolve-it
 - .claude/skills/resolve-it/SKILL.md
 local_deployed_file_hashes:
@@ -1418,6 +1364,4 @@ local_deployed_file_hashes:
   .claude/skills/anki/tools/goal.test.ts: sha256:1421e208c572e920557fe20f39b6faf15ca41939a19431d634ede800cc22f0ca
   .claude/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
   .claude/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
-  .claude/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
-  .claude/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .claude/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
