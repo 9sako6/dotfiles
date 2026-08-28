@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-08-26T11:22:42.752735+00:00'
+generated_at: '2026-08-28T13:53:14.386838+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -72,6 +72,24 @@ dependencies:
     .claude/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
   source: local
   local_path: ./.apm/skills/design-it
+- repo_url: _local/jp
+  name: jp
+  version: 0.0.0
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/jp
+  - .agents/skills/jp/SKILL.md
+  - .agents/skills/jp/references/writing-rules.md
+  - .claude/skills/jp
+  - .claude/skills/jp/SKILL.md
+  - .claude/skills/jp/references/writing-rules.md
+  deployed_file_hashes:
+    .agents/skills/jp/SKILL.md: sha256:e2bd639a3c6b1f5b3373c814c537b3949547010bb4a0851b62350d6e00578829
+    .agents/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
+    .claude/skills/jp/SKILL.md: sha256:e2bd639a3c6b1f5b3373c814c537b3949547010bb4a0851b62350d6e00578829
+    .claude/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
+  source: local
+  local_path: ./.apm/skills/jp
 - repo_url: _local/resolve-it
   name: resolve-it
   version: 0.0.0
@@ -526,6 +544,36 @@ deployments:
   - leonxlnx/taste-skill
   active_owner: leonxlnx/taste-skill
   content_hash: sha256:6b5c2256522fdba1e3313eafa3d743b960a7b13ec029d3e6586e04b23327c1f8
+- kind: project-relative
+  target: claude
+  value: .claude/skills/jp
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/jp
+  - .
+  active_owner: ./.apm/skills/jp
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/jp/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/jp
+  - .
+  active_owner: ./.apm/skills/jp
+  content_hash: sha256:e2bd639a3c6b1f5b3373c814c537b3949547010bb4a0851b62350d6e00578829
+- kind: project-relative
+  target: claude
+  value: .claude/skills/jp/references/writing-rules.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/jp
+  - .
+  active_owner: ./.apm/skills/jp
+  content_hash: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
 - kind: project-relative
   target: claude
   value: .claude/skills/minimalist-skill
@@ -1035,6 +1083,36 @@ deployments:
   content_hash: sha256:6b5c2256522fdba1e3313eafa3d743b960a7b13ec029d3e6586e04b23327c1f8
 - kind: project-relative
   target: codex
+  value: .agents/skills/jp
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/jp
+  - .
+  active_owner: ./.apm/skills/jp
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/jp/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/jp
+  - .
+  active_owner: ./.apm/skills/jp
+  content_hash: sha256:e2bd639a3c6b1f5b3373c814c537b3949547010bb4a0851b62350d6e00578829
+- kind: project-relative
+  target: codex
+  value: .agents/skills/jp/references/writing-rules.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/jp
+  - .
+  active_owner: ./.apm/skills/jp
+  content_hash: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
+- kind: project-relative
+  target: codex
   value: .agents/skills/minimalist-skill
   runtime: null
   scope: project
@@ -1325,6 +1403,9 @@ local_deployed_files:
 - .agents/skills/anki/tools/goal.ts
 - .agents/skills/design-it
 - .agents/skills/design-it/SKILL.md
+- .agents/skills/jp
+- .agents/skills/jp/SKILL.md
+- .agents/skills/jp/references/writing-rules.md
 - .agents/skills/rails-mysql-explain
 - .agents/skills/rails-mysql-explain/SKILL.md
 - .agents/skills/rails-mysql-explain/references/explain-guide.md
@@ -1341,6 +1422,9 @@ local_deployed_files:
 - .claude/skills/anki/tools/goal.ts
 - .claude/skills/design-it
 - .claude/skills/design-it/SKILL.md
+- .claude/skills/jp
+- .claude/skills/jp/SKILL.md
+- .claude/skills/jp/references/writing-rules.md
 - .claude/skills/resolve-it
 - .claude/skills/resolve-it/SKILL.md
 local_deployed_file_hashes:
@@ -1352,6 +1436,8 @@ local_deployed_file_hashes:
   .agents/skills/anki/tools/goal.test.ts: sha256:1421e208c572e920557fe20f39b6faf15ca41939a19431d634ede800cc22f0ca
   .agents/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
   .agents/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
+  .agents/skills/jp/SKILL.md: sha256:e2bd639a3c6b1f5b3373c814c537b3949547010bb4a0851b62350d6e00578829
+  .agents/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .agents/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
@@ -1364,4 +1450,6 @@ local_deployed_file_hashes:
   .claude/skills/anki/tools/goal.test.ts: sha256:1421e208c572e920557fe20f39b6faf15ca41939a19431d634ede800cc22f0ca
   .claude/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
   .claude/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
+  .claude/skills/jp/SKILL.md: sha256:e2bd639a3c6b1f5b3373c814c537b3949547010bb4a0851b62350d6e00578829
+  .claude/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
   .claude/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
