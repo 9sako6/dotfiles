@@ -7,7 +7,7 @@ description: 日本語の文章を書くときに使用する。
 
 日本語の文章を書くときは、次の手順で進める。
 
-文章を書く前と推敲するときに [references/writing-rules.md](references/writing-rules.md) を読む。
+文章を書く前と推敲するときに[references/writing-rules.md](references/writing-rules.md)を読む。
 
 - 読者を考える
 - 情報を適切に並べる
@@ -35,10 +35,14 @@ description: 日本語の文章を書くときに使用する。
 
 # 評価と推敲をする
 
-書き上げたら、次の基準で評価する。
+書き上げたら、次の質問にYes/Noで答える。
 
-- 「読者を考える」に従った文章か
-- 「情報を適切に並べる」に従った文章か
-- [references/writing-rules.md](references/writing-rules.md) の基準をすべて守っているか
+- 読者は、この文章を読んで目的を達成できるか
+- 読者が知らない情報には、理解に必要な説明があるか
+- 関連する情報がまとまっているか
+- ある情報を理解するために必要な説明が、その情報より前にあるか
+- 重要な情報を十分に説明し、それ以外を必要以上に詳しく書いていないか
+- 事実、推測、未確認を正しく書き分けているか
+- [references/writing-rules.md](references/writing-rules.md)の規則をすべて守っているか
 
-基準を満たすまで推敲を繰り返す。
+一つでもNoなら修正し、すべてYesになるまで評価と推敲を繰り返す。
