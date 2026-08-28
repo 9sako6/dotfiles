@@ -4,12 +4,13 @@ description: APM project for 9sako6
 author: 9sako6
 dependencies:
   apm:
-  - ./.apm/skills/anki
-  - ./.apm/skills/design-it
-  - ./.apm/skills/resolve-it
-  - 9sako6/-/skills/minus#57ea40323b813642d5ae6b3dd69834b5311cfccd
-  - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review#6f2e0c63189ce3b661040153d82a32a2038560ba
-  - iKora128/stop-ai-slop-jp#e09d32796f253a62693885757cea484c275d06f2
-  - Leonxlnx/taste-skill#06d6028b5c623016c59ce8536f578e5a1127b499 # v1.0.0
-  - mattpocock/skills/skills/productivity/grill-me#b8be62ffacb0118fa3eaa29a0923c87c8c11985c
+    - ./.apm/skills/anki
+    - ./.apm/skills/design-it
+    - ./.apm/skills/resolve-it
+    - 9sako6/-/skills/minus#57ea40323b813642d5ae6b3dd69834b5311cfccd
+    - cursor/plugins/cursor-team-kit/skills/thermo-nuclear-code-quality-review#6f2e0c63189ce3b661040153d82a32a2038560ba
+    - iKora128/stop-ai-slop-jp#e09d32796f253a62693885757cea484c275d06f2
+    - Leonxlnx/taste-skill#06d6028b5c623016c59ce8536f578e5a1127b499 # v1.0.0
+    - mattpocock/skills/skills/productivity/grill-me#b8be62ffacb0118fa3eaa29a0923c87c8c11985c
+    - ./.apm/skills/jp
 scripts: {}
