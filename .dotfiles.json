@@ -4,6 +4,7 @@
     ".claude/rules",
     ".claude/settings.json",
     ".claude/skills",
-    ".codex/AGENTS.md"
+    ".codex/AGENTS.md",
+    ".gitconfig"
   ]
 }
