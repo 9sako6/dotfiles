@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-08-28T13:53:14.386838+00:00'
+generated_at: '2026-09-10T04:29:13.734722+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -90,6 +90,20 @@ dependencies:
     .claude/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
   source: local
   local_path: ./.apm/skills/jp
+- repo_url: _local/model-it
+  name: model-it
+  version: 0.0.0
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/model-it
+  - .agents/skills/model-it/SKILL.md
+  - .claude/skills/model-it
+  - .claude/skills/model-it/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/model-it/SKILL.md: sha256:b38a552b687d407de0d02ecbda436bde2c5976b0193120c6b1ed5ba71f31ec1b
+    .claude/skills/model-it/SKILL.md: sha256:b38a552b687d407de0d02ecbda436bde2c5976b0193120c6b1ed5ba71f31ec1b
+  source: local
+  local_path: ./.apm/skills/model-it
 - repo_url: _local/resolve-it
   name: resolve-it
   version: 0.0.0
@@ -610,6 +624,26 @@ deployments:
   - 9sako6/-/skills/minus
   active_owner: 9sako6/-/skills/minus
   content_hash: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
+- kind: project-relative
+  target: claude
+  value: .claude/skills/model-it
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/model-it
+  - .
+  active_owner: ./.apm/skills/model-it
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/model-it/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/model-it
+  - .
+  active_owner: ./.apm/skills/model-it
+  content_hash: sha256:b38a552b687d407de0d02ecbda436bde2c5976b0193120c6b1ed5ba71f31ec1b
 - kind: project-relative
   target: claude
   value: .claude/skills/output-skill
@@ -1149,6 +1183,26 @@ deployments:
   content_hash: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
 - kind: project-relative
   target: codex
+  value: .agents/skills/model-it
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/model-it
+  - .
+  active_owner: ./.apm/skills/model-it
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/model-it/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - ./.apm/skills/model-it
+  - .
+  active_owner: ./.apm/skills/model-it
+  content_hash: sha256:b38a552b687d407de0d02ecbda436bde2c5976b0193120c6b1ed5ba71f31ec1b
+- kind: project-relative
+  target: codex
   value: .agents/skills/output-skill
   runtime: null
   scope: project
@@ -1406,6 +1460,8 @@ local_deployed_files:
 - .agents/skills/jp
 - .agents/skills/jp/SKILL.md
 - .agents/skills/jp/references/writing-rules.md
+- .agents/skills/model-it
+- .agents/skills/model-it/SKILL.md
 - .agents/skills/rails-mysql-explain
 - .agents/skills/rails-mysql-explain/SKILL.md
 - .agents/skills/rails-mysql-explain/references/explain-guide.md
@@ -1425,6 +1481,8 @@ local_deployed_files:
 - .claude/skills/jp
 - .claude/skills/jp/SKILL.md
 - .claude/skills/jp/references/writing-rules.md
+- .claude/skills/model-it
+- .claude/skills/model-it/SKILL.md
 - .claude/skills/resolve-it
 - .claude/skills/resolve-it/SKILL.md
 local_deployed_file_hashes:
@@ -1438,6 +1496,7 @@ local_deployed_file_hashes:
   .agents/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
   .agents/skills/jp/SKILL.md: sha256:e2bd639a3c6b1f5b3373c814c537b3949547010bb4a0851b62350d6e00578829
   .agents/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
+  .agents/skills/model-it/SKILL.md: sha256:b38a552b687d407de0d02ecbda436bde2c5976b0193120c6b1ed5ba71f31ec1b
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .agents/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
@@ -1452,4 +1511,5 @@ local_deployed_file_hashes:
   .claude/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
   .claude/skills/jp/SKILL.md: sha256:e2bd639a3c6b1f5b3373c814c537b3949547010bb4a0851b62350d6e00578829
   .claude/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
+  .claude/skills/model-it/SKILL.md: sha256:b38a552b687d407de0d02ecbda436bde2c5976b0193120c6b1ed5ba71f31ec1b
   .claude/skills/resolve-it/SKILL.md: sha256:d9f9c017502dd0bc47fcc3ce79e2993776d24711c84ce463e17878ffafc16fba
