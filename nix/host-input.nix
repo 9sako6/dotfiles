@@ -24,12 +24,6 @@ if operation == "configuration" || operation == "settings" then {
     else if operation == "settings" then parsed.settings
     else parsed.config;
 }
-else if operation == "inventory" then {
-  agents = builtins.mapAttrs (_: v: builtins.hashString "sha256" (builtins.toJSON v.serviceConfig)) host.config.launchd.user.agents;
-  daemons = builtins.mapAttrs (_: v: builtins.hashString "sha256" (builtins.toJSON v.serviceConfig)) host.config.launchd.daemons;
-  taps = builtins.attrNames host.config.nix-homebrew.taps;
-  brews = map (v: v.name) host.config.homebrew.brews;
-}
 else if operation == "outputs" then {
   brewfile = host.homebrewBrewfile.drvPath;
   copy = parsed.config.copy;

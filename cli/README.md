@@ -50,8 +50,6 @@ dotfiles plan --show-trace
 
 `--show-trace`はNixの評価エラーとトレースを端末に表示するオプションです。原因調査には`plan --show-trace`を使います。非公開設定が含まれる場合があるため、その端末内で確認し、診断出力をファイル保存・アップロードしたり、公開Issueへそのまま貼り付けたりしないでください。
 
-URL指定と`--default`によるソース選択は廃止されています。非公開設定を使う場合は[private.path](#privatepath)、旧構成から移行する場合は[移行手順](../docs/operations.md#旧-private-root-からの移行手順)を参照してください。
-
 ## apply
 
 ```sh
@@ -166,11 +164,11 @@ copy = [
 
 `dotfiles.local.toml`だけで指定できます。空文字は拒否され、公開リポジトリルートからの相対パスまたは絶対パスを受け付けます。
 
-指定先は、事前に用意した独立したGitチェックアウトである必要があります。`flake.nix`と`flake.lock`を追跡し、非公開側の`flake.lock`はコミット済みで変更のない状態にします。旧自動同期キャッシュの指定は拒否されます。
+指定先は、事前に用意した独立したGitチェックアウトである必要があります。`flake.nix`と`flake.lock`を追跡し、非公開側の`flake.lock`はコミット済みで変更のない状態にします。
 
 非公開flakeは`darwinModules.default`を公開します。公開ルートからそのモジュールを取り込み、公開側のnixpkgsパッケージセットを使って構成します。
 
-ローカル設定の例です。旧private rootを利用中の場合は、先に[移行手順](../docs/operations.md#旧-private-root-からの移行手順)を確認してください。
+ローカル設定の例です。
 
 ```toml
 [private]

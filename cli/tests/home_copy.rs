@@ -1,28 +1,6 @@
 use assert_cmd::cargo::cargo_bin_cmd;
-use predicates::prelude::*;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-
-#[test]
-fn removed_source_interfaces_explain_migration() {
-    let temp = tempfile::tempdir().unwrap();
-    fs::write(temp.path().join("flake.nix"), "{}").unwrap();
-    for argument in ["--default", "https://example.invalid/private.git"] {
-        for command in ["plan", "apply"] {
-            for flags in [
-                vec![command, argument],
-                vec![command, "--show-trace", argument],
-            ] {
-                cargo_bin_cmd!()
-                    .env("DOTFILES_DIR", temp.path())
-                    .args(flags)
-                    .assert()
-                    .failure()
-                    .stderr(predicate::str::contains("dotfiles.local.toml"));
-            }
-        }
-    }
-}
 
 #[test]
 fn complete_copy_uses_the_frozen_source_and_preserves_unowned_files() {

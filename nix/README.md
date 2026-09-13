@@ -37,7 +37,7 @@ Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理す�
 
 ## private 設定
 
-非公開のシステム設定は、公開ルートから`dotfiles.local.toml`を通じて取り込みます。指定先の要件と設定例はCLIの[private.path](../cli/README.md#privatepath)、旧構成からの移行は[移行手順](../docs/operations.md#旧-private-root-からの移行手順)を参照してください。
+非公開のシステム設定は、公開ルートから`dotfiles.local.toml`を通じて取り込みます。指定先の要件と設定例はCLIの[private.path](../cli/README.md#privatepath)を参照してください。
 
 ## 反映と更新
 

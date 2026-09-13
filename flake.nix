@@ -148,7 +148,7 @@
       };
 
       lib = {
-        inherit mkDarwinSystem mkHost;
+        inherit mkHost;
       };
     };
 }

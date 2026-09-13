@@ -37,30 +37,24 @@ enum Commands {
     /// Build and show the macOS system and home plan without changing state
     Plan {
         #[command(flatten)]
-        source: SourceArgs,
+        options: SystemArgs,
     },
     /// Build, show and apply the macOS system and home configuration
     Apply {
         #[command(flatten)]
-        source: SourceArgs,
+        options: SystemArgs,
     },
     #[command(about = "Show all effective settings and their sources")]
     Settings,
 }
 
-#[derive(clap::Args, Debug, Clone)]
-struct SourceArgs {
+#[derive(clap::Args, Debug)]
+struct SystemArgs {
     #[arg(
         long,
         help = "Show Nix evaluation errors and traces locally; may include private configuration"
     )]
     show_trace: bool,
-
-    #[arg(long, hide = true)]
-    default: bool,
-
-    #[arg(value_name = "REMOVED_SOURCE", hide = true)]
-    url: Option<String>,
 }
 
 fn main() -> ExitCode {
@@ -96,23 +90,14 @@ fn run() -> Result<ExitCode> {
     match command {
         Commands::CompleteApply { .. } => unreachable!(),
         Commands::Agents { operation } => agents::run(operation, &dotfiles_dir),
-        Commands::Plan { source } => run_system_command(system::Mode::Plan, source, &dotfiles_dir),
-        Commands::Apply { source } => {
-            run_system_command(system::Mode::Apply, source, &dotfiles_dir)
+        Commands::Plan { options } => {
+            system::run(system::Mode::Plan, &dotfiles_dir, options.show_trace)
+        }
+        Commands::Apply { options } => {
+            system::run(system::Mode::Apply, &dotfiles_dir, options.show_trace)
         }
         Commands::Settings => settings::run(&dotfiles_dir),
     }
-}
-
-fn run_system_command(
-    mode: system::Mode,
-    source: SourceArgs,
-    dotfiles_dir: &Path,
-) -> Result<ExitCode> {
-    if source.default || source.url.is_some() {
-        anyhow::bail!("URL/--default source selection was removed. Migrate private modules with dotfiles.local.toml; see docs/operations.md.");
-    }
-    system::run(mode, dotfiles_dir, source.show_trace)
 }
 
 fn resolve_dotfiles_dir() -> Result<PathBuf> {

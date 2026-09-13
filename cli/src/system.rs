@@ -152,10 +152,9 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     let home = PathBuf::from(env::var_os("HOME").context("HOME is not set")?);
     let selection = Path::new("/etc/nix-darwin/flake.nix");
     let previous = selected_target(selection)?;
-    validate_record(root, previous.as_deref(), &home)?;
+    validate_record(root, previous.as_deref())?;
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
-    migration_guard(root, previous.as_deref(), local.is_some())?;
     let _lock = if matches!(mode, Mode::Apply) {
         Some(acquire_lock(
             &env::temp_dir().join(format!("dotfiles-{uid}-apply.lock")),
@@ -182,30 +181,20 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
     let configuration: Configuration =
         evaluate_configuration(&nix, &public.source, &manifest, "configuration", show_trace)?;
-    let private = configuration.private.path.as_ref().map(|path| -> Result<Snapshot> {
-        let directory = root.join(path).canonicalize().context("dotfiles.local.toml: private.path: checkout does not exist")?;
-        let data = env::var_os("XDG_DATA_HOME").map(PathBuf::from).filter(|p| p.is_absolute()).unwrap_or_else(|| home.join(".local/share"));
-        if directory.starts_with(data.join("dotfiles/nix-darwin")) {
-            bail!("private.path must use an independent checkout, not the legacy auto-sync cache; see docs/operations.md");
-        }
-        Snapshot::capture(&nix, &directory, true)
-    }).transpose()?;
+    let private = configuration
+        .private
+        .path
+        .as_ref()
+        .map(|path| -> Result<Snapshot> {
+            let directory = root
+                .join(path)
+                .canonicalize()
+                .context("dotfiles.local.toml: private.path: checkout does not exist")?;
+            Snapshot::capture(&nix, &directory, true)
+        })
+        .transpose()?;
     if let Some(private) = &private {
         inputs.private_source = Some(private.source.clone());
-    }
-    if previous
-        .as_ref()
-        .is_some_and(|p| !is_public_record(root, p))
-        && private.is_none()
-    {
-        bail!("legacy private source is still active; configure private.path before migrating. See docs/operations.md");
-    }
-    if previous
-        .as_ref()
-        .is_some_and(|p| !is_public_record(root, p))
-        && configuration.localllm.enabled
-    {
-        bail!("migrate the private configuration with localllm.enabled = false first; see docs/operations.md");
     }
     fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
     public.verify()?;
@@ -503,38 +492,9 @@ fn selected_target(path: &Path) -> Result<Option<PathBuf>> {
     }
 }
 
-fn is_public_record(root: &Path, target: &Path) -> bool {
-    target == root.join("flake.nix") || target == root.join("darwin/flake.nix")
-}
-
-fn validate_record(root: &Path, previous: Option<&Path>, home: &Path) -> Result<()> {
-    let Some(target) = previous else {
-        return Ok(());
-    };
-    if is_public_record(root, target) {
-        return Ok(());
-    }
-    let data = env::var_os("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .filter(|p| p.is_absolute())
-        .unwrap_or_else(|| home.join(".local/share"));
-    let checkout = target.parent().context("invalid source record")?;
-    if target.file_name().and_then(|s| s.to_str()) != Some("flake.nix")
-        || checkout.parent() != Some(data.join("dotfiles/nix-darwin").as_path())
-    {
-        bail!("source record is not managed by dotfiles; refusing to replace it");
-    }
-    let origin = git(checkout, &["remote", "get-url", "origin"])?;
-    let expected = hash(String::from_utf8(origin)?.trim().as_bytes());
-    if checkout.file_name().and_then(|s| s.to_str()) != Some(&expected[..24]) {
-        bail!("legacy source record does not match its checkout origin");
-    }
-    Ok(())
-}
-
-fn migration_guard(root: &Path, previous: Option<&Path>, has_local: bool) -> Result<()> {
-    if previous.is_some_and(|p| !is_public_record(root, p)) && !has_local {
-        bail!("legacy private source requires migration: create dotfiles.local.toml with private.path pointing to an independent module checkout; see docs/operations.md. The active configuration is retained");
+fn validate_record(root: &Path, previous: Option<&Path>) -> Result<()> {
+    if previous.is_some_and(|target| target != root.join("flake.nix")) {
+        bail!("source record does not match this dotfiles checkout; refusing to replace it");
     }
     Ok(())
 }
@@ -612,14 +572,11 @@ mod tests {
     }
 
     #[test]
-    fn legacy_private_without_local_stops() {
-        assert!(migration_guard(
-            Path::new("/public"),
-            Some(Path::new("/old/flake.nix")),
-            false
-        )
-        .is_err());
-        assert!(migration_guard(Path::new("/public"), None, false).is_ok());
+    fn source_record_accepts_this_checkout_or_initial_setup() {
+        let root = Path::new("/public");
+        assert!(validate_record(root, None).is_ok());
+        assert!(validate_record(root, Some(&root.join("flake.nix"))).is_ok());
+        assert!(validate_record(root, Some(Path::new("/other/flake.nix"))).is_err());
     }
 
     #[test]
