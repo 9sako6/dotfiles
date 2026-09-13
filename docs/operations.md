@@ -75,6 +75,8 @@ DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- setting
 
 `dotfiles settings`は、既定値→`dotfiles.toml`→`dotfiles.local.toml`の優先順でマージされた現在の全設定を、`mise settings`と同様にキー・値・設定元の3列で表示します。オプションやキー指定はなく、現在のファイルを対象として`null`や`false`、空配列の値も漏れなく一覧に含めて表示します。なお、既定値が適用されている設定項目の設定元列は空欄として扱われます。
 
+端末表示では `mise` と同様にKey・Value・Sourceの紫色かつ斜体の見出しが表示され、長い配列は端末幅に応じて要素ごとの複数行に展開される一方、短い配列は1行で出力されます。パイプ出力時は `mise` と同じく見出しは付与されず、各設定が1行ずつ出力されます。
+
 システムの日常操作には Rust 製 `dotfiles` CLI を使用する。リポジトリのテストを一括実行するようなサブコマンドは設けない。
 その他の補助タスクは `mise tasks` で一覧できる。mise 本体の状態確認には `mise ls --missing` や `mise prune --tools` などの標準コマンドを使用する。
 

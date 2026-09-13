@@ -1,9 +1,15 @@
+import fcntl
 import json
 import os
 from pathlib import Path
+import pty
+import re
+import select
 import shutil
+import struct
 import subprocess
 import tempfile
+import termios
 import unittest
 
 
@@ -62,6 +68,48 @@ class SettingsTests(unittest.TestCase):
             rows[key] = (value, rest[end:].strip() or None)
         self.assertEqual(list(rows), sorted(rows))
         return rows
+
+    def terminal_settings(self, width, color):
+        master, slave = pty.openpty()
+        try:
+            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, width, 0, 0))
+            chunks = []
+            with os.fdopen(slave, "wb") as terminal:
+                result = subprocess.run(
+                    [str(TARGET / "debug/dotfiles"), "settings"],
+                    env={
+                        **os.environ, "DOTFILES_DIR": str(self.root),
+                        "TERM": "xterm-256color", "CLICOLOR_FORCE": str(int(color)),
+                        "NO_COLOR": "" if color else "1",
+                    },
+                    stdout=terminal, stderr=subprocess.PIPE, text=True, timeout=60,
+                )
+                while select.select([master], [], [], 0)[0]:
+                    chunks.append(os.read(master, 4096))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return b"".join(chunks).decode().replace("\r\n", "\n")
+        finally:
+            os.close(master)
+
+    def test_terminal_header_and_arrays_adapt_to_width_without_losing_values(self):
+        paths = ["a/" + "x" * 18, "b/" + "y" * 18, "c/" + "z" * 18]
+        (self.root / "dotfiles.toml").write_text(f"copy = {json.dumps(paths)}\n")
+        narrow = self.terminal_settings(80, color=True)
+        header = narrow.splitlines()[0]
+        for label in ["Key", "Value", "Source"]:
+            self.assertIn(f"\x1b[35m\x1b[3m{label}\x1b[0m", header)
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", narrow)
+        self.assertEqual(plain.splitlines()[0].split(), ["Key", "Value", "Source"])
+        self.assertTrue(all(len(line) <= 80 for line in plain.splitlines()))
+        self.assertNotIn(paths[0], plain.splitlines()[1])
+        for path in paths:
+            self.assertEqual(plain.count(json.dumps(path)), 1)
+        self.assertIn("localllm.models", plain)
+        self.assertIn("[]", plain)
+        wide = self.terminal_settings(160, color=False)
+        self.assertNotIn("\x1b[", wide)
+        self.assertIn(json.dumps(paths), wide.splitlines()[1])
+        self.assertEqual(self.rows(self.settings())["copy"], (paths, "dotfiles.toml"))
 
     def test_absent_local_file_includes_every_default(self):
         self.assertEqual(self.rows(self.settings()), {
