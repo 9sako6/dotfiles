@@ -174,6 +174,8 @@ Nix のガベージコレクションは日本時間で毎日 0:00 に実行さ�
 
 ## ローカル LLM と OpenCode (localllm)
 
+共有の `dotfiles.toml` では `enabled = false` を維持し、ローカルLLMを利用するホストのみGit管理外の `dotfiles.local.toml` で `enabled = true` に上書きします。無効時（`false`）の通常の `plan` / `apply` ではQwenモデル、MLX実行環境、専用OpenCodeが依存関係に含まれないため、これらが取得されることはありません（他ツールと共有される汎用Python等は除きます）。なお、開発・検証目的で `nix build .#localllm` を明示的にビルドした場合や、過去に有効化して取得されたストアパスは設定を無効化するだけでは削除されず、Nixのガベージコレクション（GC）を実行するまでローカルに残ります。
+
 Apple Silicon向けにQwen 3.8-27B（4-bit）のNix導入構成を用意し、合成非機密入力によるMetal推論およびOpenCodeのwrite/readツール操作まで検証済みですが、あらゆる利用環境での動作を保証するものではありません。 推論バックエンドは [uv2nix](https://pyproject-nix.github.io/uv2nix/usage/getting-started.html) および `nix/localllm/uv.lock` で固定された `mlx-vlm 0.7.0` および Metal 向け wheel `mlx 0.32.2` を使用する。実行時の動的な追加パッケージ取得は行わない。すべてのパッケージ実装は `nix/packages.nix` が所有する。
 
 サーバーはメモリを抑えるためKVキャッシュ4bit、prefill 64トークン、同時リクエスト1件とし、システムのGPUメモリ上限や常駐アプリの状態は変更しません。そのため、長い入力では応答までに数分かかることがあります。
