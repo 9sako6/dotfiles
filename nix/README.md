@@ -6,12 +6,12 @@
 ## ファイル
 
 - `default.nix`: root flake から読み込む入口。system 設定と Home Manager の接続を組み立てる
-- `system.nix`: macOS の既定値、サービス、Nix、Homebrew など system scope の設定
+- `flake.nix.template`: private repository の root flake のひな型
 - `home.nix`: Home Manager で管理する home 配置と user toolset の適用
-- `packages.nix`: ユーザーが常設する Nix package と期待バージョンの正本
 - `homebrew-packages.nix`: Nix では合理的に管理しない Homebrew formula / cask
 - `homebrew-shellenv.zsh`: nix-homebrew が管理する Homebrew を zsh から使うための設定
-- `flake.nix.template`: private repository の root flake のひな型
+- `packages.nix`: ユーザーが常設する Nix package と期待バージョンの正本
+- `system.nix`: macOS の既定値、サービス、Nix、Homebrew など system scope の設定
 
 公開 flake は repository root の `flake.nix` / `flake.lock` にある。共有設定ファイルの実体は `home/` に置く。
 マシン固有の設定や認証情報は `nix/` に置かない。
@@ -37,18 +37,10 @@ Homebrew 本体は nix-homebrew、formula と cask は nix-darwin が管理す�
 
 ## private 設定
 
-private repository の root に `flake.nix.template` を `flake.nix` としてコピーし、`primaryUser` を実際の macOS account name に置き換える。
-公開できない差分だけを `modules` に追加し、共有設定は複製しない。
-
-private root flake からは公開側の `darwinModules.default` と `lib.mkDarwinSystem` を利用する。設定後は `nix flake lock` で `flake.lock` を生成し、`flake.nix` と一緒に commit、push する。
+非公開のシステム設定は、公開ルートから`dotfiles.local.toml`を通じて取り込みます。指定先の要件と設定例はCLIの[private.path](../cli/README.md#privatepath)、旧構成からの移行は[移行手順](../docs/operations.md#旧-private-root-からの移行手順)を参照してください。
 
 ## 反映と更新
 
-公開設定の確認と反映には `darwin-rebuild` を直接使わず、`dotfiles` CLI を使う。
-
-```sh
-dotfiles plan --default
-dotfiles apply --default
-```
+システムの確認と反映はCLIの[plan](../cli/README.md#plan)と[apply](../cli/README.md#apply)を参照してください。
 
 `nix-darwin`、`nix-homebrew`、`nixpkgs`、`zundamonotify` の具体的な revision は root の `flake.lock` で固定する。`flake.lock` は手で編集しない。

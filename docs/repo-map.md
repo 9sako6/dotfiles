@@ -28,6 +28,8 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 ### 構成ルートと設定合成
 
+利用者向けの設定項目、既定値、記述例はCLIの[設定ファイル](../cli/README.md#設定ファイル)を参照してください。
+
 - 公開リポジトリ直下の `flake.nix` が唯一の構成ルートである。独立した private root flake を運用する方式は廃止され、すべての構成は公開 root を起点に評価される。
 - 構成設定は、リポジトリ共有の `dotfiles.toml` と、Git 管理外の `dotfiles.local.toml` の 2 つで管理する。
 - 設定ファイルの構文解析は Nix の組み込み関数 [builtins.fromTOML](https://nix.dev/manual/nix/2.35/language/builtins.html#builtins-fromTOML) が行い、型検査や設定検証は Nix モジュールのスキーマが担当する。CLI は TOML 構文解析エラー時の出力を抑制して設定値の漏洩を防ぐ。スキーマ定義違反、型不一致、未知のキーが検出された場合も評価を停止する。
@@ -38,6 +40,8 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - `dotfiles.local.toml` は機密情報を含んではならず、個別にバックアップする。不在時は既定値が適用され、非公開パスの探索は行われない。読み取り不可や構文不正がある場合は処理を停止する。
 
 ### CLI と評価・反映の整合性
+
+コマンドの構文、オプション、実行例は[CLIのUsage](../cli/README.md#usage)を参照してください。
 
 - `bin/` は直接実行するリポジトリの入口を配置し、`lib/` は各入口が利用する内部実装を受け持つ。
 - `install.sh` は新しい Mac をセットアップする唯一の入口とし、repo tools、system + Home Manager、user tools と repositories の順序で実行を制御する。
