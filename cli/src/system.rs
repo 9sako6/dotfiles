@@ -214,7 +214,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             .unwrap_or_else(|| "absent".into())
     );
     if configuration.localllm.enabled {
-        println!("Local LLM is enabled: the first build downloads approximately 16 GB of pinned model data and its runtime.");
+        println!("Local LLM is enabled: the first build may download several GB of pinned model data and its runtime.");
     }
     let outputs: Outputs = evaluate(&nix, &public.source, &manifest, "outputs", show_trace)?;
     let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;

@@ -123,9 +123,9 @@
         default = dotfilesPackage;
         dotfiles = dotfilesPackage;
         localllm = toolset.localllm (defaultConfiguration.localllm // {
-          default_model = "qwen3.8-27b-4bit";
+          default_model = "qwen3.8-9b-distill-4bit";
           enabled = true;
-          models = [ "qwen3.8-27b-4bit" ];
+          models = [ "qwen3.8-9b-distill-4bit" ];
         });
         localllmClient = toolset.localllmClient;
         localllmRuntime = toolset.localllmRuntime;
@@ -135,10 +135,18 @@
       checks.${system} = {
         composition = import ./nix/tests/composition.nix { inherit self pkgs; inherit (nixpkgs) lib; };
         configuration = import ./nix/tests/configuration.nix { inherit (nixpkgs) lib; inherit pkgs; };
-        modelFetch = pkgs.fetchurl {
-          url = "https://huggingface.co/mlx-community/Qwen3.8-27B-4bit/resolve/3e6447f082e89cc7f0bc6e5441afd38dfce760ff/generation_config.json";
-          hash = "sha256-5wwTbBt43cH7CQW6yOczpNxEjU+FKl3XUUP//HC+VQ4=";
-        };
+        modelFetch = let
+          entry = (import ./nix/localllm/catalog.nix)."qwen3.8-9b-distill-4bit";
+          fixture = import ./nix/localllm/model.nix {
+            inherit pkgs;
+            model = entry // {
+              files = builtins.filter (file: file.name == "4bit/generation_config.json") entry.files;
+            };
+          };
+        in pkgs.runCommand "localllm-model-fetch-check" { } ''
+          test -f ${fixture}/generation_config.json
+          touch "$out"
+        '';
       };
 
       darwinConfigurations.current = publicSystem;

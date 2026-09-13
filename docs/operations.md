@@ -105,7 +105,11 @@ Nix のガベージコレクションは日本時間で毎日 0:00 に実行さ�
 
 ローカルLLMの有効化とモデル指定はCLIの[localllm設定](../cli/README.md#localllm)を参照してください。設定が無効でも、開発・検証目的で`nix build .#localllm`を明示的に実行するとパッケージをビルドします。以前に取得したモデルデータは無効化だけでは削除されず、不要になったストアパスは後続のNixガベージコレクションで回収されます。
 
-Apple Silicon向けにQwen 3.8-27B（4-bit）のNix導入構成を用意し、合成非機密入力によるMetal推論およびOpenCodeのwrite/readツール操作まで検証済みですが、あらゆる利用環境での動作を保証するものではありません。 推論バックエンドは [uv2nix](https://pyproject-nix.github.io/uv2nix/usage/getting-started.html) および `nix/localllm/uv.lock` で固定された `mlx-vlm 0.7.0` および Metal 向け wheel `mlx 0.32.2` を使用する。実行時の動的な追加パッケージ取得は行わない。すべてのパッケージ実装は `nix/packages.nix` が所有する。
+新しく導入されるモデルID `qwen3.8-9b-distill-4bit` は、Qwen3.5-9BをベースとしたEmperoの `Qwen3.8-9B-Distill` について、[配布元](https://huggingface.co/PocketAiHub/Qwen3.8-9B-MLX) が公開している4bit変換版を採用した非公式蒸留モデルです。動作環境は既存の `mlx-vlm` 0.7.0 を用い、取得時のバージョンおよびファイルハッシュはカタログで固定して管理されます。
+
+利用するモデルの選択は、`dotfiles.local.toml` 内の `localllm.models` に1件のみを記述し、`localllm.default_model` にも同じIDを指定して行います。初回取得データ量の目安は新モデルが約6GB、引き続き選択可能な従来の `qwen3.8-27b-4bit` が約16GBです。なお、これらはストレージ取得時の容量であり、実際の運用時にはモデルの重みに加えて会話処理等の作業メモリが別途必要となります。
+
+モデル推論バックエンドは `nix/packages.nix` が実装を所有し、[uv2nix](https://pyproject-nix.github.io/uv2nix/usage/getting-started.html) と `nix/localllm/uv.lock` により mlx-vlm 0.7.0 および MLX 0.32.2 の Metal 向け wheel に固定されており、実行時のパッケージ追加は行わない。動作検証としては、Apple Silicon 向けの qwen3.8-27b-4bit と qwen3.8-9b-distill-4bit の両モデルにおいて、合成した機密でない入力を用いて Metal 推論および OpenCode を通したファイル作成・読み取りの動作を確認しているほか、9B モデルでも実際に bash ツール経由でのファイル書き込みと読み取りが動作している。
 
 サーバーはメモリを抑えるためKVキャッシュ4bit、prefill 64トークン、同時リクエスト1件とし、システムのGPUメモリ上限や常駐アプリの状態は変更しません。そのため、長い入力では応答までに数分かかることがあります。
 
@@ -116,7 +120,7 @@ Apple Silicon向けにQwen 3.8-27B（4-bit）のNix導入構成を用意し、�
 - **実行特性:**
   - 常駐デーモンは存在せず、オンデマンドで単一の所有プロセスツリーとして起動する。
   - 外部ネットワークからの接続を受け付けないローカル接続用のアドレスにバインドする。
-  - 初回ビルド時または初回取得時には、約 16 GB のモデルデータ取得が行われる旨が事前に通知される。
+  - 初回ビルド時または初回取得時には、数 GB のモデルデータ取得が発生し得る旨が事前に通知される。
 - **リソースの回収:**
   - `localllm` を無効化（`enabled = false`）した構成一式には、LLM 固有の依存関係は一切含まれない。
   - 使用されなくなったモデルデータは後続の Nix ガベージコレクションによって削除されるが、他の構成と共有されている基本依存関係は維持される。

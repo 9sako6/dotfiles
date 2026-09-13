@@ -57,11 +57,11 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 ### ローカル LLM と OpenCode
 
-- Apple Silicon向けローカル推論モデル `qwen3.8-27b-4bit` の提供
+- Apple Silicon向けローカル推論モデル `qwen3.8-27b-4bit`、`qwen3.8-9b-distill-4bit` の提供
 - パッケージ依存関係は [uv2nix](https://pyproject-nix.github.io/uv2nix/usage/getting-started.html) および `nix/localllm/uv.lock` を通じて `mlx-vlm 0.7.0` および Metal 向け wheel `mlx 0.32.2` に厳密に固定し、`nix/packages.nix` が実装を所有する。実行時の動的なパッケージ導入は行わない。
 - ローカルモデルが有効化されている場合、ソートされた一意の既知モデル ID リストが定義され、起動時には単一のモデルのみがロードされ、`default_model` はモデルリスト内に存在しなければならない。
 - 無効化（`enabled = false`）された構成一式には LLM 固有の依存関係は含まれず、使用されなくなったモデルデータは後続の GC で回収される（共有依存関係は保持される）。
-- ランチャーには `localllm chat -- <opencode-arguments>`、`localllm serve`、`localllm check` を用意する。常駐デーモンは持たず、オンデマンドで単一の所有プロセスツリーとして起動し、ローカル接続用のアドレスにバインドする。初回ビルド時には約 16 GB のモデルデータ取得が事前に通知される。
+- ランチャーには `localllm chat -- <opencode-arguments>`、`localllm serve`、`localllm check` を用意する。常駐デーモンは持たず、オンデマンドで単一の所有プロセスツリーとして起動し、ローカル接続用のアドレスにバインドする。初回ビルド時には数 GB のモデルデータ取得が発生し得る旨が事前に通知される。
 - `localllm check` は Metal 演算のみを確認する。
 - OpenCode 1.18.13 を使用し、設定仕様は [OpenCode 設定ドキュメント](https://opencode.ai/docs/config/) に準拠する。専用の XDG 設定・履歴ディレクトリに隔離し、外部スキル、プラグイン、MCP サーバー、およびセッション共有機能は無効化する。main および small モデルのローカル指定と設定マージは実行前に検証される。
 - 推論サーバー側には外向き通信を一切許さず、クライアントは起動したサーバーのポートへの通信のみを許可する。macOS の `sandbox-exec` によるネットワーク制限をプロセスツリー全体に適用する（包括的なデータ安全性を保証するものではない）。
