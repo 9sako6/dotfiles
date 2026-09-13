@@ -46,7 +46,7 @@ jobs:
           DOTFILES_DIR="$GITHUB_WORKSPACE" \
             /nix/var/nix/profiles/default/bin/nix \
               --extra-experimental-features "nix-command flakes" \
-              run .#dotfiles -- plan --default
+              run .#dotfiles -- plan
 
       - name: Activate Home Manager user environment
         run: |
@@ -61,7 +61,7 @@ jobs:
               --impure \
               --no-link \
               --print-out-paths \
-              "path:$GITHUB_WORKSPACE#darwinConfigurations.current.config.home-manager.users.$primary_user.home.activationPackage"
+              "git+file://$GITHUB_WORKSPACE#darwinConfigurations.current.config.home-manager.users.$primary_user.home.activationPackage"
           )"
           HOME_MANAGER_BACKUP_EXT=pre-home-manager "$activation_package/activate"
           cd "$HOME"

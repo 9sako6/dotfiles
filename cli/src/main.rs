@@ -23,6 +23,12 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    #[command(hide = true)]
+    CompleteApply {
+        source: PathBuf,
+        paths: PathBuf,
+        home: PathBuf,
+    },
     Agents {
         #[command(subcommand)]
         operation: agents::Operation,
@@ -41,12 +47,10 @@ enum Commands {
 
 #[derive(clap::Args, Debug, Clone)]
 struct SourceArgs {
-    /// Use the public dotfiles checkout as the system source
-    #[arg(long, conflicts_with = "url")]
+    #[arg(long, hide = true)]
     default: bool,
 
-    /// Private system source git clone URL (SSH or HTTPS, no credentials)
-    #[arg(value_name = "GIT_URL")]
+    #[arg(value_name = "REMOVED_SOURCE", hide = true)]
     url: Option<String>,
 }
 
@@ -69,8 +73,19 @@ fn run() -> Result<ExitCode> {
         return Ok(ExitCode::from(1));
     };
 
+    if let Commands::CompleteApply {
+        source,
+        paths,
+        home,
+    } = command
+    {
+        let paths: Vec<String> = serde_json::from_slice(&std::fs::read(paths)?)?;
+        home_copy::plan(&source, &home, &paths)?.apply()?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let dotfiles_dir = resolve_dotfiles_dir()?;
     match command {
+        Commands::CompleteApply { .. } => unreachable!(),
         Commands::Agents { operation } => agents::run(operation, &dotfiles_dir),
         Commands::Plan { source } => run_system_command(system::Mode::Plan, source, &dotfiles_dir),
         Commands::Apply { source } => {
@@ -84,19 +99,10 @@ fn run_system_command(
     source: SourceArgs,
     dotfiles_dir: &Path,
 ) -> Result<ExitCode> {
-    let home = env::var_os("HOME").context("HOME is not set")?;
-    let copy_plan = home_copy::plan(dotfiles_dir, Path::new(&home))?;
-    env::set_var("DOTFILES_HOME_COPY_PLAN", copy_plan.preview());
-
-    let exit = system::run(
-        mode,
-        system::source_request(source.default, source.url)?,
-        dotfiles_dir,
-    )?;
-    if matches!(mode, system::Mode::Apply) && exit == ExitCode::SUCCESS {
-        copy_plan.apply()?;
+    if source.default || source.url.is_some() {
+        anyhow::bail!("URL/--default source selection was removed. Migrate private modules with dotfiles.local.toml; see docs/operations.md.");
     }
-    Ok(exit)
+    system::run(mode, dotfiles_dir)
 }
 
 fn resolve_dotfiles_dir() -> Result<PathBuf> {
@@ -106,13 +112,18 @@ fn resolve_dotfiles_dir() -> Result<PathBuf> {
             anyhow::bail!("DOTFILES_DIR must be an absolute path");
         }
         path
+    } else if let Some(root) = env::current_dir()?
+        .ancestors()
+        .find(|p| p.join("flake.nix").is_file() && p.join("dotfiles.toml").is_file())
+    {
+        root.to_path_buf()
     } else {
         let home = env::var("HOME").context("HOME is not set")?;
         PathBuf::from(home).join("dotfiles")
     };
 
     require_flake(&candidate)?;
-    Ok(candidate)
+    Ok(candidate.canonicalize()?)
 }
 
 fn require_flake(candidate: &Path) -> Result<()> {

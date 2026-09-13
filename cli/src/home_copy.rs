@@ -3,7 +3,6 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
-use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct CopyPlan {
@@ -47,11 +46,8 @@ impl CopyPlan {
     }
 }
 
-pub fn plan(repo_root: &Path, home: &Path) -> Result<CopyPlan> {
-    let config_path = repo_root.join("dotfiles.toml");
-    let raw = fs::read_to_string(&config_path)
-        .with_context(|| format!("failed to read {}", config_path.display()))?;
-    let paths = parse_config(&raw)?;
+pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan> {
+    validate_paths(paths)?;
     let source_root = repo_root.join("home");
 
     let mut entries = Vec::with_capacity(paths.len());
@@ -84,19 +80,6 @@ pub fn plan(repo_root: &Path, home: &Path) -> Result<CopyPlan> {
     }
 
     Ok(CopyPlan { entries })
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CopyConfig {
-    #[serde(default)]
-    copy: Vec<String>,
-}
-
-fn parse_config(raw: &str) -> Result<Vec<String>> {
-    let config: CopyConfig = toml::from_str(raw).context("dotfiles.toml: invalid TOML config")?;
-    validate_paths(&config.copy)?;
-    Ok(config.copy)
 }
 
 fn validate_paths(paths: &[String]) -> Result<()> {
@@ -238,57 +221,7 @@ mod tests {
     use std::fs;
     use std::os::unix::fs::symlink;
 
-    use super::{parse_config, plan};
-
-    #[test]
-    fn parses_copy_paths() {
-        let raw = r#"
-          copy = [
-            ".agents/skills",
-            '.claude/settings.json', # literal paths are accepted
-            "\u8a2d\u5b9a",
-          ]
-        "#;
-        assert_eq!(
-            parse_config(raw).unwrap(),
-            vec![".agents/skills", ".claude/settings.json", "設定"]
-        );
-    }
-
-    #[test]
-    fn accepts_empty_copy_config() {
-        for raw in ["", "# no home copies\n", "copy = []"] {
-            assert!(parse_config(raw).unwrap().is_empty());
-        }
-    }
-
-    #[test]
-    fn rejects_invalid_config() {
-        for raw in [
-            "copi = []",
-            "[extra]",
-            "copy = []\ncopy = []",
-            "copy = 1",
-            "copy = 'a'",
-            "copy = [1]",
-            "copy = ['a', false]",
-            "copy = {}",
-            "copy = ['a'",
-            "copy = [] trailing",
-            r#"{"copy": []}"#,
-            r#"copy = ["b", "a"]"#,
-            r#"copy = ["a", "a"]"#,
-            r#"copy = [""]"#,
-            r#"copy = ["/secret"]"#,
-            r#"copy = ["."]"#,
-            r#"copy = ["./secret"]"#,
-            r#"copy = ["../secret"]"#,
-            r#"copy = ["a/../secret"]"#,
-            r#"copy = [".claude", ".claude/settings.json"]"#,
-        ] {
-            assert!(parse_config(raw).is_err(), "should reject {raw}");
-        }
-    }
+    use super::plan;
 
     #[test]
     fn apply_replaces_store_links_and_prunes_owned_directory_only() {
@@ -311,7 +244,7 @@ mod tests {
         fs::create_dir_all(home.join(".claude/skills/design-it")).unwrap();
         symlink(&store_file, home.join(".claude/skills/design-it/SKILL.md")).unwrap();
 
-        let plan = plan(&repo, &home).unwrap();
+        let plan = plan(&repo, &home, &[".claude/skills".into()]).unwrap();
         assert_eq!(
             plan.preview(),
             format!(

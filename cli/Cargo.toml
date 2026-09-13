@@ -7,12 +7,14 @@ description = "Global dotfiles entrypoint for system operations"
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+fs2 = "=0.4.3"
 serde = { version = "1", features = ["derive"] }
 serde_yaml_ng = "0.10"
-toml = { version = "=1.1.6", default-features = false, features = ["parse", "serde", "std"] }
+serde_json = "=1.0.149"
+sha2 = "=0.10.9"
+tempfile = "3"
 url = "2"
 
 [dev-dependencies]
 assert_cmd = "2"
 predicates = "3"
-tempfile = "3"

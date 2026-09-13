@@ -6,3 +6,7 @@ copy = [
   ".codex/AGENTS.md",
   ".gitconfig",
 ]
+
+[localllm]
+enabled = false
+models = []

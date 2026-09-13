@@ -1,4 +1,4 @@
-{ pkgs }:
+{ pkgs, inputs }:
 
 let
   ankiConnectPackage = pkgs.ankiAddons.anki-connect;
@@ -121,6 +121,9 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
   "terminal-browser version drifted: expected ${expectedTerminalBrowserVersion}, got ${terminalBrowserPackage.version}";
 {
   ankiConnect = ankiConnectPackage;
+  localllmClient = assert pkgs.opencode.version == "1.18.13"; pkgs.opencode;
+  localllmRuntime = (import ./localllm/runtime.nix { inherit inputs pkgs; }).environment;
+  localllm = configuration: import ./localllm/package.nix { inherit configuration inputs pkgs; };
 
   packages = [
     # Anki 26.05

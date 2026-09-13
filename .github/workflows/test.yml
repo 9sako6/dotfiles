@@ -65,4 +65,10 @@ jobs:
             cargo fmt --check --manifest-path cli/Cargo.toml
             cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
             cargo test --locked --manifest-path cli/Cargo.toml
+            opencode_package="$(nix build --no-link --print-out-paths .#localllmClient)"
+            DOTFILES_TEST_OPENCODE="$opencode_package/bin/opencode" python3 -m unittest discover -s nix/localllm -p "test_*.py"
+            python3 -m unittest discover -s nix/tests -p "test_*.py"
+            nix build --no-link .#checks.aarch64-darwin.composition .#checks.aarch64-darwin.configuration .#checks.aarch64-darwin.modelFetch
+            nix build --no-link --offline .#checks.aarch64-darwin.modelFetch
+            nix eval --raw .#darwinConfigurations.current.system.drvPath
           '

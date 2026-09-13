@@ -128,43 +128,6 @@ install_system_ensure_lix() {
   printf '%s\n' "$nix_bin"
 }
 
-install_system_build_source_output() {
-  nix_bin="$1"
-  primary_user="$2"
-  source_dir="$3"
-  source_kind="$4"
-  output="$5"
-
-  case "$source_kind" in
-    default)
-      DARWIN_PRIMARY_USER="$primary_user" \
-        "$nix_bin" \
-        --extra-experimental-features "nix-command flakes" \
-        build \
-        --impure \
-        --no-link \
-        --print-out-paths \
-        "path:${source_dir}#${output}"
-      ;;
-    remote)
-      "$nix_bin" \
-        --extra-experimental-features "nix-command flakes" \
-        build \
-        --no-link \
-        --print-out-paths \
-        "path:${source_dir}#${output}"
-      ;;
-    *) install_system_fail "unknown system source kind: $source_kind" ;;
-  esac
-}
-
-install_system_confirm_apply() {
-  printf 'Apply this system plan? Type yes: '
-  if ! IFS= read -r answer || [ "$answer" != yes ]; then
-    install_system_fail "system apply cancelled"
-  fi
-}
-
 install_system_show_homebrew_missing() {
   brew_bin="$1"
   brewfile_path="$2"
@@ -211,6 +174,7 @@ install_system_apply_built_system() (
   selection_path="$6"
   expected_target="$7"
   desired_target="$8"
+  shift 8
 
   nix_env_bin="${nix_bin%/nix}/nix-env"
   rebuild_bin="${system_path}/sw/bin/darwin-rebuild"
@@ -267,23 +231,36 @@ install_system_apply_built_system() (
     trap install_system_release_apply_lock 0
     trap "exit 1" HUP INT TERM
 
+    install_system_verify_record() {
+      if [ "$expected_target" = missing ]; then
+        if [ -e "$selection_path" ] || [ -L "$selection_path" ]; then
+          printf "system: system source selection changed during apply\n" >&2
+          exit 1
+        fi
+      else
+        if [ ! -L "$selection_path" ] ||
+          [ "$(/usr/bin/readlink -- "$selection_path")" != "$expected_target" ]
+        then
+          printf "system: system source selection changed during apply\n" >&2
+          exit 1
+        fi
+      fi
+
+    }
+    install_system_verify_record
+
     "$nix_env_bin" -p /nix/var/nix/profiles/system --set "$system_path"
     "$rebuild_bin" activate
-
-    if [ "$expected_target" = missing ]; then
-      if [ -e "$selection_path" ] || [ -L "$selection_path" ]; then
-        printf "system: system source selection changed during apply\n" >&2
-        exit 1
-      fi
-    else
-      if [ ! -L "$selection_path" ] ||
-        [ "$(/usr/bin/readlink -- "$selection_path")" != "$expected_target" ]
-      then
-        printf "system: system source selection changed during apply\n" >&2
-        exit 1
-      fi
+    shift 6
+    if [ "$#" -gt 0 ]; then
+      cli_bin="$1"
+      source="$2"
+      paths="$3"
+      home_directory="$4"
+      /usr/bin/sudo --user="$SUDO_USER" -- "$cli_bin" complete-apply "$source" "$paths" "$home_directory"
     fi
 
+    install_system_verify_record
     temporary_path="${selection_dir}/.flake.nix.$$"
     /bin/ln -s -- "$desired_target" "$temporary_path" || {
       printf "system: could not stage system source selection\n" >&2
@@ -296,5 +273,5 @@ install_system_apply_built_system() (
     fi
   ' install-system-apply \
     "$nix_env_bin" "$rebuild_bin" "$system_path" "$selection_path" \
-    "$expected_target" "$desired_target"
+    "$expected_target" "$desired_target" "$@"
 )

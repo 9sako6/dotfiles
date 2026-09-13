@@ -1,13 +1,12 @@
 {
-  description = "Private macOS system configuration";
+  description = "Private additions to the public macOS configuration";
 
-  inputs.dotfiles.url = "github:9sako6/dotfiles";
+  inputs = { };
 
-  outputs = { self, dotfiles, ... }: {
-    darwinConfigurations.current = dotfiles.lib.mkDarwinSystem {
-      configurationRevision = self.rev or self.dirtyRev or null;
-      primaryUser = "account-name";
-      modules = [ ];
+  outputs = { ... }: {
+    darwinModules.default = { ... }: {
+      imports = [ ];
+      homebrew.casks = [ ];
     };
   };
 }

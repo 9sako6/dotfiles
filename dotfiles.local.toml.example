@@ -1,0 +1,6 @@
+[localllm]
+enabled = false
+models = []
+
+[private]
+path = "../private-dotfiles"

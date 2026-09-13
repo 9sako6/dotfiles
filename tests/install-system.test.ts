@@ -278,28 +278,6 @@ exit "\${BREW_EXIT_STATUS}"
     });
   });
 
-  test("system applyは標準入力の正確なyesだけを受け付ける", async () => {
-    const accepted = await runInstallSystemFunction(
-      "install_system_confirm_apply",
-      [],
-      {},
-      "yes\n",
-    );
-    expect(accepted).toMatchObject({ exitCode: 0, stderr: "" });
-    expect(accepted.stdout).toBe("Apply this system plan? Type yes: ");
-
-    for (const input of ["no\n", ""]) {
-      const refused = await runInstallSystemFunction(
-        "install_system_confirm_apply",
-        [],
-        {},
-        input,
-      );
-      expect(refused.exitCode).not.toBe(0);
-      expect(refused.stderr).toContain("system apply cancelled");
-    }
-  });
-
   test("activationとsource選択を一度のsudo実行で完了する", async () => {
     await withTempDir("apply-system", async (tempDir) => {
       const sudoBin = path.join(tempDir, "sudo");
@@ -353,6 +331,15 @@ printf '\n' >> "$SYSTEM_APPLY_LOG"
       expect(refused.exitCode).not.toBe(0);
       expect(refused.stderr).toContain("system source selection changed during apply");
       expect(await readlink(selection)).toBe("/source/flake.nix");
+      await makeExecutable(rebuildBin, "#!/bin/sh\nexit 42\n");
+      const failedActivation = await runInstallSystemFunction(
+        'install_system_apply_built_system "$1" /usr/bin/env "$2" test-user "$3" "$4" /source/flake.nix /new/flake.nix',
+        [sudoBin, nixBin, systemPath, selection],
+        { SYSTEM_APPLY_LOG: systemLog, SYSTEM_INSTALL_LOG: credentialLog },
+      );
+      expect(failedActivation.exitCode).toBe(42);
+      expect(await readlink(selection)).toBe("/source/flake.nix");
+      expect(await Bun.file(applyLock).exists()).toBe(false);
     });
   });
 
@@ -410,44 +397,6 @@ fi
       expect(refused.exitCode).not.toBe(0);
       expect(refused.stderr).toContain("system apply is already running");
       expect(await readlink(selection)).toBe("/source/flake.nix");
-    });
-  });
-
-  test("公開sourceだけprimary userを渡してimpure buildする", async () => {
-    await withTempDir("build-system-source", async (tempDir) => {
-      const nixBin = path.join(tempDir, "nix");
-      const logPath = path.join(tempDir, "system.log");
-      await makeExecutable(
-        nixBin,
-        `#!/bin/sh
-{
-  printf 'primary_user=%s\n' "\${DARWIN_PRIMARY_USER:-}"
-  printf 'args='
-  printf '<%s>' "$@"
-  printf '\n'
-} >> "$SYSTEM_INSTALL_LOG"
-printf '%s\n' /nix/store/system
-`,
-      );
-
-      const result = await runInstallSystemFunction(
-        `install_system_build_source_output "$1" test-user /source default output
-install_system_build_source_output "$1" test-user /source remote output`,
-        [nixBin],
-        { SYSTEM_INSTALL_LOG: logPath },
-      );
-
-      expect(result).toMatchObject({
-        exitCode: 0,
-        stderr: "",
-        stdout: "/nix/store/system\n/nix/store/system\n",
-      });
-      const [publicBuild, privateBuild] = (await readFile(logPath, "utf8"))
-        .split("primary_user=").filter(Boolean);
-      expect(publicBuild).toContain("test-user");
-      expect(publicBuild).toContain("<--impure>");
-      expect(privateBuild.startsWith("\n")).toBe(true);
-      expect(privateBuild).not.toContain("<--impure>");
     });
   });
 
