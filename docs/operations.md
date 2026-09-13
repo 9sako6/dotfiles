@@ -1,10 +1,10 @@
 # 運用ガイド
 
-macOS 前提。管理境界は [repo-map.md](repo-map.md) の「管理境界」を正本とする。
+macOS 環境を前提とする。管理境界は [repo-map.md](repo-map.md) の「管理境界」で定義された内容に従う。
 
 ## 変更前の確認
 
-変更前は、管理区分を次の順で確定する。
+変更に着手する前に、管理区分を次の順序で確定する。
 
 ```mermaid
 flowchart TD
@@ -29,7 +29,7 @@ flowchart TD
 
 ### 生成物
 
-`apm.lock.yaml` などの生成物は手で編集しない。
+`apm.lock.yaml` などの生成物は手動で編集しない。
 
 ```mermaid
 flowchart TD
@@ -48,10 +48,11 @@ flowchart TD
 curl -fsSL https://dot.9sako6.com | sh
 ```
 
-Home Manager は nix-darwin module として組み込まれているため、system と通常の home 設定は同じ `apply` で反映する。
-`.dotfiles.json` の `copy` 対象は system activation が成功した後に Rust CLI が `$HOME` へ実体配備する。
-旧 home deployer から初めて移行するとき、Home Manager が管理する既存ファイルとの衝突は `.pre-home-manager` suffix へ退避される。
-`curl | sh` では確認入力だけを制御端末から読み、download 中の script を回答として消費しない。
+Home Manager は nix-darwin のモジュールとして組み込まれているため、system と通常の home 設定は同一の `apply` で反映する。
+`.dotfiles.json` の `copy` 対象は、system activation の成功後に Rust CLI が `$HOME` へ実体として配備する。
+
+旧 home deployer から初めて移行する際、Home Manager が管理する既存ファイルとの競合が発生した場合は、`.pre-home-manager` 接尾辞を付与して退避される。
+`curl | sh` の実行時は、確認の入力のみを制御端末から読み取り、ダウンロード中のスクリプトを入力値として消費しない。
 
 ## 日常コマンド
 
@@ -62,26 +63,25 @@ dotfiles plan                  # system + homeのplanを表示
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
 ```
 
-system の日常操作の正本は Rust 製の `dotfiles` CLI の `plan` / `apply` とする。repository test をまとめる `dotfiles` サブコマンドは持たない。
-その他の task は `mise tasks` で一覧できる。mise 自体の状態確認は `mise ls --missing` や `mise prune --tools` などの標準コマンドを使う。
+system の日常操作では、`plan` および `apply` に Rust 製 `dotfiles` CLI を使う。リポジトリのテストを一括実行するような `dotfiles` サブコマンドは設けない。
+その他のタスクは `mise tasks` で一覧できる。mise 本体の状態確認には `mise ls --missing` や `mise prune --tools` などの標準コマンドを使用する。
 
-ユーザー単位の常設ツールは Nix 管理を原則とする。新しいツールを mise の `[tools]` へ追加しない。既存の mise 管理ツールを更新するときは Nix へ移せるかを先に確認し、合理的に移せる場合は `nix/packages.nix` と Home Manager へ移す。mise に残すのは Nix で合理的に管理できない例外だけとし、その理由を設定から判別できる状態にする。
+ユーザー単位の常設ツールは Nix 管理を原則とし、新規ツールを mise の `[tools]` に追加しない。既存の mise 管理ツールを更新する際は、Nix へ移行可能かを事前に確認し、合理的に移行できる場合は `nix/packages.nix` と Home Manager へ移す。mise に残すのは Nix で合理的に管理できない例外のみとし、その理由を設定から判別できる状態を維持する。
 
-公開構成の flake root は repository root の `flake.nix` / `flake.lock`。Nix で宣言する system / home 設定は `nix/`、共有設定ファイルの実体は `home/` に置く。
+公開構成の flake root はリポジトリ直下の `flake.nix` および `flake.lock` である。Nix で宣言する system / home 設定は `nix/`、共有設定ファイルの実体は `home/` に配置する。
 
-通常の設定ファイルと `.config`、`.zsh.d`、`mybin` は live dotfiles checkout への out-of-store link にして、編集を即時反映する。
-一方、devcontainer から読む agent resources は symlink にしない。repository root の `.dotfiles.json` に列挙した `.agents/skills`、`.claude/rules`、`.claude/settings.json`、`.claude/skills`、`.codex/AGENTS.md` を `$HOME` へ実体コピーする。これにより host 側の `/nix/store` や `/Users/...` を container 側から解決する必要がない。
+通常の設定ファイルや `.config`、`.zsh.d`、`mybin` は、稼働中の dotfiles チェックアウトへの out-of-store link とし、編集内容を即座に反映させる。
+一方、devcontainer から参照する agent resources は symlink にしない。リポジトリルートの `.dotfiles.json` に列挙した `.agents/skills`、`.claude/rules`、`.claude/settings.json`、`.claude/skills`、`.codex/AGENTS.md` を `$HOME` へ実体コピーする。これにより、コンテナ側からホスト側の `/nix/store` やホームディレクトリの絶対パスを解決する必要をなくしている。
 
-`copy` にディレクトリを指定した場合、そのディレクトリ以下は dotfiles の管理対象となり、source に存在しない子は次の `apply` で削除する。指定した親の兄弟は触らないため、たとえば `~/.claude/skills` を同期しても `~/.claude` 配下の runtime file は残る。
-`.dotfiles.json` は未知の key、重複、非アルファベット順、絶対 path、`..`、互いに包含する path を拒否する。`plan` は定義と source の存在を検証して配備先を表示するだけで、copy は行わない。`apply` は system activation が成功した場合だけ copy を実行する。
+`copy` にディレクトリを指定した場合、その配下全体が dotfiles の管理対象となり、source に存在しない子要素は次回の `apply` で削除される。ただし、指定した親ディレクトリの兄弟要素には触れないため、たとえばホームディレクトリ内の `.claude/skills` を同期しても `.claude` 配下のランタイムファイルは保持される。
+`.dotfiles.json` は未知のキー、重複、非アルファベット順、絶対パス、`..`、互いに包含関係にあるパスの指定を拒否する。`plan` は定義と source の存在を検証して配備先を表示するのみで、copy は行わない。`apply` は system activation が成功した場合にのみ copy を実行する。
 
-public system は `plan` / `apply` を実行している checkout を自動で使う。private root flake が既定の `~/dotfiles` 以外を使う場合は、`lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
+public system は、`plan` / `apply` を実行しているチェックアウトを自動で使用する。private な root flake が、既定であるホームディレクトリ直下の `dotfiles` 以外を参照する場合は、`lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
 
 ## system source
 
-引数なしでは現在選択中の source を使う。未選択時は公開 dotfiles の local checkout が既定になる。
-公開 source は自動で pull しない。private source は、最後に選択した credential を含まない SSH または
-HTTPS clone URL の remote default branch を取得し、push 済みの最新 commit を使う。
+引数を指定しない場合は、現在選択中の source を使用する。未選択時の既定値は公開 dotfiles のローカルチェックアウトとなる。
+公開 source は自動で pull されない。private source では、最後に選択した clone URL（認証情報を含まない SSH または HTTPS）からリモートの default branch を取得し、push 済みの最新コミットを使用する。
 
 ```sh
 dotfiles plan <clone-url>   # 別sourceを試すが選択は変えない
@@ -90,17 +90,14 @@ dotfiles plan --default     # 公開sourceを試す
 dotfiles apply --default    # 公開sourceへ戻す
 ```
 
-`plan` は fetch、download、build、cache 更新を行うが、active system、Homebrew、source 選択、home copy を
-変更しない。Lix がなければ失敗する。`apply` は必要なら Lix を導入し、表示した同じ build 済み
-世代だけを activation する。Home Manager の activation もこの system activation に含まれ、成功後に home copy を反映する。
-plan には system closure の差分、Homebrew の未導入dependency、cleanup候補と home copy 対象が現れる。
-fetch、認証、flake 評価に失敗した場合、古い cache へ fallback しない。`apply` は activation と
-source 選択を一度の `sudo` 実行で完了し、長い activation の後に認証を再要求しない。同じ source
-selection を使う `apply` が実行中なら、後から開始した処理を拒否する。
+`plan` は fetch、ダウンロード、ビルド、キャッシュ更新を行うが、稼働中の system、Homebrew、source 選択、home copy は変更しない。なお、Lix が未導入の環境では処理が失敗する。
+`apply` は必要に応じて Lix を導入し、表示した同一のビルド済み世代のみをアクティベーションする。Home Manager のアクティベーションもこの system activation に含まれ、成功後に home copy が反映される。
+plan の出力には、system closure の差分、Homebrew の未導入依存関係、クリーンアップ候補、および home copy 対象が表示される。
 
-private repository は `nix/flake.nix.template` を root の `flake.nix` としてコピーし、
-`primaryUser` を実際の macOS account name に置き換える。公開できない差分だけを `modules` に追加し、
-`nix flake lock` で生成した `flake.lock` と一緒に commit する。
+fetch、認証、または flake の評価に失敗した場合、古いキャッシュへフォールバックすることはない。
+`apply` はアクティベーションと source 選択を 1 回の `sudo` 実行で完了させ、長時間の処理後に再認証を要求しない。また、同一の source 選択を使用する `apply` がすでに実行中の場合は、後から開始された処理を拒否する。
+
+private リポジトリを構成する場合は、`nix/flake.nix.template` をルートの `flake.nix` としてコピーし、`primaryUser` を実際の macOS アカウント名に置き換える。公開できない差分のみを `modules` に追加し、`nix flake lock` で生成した `flake.lock` と合わせてコミットする。
 
 ```nix
 modules = [
@@ -112,23 +109,21 @@ modules = [
 ];
 ```
 
-公開側は `darwinModules.default` と `lib.mkDarwinSystem` を提供する。public source だけが実行時の
-macOS account name と live dotfiles checkout を受け取るため、private root flake では `primaryUser` を明示する。
-source の選択状態は `/etc/nix-darwin/flake.nix` の symlink だけであり、未知の既存ファイルや symlink は
-明示引数があっても置換しない。旧公開sourceの `darwin/flake.nix` を指すselectionは、次の成功したapplyでroot `flake.nix`へ移行する。
+公開側リポジトリは `darwinModules.default` と `lib.mkDarwinSystem` を提供する。実行時の macOS アカウント名と稼働中の dotfiles チェックアウトを受け取るのは public source のみであるため、private root flake では `primaryUser` を明示的に指定する必要がある。
+
+source の選択状態は `/etc/nix-darwin/flake.nix` の symlink のみで保持され、未知の既存ファイルや symlink が存在する場合は明示的な引数があっても上書きしない。旧公開 source の `darwin/flake.nix` を指す選択状態は、次回の `apply` 成功時にルートの `flake.nix` へと自動で移行される。
 
 ## ロールバック
 
-`mise run system:rollback` は remote の取得や flake の評価をせず、保持済みの直前の世代へ戻す。
-system source の選択は変えないため、次の `plan` は同じ source を診断する。
+`mise run system:rollback` は、リモートの取得や flake の評価を行わず、保持されている直前の世代へシステムを戻す。
+system source の選択状態は変更しないため、次回の `plan` も同じ source を対象に診断する。
 
-Nix のガベージコレクションは日本時間で毎日 0:00 に実行し、2日を超えた世代を削除する。
-削除された世代へはロールバックできない。手動で `nix-collect-garbage` を実行する場合も、
-削除対象に必要な世代が含まれないことを確認してから実行する。
+Nix のガベージコレクションは日本時間で毎日 0:00 に実行され、2日を超えた古い世代を削除する。
+削除された世代へはロールバックできないため、手動で `nix-collect-garbage` を実行する場合も、削除対象に必要な世代が含まれていないことを事前に確認する。
 
 ## 検証
 
-変更した振る舞いをコマンドやスクリプトで観測する。repository 全体を検証するときは wrapper を挟まず、CI と同じ test command を直接実行する。
+変更した振る舞いはコマンドやスクリプトを用いて観測する。リポジトリ全体を検証する際はラッパーを挟まず、CI と同一のテストコマンドを直接実行する。
 
 ```sh
 bun install --frozen-lockfile
@@ -139,7 +134,7 @@ cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warning
 cargo test --locked --manifest-path cli/Cargo.toml
 ```
 
-設定ファイルやソースの文面を直接検査するテストは書かない。
+設定ファイルやソースコードの文面そのものを直接検査するテストは作成しない。
 
 ## 変更前後の基本手順
 
@@ -152,9 +147,8 @@ cargo test --locked --manifest-path cli/Cargo.toml
    - `system configuration` — `dotfiles apply`
    - `private system configuration` — private repository を push して `dotfiles apply`
 
-`repo runtime` の変更に反映コマンドはない。`apply` の初回実行では、
-Lix を導入するため途中で `sudo` の認証を求められる。
+`repo runtime` の変更に対する反映コマンドはない。また、`apply` の初回実行時は Lix を導入するため、処理の途中で `sudo` による認証を求められる。
 
-Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、通常の home directory 設定は Home Manager、devcontainer-visible な copy 対象は Rust CLI が管理する。
+Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、通常のホームディレクトリ設定は Home Manager、devcontainer から参照可能な copy 対象は Rust CLI がそれぞれ管理する。
 
-GitHub-hosted macOS runner では Home Manager の user activation と system derivation の build を分けて検証し、nix-darwin の system activation は行わない。Nix store path は GitHub Actions の binary cache を利用して workflow 間で再利用する。新規 Mac への activation E2E は、Homebrew のない VM または実機で確認する。
+GitHub-hosted な macOS runner では、Home Manager の user activation と system derivation のビルドを個別に検証し、nix-darwin の system activation は実施しない。Nix store のパスは GitHub Actions のバイナリキャッシュを活用してワークフロー間で再利用する。新規 Mac への activation E2E は、Homebrew の入っていない VM または実機で確認する。
