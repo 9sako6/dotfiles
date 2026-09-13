@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
+use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct CopyPlan {
@@ -47,7 +48,7 @@ impl CopyPlan {
 }
 
 pub fn plan(repo_root: &Path, home: &Path) -> Result<CopyPlan> {
-    let config_path = repo_root.join(".dotfiles.json");
+    let config_path = repo_root.join(".dotfiles.toml");
     let raw = fs::read_to_string(&config_path)
         .with_context(|| format!("failed to read {}", config_path.display()))?;
     let paths = parse_config(&raw)?;
@@ -59,19 +60,19 @@ pub fn plan(repo_root: &Path, home: &Path) -> Result<CopyPlan> {
         let source = source_root.join(&relative_path);
         let metadata = fs::symlink_metadata(&source).with_context(|| {
             format!(
-                ".dotfiles.json: copy source does not exist: {}",
+                ".dotfiles.toml: copy source does not exist: {}",
                 relative_path.display()
             )
         })?;
         if metadata.file_type().is_symlink() {
             bail!(
-                ".dotfiles.json: copy source must not be a symlink: {}",
+                ".dotfiles.toml: copy source must not be a symlink: {}",
                 relative_path.display()
             );
         }
         if !metadata.is_file() && !metadata.is_dir() {
             bail!(
-                ".dotfiles.json: copy source must be a file or directory: {}",
+                ".dotfiles.toml: copy source must be a file or directory: {}",
                 relative_path.display()
             );
         }
@@ -85,44 +86,17 @@ pub fn plan(repo_root: &Path, home: &Path) -> Result<CopyPlan> {
     Ok(CopyPlan { entries })
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CopyConfig {
+    #[serde(default)]
+    copy: Vec<String>,
+}
+
 fn parse_config(raw: &str) -> Result<Vec<String>> {
-    let mut parser = JsonParser::new(raw);
-    parser.skip_whitespace();
-    parser.expect_byte(b'{')?;
-    parser.skip_whitespace();
-
-    let mut copy = None;
-    if !parser.consume_byte(b'}') {
-        loop {
-            parser.skip_whitespace();
-            let key = parser.parse_string()?;
-            parser.skip_whitespace();
-            parser.expect_byte(b':')?;
-            parser.skip_whitespace();
-            match key.as_str() {
-                "copy" => {
-                    if copy.is_some() {
-                        bail!(".dotfiles.json: duplicate key: copy");
-                    }
-                    copy = Some(parser.parse_string_array()?);
-                }
-                _ => bail!(".dotfiles.json: unknown key: {key}; allowed: copy"),
-            }
-            parser.skip_whitespace();
-            if parser.consume_byte(b'}') {
-                break;
-            }
-            parser.expect_byte(b',')?;
-        }
-    }
-    parser.skip_whitespace();
-    if !parser.is_eof() {
-        bail!(".dotfiles.json: trailing content after root object");
-    }
-
-    let copy = copy.unwrap_or_default();
-    validate_paths(&copy)?;
-    Ok(copy)
+    let config: CopyConfig = toml::from_str(raw).context(".dotfiles.toml: invalid TOML config")?;
+    validate_paths(&config.copy)?;
+    Ok(config.copy)
 }
 
 fn validate_paths(paths: &[String]) -> Result<()> {
@@ -132,12 +106,12 @@ fn validate_paths(paths: &[String]) -> Result<()> {
     for value in paths {
         validate_relative_path(value)?;
         if !seen.insert(value.as_str()) {
-            bail!(".dotfiles.json: copy contains duplicate entry: {value}");
+            bail!(".dotfiles.toml: copy contains duplicate entry: {value}");
         }
         if let Some(previous) = previous {
             if value.as_str() < previous {
                 bail!(
-                    ".dotfiles.json: copy entries must be alphabetical; {value} should come before {previous}"
+                    ".dotfiles.toml: copy entries must be alphabetical; {value} should come before {previous}"
                 );
             }
         }
@@ -150,7 +124,7 @@ fn validate_paths(paths: &[String]) -> Result<()> {
             let other = Path::new(other);
             if other.starts_with(path) || path.starts_with(other) {
                 bail!(
-                    ".dotfiles.json: copy entries must not overlap: {} and {}",
+                    ".dotfiles.toml: copy entries must not overlap: {} and {}",
                     path.display(),
                     other.display()
                 );
@@ -162,15 +136,15 @@ fn validate_paths(paths: &[String]) -> Result<()> {
 
 fn validate_relative_path(value: &str) -> Result<()> {
     if value.is_empty() {
-        bail!(".dotfiles.json: copy entries must not be empty");
+        bail!(".dotfiles.toml: copy entries must not be empty");
     }
     let path = Path::new(value);
     if path.is_absolute() {
-        bail!(".dotfiles.json: copy entry must be relative: {value}");
+        bail!(".dotfiles.toml: copy entry must be relative: {value}");
     }
     for component in path.components() {
         if !matches!(component, Component::Normal(_)) {
-            bail!(".dotfiles.json: invalid copy entry: {value}");
+            bail!(".dotfiles.toml: invalid copy entry: {value}");
         }
     }
     Ok(())
@@ -259,158 +233,6 @@ fn remove_entry(path: &Path) -> Result<()> {
     }
 }
 
-struct JsonParser<'a> {
-    bytes: &'a [u8],
-    position: usize,
-}
-
-impl<'a> JsonParser<'a> {
-    fn new(raw: &'a str) -> Self {
-        Self {
-            bytes: raw.as_bytes(),
-            position: 0,
-        }
-    }
-
-    fn is_eof(&self) -> bool {
-        self.position == self.bytes.len()
-    }
-
-    fn skip_whitespace(&mut self) {
-        while matches!(self.peek(), Some(b' ' | b'\n' | b'\r' | b'\t')) {
-            self.position += 1;
-        }
-    }
-
-    fn peek(&self) -> Option<u8> {
-        self.bytes.get(self.position).copied()
-    }
-
-    fn consume_byte(&mut self, expected: u8) -> bool {
-        if self.peek() == Some(expected) {
-            self.position += 1;
-            true
-        } else {
-            false
-        }
-    }
-
-    fn expect_byte(&mut self, expected: u8) -> Result<()> {
-        if self.consume_byte(expected) {
-            Ok(())
-        } else {
-            bail!(
-                ".dotfiles.json: expected '{}' at byte {}",
-                expected as char,
-                self.position
-            )
-        }
-    }
-
-    fn parse_string_array(&mut self) -> Result<Vec<String>> {
-        self.expect_byte(b'[')?;
-        self.skip_whitespace();
-        let mut values = Vec::new();
-        if self.consume_byte(b']') {
-            return Ok(values);
-        }
-        loop {
-            self.skip_whitespace();
-            values.push(self.parse_string()?);
-            self.skip_whitespace();
-            if self.consume_byte(b']') {
-                break;
-            }
-            self.expect_byte(b',')?;
-        }
-        Ok(values)
-    }
-
-    fn parse_string(&mut self) -> Result<String> {
-        self.expect_byte(b'"')?;
-        let mut result = String::new();
-        while let Some(byte) = self.peek() {
-            self.position += 1;
-            match byte {
-                b'"' => return Ok(result),
-                b'\\' => {
-                    let escaped = self.peek().context(".dotfiles.json: incomplete escape")?;
-                    self.position += 1;
-                    match escaped {
-                        b'"' => result.push('"'),
-                        b'\\' => result.push('\\'),
-                        b'/' => result.push('/'),
-                        b'b' => result.push('\u{0008}'),
-                        b'f' => result.push('\u{000c}'),
-                        b'n' => result.push('\n'),
-                        b'r' => result.push('\r'),
-                        b't' => result.push('\t'),
-                        b'u' => result.push(self.parse_unicode_escape()?),
-                        _ => bail!(
-                            ".dotfiles.json: invalid escape at byte {}",
-                            self.position - 1
-                        ),
-                    }
-                }
-                0x00..=0x1f => bail!(
-                    ".dotfiles.json: control character in string at byte {}",
-                    self.position - 1
-                ),
-                0x20..=0x7f => result.push(byte as char),
-                _ => {
-                    let start = self.position - 1;
-                    let remaining = std::str::from_utf8(&self.bytes[start..])
-                        .context(".dotfiles.json: invalid UTF-8")?;
-                    let character = remaining
-                        .chars()
-                        .next()
-                        .context(".dotfiles.json: incomplete UTF-8")?;
-                    self.position = start + character.len_utf8();
-                    result.push(character);
-                }
-            }
-        }
-        bail!(".dotfiles.json: unterminated string")
-    }
-
-    fn parse_unicode_escape(&mut self) -> Result<char> {
-        let first = self.parse_hex_quad()?;
-        if (0xd800..=0xdbff).contains(&first) {
-            self.expect_byte(b'\\')?;
-            self.expect_byte(b'u')?;
-            let second = self.parse_hex_quad()?;
-            if !(0xdc00..=0xdfff).contains(&second) {
-                bail!(".dotfiles.json: invalid Unicode surrogate pair");
-            }
-            let codepoint = 0x10000 + (((first as u32 - 0xd800) << 10) | (second as u32 - 0xdc00));
-            char::from_u32(codepoint).context(".dotfiles.json: invalid Unicode escape")
-        } else if (0xdc00..=0xdfff).contains(&first) {
-            bail!(".dotfiles.json: unexpected low Unicode surrogate")
-        } else {
-            char::from_u32(first as u32).context(".dotfiles.json: invalid Unicode escape")
-        }
-    }
-
-    fn parse_hex_quad(&mut self) -> Result<u16> {
-        let end = self.position + 4;
-        if end > self.bytes.len() {
-            bail!(".dotfiles.json: incomplete Unicode escape");
-        }
-        let mut value = 0u16;
-        for byte in &self.bytes[self.position..end] {
-            value = (value << 4)
-                | match byte {
-                    b'0'..=b'9' => (byte - b'0') as u16,
-                    b'a'..=b'f' => (byte - b'a' + 10) as u16,
-                    b'A'..=b'F' => (byte - b'A' + 10) as u16,
-                    _ => bail!(".dotfiles.json: invalid Unicode escape"),
-                };
-        }
-        self.position = end;
-        Ok(value)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -420,26 +242,49 @@ mod tests {
 
     #[test]
     fn parses_copy_paths() {
-        let raw = r#"{
-          "copy": [
+        let raw = r#"
+          copy = [
             ".agents/skills",
-            ".claude/settings.json"
+            '.claude/settings.json', # literal paths are accepted
+            "\u8a2d\u5b9a",
           ]
-        }"#;
+        "#;
         assert_eq!(
             parse_config(raw).unwrap(),
-            vec![".agents/skills", ".claude/settings.json"]
+            vec![".agents/skills", ".claude/settings.json", "設定"]
         );
+    }
+
+    #[test]
+    fn accepts_empty_copy_config() {
+        for raw in ["", "# no home copies\n", "copy = []"] {
+            assert!(parse_config(raw).unwrap().is_empty());
+        }
     }
 
     #[test]
     fn rejects_invalid_config() {
         for raw in [
-            r#"{"copi": []}"#,
-            r#"{"copy": ["b", "a"]}"#,
-            r#"{"copy": ["a", "a"]}"#,
-            r#"{"copy": ["../secret"]}"#,
-            r#"{"copy": [".claude", ".claude/settings.json"]}"#,
+            "copi = []",
+            "[extra]",
+            "copy = []\ncopy = []",
+            "copy = 1",
+            "copy = 'a'",
+            "copy = [1]",
+            "copy = ['a', false]",
+            "copy = {}",
+            "copy = ['a'",
+            "copy = [] trailing",
+            r#"{"copy": []}"#,
+            r#"copy = ["b", "a"]"#,
+            r#"copy = ["a", "a"]"#,
+            r#"copy = [""]"#,
+            r#"copy = ["/secret"]"#,
+            r#"copy = ["."]"#,
+            r#"copy = ["./secret"]"#,
+            r#"copy = ["../secret"]"#,
+            r#"copy = ["a/../secret"]"#,
+            r#"copy = [".claude", ".claude/settings.json"]"#,
         ] {
             assert!(parse_config(raw).is_err(), "should reject {raw}");
         }
@@ -453,8 +298,8 @@ mod tests {
         fs::create_dir_all(repo.join("home/.claude/skills/design-it")).unwrap();
         fs::write(repo.join("home/.claude/skills/design-it/SKILL.md"), "new\n").unwrap();
         fs::write(
-            repo.join(".dotfiles.json"),
-            "{\n  \"copy\": [\n    \".claude/skills\"\n  ]\n}\n",
+            repo.join(".dotfiles.toml"),
+            "copy = [\n  \".claude/skills\",\n]\n",
         )
         .unwrap();
 
@@ -467,6 +312,18 @@ mod tests {
         symlink(&store_file, home.join(".claude/skills/design-it/SKILL.md")).unwrap();
 
         let plan = plan(&repo, &home).unwrap();
+        assert_eq!(
+            plan.preview(),
+            format!(
+                "home copy plan:\n  .claude/skills -> {}",
+                home.join(".claude/skills").display()
+            )
+        );
+        assert_eq!(
+            fs::read_to_string(home.join(".claude/skills/design-it/SKILL.md")).unwrap(),
+            "store\n"
+        );
+        assert!(home.join(".claude/skills/old").exists());
         plan.apply().unwrap();
 
         let deployed = home.join(".claude/skills/design-it/SKILL.md");

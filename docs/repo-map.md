@@ -5,7 +5,7 @@
 ファイルは次の 6 区分で管理する。共有可能な設定と非公開にすべき情報を同一リポジトリに混在させないための境界である。
 
 - `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
-- `home-managed user tools` — `nix/home.nix` と `nix/packages.nix` にユーザー単位の宣言を置く。共有設定ファイルの実体は `home/` に置く。通常は root flake から system generation と一緒に反映し、devcontainer から実ファイルとして見える必要があるものだけ `.dotfiles.json` の `copy` で配備する。
+- `home-managed user tools` — `nix/home.nix` と `nix/packages.nix` にユーザー単位の宣言を置く。共有設定ファイルの実体は `home/` に置く。通常は root flake から system generation と一緒に反映し、devcontainer から実ファイルとして見える必要があるものだけ `.dotfiles.toml` の `copy` で配備する。
 - `system configuration` — root の `flake.nix` / `flake.lock` と `nix/system.nix` に Mac 全体の設定を置く。nix-darwin で反映し、Homebrew 本体と cask もここで管理する。
 - `private system configuration` — 公開できない追加設定だけを別の root flake に置く。公開 `darwinModules.default` と `lib.mkDarwinSystem` を利用し、共有設定を複製しない。
 - `local-only` — マシン固有の設定。repo に入れず、各マシンに手で置く（例: ホームディレクトリ内の `.zsh.d/local.zsh`）。
@@ -31,7 +31,7 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - `dotfiles` CLI は日常的な system の plan / apply に使う。リポジトリのテスト実行制御（オーケストレーション）は CLI に持たせず、CI では各テストコマンドを直接実行する。
 - Nix で合理的に管理できる CLI やツールチェーンは `nix/packages.nix` に定義を集約する。`home/.config/mise/config.toml` の `[tools]` は、Nix へ移行中の既存ツールおよび Nix で合理的に管理できない明示的な例外のみに限定する。新しいツールは追加せず、既存ツールのバージョンや配布元を変更する際は、同一の変更で Nix へ移行可能かをあらかじめ判断する。mise は残る例外の管理と補助タスクの実行を受け持つ。
 - `dotfiles` CLI のリポジトリ固有ロジックは `cli/` 配下の Rust 実装に集約する。標準コマンドの実行自体は外部プロセスへ委ねる場合でも、引数の検証、source の選択、実行手順、失敗時のハンドリングといった判断や手順は Rust 側に集約する。
-- `plan` は Lix や稼働中のシステムを変更せず、`.dotfiles.json` に記載された home copy 定義も検証と表示だけを行う。Lix の導入、ビルド済み世代のアクティベーション、Home Manager のアクティベーション、source 選択状態の永続化、home copy の実体反映は、すべて `apply` のみが行う。
+- `plan` は Lix や稼働中のシステムを変更せず、`.dotfiles.toml` に記載された home copy 定義も検証と表示だけを行う。Lix の導入、ビルド済み世代のアクティベーション、Home Manager のアクティベーション、source 選択状態の永続化、home copy の実体反映は、すべて `apply` のみが行う。
 - public source は実行ユーザーとローカルのリポジトリチェックアウトを入力として root flake を評価する。一方、private source はユーザーを root flake 内で明示し、コミット済みの lock ファイルから pure に評価する。
 - system source の選択状態は `/etc/nix-darwin/flake.nix` のシンボリックリンクのみで管理し、リポジトリ独自の sidecar 状態を持たない。
 - ユーザー向けのインストールタスクは、`home/` ではなくホームディレクトリを入力とする。`apply` 適用後に配置されたホームディレクトリ上の設定ファイルを用いて実行し、リポジトリ内の管理元パスを直接参照しない。
@@ -39,9 +39,9 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - Nix で宣言する system および home の設定はすべて `nix/` に集約する。nix-darwin や Home Manager はあくまで実現手段であり、トップレベルディレクトリの分割境界にはしない。
 - ログインユーザーが常用するツールは、`environment.systemPackages` ではなく `nix/packages.nix` で定義し、Home Manager の `home.packages` を介して利用する。
 - CI 上で同一の CLI やツールチェーンを必要とする場合も、個別にバージョン定義を持たず、root flake が公開する共通の Nix ツールセットを利用する。GitHub Actions ではバイナリキャッシュを活用し、同一 store path の再取得や再ビルドを防ぐ。
-- devcontainer から参照するエージェント向けリソースは、`/nix/store` やホスト固有の絶対パスシンボリックリンクにしてはならない。`.dotfiles.json` の `copy` に列挙したファイルまたはディレクトリのみを、実ファイルとして `$HOME` 配下に配備する。列挙されたディレクトリ配下は dotfiles が所有し、同期時にはコピー元（source）に存在しない子要素を削除するが、親ディレクトリや同階層にある他のランタイムファイルには影響を与えない。
-- `.dotfiles.json` は `copy` キーのみを受け付ける。指定するパスは、重複がなく、アルファベット順に整列され、相対パス表記であり、かつ相互に包含関係を持たないものでなければならない。未知のキーや不正なパスが含まれる場合は、system の plan / apply を実行する前にエラーとして拒否する。
-- 標準機能で要件を満たせるホームディレクトリへの配備は Home Manager に任せる。`.dotfiles.json` によるファイルコピーは devcontainer の環境境界を越えるための限定的な例外措置であり、これ以外の独自マニフェストや配置状態は保持しない。
+- devcontainer から参照するエージェント向けリソースは、`/nix/store` やホスト固有の絶対パスシンボリックリンクにしてはならない。`.dotfiles.toml` の `copy` に列挙したファイルまたはディレクトリのみを、実ファイルとして `$HOME` 配下に配備する。列挙されたディレクトリ配下は dotfiles が所有し、同期時にはコピー元（source）に存在しない子要素を削除するが、親ディレクトリや同階層にある他のランタイムファイルには影響を与えない。
+- `.dotfiles.toml` は `copy` キーのみを受け付ける。指定するパスは、重複がなく、アルファベット順に整列され、相対パス表記であり、かつ相互に包含関係を持たないものでなければならない。未知のキーや不正なパスが含まれる場合は、system の plan / apply を実行する前にエラーとして拒否する。
+- 標準機能で要件を満たせるホームディレクトリへの配備は Home Manager に任せる。`.dotfiles.toml` によるファイルコピーは devcontainer の環境境界を越えるための限定的な例外措置であり、これ以外の独自マニフェストや配置状態は保持しない。
 - ブートストラップ処理の妥当性は E2E テストで検証する。シェルの実行順序や全体の導線の検証を、内部実装手順を固定化するユニットテストで代替してはならない。
 
 ## バージョンピン留め

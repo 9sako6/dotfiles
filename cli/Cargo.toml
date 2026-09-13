@@ -5,10 +5,11 @@ edition = "2021"
 description = "Global dotfiles entrypoint for system operations"
 
 [dependencies]
-clap = { version = "4", features = ["derive"] }
 anyhow = "1"
+clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_yaml_ng = "0.10"
+toml = { version = "=1.1.6", default-features = false, features = ["parse", "serde", "std"] }
 url = "2"
 
 [dev-dependencies]
