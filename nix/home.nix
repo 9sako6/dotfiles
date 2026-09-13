@@ -9,6 +9,9 @@ let
   liveLink = relativePath: {
     source = outOfStore relativePath;
   };
+  overlapsCopy = path: builtins.any (owned:
+    path == owned || lib.hasPrefix (owned + "/") path || lib.hasPrefix (path + "/") owned
+  ) configuration.copy;
   collectLiveFiles = relativeRoot: sourceRoot:
     let
       entries = builtins.readDir sourceRoot;
@@ -62,15 +65,13 @@ in
     );
     message = "private home.packages definitions conflict with the public localllm owner";
   } {
-    assertion = options.home.file.highestPrio == 100 && builtins.all (definition:
-      definition.file == toString ./home.nix || builtins.all (name:
-        !(builtins.any (owned: name == owned || lib.hasPrefix (owned + "/") name || lib.hasPrefix (name + "/") owned) configuration.copy)
-      ) (builtins.attrNames definition.value)
-    ) options.home.file.definitionsWithLocations;
-    message = "private home.file definitions conflict with the public copy owner";
+    assertion = options.home.file.highestPrio == 100 && builtins.all (file:
+      !file.enable || !(overlapsCopy file.target)
+    ) (builtins.attrValues config.home.file);
+    message = "home.file targets conflict with dotfiles copy paths";
   } ];
 
-  home.file = {
+  home.file = lib.filterAttrs (path: _: !(overlapsCopy path)) ({
     ".gitconfig" = liveLink ".gitconfig";
     ".gitignore_global" = liveLink ".gitignore_global";
     ".zshenv" = liveLink ".zshenv";
@@ -78,5 +79,5 @@ in
     "Library/Application Support/Anki2/addons21/anki-connect".source = ankiConnectAddon;
     "apm.lock.yaml" = liveLink "apm.lock.yaml";
     "apm.yml" = liveLink "apm.yml";
-  } // liveFiles;
+  } // liveFiles);
 }

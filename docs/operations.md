@@ -91,6 +91,8 @@ DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- setting
 
 `copy` にディレクトリを指定した場合、その配下全体が dotfiles の管理対象となり、コピー元に存在しない子要素は次回の `apply` で削除される。ただし、指定した親ディレクトリの兄弟要素には触れないため、たとえばホームディレクトリ内の `.claude/skills` を同期しても `.claude` 配下のランタイムファイルは保持される。
 
+`.gitconfig`を含む`dotfiles.toml`の`copy`対象はRust CLIだけが配置し、同じパスや親子関係にある公開Home Managerリンクを自動除外した上で、最終的な有効な`home.file.target`も`copy`との重複を検査して拒否します。コピー先には所有者の書き込みビットだけを加え、Nixストア由来の`0444`は`0644`、`0555`は`0755`にします。
+
 ## 設定ファイル仕様 (dotfiles.toml / dotfiles.local.toml)
 
 リポジトリには共有設定 `dotfiles.toml` を置き、マシン固有のローカル設定は Git 管理外の `dotfiles.local.toml` で定義する。

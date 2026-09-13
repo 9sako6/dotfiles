@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
@@ -162,6 +163,9 @@ fn sync_file(source: &Path, destination: &Path) -> Result<()> {
             destination.display()
         )
     })?;
+    let mode = fs::metadata(source)?.permissions().mode() | 0o200;
+    fs::set_permissions(destination, fs::Permissions::from_mode(mode))
+        .with_context(|| format!("failed to set copy permissions: {}", destination.display()))?;
     Ok(())
 }
 
