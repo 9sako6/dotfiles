@@ -1,5 +1,6 @@
 mod agents;
 mod home_copy;
+mod settings;
 mod system;
 
 use std::env;
@@ -43,6 +44,8 @@ enum Commands {
         #[command(flatten)]
         source: SourceArgs,
     },
+    #[command(about = "Show all effective settings and their sources")]
+    Settings,
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -91,6 +94,7 @@ fn run() -> Result<ExitCode> {
         Commands::Apply { source } => {
             run_system_command(system::Mode::Apply, source, &dotfiles_dir)
         }
+        Commands::Settings => settings::run(&dotfiles_dir),
     }
 }
 

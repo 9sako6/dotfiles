@@ -68,8 +68,19 @@ let
       "${owner "default_model"}: localllm.default_model: must belong to models"
     ++ lib.optional (merged.private.path == "") "dotfiles.local.toml: private.path: must not be empty";
   errors = structuralErrors ++ lib.optionals (structuralErrors == [ ]) valueErrors;
+  settings = path: value:
+    if builtins.isAttrs value then
+      lib.concatMap (key: settings (path ++ [ key ]) value.${key}) (builtins.attrNames value)
+    else [ {
+      key = lib.concatStringsSep "." path;
+      inherit value;
+      source = if lib.hasAttrByPath path local then "dotfiles.local.toml"
+        else if lib.hasAttrByPath path public then "dotfiles.toml"
+        else null;
+    } ];
 in
 {
   inherit errors;
   config = if errors == [ ] then merged else throw "dotfiles configuration is invalid";
+  settings = if errors == [ ] then settings [ ] merged else throw "dotfiles configuration is invalid";
 }

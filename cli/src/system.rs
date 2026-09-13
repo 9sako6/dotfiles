@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::home_copy;
+use crate::settings::Setting;
 
 #[derive(Clone, Copy)]
 pub enum Mode {
@@ -34,9 +35,9 @@ struct Inputs {
 }
 
 #[derive(Deserialize)]
-struct ConfigurationResult {
+struct ConfigurationResult<T> {
     errors: Vec<String>,
-    config: Option<Configuration>,
+    config: Option<T>,
 }
 
 #[derive(Deserialize)]
@@ -163,29 +164,11 @@ pub fn run(mode: Mode, root: &Path) -> Result<ExitCode> {
         None
     };
     let backend = root.join("bin/system-backend.sh");
-    let nix = PathBuf::from(
-        String::from_utf8(capture(
-            Command::new(&backend).arg(if matches!(mode, Mode::Apply) {
-                "ensure-nix"
-            } else {
-                "require-nix"
-            }),
-            "Lix is unavailable; install it with bin/install-lix.sh",
-        )?)?
-        .trim(),
-    );
+    let nix = resolve_nix(root, matches!(mode, Mode::Apply))?;
     let workspace = tempfile::Builder::new()
         .prefix("dotfiles-input-")
         .tempdir()?;
-    let frozen_local = local
-        .as_ref()
-        .map(|bytes| -> Result<PathBuf> {
-            let path = workspace.path().join("dotfiles.local.toml");
-            fs::write(&path, bytes)?;
-            fs::set_permissions(&path, fs::Permissions::from_mode(0o600))?;
-            Ok(path)
-        })
-        .transpose()?;
+    let frozen_local = freeze_local(workspace.path(), &local)?;
     let public = Snapshot::capture(&nix, root, false)?;
     let mut inputs = Inputs {
         directory: root.to_path_buf(),
@@ -197,13 +180,8 @@ pub fn run(mode: Mode, root: &Path) -> Result<ExitCode> {
     };
     let manifest = workspace.path().join("inputs.json");
     fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
-    let parsed: ConfigurationResult = evaluate(&nix, &public.source, &manifest, "configuration")?;
-    if !parsed.errors.is_empty() {
-        bail!("{}", parsed.errors.join("\n"));
-    }
-    let configuration = parsed
-        .config
-        .context("configuration was not returned by Nix")?;
+    let configuration: Configuration =
+        evaluate_configuration(&nix, &public.source, &manifest, "configuration")?;
     let private = configuration.private.path.as_ref().map(|path| -> Result<Snapshot> {
         let directory = root.join(path).canonicalize().context("dotfiles.local.toml: private.path: checkout does not exist")?;
         let data = env::var_os("XDG_DATA_HOME").map(PathBuf::from).filter(|p| p.is_absolute()).unwrap_or_else(|| home.join(".local/share"));
@@ -303,6 +281,70 @@ pub fn run(mode: Mode, root: &Path) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+pub fn load_settings(root: &Path) -> Result<Vec<Setting>> {
+    let nix = resolve_nix(root, false)?;
+    let local_path = root.join("dotfiles.local.toml");
+    let local = read_local(&local_path)?;
+    let workspace = tempfile::Builder::new()
+        .prefix("dotfiles-settings-")
+        .tempdir()?;
+    let frozen_local = freeze_local(workspace.path(), &local)?;
+    let public = Snapshot::capture(&nix, root, false)?;
+    let manifest = workspace.path().join("inputs.json");
+    fs::write(
+        &manifest,
+        serde_json::to_vec(&serde_json::json!({
+            "localFile": frozen_local,
+            "publicSource": public.source,
+        }))?,
+    )?;
+    let settings = evaluate_configuration(&nix, &public.source, &manifest, "settings")?;
+    public.verify()?;
+    verify_local(&local_path, &local)?;
+    Ok(settings)
+}
+
+fn resolve_nix(root: &Path, install: bool) -> Result<PathBuf> {
+    Ok(PathBuf::from(
+        String::from_utf8(capture(
+            Command::new(root.join("bin/system-backend.sh")).arg(if install {
+                "ensure-nix"
+            } else {
+                "require-nix"
+            }),
+            "Lix is unavailable; install it with bin/install-lix.sh",
+        )?)?
+        .trim(),
+    ))
+}
+
+fn freeze_local(workspace: &Path, local: &Option<Vec<u8>>) -> Result<Option<PathBuf>> {
+    local
+        .as_ref()
+        .map(|bytes| -> Result<PathBuf> {
+            let path = workspace.join("dotfiles.local.toml");
+            fs::write(&path, bytes)?;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o600))?;
+            Ok(path)
+        })
+        .transpose()
+}
+
+fn evaluate_configuration<T: serde::de::DeserializeOwned>(
+    nix: &Path,
+    source: &Path,
+    manifest: &Path,
+    operation: &str,
+) -> Result<T> {
+    let parsed: ConfigurationResult<T> = evaluate(nix, source, manifest, operation)?;
+    if !parsed.errors.is_empty() {
+        bail!("{}", parsed.errors.join("\n"));
+    }
+    parsed
+        .config
+        .context("configuration was not returned by Nix")
+}
+
 fn confirm_apply(input: &mut impl io::BufRead, output: &mut impl Write) -> Result<()> {
     write!(output, "Apply this system plan? Type yes: ")?;
     output.flush()?;
@@ -339,7 +381,7 @@ fn evaluate<T: serde::de::DeserializeOwned>(
             .arg(source.join("nix/host-input.nix"))
             .env("DOTFILES_INPUT_MANIFEST", manifest)
             .env("DOTFILES_INPUT_OPERATION", operation),
-        if operation == "configuration" {
+        if matches!(operation, "configuration" | "settings") {
             "dotfiles.toml / dotfiles.local.toml: invalid TOML or unreadable configuration (source values omitted)"
         } else {
             "Nix host composition failed: check private darwinModules.default, locked dependencies, option conflicts and package compatibility (private evaluation output omitted)"

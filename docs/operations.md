@@ -70,7 +70,10 @@ mise run system:rollback       # 直前のnix-darwin世代へ戻す
 ```sh
 DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- plan
 DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- apply
+DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- settings
 ```
+
+`dotfiles settings`は、既定値→`dotfiles.toml`→`dotfiles.local.toml`の優先順でマージされた現在の全設定を、`mise settings`と同様にキー・値・設定元の3列で表示します。オプションやキー指定はなく、現在のファイルを対象として`null`や`false`、空配列の値も漏れなく一覧に含めて表示します。なお、既定値が適用されている設定項目の設定元列は空欄として扱われます。
 
 システムの日常操作には Rust 製 `dotfiles` CLI を使用する。リポジトリのテストを一括実行するようなサブコマンドは設けない。
 その他の補助タスクは `mise tasks` で一覧できる。mise 本体の状態確認には `mise ls --missing` や `mise prune --tools` などの標準コマンドを使用する。

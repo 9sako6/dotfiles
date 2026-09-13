@@ -18,9 +18,11 @@ let
     configurationRevision = input.publicRevision;
   };
 in
-if operation == "configuration" then {
+if operation == "configuration" || operation == "settings" then {
   inherit (parsed) errors;
-  config = if parsed.errors == [ ] then parsed.config else null;
+  config = if parsed.errors != [ ] then null
+    else if operation == "settings" then parsed.settings
+    else parsed.config;
 }
 else if operation == "inventory" then {
   agents = builtins.mapAttrs (_: v: builtins.hashString "sha256" (builtins.toJSON v.serviceConfig)) host.config.launchd.user.agents;
