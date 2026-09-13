@@ -48,7 +48,7 @@ impl CopyPlan {
 }
 
 pub fn plan(repo_root: &Path, home: &Path) -> Result<CopyPlan> {
-    let config_path = repo_root.join(".dotfiles.toml");
+    let config_path = repo_root.join("dotfiles.toml");
     let raw = fs::read_to_string(&config_path)
         .with_context(|| format!("failed to read {}", config_path.display()))?;
     let paths = parse_config(&raw)?;
@@ -60,19 +60,19 @@ pub fn plan(repo_root: &Path, home: &Path) -> Result<CopyPlan> {
         let source = source_root.join(&relative_path);
         let metadata = fs::symlink_metadata(&source).with_context(|| {
             format!(
-                ".dotfiles.toml: copy source does not exist: {}",
+                "dotfiles.toml: copy source does not exist: {}",
                 relative_path.display()
             )
         })?;
         if metadata.file_type().is_symlink() {
             bail!(
-                ".dotfiles.toml: copy source must not be a symlink: {}",
+                "dotfiles.toml: copy source must not be a symlink: {}",
                 relative_path.display()
             );
         }
         if !metadata.is_file() && !metadata.is_dir() {
             bail!(
-                ".dotfiles.toml: copy source must be a file or directory: {}",
+                "dotfiles.toml: copy source must be a file or directory: {}",
                 relative_path.display()
             );
         }
@@ -94,7 +94,7 @@ struct CopyConfig {
 }
 
 fn parse_config(raw: &str) -> Result<Vec<String>> {
-    let config: CopyConfig = toml::from_str(raw).context(".dotfiles.toml: invalid TOML config")?;
+    let config: CopyConfig = toml::from_str(raw).context("dotfiles.toml: invalid TOML config")?;
     validate_paths(&config.copy)?;
     Ok(config.copy)
 }
@@ -106,12 +106,12 @@ fn validate_paths(paths: &[String]) -> Result<()> {
     for value in paths {
         validate_relative_path(value)?;
         if !seen.insert(value.as_str()) {
-            bail!(".dotfiles.toml: copy contains duplicate entry: {value}");
+            bail!("dotfiles.toml: copy contains duplicate entry: {value}");
         }
         if let Some(previous) = previous {
             if value.as_str() < previous {
                 bail!(
-                    ".dotfiles.toml: copy entries must be alphabetical; {value} should come before {previous}"
+                    "dotfiles.toml: copy entries must be alphabetical; {value} should come before {previous}"
                 );
             }
         }
@@ -124,7 +124,7 @@ fn validate_paths(paths: &[String]) -> Result<()> {
             let other = Path::new(other);
             if other.starts_with(path) || path.starts_with(other) {
                 bail!(
-                    ".dotfiles.toml: copy entries must not overlap: {} and {}",
+                    "dotfiles.toml: copy entries must not overlap: {} and {}",
                     path.display(),
                     other.display()
                 );
@@ -136,15 +136,15 @@ fn validate_paths(paths: &[String]) -> Result<()> {
 
 fn validate_relative_path(value: &str) -> Result<()> {
     if value.is_empty() {
-        bail!(".dotfiles.toml: copy entries must not be empty");
+        bail!("dotfiles.toml: copy entries must not be empty");
     }
     let path = Path::new(value);
     if path.is_absolute() {
-        bail!(".dotfiles.toml: copy entry must be relative: {value}");
+        bail!("dotfiles.toml: copy entry must be relative: {value}");
     }
     for component in path.components() {
         if !matches!(component, Component::Normal(_)) {
-            bail!(".dotfiles.toml: invalid copy entry: {value}");
+            bail!("dotfiles.toml: invalid copy entry: {value}");
         }
     }
     Ok(())
@@ -298,7 +298,7 @@ mod tests {
         fs::create_dir_all(repo.join("home/.claude/skills/design-it")).unwrap();
         fs::write(repo.join("home/.claude/skills/design-it/SKILL.md"), "new\n").unwrap();
         fs::write(
-            repo.join(".dotfiles.toml"),
+            repo.join("dotfiles.toml"),
             "copy = [\n  \".claude/skills\",\n]\n",
         )
         .unwrap();

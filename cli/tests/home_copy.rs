@@ -17,7 +17,7 @@ fn rejects_invalid_toml_before_running_system_commands() {
         ("copy = []\ncopy = []", "duplicate key"),
         ("copy = ['../secret']", "invalid copy entry"),
     ] {
-        fs::write(repo.join(".dotfiles.toml"), raw).unwrap();
+        fs::write(repo.join("dotfiles.toml"), raw).unwrap();
         for command in ["plan", "apply"] {
             cargo_bin_cmd!()
                 .env_clear()
@@ -28,7 +28,7 @@ fn rejects_invalid_toml_before_running_system_commands() {
                 .failure()
                 .stdout("")
                 .stderr(
-                    predicate::str::contains(".dotfiles.toml")
+                    predicate::str::contains("dotfiles.toml")
                         .and(predicate::str::contains(diagnostic)),
                 );
             assert!(!home.exists());

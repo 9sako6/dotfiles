@@ -49,7 +49,7 @@ curl -fsSL https://dot.9sako6.com | sh
 ```
 
 Home Manager は nix-darwin のモジュールとして組み込まれているため、system と通常の home 設定は同一の `apply` で反映する。
-`.dotfiles.toml` の `copy` 対象は、system activation の成功後に Rust CLI が `$HOME` へ実体として配備する。
+`dotfiles.toml` の `copy` 対象は、system activation の成功後に Rust CLI が `$HOME` へ実体として配備する。
 
 旧 home deployer から初めて移行する際、Home Manager が管理する既存ファイルとの競合が発生した場合は、`.pre-home-manager` 接尾辞を付与して退避される。
 `curl | sh` の実行時は、確認の入力のみを制御端末から読み取り、ダウンロード中のスクリプトを入力値として消費しない。
@@ -63,7 +63,7 @@ dotfiles plan                  # system + homeのplanを表示
 mise run system:rollback       # 直前のnix-darwin世代へ戻す
 ```
 
-.dotfiles.toml への移行前に導入された既存の dotfiles CLI は旧 JSON ファイルを参照するため、新しい CLI が導入されるまではリポジトリ直下で新しい Rust CLI を cargo 経由で実行してください。設定を適用する際は、以下のコマンドを実行します。
+旧CLIは旧名の設定ファイルを参照するため、そのままでは設定を正しく読み込めません。新CLIが導入されるまでは、リポジトリ直下でcargo経由で実行する必要があります。
 
 ```sh
 DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- apply
@@ -77,10 +77,10 @@ system の日常操作では、`plan` および `apply` に Rust 製 `dotfiles` 
 公開構成の flake root はリポジトリ直下の `flake.nix` および `flake.lock` である。Nix で宣言する system / home 設定は `nix/`、共有設定ファイルの実体は `home/` に配置する。
 
 通常の設定ファイルや `.config`、`.zsh.d`、`mybin` は、稼働中の dotfiles チェックアウトへの out-of-store link とし、編集内容を即座に反映させる。
-一方、devcontainer から参照する agent resources は symlink にしない。リポジトリルートの `.dotfiles.toml` に列挙した `.agents/skills`、`.claude/rules`、`.claude/settings.json`、`.claude/skills`、`.codex/AGENTS.md` を `$HOME` へ実体コピーする。これにより、コンテナ側からホスト側の `/nix/store` やホームディレクトリの絶対パスを解決する必要をなくしている。
+一方、devcontainer から参照する agent resources は symlink にしない。リポジトリルートの `dotfiles.toml` に列挙した `.agents/skills`、`.claude/rules`、`.claude/settings.json`、`.claude/skills`、`.codex/AGENTS.md` を `$HOME` へ実体コピーする。これにより、コンテナ側からホスト側の `/nix/store` やホームディレクトリの絶対パスを解決する必要をなくしている。
 
 `copy` にディレクトリを指定した場合、その配下全体が dotfiles の管理対象となり、source に存在しない子要素は次回の `apply` で削除される。ただし、指定した親ディレクトリの兄弟要素には触れないため、たとえばホームディレクトリ内の `.claude/skills` を同期しても `.claude` 配下のランタイムファイルは保持される。
-`.dotfiles.toml` は未知のキー、重複、非アルファベット順、絶対パス、`..`、互いに包含関係にあるパスの指定を拒否する。`plan` は定義と source の存在を検証して配備先を表示するのみで、copy は行わない。`apply` は system activation が成功した場合にのみ copy を実行する。
+`dotfiles.toml` は未知のキー、重複、非アルファベット順、絶対パス、`..`、互いに包含関係にあるパスの指定を拒否する。`plan` は定義と source の存在を検証して配備先を表示するのみで、copy は行わない。`apply` は system activation が成功した場合にのみ copy を実行する。
 
 public system は、`plan` / `apply` を実行しているチェックアウトを自動で使用する。private な root flake が、既定であるホームディレクトリ直下の `dotfiles` 以外を参照する場合は、`lib.mkDarwinSystem` の `dotfilesDirectory` 引数で明示する。
 
