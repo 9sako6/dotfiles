@@ -37,6 +37,7 @@ jobs:
     runs-on: macos-latest
     env:
       GITHUB_TOKEN: ${{ github.token }}
+      NIX_CONFIG: extra-experimental-features = nix-command flakes
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
@@ -57,7 +58,7 @@ jobs:
 
       - name: Run repository tests with Nix-managed tools
         run: |
-          nix --extra-experimental-features "nix-command flakes" shell .#userTools --command /bin/bash -c '
+          nix shell .#userTools --command /bin/bash -c '
             set -eu
             bun install --frozen-lockfile
             bun run tsc --noEmit
