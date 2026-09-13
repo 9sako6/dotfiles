@@ -1,6 +1,6 @@
 ---
 name: jp
-description: 日本語の文章を書くときに使用する。執筆と推敲をGemini 3.8 Flashに委ね、利用できない場合は警告して従来の文章作成手順を使う。
+description: 日本語の文章を書くときに使用する。
 ---
 
 # Gemini 3.8 Flashに委ねる

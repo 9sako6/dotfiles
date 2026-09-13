@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-09-13T02:11:59.903141+00:00'
+generated_at: '2026-09-13T02:16:30.205875+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -86,10 +86,10 @@ dependencies:
   - .claude/skills/jp/references/fallback.md
   - .claude/skills/jp/references/writing-rules.md
   deployed_file_hashes:
-    .agents/skills/jp/SKILL.md: sha256:371f198ab6d5430f5b59b326ac985c48ef358a816341b3259e0b8002d0f12e30
+    .agents/skills/jp/SKILL.md: sha256:2c4e392eeb43a8b26ea7a10a664fbb242040a0441b7355d2a9e4a01f2dd0bd0b
     .agents/skills/jp/references/fallback.md: sha256:3d1b7e48a7bec8e0c531e3c865f13236ce24ec2b4d67f92c28218d9510b05e45
     .agents/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
-    .claude/skills/jp/SKILL.md: sha256:371f198ab6d5430f5b59b326ac985c48ef358a816341b3259e0b8002d0f12e30
+    .claude/skills/jp/SKILL.md: sha256:2c4e392eeb43a8b26ea7a10a664fbb242040a0441b7355d2a9e4a01f2dd0bd0b
     .claude/skills/jp/references/fallback.md: sha256:3d1b7e48a7bec8e0c531e3c865f13236ce24ec2b4d67f92c28218d9510b05e45
     .claude/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
   source: local
@@ -362,7 +362,7 @@ deployments:
   - ./.apm/skills/jp
   - .
   active_owner: ./.apm/skills/jp
-  content_hash: sha256:371f198ab6d5430f5b59b326ac985c48ef358a816341b3259e0b8002d0f12e30
+  content_hash: sha256:2c4e392eeb43a8b26ea7a10a664fbb242040a0441b7355d2a9e4a01f2dd0bd0b
 - kind: project-relative
   target: claude
   value: .claude/skills/jp/references/fallback.md
@@ -668,7 +668,7 @@ deployments:
   - ./.apm/skills/jp
   - .
   active_owner: ./.apm/skills/jp
-  content_hash: sha256:371f198ab6d5430f5b59b326ac985c48ef358a816341b3259e0b8002d0f12e30
+  content_hash: sha256:2c4e392eeb43a8b26ea7a10a664fbb242040a0441b7355d2a9e4a01f2dd0bd0b
 - kind: project-relative
   target: codex
   value: .agents/skills/jp/references/fallback.md
@@ -887,7 +887,7 @@ local_deployed_file_hashes:
   .agents/skills/anki/tools/goal.test.ts: sha256:1421e208c572e920557fe20f39b6faf15ca41939a19431d634ede800cc22f0ca
   .agents/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
   .agents/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
-  .agents/skills/jp/SKILL.md: sha256:371f198ab6d5430f5b59b326ac985c48ef358a816341b3259e0b8002d0f12e30
+  .agents/skills/jp/SKILL.md: sha256:2c4e392eeb43a8b26ea7a10a664fbb242040a0441b7355d2a9e4a01f2dd0bd0b
   .agents/skills/jp/references/fallback.md: sha256:3d1b7e48a7bec8e0c531e3c865f13236ce24ec2b4d67f92c28218d9510b05e45
   .agents/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
   .agents/skills/model-it/SKILL.md: sha256:b38a552b687d407de0d02ecbda436bde2c5976b0193120c6b1ed5ba71f31ec1b
@@ -903,7 +903,7 @@ local_deployed_file_hashes:
   .claude/skills/anki/tools/goal.test.ts: sha256:1421e208c572e920557fe20f39b6faf15ca41939a19431d634ede800cc22f0ca
   .claude/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
   .claude/skills/design-it/SKILL.md: sha256:323191880c9660485c9edbb5ec76e6608383027d4a43bf810ffe209739b90b1f
-  .claude/skills/jp/SKILL.md: sha256:371f198ab6d5430f5b59b326ac985c48ef358a816341b3259e0b8002d0f12e30
+  .claude/skills/jp/SKILL.md: sha256:2c4e392eeb43a8b26ea7a10a664fbb242040a0441b7355d2a9e4a01f2dd0bd0b
   .claude/skills/jp/references/fallback.md: sha256:3d1b7e48a7bec8e0c531e3c865f13236ce24ec2b4d67f92c28218d9510b05e45
   .claude/skills/jp/references/writing-rules.md: sha256:b0faea749302e65648e45ac0f113d7288d03720b51f17ff093eed727af0403e9
   .claude/skills/model-it/SKILL.md: sha256:b38a552b687d407de0d02ecbda436bde2c5976b0193120c6b1ed5ba71f31ec1b
