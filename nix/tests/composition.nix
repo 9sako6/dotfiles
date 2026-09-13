@@ -1,6 +1,7 @@
 { self, lib, pkgs }:
 let
   make = module: self.lib.mkHost {
+    configurationRevision = "0123456789abcdef0123456789abcdef01234567-dirty";
     dotfilesDirectory = "/fixture";
     primaryUser = "fixture";
     privateFlake.darwinModules.default = module;
@@ -21,6 +22,9 @@ let
   };
   rejects = module: !(builtins.tryEval (builtins.deepSeq (make module).system.drvPath true)).success;
   results = {
+    cliRevision = (lib.findFirst (package: (package.pname or "") == "dotfiles") null
+      composed.config.environment.systemPackages).DOTFILES_BUILD_REVISION
+      == "0123456789abcdef0123456789abcdef01234567-dirty";
     buildable = (builtins.tryEval composed.system.drvPath).success;
     service = composed.config.launchd.user.agents.fixture.serviceConfig.RunAtLoad;
     tap = builtins.any (tap: tap.name == "fixture/tap") composed.config.homebrew.taps;

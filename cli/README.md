@@ -6,23 +6,23 @@ macOSのシステム設定とHome Managerの反映、エージェント用リソ
 
 ```text
 dotfiles [COMMAND]
-dotfiles help [COMMAND]
 ```
 
 | コマンド | 用途 |
 | --- | --- |
 | [agents](#agents) | エージェント設定とスキルの生成・依存管理 |
 | [apply](#apply) | システムとホーム設定をビルドし、確認後に反映 |
+| [help](#help) | ヘルプを表示 |
 | [plan](#plan) | システムとホーム設定をビルドし、差分・配備計画を表示 |
 | [settings](#settings) | 現在の設定値と設定元を一覧表示 |
-
-`-h` / `--help`でヘルプ、`-V` / `--version`でバージョンを表示します。各サブコマンドでも`--help`を使えます。
+| [version](#version) | ビルド元のコミットを表示 |
 
 ```sh
 dotfiles plan
 dotfiles apply
 dotfiles settings
-dotfiles agents --help
+dotfiles help agents
+dotfiles version
 ```
 
 CLIが未導入の場合や、チェックアウト内の実装を直接実行する場合は、リポジトリルートでCargoを使います。
@@ -32,7 +32,8 @@ DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- plan
 DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- apply
 DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- settings
 DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- agents build
-DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- --help
+DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- help
+cargo run --locked --manifest-path cli/Cargo.toml -- version
 ```
 
 正常終了は終了コード`0`、実行時エラーは`1`、不正な引数は`2`です。引数なしの実行ではヘルプを表示して`1`で終了します。コマンド定義は[src/main.rs](src/main.rs)にあります。
@@ -103,6 +104,26 @@ dotfiles agents remove-local --help
 ```
 
 これらの操作はチェックアウト内の`home/`を更新します。コピー対象の配備は[plan](#plan)で確認し、[apply](#apply)で反映します。
+
+## help
+
+```sh
+dotfiles help
+dotfiles help plan
+dotfiles help agents build
+```
+
+全体や指定したコマンドのヘルプを表示します。下位コマンドの指定にも対応しています。`dotfiles plan --help` や `-h` の形式も利用できます。リポジトリや設定ファイルが存在しない環境でも実行できます。
+
+## version
+
+```sh
+dotfiles version
+dotfiles --version
+dotfiles -V
+```
+
+基本の指定方法は `version` で、各フラグも利用でき出力は同一です。出力形式は `dotfiles <commit>` で、ビルド元リポジトリの完全なコミットハッシュを表示します。ビルド時に追跡ファイルの未コミット変更があれば `-dirty` 接尾辞が付き、由来不明のソースでは `unknown` と表示されます。手動の採番は不要です。値はビルド時に固定されるため、チェックアウトを更新しても再ビルドするまで表示は変わりません。表示にあたってGitやNix、リポジトリ、設定は不要です。
 
 ## 実行対象の選択
 

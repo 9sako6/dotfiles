@@ -13,7 +13,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[command(
     name = "dotfiles",
-    version,
+    version = env!("DOTFILES_BUILD_REVISION"),
     about = "Global dotfiles entrypoint",
     long_about = None
 )]
@@ -46,6 +46,8 @@ enum Commands {
     },
     #[command(about = "Show all effective settings and their sources")]
     Settings,
+    #[command(about = "Show the commit used to build this CLI")]
+    Version,
 }
 
 #[derive(clap::Args, Debug)]
@@ -76,6 +78,11 @@ fn run() -> Result<ExitCode> {
         return Ok(ExitCode::from(1));
     };
 
+    if let Commands::Version = command {
+        print!("{}", Cli::command().render_version());
+        return Ok(ExitCode::SUCCESS);
+    }
+
     if let Commands::CompleteApply {
         source,
         paths,
@@ -88,7 +95,7 @@ fn run() -> Result<ExitCode> {
     }
     let dotfiles_dir = resolve_dotfiles_dir()?;
     match command {
-        Commands::CompleteApply { .. } => unreachable!(),
+        Commands::CompleteApply { .. } | Commands::Version => unreachable!(),
         Commands::Agents { operation } => agents::run(operation, &dotfiles_dir),
         Commands::Plan { options } => {
             system::run(system::Mode::Plan, &dotfiles_dir, options.show_trace)

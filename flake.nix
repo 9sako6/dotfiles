@@ -42,12 +42,15 @@
         name = "dotfiles-user-tools";
         paths = toolset.packages;
       };
-      dotfilesPackage = pkgs.rustPlatform.buildRustPackage {
+      dotfilesRevision = self.rev or self.dirtyRev or "unknown";
+      mkDotfilesPackage = revision: pkgs.rustPlatform.buildRustPackage {
         pname = "dotfiles";
-        version = "0.1.0";
+        version = revision;
         src = ./cli;
         cargoLock.lockFile = ./cli/Cargo.lock;
+        env.DOTFILES_BUILD_REVISION = revision;
       };
+      dotfilesPackage = mkDotfilesPackage dotfilesRevision;
       primaryUser = let user = builtins.getEnv "DARWIN_PRIMARY_USER"; in if user == "" then "fixture" else user;
       defaultConfiguration = (import ./nix/configuration.nix {
         inherit (nixpkgs) lib;
@@ -69,7 +72,9 @@
             modules = [
               self.darwinModules.default
               ({ pkgs, ... }: {
-                environment.systemPackages = [ dotfilesPackage ];
+                environment.systemPackages = [
+                  (mkDotfilesPackage (if configurationRevision == null then dotfilesRevision else configurationRevision))
+                ];
                 assertions = [ {
                   assertion = toString pkgs.path == nixpkgs.outPath;
                   message = "private modules must use the public nixpkgs package set";
