@@ -50,6 +50,12 @@ enum Commands {
 
 #[derive(clap::Args, Debug, Clone)]
 struct SourceArgs {
+    #[arg(
+        long,
+        help = "Show Nix evaluation errors and traces locally; may include private configuration"
+    )]
+    show_trace: bool,
+
     #[arg(long, hide = true)]
     default: bool,
 
@@ -106,7 +112,7 @@ fn run_system_command(
     if source.default || source.url.is_some() {
         anyhow::bail!("URL/--default source selection was removed. Migrate private modules with dotfiles.local.toml; see docs/operations.md.");
     }
-    system::run(mode, dotfiles_dir)
+    system::run(mode, dotfiles_dir, source.show_trace)
 }
 
 fn resolve_dotfiles_dir() -> Result<PathBuf> {

@@ -133,7 +133,7 @@ impl Snapshot {
     }
 }
 
-pub fn run(mode: Mode, root: &Path) -> Result<ExitCode> {
+pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     let user = String::from_utf8(capture(
         Command::new("/usr/bin/id").arg("-un"),
         "cannot identify login user",
@@ -181,7 +181,7 @@ pub fn run(mode: Mode, root: &Path) -> Result<ExitCode> {
     let manifest = workspace.path().join("inputs.json");
     fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
     let configuration: Configuration =
-        evaluate_configuration(&nix, &public.source, &manifest, "configuration")?;
+        evaluate_configuration(&nix, &public.source, &manifest, "configuration", show_trace)?;
     let private = configuration.private.path.as_ref().map(|path| -> Result<Snapshot> {
         let directory = root.join(path).canonicalize().context("dotfiles.local.toml: private.path: checkout does not exist")?;
         let data = env::var_os("XDG_DATA_HOME").map(PathBuf::from).filter(|p| p.is_absolute()).unwrap_or_else(|| home.join(".local/share"));
@@ -227,7 +227,7 @@ pub fn run(mode: Mode, root: &Path) -> Result<ExitCode> {
     if configuration.localllm.enabled {
         println!("Local LLM is enabled: the first build downloads approximately 16 GB of pinned model data and its runtime.");
     }
-    let outputs: Outputs = evaluate(&nix, &public.source, &manifest, "outputs")?;
+    let outputs: Outputs = evaluate(&nix, &public.source, &manifest, "outputs", show_trace)?;
     let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
     let system = build(&nix, &outputs.system, &workspace.path().join("system"))?;
     let brewfile = build(&nix, &outputs.brewfile, &workspace.path().join("brewfile"))?;
@@ -298,7 +298,7 @@ pub fn load_settings(root: &Path) -> Result<Vec<Setting>> {
             "publicSource": public.source,
         }))?,
     )?;
-    let settings = evaluate_configuration(&nix, &public.source, &manifest, "settings")?;
+    let settings = evaluate_configuration(&nix, &public.source, &manifest, "settings", false)?;
     public.verify()?;
     verify_local(&local_path, &local)?;
     Ok(settings)
@@ -335,8 +335,9 @@ fn evaluate_configuration<T: serde::de::DeserializeOwned>(
     source: &Path,
     manifest: &Path,
     operation: &str,
+    show_trace: bool,
 ) -> Result<T> {
-    let parsed: ConfigurationResult<T> = evaluate(nix, source, manifest, operation)?;
+    let parsed: ConfigurationResult<T> = evaluate(nix, source, manifest, operation, show_trace)?;
     if !parsed.errors.is_empty() {
         bail!("{}", parsed.errors.join("\n"));
     }
@@ -367,26 +368,37 @@ fn evaluate<T: serde::de::DeserializeOwned>(
     source: &Path,
     manifest: &Path,
     operation: &str,
+    show_trace: bool,
 ) -> Result<T> {
-    let bytes = capture(
-        nix_command(nix)
-            .args([
-                "eval",
-                "--impure",
-                "--json",
-                "--no-write-lock-file",
-                "--no-update-lock-file",
-                "--file",
-            ])
-            .arg(source.join("nix/host-input.nix"))
-            .env("DOTFILES_INPUT_MANIFEST", manifest)
-            .env("DOTFILES_INPUT_OPERATION", operation),
-        if matches!(operation, "configuration" | "settings") {
-            "dotfiles.toml / dotfiles.local.toml: invalid TOML or unreadable configuration (source values omitted)"
-        } else {
-            "Nix host composition failed: check private darwinModules.default, locked dependencies, option conflicts and package compatibility (private evaluation output omitted)"
-        },
-    )?;
+    let mut command = nix_command(nix);
+    command
+        .args([
+            "eval",
+            "--impure",
+            "--json",
+            "--no-write-lock-file",
+            "--no-update-lock-file",
+            "--file",
+        ])
+        .arg(source.join("nix/host-input.nix"))
+        .env("DOTFILES_INPUT_MANIFEST", manifest)
+        .env("DOTFILES_INPUT_OPERATION", operation);
+    if show_trace {
+        command.arg("--show-trace");
+    }
+    let error = if matches!(operation, "configuration" | "settings") {
+        "dotfiles.toml / dotfiles.local.toml: invalid TOML or unreadable configuration"
+    } else {
+        "Nix host composition failed: check private darwinModules.default, locked dependencies, option conflicts and package compatibility"
+    };
+    let error = if show_trace {
+        error.to_owned()
+    } else {
+        format!("{error} (details omitted; run dotfiles plan --show-trace to inspect locally)")
+    };
+    let mut stderr = io::stderr().lock();
+    let diagnostics = show_trace.then_some(&mut stderr as &mut dyn Write);
+    let bytes = capture_with_diagnostics(&mut command, &error, diagnostics)?;
     serde_json::from_slice(&bytes).context("Nix returned invalid JSON")
 }
 
@@ -405,8 +417,19 @@ fn build(nix: &Path, derivation: &str, link: &Path) -> Result<PathBuf> {
 }
 
 fn capture(command: &mut Command, error: &str) -> Result<Vec<u8>> {
+    capture_with_diagnostics(command, error, None)
+}
+
+fn capture_with_diagnostics(
+    command: &mut Command,
+    error: &str,
+    diagnostics: Option<&mut dyn Write>,
+) -> Result<Vec<u8>> {
     let output = command.output().with_context(|| error.to_owned())?;
     if !output.status.success() {
+        if let Some(diagnostics) = diagnostics {
+            diagnostics.write_all(&output.stderr)?;
+        }
         bail!("{error}");
     }
     Ok(output.stdout)
@@ -531,6 +554,44 @@ fn acquire_lock(path: &Path) -> Result<File> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn failed_command_diagnostics_require_explicit_output() {
+        for show_trace in [false, true] {
+            let mut diagnostics = Vec::new();
+            let error = capture_with_diagnostics(
+                Command::new("/bin/sh").args([
+                    "-c",
+                    "printf private-stdout; printf private-error >&2; exit 1",
+                ]),
+                "evaluation failed",
+                show_trace.then_some(&mut diagnostics as &mut dyn Write),
+            )
+            .unwrap_err();
+            assert_eq!(error.to_string(), "evaluation failed");
+            assert_eq!(
+                diagnostics,
+                if show_trace {
+                    b"private-error".as_slice()
+                } else {
+                    b""
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn successful_command_preserves_stdout_without_emitting_diagnostics() {
+        let mut diagnostics = Vec::new();
+        let output = capture_with_diagnostics(
+            Command::new("/bin/sh").args(["-c", "printf result; printf warning >&2"]),
+            "evaluation failed",
+            Some(&mut diagnostics),
+        )
+        .unwrap();
+        assert_eq!(output, b"result");
+        assert!(diagnostics.is_empty());
+    }
 
     #[test]
     fn confirmation_requires_explicit_yes() {

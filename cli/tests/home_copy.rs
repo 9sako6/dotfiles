@@ -7,12 +7,19 @@ fn removed_source_interfaces_explain_migration() {
     let temp = tempfile::tempdir().unwrap();
     fs::write(temp.path().join("flake.nix"), "{}").unwrap();
     for argument in ["--default", "https://example.invalid/private.git"] {
-        cargo_bin_cmd!()
-            .env("DOTFILES_DIR", temp.path())
-            .args(["plan", argument])
-            .assert()
-            .failure()
-            .stderr(predicate::str::contains("dotfiles.local.toml"));
+        for command in ["plan", "apply"] {
+            for flags in [
+                vec![command, argument],
+                vec![command, "--show-trace", argument],
+            ] {
+                cargo_bin_cmd!()
+                    .env("DOTFILES_DIR", temp.path())
+                    .args(flags)
+                    .assert()
+                    .failure()
+                    .stderr(predicate::str::contains("dotfiles.local.toml"));
+            }
+        }
     }
 }
 

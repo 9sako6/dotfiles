@@ -73,6 +73,8 @@ DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- apply
 DOTFILES_DIR="$PWD" cargo run --locked --manifest-path cli/Cargo.toml -- settings
 ```
 
+構成の評価エラーで詳細が省略された場合は、`dotfiles plan --show-trace`でNixのエラーとトレースをその端末に表示する。旧CLIからの移行中は、上記のCargoコマンドの末尾を`-- plan --show-trace`にする。`apply --show-trace`でも指定できるが、原因調査にはシステムを反映しない`plan`を使う。表示には非公開設定が含まれる場合があるため、そのPC内で確認し、公開Issueへそのまま貼り付けない。診断結果のファイル保存やアップロードは行わない。
+
 `dotfiles settings`は、既定値→`dotfiles.toml`→`dotfiles.local.toml`の優先順でマージされた現在の全設定を、`mise settings`と同様にキー・値・設定元の3列で表示します。オプションやキー指定はなく、現在のファイルを対象として`null`や`false`、空配列の値も漏れなく一覧に含めて表示します。なお、既定値が適用されている設定項目の設定元列は空欄として扱われます。
 
 `dotfiles settings`の端末表示では、紫色斜体のKey・Value・Source見出しが表示されます（パイプ出力時は見出しなし）。配列は長さや端末幅、パイプ出力の有無に関わらず、常に要素ごとに改行して出力されます。
