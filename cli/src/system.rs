@@ -539,7 +539,17 @@ fn migration_guard(root: &Path, previous: Option<&Path>, has_local: bool) -> Res
     Ok(())
 }
 
-fn acquire_lock(path: &Path) -> Result<File> {
+struct ApplyLock {
+    file: File,
+}
+
+impl Drop for ApplyLock {
+    fn drop(&mut self) {
+        let _ = fs2::FileExt::unlock(&self.file);
+    }
+}
+
+fn acquire_lock(path: &Path) -> Result<ApplyLock> {
     let file = OpenOptions::new()
         .read(true)
         .write(true)
@@ -548,7 +558,7 @@ fn acquire_lock(path: &Path) -> Result<File> {
         .mode(0o600)
         .open(path)?;
     fs2::FileExt::try_lock_exclusive(&file).context("system apply is already running")?;
-    Ok(file)
+    Ok(ApplyLock { file })
 }
 
 #[cfg(test)]
@@ -631,6 +641,21 @@ mod tests {
         let first = acquire_lock(&path).unwrap();
         assert!(acquire_lock(&path).is_err());
         drop(first);
+        assert!(acquire_lock(&path).is_ok());
+    }
+
+    #[test]
+    fn lock_releases_on_drop_while_a_duplicated_descriptor_remains_open() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("apply.lock");
+        let first = acquire_lock(&path).unwrap();
+        let duplicate = first.file.try_clone().unwrap();
+        assert!(acquire_lock(&path).is_err());
+        drop(first);
+        let second = acquire_lock(&path).unwrap();
+        drop(duplicate);
+        assert!(acquire_lock(&path).is_err());
+        drop(second);
         assert!(acquire_lock(&path).is_ok());
     }
 }
