@@ -61,11 +61,22 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(result.stderr, "")
         rows = {}
         decoder = json.JSONDecoder()
-        for line in result.stdout.splitlines():
+        lines = iter(result.stdout.splitlines())
+        for line in lines:
             key, rest = line.split(maxsplit=1)
-            value, end = decoder.raw_decode(rest)
+            if rest.startswith("["):
+                source = rest[1:].strip() or None
+                parts = ["["]
+                for continuation in lines:
+                    parts.append(continuation.strip())
+                    if continuation.strip() == "]":
+                        break
+                value = json.loads("\n".join(parts))
+            else:
+                value, end = decoder.raw_decode(rest)
+                source = rest[end:].strip() or None
             self.assertNotIn(key, rows)
-            rows[key] = (value, rest[end:].strip() or None)
+            rows[key] = (value, source)
         self.assertEqual(list(rows), sorted(rows))
         return rows
 
@@ -91,9 +102,12 @@ class SettingsTests(unittest.TestCase):
         finally:
             os.close(master)
 
-    def test_terminal_header_and_arrays_adapt_to_width_without_losing_values(self):
+    def test_terminal_header_and_multiline_arrays_preserve_values_at_any_width(self):
         paths = ["a/" + "x" * 18, "b/" + "y" * 18, "c/" + "z" * 18]
-        (self.root / "dotfiles.toml").write_text(f"copy = {json.dumps(paths)}\n")
+        (self.root / "dotfiles.toml").write_text(
+            f"copy = {json.dumps(paths)}\n"
+            '[localllm]\nmodels = ["qwen3.8-27b-4bit"]\n'
+        )
         narrow = self.terminal_settings(80, color=True)
         header = narrow.splitlines()[0]
         for label in ["Key", "Value", "Source"]:
@@ -104,12 +118,15 @@ class SettingsTests(unittest.TestCase):
         self.assertNotIn(paths[0], plain.splitlines()[1])
         for path in paths:
             self.assertEqual(plain.count(json.dumps(path)), 1)
-        self.assertIn("localllm.models", plain)
-        self.assertIn("[]", plain)
         wide = self.terminal_settings(160, color=False)
         self.assertNotIn("\x1b[", wide)
-        self.assertIn(json.dumps(paths), wide.splitlines()[1])
-        self.assertEqual(self.rows(self.settings())["copy"], (paths, "dotfiles.toml"))
+        piped = self.settings()
+        for output in [plain, wide, piped.stdout]:
+            self.assertNotIn(json.dumps(paths), output)
+            self.assertRegex(output, r'localllm.models +\[ +dotfiles.toml\n +"qwen3.8-27b-4bit"\n +\]')
+            for path in paths:
+                self.assertEqual(output.count(json.dumps(path)), 1)
+        self.assertEqual(self.rows(piped)["copy"], (paths, "dotfiles.toml"))
 
     def test_absent_local_file_includes_every_default(self):
         self.assertEqual(self.rows(self.settings()), {

@@ -29,32 +29,15 @@ pub fn run(root: &Path) -> Result<ExitCode> {
 fn format_value(value: &Value) -> String {
     match value {
         Value::Array(values) => format!(
-            "[{}]",
+            "[{}\n]",
             values
                 .iter()
-                .map(format_value)
+                .map(|value| format!("\n  {}", format_value(value)))
                 .collect::<Vec<_>>()
-                .join(", ")
+                .join(",")
         ),
         _ => value.to_string(),
     }
-}
-
-fn format_cell(value: &Value, width: Option<usize>) -> String {
-    let inline = format_value(value);
-    if let Value::Array(values) = value {
-        if !values.is_empty()
-            && width.is_some_and(|width| console::measure_text_width(&inline) > width)
-        {
-            let items = values
-                .iter()
-                .map(|value| format!("  {}", format_value(value)))
-                .collect::<Vec<_>>()
-                .join(",\n");
-            return format!("[\n{items}\n]");
-        }
-    }
-    inline
 }
 
 fn write_settings(
@@ -62,26 +45,12 @@ fn write_settings(
     settings: &[Setting],
     terminal_width: Option<usize>,
 ) -> Result<()> {
-    let key_width = settings
-        .iter()
-        .map(|setting| console::measure_text_width(&setting.key))
-        .max()
-        .unwrap_or(0)
-        .max("Key".len());
-    let source_width = settings
-        .iter()
-        .map(|setting| console::measure_text_width(setting.source.as_deref().unwrap_or_default()))
-        .max()
-        .unwrap_or(0)
-        .max("Source".len());
-    let value_width =
-        terminal_width.map(|width| width.saturating_sub(key_width + source_width + 3));
     let mut builder = Builder::default();
     builder.push_record(["Key", "Value", "Source"]);
     for setting in settings {
         builder.push_record([
             setting.key.clone(),
-            format_cell(&setting.value, value_width),
+            format_value(&setting.value),
             setting.source.clone().unwrap_or_default(),
         ]);
     }
@@ -126,10 +95,14 @@ mod tests {
         assert_eq!(
             String::from_utf8(output).unwrap(),
             concat!(
-                "copy                    [\"a\", \"b\"]   dotfiles.toml\n",
+                "copy                    [            dotfiles.toml\n",
+                "                          \"a\",\n",
+                "                          \"b\"\n",
+                "                        ]\n",
                 "localllm.default_model  null\n",
                 "localllm.enabled        false        dotfiles.local.toml\n",
-                "localllm.models         []           dotfiles.local.toml\n",
+                "localllm.models         [            dotfiles.local.toml\n",
+                "                        ]\n",
                 "private.path            \"../private\" dotfiles.local.toml\n"
             )
         );
