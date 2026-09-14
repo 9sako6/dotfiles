@@ -32,6 +32,9 @@ let
   bunPackage = pkgs.bun;
   expectedBunVersion = "1.3.13";
 
+  ffmpegPackage = pkgs.ffmpeg;
+  expectedFfmpegVersion = "8.1.2";
+
   gitPackage = pkgs.git;
   expectedGitVersion = "2.55.0";
 
@@ -105,6 +108,8 @@ assert pkgs.lib.assertMsg (awscliPackage.version == expectedAwscliVersion)
   "AWS CLI version drifted: expected ${expectedAwscliVersion}, got ${awscliPackage.version}";
 assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
+assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
+  "FFmpeg version drifted: expected ${expectedFfmpegVersion}, got ${ffmpegPackage.version}";
 assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
   "Git version drifted: expected ${expectedGitVersion}, got ${gitPackage.version}";
 assert pkgs.lib.assertMsg (goPackage.version == expectedGoVersion)
@@ -136,6 +141,8 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     # Bun 1.3.13
     bunPackage
+
+    ffmpegPackage
 
     # Git 2.55.0
     gitPackage

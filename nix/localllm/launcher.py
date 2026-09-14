@@ -57,12 +57,17 @@ def clean_environment(state):
     return environment
 
 
-def sandbox(port, server=False):
-    profile = '(version 1) (allow default) (deny network*)'
-    if server:
-        profile += ' (allow network-inbound (local ip "localhost:*"))'
-    else:
-        profile += f' (allow network-outbound (remote ip "localhost:{port}"))'
+def client_environment(state):
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("OPENCODE_")}
+    environment.update(clean_environment(state))
+    environment["HOME"] = str(Path.home())
+    environment["PATH"] = os.environ.get("PATH", os.defpath)
+    environment["OPENCODE_ENABLE_EXA"] = "1"
+    return environment
+
+
+def server_sandbox():
+    profile = '(version 1) (allow default) (deny network*) (allow network-inbound (local ip "localhost:*"))'
     return ["/usr/bin/sandbox-exec", "-p", profile]
 
 
@@ -118,13 +123,13 @@ def profile(model, port, token):
         "skills": {"paths": [], "urls": []},
         "lsp": False,
         "formatter": False,
-        "permission": {"webfetch": "deny", "websearch": "deny", "skill": "deny"},
+        "permission": {"webfetch": "allow", "websearch": "allow", "skill": "deny"},
         "provider": {
             "localllm": {
                 "npm": "@ai-sdk/openai-compatible",
                 "name": "Local MLX",
                 "options": {"baseURL": f"http://127.0.0.1:{port}/v1", "apiKey": token},
-                "models": {"model": {"id": model, "name": "Local model", "limit": {"context": 8192, "output": 1024}}},
+                "models": {"model": {"id": model, "name": "Local model", "limit": {"context": 16384, "output": 1024}}},
             }
         },
     }
@@ -148,11 +153,11 @@ def run_client(settings, state, project, model, port, token, arguments):
     expected = profile(model, port, token)
     with tempfile.TemporaryDirectory(prefix="profile-", dir=state) as temporary:
         session = Path(temporary)
-        environment = clean_environment(session)
+        environment = client_environment(session)
         environment["XDG_DATA_HOME"] = str(state / "data")
         environment["XDG_STATE_HOME"] = str(state / "state")
         environment["OPENCODE_CONFIG_CONTENT"] = json.dumps(expected)
-        command = sandbox(port) + [settings["opencode"]]
+        command = [settings["opencode"]]
         inspected = subprocess.run(command + ["debug", "config"], env=environment, cwd=project, capture_output=True, text=True, timeout=30)
         if inspected.returncode:
             raise RuntimeError("OpenCode merged configuration inspection failed")
@@ -196,7 +201,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix="server-", dir=state) as temporary:
             environment = clean_environment(Path(temporary))
             environment["MLX_VLM_SERVER_API_KEY"] = token
-            command = sandbox(port, server=True) + [settings["python"], "-m", "mlx_vlm.server", "--host", "127.0.0.1", "--port", str(port), "--model", settings["model"], "--model-discovery", "served", "--max-tokens", "1024", "--prefill-step-size", "64", "--kv-bits", "4", "--quantized-kv-start", "0", "--max-num-seqs", "1"]
+            command = server_sandbox() + [settings["python"], "-m", "mlx_vlm.server", "--host", "127.0.0.1", "--port", str(port), "--model", settings["model"], "--model-discovery", "served", "--max-tokens", "1024", "--prefill-step-size", "64", "--kv-bits", "4", "--quantized-kv-start", "0", "--max-num-seqs", "1"]
             with owned_process(command, env=environment) as server:
                 wait_ready(server, port, token)
                 print(f"Local model ready on 127.0.0.1:{port}", flush=True)

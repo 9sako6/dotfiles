@@ -64,7 +64,7 @@ class LauncherTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 launcher.verify_profile(changed, expected)
 
-    def test_environment_excludes_inherited_credentials_and_inline_config(self):
+    def test_server_environment_excludes_inherited_credentials_and_inline_config(self):
         with tempfile.TemporaryDirectory() as directory:
             with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret", "HTTP_PROXY": "test-proxy", "OPENCODE_CONFIG_CONTENT": "test-config"}):
                 environment = launcher.clean_environment(Path(directory))
@@ -74,19 +74,36 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(environment["OPENCODE_DISABLE_EXTERNAL_SKILLS"], "1")
             self.assertNotEqual(environment["XDG_DATA_HOME"], os.environ.get("XDG_DATA_HOME"))
 
+    def test_client_preserves_tool_environment_without_inheriting_opencode_overrides(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "user"
+            with mock.patch.dict(os.environ, {
+                "HOME": str(home),
+                "PATH": "/fixture/bin:/usr/bin:/bin",
+                "SHELL": "/bin/zsh",
+                "LOCALLLM_FIXTURE": "tool-setting",
+                "OPENCODE_CONFIG": "/fixture/cloud.json",
+                "OPENCODE_CONFIG_CONTENT": "cloud-config",
+                "OPENCODE_WEBSEARCH_PROVIDER": "parallel",
+            }):
+                environment = launcher.client_environment(Path(directory) / "isolated")
+            self.assertEqual(environment["HOME"], str(home))
+            self.assertEqual(environment["PATH"], "/fixture/bin:/usr/bin:/bin")
+            self.assertEqual(environment["SHELL"], "/bin/zsh")
+            self.assertEqual(environment["LOCALLLM_FIXTURE"], "tool-setting")
+            self.assertNotIn("OPENCODE_CONFIG", environment)
+            self.assertNotIn("OPENCODE_CONFIG_CONTENT", environment)
+            self.assertNotIn("OPENCODE_WEBSEARCH_PROVIDER", environment)
+
     @unittest.skipUnless(sys.platform == "darwin", "macOS network sandbox")
-    def test_network_policy_is_inherited_by_tool_child(self):
-        with socket.socket() as permitted, socket.socket() as forbidden:
-            permitted.bind(("127.0.0.1", 0))
+    def test_server_cannot_initiate_outbound_connections(self):
+        with socket.socket() as forbidden:
             forbidden.bind(("127.0.0.1", 0))
-            permitted.listen()
             forbidden.listen()
-            allowed = permitted.getsockname()[1]
             denied = forbidden.getsockname()[1]
             script = "import socket,sys; s=socket.create_connection(('127.0.0.1', int(sys.argv[1])), timeout=1); s.close()"
             child = "import subprocess,sys; sys.exit(subprocess.call([sys.executable,'-c',sys.argv[1],sys.argv[2]]))"
-            base = launcher.sandbox(allowed) + [sys.executable, "-c", child, script]
-            self.assertEqual(subprocess.run(base + [str(allowed)], capture_output=True).returncode, 0)
+            base = launcher.server_sandbox() + [sys.executable, "-c", child, script]
             self.assertNotEqual(subprocess.run(base + [str(denied)], capture_output=True).returncode, 0)
             forbidden.settimeout(0.1)
             with self.assertRaises(TimeoutError):

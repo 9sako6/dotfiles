@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -14,6 +15,96 @@ import launcher
 
 @unittest.skipUnless(os.environ.get("DOTFILES_TEST_OPENCODE"), "set DOTFILES_TEST_OPENCODE to the Nix OpenCode binary")
 class OpenCodeTests(unittest.TestCase):
+    def test_client_runs_user_commands_and_fetches_web_content(self):
+        calls = []
+        fetched = []
+
+        class WebHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                fetched.append(self.path)
+                body = b"local-web-fixture"
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        class ModelHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = json.dumps({"data": [{"id": "fixture"}]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_POST(self):
+                body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                calls.append(body)
+                if body.get("tools") and not any(message["role"] == "tool" for message in body["messages"]):
+                    delta = {"role": "assistant", "tool_calls": [
+                        {"index": 0, "id": "call_command", "type": "function", "function": {
+                            "name": "bash", "arguments": json.dumps({"command": "local-fixture", "description": "Check user tool environment"}),
+                        }},
+                        {"index": 1, "id": "call_fetch", "type": "function", "function": {
+                            "name": "webfetch", "arguments": json.dumps({"url": web_url, "format": "text"}),
+                        }},
+                    ]}
+                    reason = "tool_calls"
+                else:
+                    delta = {"role": "assistant", "content": "fixture complete"}
+                    reason = "stop"
+                events = [
+                    {"id": "fixture", "object": "chat.completion.chunk", "created": 0, "model": "fixture", "choices": [{"index": 0, "delta": delta, "finish_reason": None}]},
+                    {"id": "fixture", "object": "chat.completion.chunk", "created": 0, "model": "fixture", "choices": [{"index": 0, "delta": {}, "finish_reason": reason}], "usage": {"prompt_tokens": 8000, "completion_tokens": 100, "total_tokens": 8100}},
+                ]
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.end_headers()
+                for event in events:
+                    self.wfile.write(f"data: {json.dumps(event)}\n\n".encode())
+                self.wfile.write(b"data: [DONE]\n\n")
+
+            def log_message(self, *args):
+                pass
+
+        with http.server.ThreadingHTTPServer(("127.0.0.1", 0), WebHandler) as web, http.server.ThreadingHTTPServer(("127.0.0.1", 0), ModelHandler) as model, tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "state").mkdir()
+            home = root / "user"
+            home.mkdir()
+            binary = root / "bin"
+            binary.mkdir()
+            tool = binary / "local-fixture"
+            tool.write_text('#!/bin/sh\nprintf "home=%s setting=%s\\n" "$HOME" "$LOCALLLM_FIXTURE"\n')
+            tool.chmod(0o755)
+            web_url = f"http://127.0.0.1:{web.server_address[1]}/fixture"
+            workers = [threading.Thread(target=server.serve_forever, daemon=True) for server in (web, model)]
+            for worker in workers:
+                worker.start()
+            environment = dict(os.environ, HOME=str(home), PATH=str(binary) + os.pathsep + os.defpath, SHELL="/bin/sh", LOCALLLM_FIXTURE="inherited", PYTHONPATH=str(Path(launcher.__file__).parent))
+            script = "import launcher,sys; from pathlib import Path; sys.exit(launcher.run_client({'opencode':sys.argv[1]},Path(sys.argv[2]),sys.argv[3],'fixture',int(sys.argv[4]),'fixture-token',['run','--format','json','Run the fixture tools.']))"
+            try:
+                result = subprocess.run([sys.executable, "-c", script, os.environ["DOTFILES_TEST_OPENCODE"], str(root / "state"), temporary, str(model.server_address[1])], env=environment, capture_output=True, text=True, timeout=45)
+                self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+                self.assertGreaterEqual(len(calls), 2, result.stdout)
+                self.assertLessEqual(len(calls), 4, result.stdout)
+                tool_calls = [call for call in calls if call.get("tools")]
+                self.assertTrue(tool_calls, result.stdout)
+                tools = {tool["function"]["name"] for tool in tool_calls[0]["tools"]}
+                self.assertTrue({"bash", "webfetch", "websearch"}.issubset(tools), tools)
+                outputs = json.dumps([message for call in tool_calls for message in call["messages"] if message["role"] == "tool"])
+                self.assertIn(f"home={home} setting=inherited", outputs)
+                self.assertIn("local-web-fixture", outputs)
+                self.assertEqual(fetched, ["/fixture"])
+                self.assertTrue(all(call["model"] == "fixture" for call in calls))
+            finally:
+                for server in (web, model):
+                    server.shutdown()
+                for worker in workers:
+                    worker.join()
+
     def test_actual_client_ignores_global_project_and_inline_cloud_configuration(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -31,10 +122,10 @@ class OpenCodeTests(unittest.TestCase):
                 "OPENCODE_CONFIG_CONTENT": json.dumps(malicious),
                 "OPENCODE_CONFIG": str(project / "opencode.json"),
             }):
-                env = launcher.clean_environment(root / "isolated")
+                env = launcher.client_environment(root / "isolated")
             expected = launcher.profile("fixture", 12345, "fixture-token")
             env["OPENCODE_CONFIG_CONTENT"] = json.dumps(expected)
-            command = launcher.sandbox(12345) + [os.environ["DOTFILES_TEST_OPENCODE"]]
+            command = [os.environ["DOTFILES_TEST_OPENCODE"]]
             result = subprocess.run(command + ["debug", "config"], env=env, cwd=project, capture_output=True, text=True, timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
             launcher.verify_profile(json.loads(result.stdout), expected)
@@ -59,9 +150,9 @@ class OpenCodeTests(unittest.TestCase):
             worker = threading.Thread(target=server.serve_forever, daemon=True)
             worker.start()
             port = server.server_address[1]
-            env = launcher.clean_environment(Path(temporary))
+            env = launcher.client_environment(Path(temporary))
             env["OPENCODE_CONFIG_CONTENT"] = json.dumps(launcher.profile("fixture", port, "fixture-token"))
-            command = launcher.sandbox(port) + [os.environ["DOTFILES_TEST_OPENCODE"], "run", "--format", "json", "Respond with the word fixture."]
+            command = [os.environ["DOTFILES_TEST_OPENCODE"], "run", "--format", "json", "Respond with the word fixture."]
             try:
                 result = subprocess.run(command, env=env, cwd=temporary, capture_output=True, text=True, timeout=45)
                 self.assertTrue(calls, result.stderr + result.stdout)
