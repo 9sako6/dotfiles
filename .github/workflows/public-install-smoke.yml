@@ -93,20 +93,23 @@ jobs:
       - name: Verify home-managed daily-use tools
         run: |
           export PATH="$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH"
+          for tool in fd fzf ghq rg; do
+            test "$(command -v "$tool")" = "$HOME/.nix-profile/bin/$tool"
+          done
           mise exec -- atuin --version
           bun --version
           cargo --version
           mise exec -- codex --version
-          mise exec -- fd --version
-          mise exec -- fzf --version
+          fd --version
+          fzf --version
           mise exec -- gh --version
-          mise exec -- ghq --version
+          ghq --version
           mise exec -- gitleaks version
           git --version
           go version
           herdr --version
           mise exec -- pnpm --version
           quint --version
-          mise exec -- rg --version
+          rg --version
           rustc --version
           mise exec -- zoxide --version

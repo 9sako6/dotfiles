@@ -32,8 +32,38 @@ let
   bunPackage = pkgs.bun;
   expectedBunVersion = "1.3.13";
 
+  fdPackage = pkgs.fd.overrideAttrs (final: previous: {
+    version = "10.5.0";
+    src = pkgs.fetchFromGitHub {
+      owner = "sharkdp";
+      repo = "fd";
+      rev = "v${final.version}";
+      hash = "sha256-X3yrZUBieMO5bauUu2mskfvicLRdQcjbXouFTpz+0eQ=";
+    };
+    cargoHash = "sha256-5ijtWSsHn7ii8+1njwyvyj387FQkMQALKbixkr/nSkk=";
+    cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+      inherit (final) pname src version;
+      hash = final.cargoHash;
+    };
+  });
+  expectedFdVersion = "10.5.0";
+
   ffmpegPackage = pkgs.ffmpeg;
   expectedFfmpegVersion = "8.1.2";
+
+  fzfPackage = pkgs.fzf.overrideAttrs (final: previous: {
+    version = "0.74.4";
+    src = pkgs.fetchFromGitHub {
+      owner = "junegunn";
+      repo = "fzf";
+      tag = "v${final.version}";
+      hash = "sha256-QQ4hwbTeZ6MSojjCFn7dlISz1aGQbewGq4wnfs3/4K0=";
+    };
+  });
+  expectedFzfVersion = "0.74.4";
+
+  ghqPackage = pkgs.ghq;
+  expectedGhqVersion = "1.10.1";
 
   gitPackage = pkgs.git;
   expectedGitVersion = "2.55.0";
@@ -69,6 +99,9 @@ let
 
   quintPackage = pkgs.quint;
   expectedQuintVersion = "0.32.0";
+
+  ripgrepPackage = pkgs.ripgrep;
+  expectedRipgrepVersion = "15.2.0";
 
   rustToolchain = pkgs.rustPackages_1_97;
   expectedRustVersion = "1.97.1";
@@ -108,8 +141,14 @@ assert pkgs.lib.assertMsg (awscliPackage.version == expectedAwscliVersion)
   "AWS CLI version drifted: expected ${expectedAwscliVersion}, got ${awscliPackage.version}";
 assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
+assert pkgs.lib.assertMsg (fdPackage.version == expectedFdVersion)
+  "fd version drifted: expected ${expectedFdVersion}, got ${fdPackage.version}";
 assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
   "FFmpeg version drifted: expected ${expectedFfmpegVersion}, got ${ffmpegPackage.version}";
+assert pkgs.lib.assertMsg (fzfPackage.version == expectedFzfVersion)
+  "fzf version drifted: expected ${expectedFzfVersion}, got ${fzfPackage.version}";
+assert pkgs.lib.assertMsg (ghqPackage.version == expectedGhqVersion)
+  "ghq version drifted: expected ${expectedGhqVersion}, got ${ghqPackage.version}";
 assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
   "Git version drifted: expected ${expectedGitVersion}, got ${gitPackage.version}";
 assert pkgs.lib.assertMsg (goPackage.version == expectedGoVersion)
@@ -120,6 +159,8 @@ assert pkgs.lib.assertMsg (nightlightPackage.version == expectedNightlightVersio
   "Nightlight version drifted: expected ${expectedNightlightVersion}, got ${nightlightPackage.version}";
 assert pkgs.lib.assertMsg (quintPackage.version == expectedQuintVersion)
   "Quint version drifted: expected ${expectedQuintVersion}, got ${quintPackage.version}";
+assert pkgs.lib.assertMsg (ripgrepPackage.version == expectedRipgrepVersion)
+  "ripgrep version drifted: expected ${expectedRipgrepVersion}, got ${ripgrepPackage.version}";
 assert pkgs.lib.assertMsg (rustToolchain.rustc.version == expectedRustVersion)
   "Rust version drifted: expected ${expectedRustVersion}, got ${rustToolchain.rustc.version}";
 assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBrowserVersion)
@@ -142,7 +183,13 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
     # Bun 1.3.13
     bunPackage
 
+    fdPackage
+
     ffmpegPackage
+
+    fzfPackage
+
+    ghqPackage
 
     # Git 2.55.0
     gitPackage
@@ -158,6 +205,8 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     # Quint 0.32.0
     quintPackage
+
+    ripgrepPackage
 
     # Rust 1.97.1
     rustToolchain.rustc
