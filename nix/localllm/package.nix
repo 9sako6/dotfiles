@@ -4,8 +4,10 @@ let
   model = import ./model.nix { inherit pkgs; model = catalog.${configuration.default_model}; };
   runtime = (import ./runtime.nix { inherit inputs pkgs; }).environment;
   opencode = pkgs.opencode;
+  goalPlugin = import ./goal-plugin.nix { inherit pkgs; };
   settings = pkgs.writeText "localllm-launcher.json" (builtins.toJSON {
     inherit model;
+    goal_plugin = "${goalPlugin}";
     opencode = "${opencode}/bin/opencode";
     python = "${runtime}/bin/python";
   });

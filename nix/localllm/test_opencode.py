@@ -84,7 +84,7 @@ class OpenCodeTests(unittest.TestCase):
             for worker in workers:
                 worker.start()
             environment = dict(os.environ, HOME=str(home), PATH=str(binary) + os.pathsep + os.defpath, SHELL="/bin/sh", LOCALLLM_FIXTURE="inherited", PYTHONPATH=str(Path(launcher.__file__).parent))
-            script = "import launcher,sys; from pathlib import Path; sys.exit(launcher.run_client({'opencode':sys.argv[1]},Path(sys.argv[2]),sys.argv[3],'fixture',int(sys.argv[4]),'fixture-token',['run','--format','json','Run the fixture tools.']))"
+            script = "import launcher,sys,os; from pathlib import Path; sys.exit(launcher.run_client({'opencode':sys.argv[1],'goal_plugin':os.environ.get('DOTFILES_TEST_GOAL_PLUGIN')},Path(sys.argv[2]),sys.argv[3],'fixture',int(sys.argv[4]),'fixture-token',['run','--format','json','Run the fixture tools.']))"
             try:
                 result = subprocess.run([sys.executable, "-c", script, os.environ["DOTFILES_TEST_OPENCODE"], str(root / "state"), temporary, str(model.server_address[1])], env=environment, capture_output=True, text=True, timeout=45)
                 self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
@@ -94,6 +94,8 @@ class OpenCodeTests(unittest.TestCase):
                 self.assertTrue(tool_calls, result.stdout)
                 tools = {tool["function"]["name"] for tool in tool_calls[0]["tools"]}
                 self.assertTrue({"bash", "webfetch", "websearch"}.issubset(tools), tools)
+                if os.environ.get("DOTFILES_TEST_GOAL_PLUGIN"):
+                    self.assertTrue({"create_goal", "get_goal", "update_goal"}.issubset(tools), tools)
                 outputs = json.dumps([message for call in tool_calls for message in call["messages"] if message["role"] == "tool"])
                 self.assertIn(f"home={home} setting=inherited", outputs)
                 self.assertIn("local-web-fixture", outputs)

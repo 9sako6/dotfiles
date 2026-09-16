@@ -60,6 +60,7 @@ def clean_environment(state):
 def client_environment(state):
     environment = {key: value for key, value in os.environ.items() if not key.startswith("OPENCODE_")}
     environment.update(clean_environment(state))
+    environment.pop("OPENCODE_PURE")
     environment["HOME"] = str(Path.home())
     environment["PATH"] = os.environ.get("PATH", os.defpath)
     environment["OPENCODE_ENABLE_EXA"] = "1"
@@ -110,14 +111,14 @@ def owned_process(command, **kwargs):
             process.wait()
 
 
-def profile(model, port, token):
+def profile(model, port, token, goal_plugin=None):
     return {
         "model": "localllm/model",
         "small_model": "localllm/model",
         "enabled_providers": ["localllm"],
         "share": "disabled",
         "autoupdate": False,
-        "plugin": [],
+        "plugin": [Path(goal_plugin).as_uri()] if goal_plugin else [],
         "mcp": {},
         "instructions": [],
         "skills": {"paths": [], "urls": []},
@@ -129,7 +130,7 @@ def profile(model, port, token):
                 "npm": "@ai-sdk/openai-compatible",
                 "name": "Local MLX",
                 "options": {"baseURL": f"http://127.0.0.1:{port}/v1", "apiKey": token},
-                "models": {"model": {"id": model, "name": "Local model", "limit": {"context": 16384, "output": 1024}}},
+                "models": {"model": {"id": model, "name": "Local model", "limit": {"context": 262144, "output": 1024}}},
             }
         },
     }
@@ -150,13 +151,16 @@ def run_client(settings, state, project, model, port, token, arguments):
         request(port, token)
     except (OSError, urllib.error.URLError) as error:
         raise RuntimeError("local server is unavailable; no fallback") from error
-    expected = profile(model, port, token)
+    expected = profile(model, port, token, settings.get("goal_plugin"))
     with tempfile.TemporaryDirectory(prefix="profile-", dir=state) as temporary:
         session = Path(temporary)
         environment = client_environment(session)
         environment["XDG_DATA_HOME"] = str(state / "data")
         environment["XDG_STATE_HOME"] = str(state / "state")
         environment["OPENCODE_CONFIG_CONTENT"] = json.dumps(expected)
+        tui_config = Path(environment["XDG_CONFIG_HOME"]) / "opencode" / "tui.json"
+        tui_config.parent.mkdir(parents=True, exist_ok=True)
+        tui_config.write_text(json.dumps({"plugin": expected["plugin"]}))
         command = [settings["opencode"]]
         inspected = subprocess.run(command + ["debug", "config"], env=environment, cwd=project, capture_output=True, text=True, timeout=30)
         if inspected.returncode:

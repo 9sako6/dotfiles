@@ -1,0 +1,9 @@
+{
+  "name": "localllm-goal-plugin-dependencies",
+  "version": "0.1.49",
+  "private": true,
+  "dependencies": {
+    "effect": "3.21.2",
+    "zod": "4.1.8"
+  }
+}

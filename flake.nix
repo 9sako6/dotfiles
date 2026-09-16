@@ -128,6 +128,7 @@
           models = [ "qwen3.8-9b-distill-4bit" ];
         });
         localllmClient = toolset.localllmClient;
+        localllmGoalPlugin = toolset.localllmGoalPlugin;
         localllmRuntime = toolset.localllmRuntime;
         userTools = userToolsPackage;
       };

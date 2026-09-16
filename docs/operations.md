@@ -113,7 +113,9 @@ Nix のガベージコレクションは日本時間で毎日 0:00 に実行さ�
 
 サーバーはメモリを抑えるためKVキャッシュ4bit、prefill 64トークン、同時リクエスト1件とし、システムのGPUメモリ上限や常駐アプリの状態は変更しません。そのため、長い入力では応答までに数分かかることがあります。
 
-従来の8,192ではテストで作業終了後も要約が繰り返された。そのため、Webツールの説明・結果を含める余裕を確保する目的で、OpenCodeに通知する会話上限を16,384トークン、回答は1,024トークンに設定した。
+localllmのOpenCodeに通知する会話上限について、長文の早期要約を避けるためモデル設定に合わせて262,144トークンへと拡張しました。なお、1回あたりの回答上限は1,024トークンのまま維持しています。
+
+@prevalentware/opencode-goal-plugin 0.1.49を採用し、Nixでバージョンとソースハッシュを固定するとともに、依存関係（effect、zod、間接依存）をnix/localllm/goal-plugin/package-lock.jsonにより固定してビルド時にバンドル化しているため、起動時の追加取得は発生しません。「/goal <目的>」でのタスク開始、「/goal」での進捗確認、「/pause_goal」「/resume_goal」による一時停止・再開に対応しています。目的は専用の永続データ領域に保存され、会話要約後のコンテキスト引き継ぎおよび自律的な自動続行が可能です。
 
 Nix管理のユーザーツールに `FFmpeg 8.1.2` を追加し、`ffmpeg` および `ffprobe` を提供します。`dotfiles apply` の実行後は `localllm chat` 上から通常のコマンド名でそのまま実行でき、他の既存コマンドと同様に `PATH` 経由で連携して利用できます。
 
@@ -129,7 +131,7 @@ Nix管理のユーザーツールに `FFmpeg 8.1.2` を追加し、`ffmpeg` お�
   - `localllm` を無効化（`enabled = false`）した構成一式には、LLM 固有の依存関係は一切含まれない。
   - 使用されなくなったモデルデータは後続の Nix ガベージコレクションによって削除されるが、他の構成と共有されている基本依存関係は維持される。
 - **OpenCode 統合とセキュリティ制限:**
-  - OpenCode 1.18.13を採用し、専用のXDG設定および履歴領域を用いて運用します。外部スキルやプラグイン、ユーザー定義MCP、会話共有、外部プロバイダーへの自動切り替えは引き続き無効化されています。クライアントには起動元のPATH、HOME、ツール用環境変数を引き継ぐ一方、OpenCode固有の環境変数は専用設定で置き換えて混入を防ぎ、推論サーバーは最小限の独立した環境で分離して稼働させます。
+  - OpenCode 1.18.13をベースとし、専用のXDG設定および履歴領域を割り当てています。Nix管理下のGoalプラグインのみを有効化し、外部プラグイン、外部スキル、ユーザー定義MCP、会話共有機能、外部プロバイダへの自動切替はすべて無効化しています。クライアントは起動元のPATH、HOME、ツール用環境変数を継承しつつOpenCode固有の環境変数を専用設定で置換し、推論サーバーは最小限の独立環境として分離・運用しています。
   - 推論サーバーは `sandbox-exec` により外向き通信を遮断し、ローカル接続専用の構成を維持します。`OpenCode` 本体および起動される子コマンドはネットワーク接続が可能で、`webfetch` および `websearch` を許可しています。今回のランチャーにより `OPENCODE_ENABLE_EXA=1` が設定され、APIキー不要の[組み込みExa検索](https://opencode.ai/docs/tools/#websearch)が自動的に有効になります。推論はローカルで実行しますが、検索語やアクセス先URL、ツール経由で送信する内容は外部へ送信されます。完全な通信遮断状態ではありません。
   - 自動テストでは、ローカルサーバー不在時における適切な失敗、クラウド推論への自動切り替えが発生しないこと、ユーザーPATH上のコマンド実行とHOME環境の引き継ぎ、Web取得および検索ツールの利用可能性、推論サーバーの外向き通信遮断を検証します。なお、CI上では巨大モデルの展開やGPUによる推論実行は行いません。
 
@@ -146,7 +148,8 @@ cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warning
 cargo test --locked --manifest-path cli/Cargo.toml
 nix build --no-link .#checks.aarch64-darwin.composition .#checks.aarch64-darwin.configuration .#checks.aarch64-darwin.modelFetch
 opencode_package="$(nix build --no-link --print-out-paths .#localllmClient)"
-DOTFILES_TEST_OPENCODE="$opencode_package/bin/opencode" python3 -m unittest discover -s nix/localllm -p 'test_*.py'
+goal_plugin="$(nix build --no-link --print-out-paths .#localllmGoalPlugin)"
+DOTFILES_TEST_OPENCODE="$opencode_package/bin/opencode" DOTFILES_TEST_GOAL_PLUGIN="$goal_plugin" python3 -m unittest discover -s nix/localllm -p 'test_*.py'
 python3 -m unittest discover -s nix/tests -p 'test_*.py'
 nix build --no-link --offline .#checks.aarch64-darwin.modelFetch
 ```
