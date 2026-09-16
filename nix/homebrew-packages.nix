@@ -7,6 +7,5 @@
     "abue-ammar/tinycast/tinycast"
     "bitwarden"
     "ghostty"
-    "raycast"
   ];
 }
