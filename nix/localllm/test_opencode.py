@@ -43,7 +43,7 @@ class OpenCodeTests(unittest.TestCase):
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 calls.append(body)
                 if body.get("tools") and not any(message["role"] == "tool" for message in body["messages"]):
-                    delta = {"role": "assistant", "tool_calls": [
+                    delta = {"role": "assistant", "content": "ユーザー環境とWeb取得を確認します。", "tool_calls": [
                         {"index": 0, "id": "call_command", "type": "function", "function": {
                             "name": "bash", "arguments": json.dumps({"command": "local-fixture", "description": "Check user tool environment"}),
                         }},
@@ -94,6 +94,9 @@ class OpenCodeTests(unittest.TestCase):
                 self.assertTrue(tool_calls, result.stdout)
                 tools = {tool["function"]["name"] for tool in tool_calls[0]["tools"]}
                 self.assertTrue({"bash", "webfetch", "websearch"}.issubset(tools), tools)
+                self.assertIn("ユーザー環境とWeb取得を確認します。", result.stdout)
+                system = "\n".join(message["content"] for message in tool_calls[0]["messages"] if message["role"] == "system")
+                self.assertIn(Path(launcher.__file__).with_name("progress-instructions.md").read_text().strip(), system)
                 if os.environ.get("DOTFILES_TEST_GOAL_PLUGIN"):
                     self.assertTrue({"create_goal", "get_goal", "update_goal"}.issubset(tools), tools)
                 outputs = json.dumps([message for call in tool_calls for message in call["messages"] if message["role"] == "tool"])

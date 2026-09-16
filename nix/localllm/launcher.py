@@ -120,7 +120,7 @@ def profile(model, port, token, goal_plugin=None):
         "autoupdate": False,
         "plugin": [Path(goal_plugin).as_uri()] if goal_plugin else [],
         "mcp": {},
-        "instructions": [],
+        "instructions": [str(Path(__file__).with_name("progress-instructions.md"))],
         "skills": {"paths": [], "urls": []},
         "lsp": False,
         "formatter": False,

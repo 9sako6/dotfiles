@@ -5,6 +5,10 @@ let
   runtime = (import ./runtime.nix { inherit inputs pkgs; }).environment;
   opencode = pkgs.opencode;
   goalPlugin = import ./goal-plugin.nix { inherit pkgs; };
+  launcher = pkgs.linkFarm "localllm-launcher" [
+    { name = "launcher.py"; path = ./launcher.py; }
+    { name = "progress-instructions.md"; path = ./progress-instructions.md; }
+  ];
   settings = pkgs.writeText "localllm-launcher.json" (builtins.toJSON {
     inherit model;
     goal_plugin = "${goalPlugin}";
@@ -14,5 +18,5 @@ let
 in
 assert pkgs.lib.assertMsg (opencode.version == "1.18.13") "OpenCode version drifted from 1.18.13";
 pkgs.writeShellScriptBin "localllm" ''
-  exec ${runtime}/bin/python ${./launcher.py} --settings ${settings} "$@"
+  exec ${runtime}/bin/python ${launcher}/launcher.py --settings ${settings} "$@"
 ''
