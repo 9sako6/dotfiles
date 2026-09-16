@@ -65,7 +65,7 @@ in
     enableZshIntegration = false;
     mutableTaps = false;
     taps."abue-ammar/homebrew-tinycast" = inputs.homebrew-tinycast;
-    trust.casks = [ "abue-ammar/tinycast/tinycast-sequoia" ];
+    trust.casks = [ "abue-ammar/tinycast/tinycast" ];
     user = primaryUser;
   };
 
