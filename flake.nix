@@ -6,6 +6,10 @@
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    homebrew-tinycast = {
+      url = "github:abue-ammar/homebrew-tinycast/main";
+      flake = false;
+    };
     nix-darwin = {
       url = "github:nix-darwin/nix-darwin/master";
       inputs.nixpkgs.follows = "nixpkgs";

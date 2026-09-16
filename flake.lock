@@ -38,6 +38,23 @@
         "type": "github"
       }
     },
+    "homebrew-tinycast": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789505887,
+        "narHash": "sha256-eoxILzYPNj6wsJowiju0V2/CSYZ4xsuzpzjmsYRLvLk=",
+        "owner": "abue-ammar",
+        "repo": "homebrew-tinycast",
+        "rev": "10ff254a225fd637b94d230e6726291e2629b5e5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "abue-ammar",
+        "ref": "main",
+        "repo": "homebrew-tinycast",
+        "type": "github"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
@@ -144,6 +161,7 @@
     "root": {
       "inputs": {
         "home-manager": "home-manager",
+        "homebrew-tinycast": "homebrew-tinycast",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs",

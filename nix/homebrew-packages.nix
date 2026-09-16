@@ -4,6 +4,7 @@
     "libyaml"
   ];
   casks = [
+    "abue-ammar/tinycast/tinycast-sequoia"
     "bitwarden"
     "ghostty"
     "raycast"

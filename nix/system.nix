@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, inputs, pkgs, ... }:
 
 let
   commandKeyTwiceDictationShortcut = ''
@@ -38,7 +38,7 @@ in
       cleanup = "uninstall";
       upgrade = false;
     };
-    taps = [ ];
+    taps = [ "abue-ammar/tinycast" ];
   };
 
   nix = {
@@ -64,6 +64,8 @@ in
     enableRosetta = false;
     enableZshIntegration = false;
     mutableTaps = false;
+    taps."abue-ammar/homebrew-tinycast" = inputs.homebrew-tinycast;
+    trust.casks = [ "abue-ammar/tinycast/tinycast-sequoia" ];
     user = primaryUser;
   };
 
