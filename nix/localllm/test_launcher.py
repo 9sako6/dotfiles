@@ -15,6 +15,28 @@ import launcher
 
 
 class LauncherTests(unittest.TestCase):
+    def test_chat_server_logs_do_not_overwrite_client_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = "import launcher,os,sys; from pathlib import Path;\nwith launcher.server_process([sys.executable,'-c',\"import sys; print('server stdout'); print('server stderr', file=sys.stderr); assert sys.stdin.read() == ''\"],os.environ,Path(sys.argv[1]),'chat') as server:\n assert server.wait() == 0\nprint('client output')"
+            result = subprocess.run([sys.executable, "-c", script, directory], env=dict(os.environ, PYTHONPATH=str(Path(launcher.__file__).parent)), capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("client output", result.stdout)
+            self.assertNotIn("server stdout", result.stdout + result.stderr)
+            self.assertNotIn("server stderr", result.stdout + result.stderr)
+            log = Path(directory) / "server.log"
+            self.assertIn("server stdout", log.read_text())
+            self.assertIn("server stderr", log.read_text())
+            self.assertEqual(log.stat().st_mode & 0o777, 0o600)
+
+    def test_standalone_server_keeps_terminal_logs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = "import launcher,os,sys; from pathlib import Path;\nwith launcher.server_process([sys.executable,'-c',\"import sys; print('server stdout'); print('server stderr', file=sys.stderr)\"],os.environ,Path(sys.argv[1]),'serve') as server:\n assert server.wait() == 0"
+            result = subprocess.run([sys.executable, "-c", script, directory], env=dict(os.environ, PYTHONPATH=str(Path(launcher.__file__).parent)), capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("server stdout", result.stdout)
+            self.assertIn("server stderr", result.stderr)
+            self.assertFalse((Path(directory) / "server.log").exists())
+
     def test_owned_child_stops_without_terminating_other_process(self):
         other = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
         try:

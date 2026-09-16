@@ -136,6 +136,19 @@ def profile(model, port, token, goal_plugin=None):
     }
 
 
+@contextlib.contextmanager
+def server_process(command, environment, state, operation):
+    with contextlib.ExitStack() as resources:
+        output = {}
+        if operation == "chat":
+            log_path = state / "server.log"
+            log = resources.enter_context(os.fdopen(os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w"))
+            output = {"stdin": subprocess.DEVNULL, "stdout": log, "stderr": subprocess.STDOUT}
+            print(f"Server log: {log_path}", flush=True)
+        with owned_process(command, env=environment, **output) as server:
+            yield server
+
+
 def verify_profile(actual, expected):
     for key in ("model", "small_model", "enabled_providers", "share", "plugin", "mcp", "instructions", "skills", "lsp", "formatter"):
         if actual.get(key) != expected[key]:
@@ -206,7 +219,7 @@ def main():
             environment = clean_environment(Path(temporary))
             environment["MLX_VLM_SERVER_API_KEY"] = token
             command = server_sandbox() + [settings["python"], "-m", "mlx_vlm.server", "--host", "127.0.0.1", "--port", str(port), "--model", settings["model"], "--model-discovery", "served", "--max-tokens", "1024", "--prefill-step-size", "64", "--kv-bits", "4", "--quantized-kv-start", "0", "--max-num-seqs", "1"]
-            with owned_process(command, env=environment) as server:
+            with server_process(command, environment, state, args.operation) as server:
                 wait_ready(server, port, token)
                 print(f"Local model ready on 127.0.0.1:{port}", flush=True)
                 if args.operation == "serve":
