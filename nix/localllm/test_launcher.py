@@ -86,6 +86,20 @@ class LauncherTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 launcher.verify_profile(changed, expected)
 
+    def test_inspection_failure_reports_exit_status_without_leaking_configuration(self):
+        for command, status in [("exit 7", "exit code 7"), ("kill -KILL $$", "SIGKILL")]:
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                client = root / "opencode"
+                client.write_text(f'#!/bin/sh\necho "$OPENCODE_CONFIG_CONTENT" >&2\n{command}\n')
+                client.chmod(0o755)
+                with mock.patch("launcher.request"), mock.patch("launcher.owned_process") as started:
+                    with self.assertRaises(RuntimeError) as raised:
+                        launcher.run_client({"opencode": str(client)}, root, directory, "fixture", 12345, "private-token", [])
+                    self.assertIn(status, str(raised.exception))
+                    self.assertNotIn("private-token", str(raised.exception))
+                    started.assert_not_called()
+
     def test_server_environment_excludes_inherited_credentials_and_inline_config(self):
         with tempfile.TemporaryDirectory() as directory:
             with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret", "HTTP_PROXY": "test-proxy", "OPENCODE_CONFIG_CONTENT": "test-config"}):

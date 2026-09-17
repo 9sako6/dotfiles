@@ -177,7 +177,10 @@ def run_client(settings, state, project, model, port, token, arguments):
         command = [settings["opencode"]]
         inspected = subprocess.run(command + ["debug", "config"], env=environment, cwd=project, capture_output=True, text=True, timeout=30)
         if inspected.returncode:
-            raise RuntimeError("OpenCode merged configuration inspection failed")
+            status = f"exit code {inspected.returncode}"
+            if inspected.returncode < 0:
+                status = signal.Signals(-inspected.returncode).name
+            raise RuntimeError(f"OpenCode merged configuration inspection failed ({status})")
         verify_profile(json.loads(inspected.stdout), expected)
         with owned_process(command + arguments, env=environment, cwd=project) as client:
             return client.wait()

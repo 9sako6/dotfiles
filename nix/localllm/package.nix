@@ -3,7 +3,7 @@ let
   catalog = import ./catalog.nix;
   model = import ./model.nix { inherit pkgs; model = catalog.${configuration.default_model}; };
   runtime = (import ./runtime.nix { inherit inputs pkgs; }).environment;
-  opencode = pkgs.opencode;
+  opencode = import ./client.nix { inherit pkgs; };
   goalPlugin = import ./goal-plugin.nix { inherit pkgs; };
   launcher = pkgs.linkFarm "localllm-launcher" [
     { name = "launcher.py"; path = ./launcher.py; }
