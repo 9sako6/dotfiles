@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-09-13T02:50:00.672606+00:00'
+generated_at: '2026-09-19T06:37:47.532794+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -122,6 +122,24 @@ dependencies:
     .claude/skills/resolve-it/SKILL.md: sha256:d29def3739738c2c82f032bf842371885992846b61b275bd354beaa897f0c5b8
   source: local
   local_path: ./.apm/skills/resolve-it
+- repo_url: dietrichgebert/ponytail
+  name: ponytail
+  host: github.com
+  resolved_commit: e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156
+  resolved_ref: e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156
+  version: unknown
+  virtual_path: skills/ponytail
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/ponytail
+  - .agents/skills/ponytail/SKILL.md
+  - .claude/skills/ponytail
+  - .claude/skills/ponytail/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/ponytail/SKILL.md: sha256:1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2
+    .claude/skills/ponytail/SKILL.md: sha256:1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2
+  content_hash: sha256:210fa0831f649ce9f8a305f7b7c8cf2a0dd09ac4dd53067109941b96e7811d4e
 - repo_url: ikora128/stop-ai-slop-jp
   name: stop-ai-slop-jp
   host: github.com
@@ -421,6 +439,24 @@ deployments:
   - .
   active_owner: ./.apm/skills/model-it
   content_hash: sha256:af557817b18fcfa86f55e0a0c1ec892aa22e0c48e9c9ef926cc9001657de66de
+- kind: project-relative
+  target: claude
+  value: .claude/skills/ponytail
+  runtime: null
+  scope: project
+  owners:
+  - dietrichgebert/ponytail/skills/ponytail
+  active_owner: dietrichgebert/ponytail/skills/ponytail
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/ponytail/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - dietrichgebert/ponytail/skills/ponytail
+  active_owner: dietrichgebert/ponytail/skills/ponytail
+  content_hash: sha256:1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2
 - kind: project-relative
   target: claude
   value: .claude/skills/resolve-it
@@ -727,6 +763,24 @@ deployments:
   - .
   active_owner: ./.apm/skills/model-it
   content_hash: sha256:af557817b18fcfa86f55e0a0c1ec892aa22e0c48e9c9ef926cc9001657de66de
+- kind: project-relative
+  target: codex
+  value: .agents/skills/ponytail
+  runtime: null
+  scope: project
+  owners:
+  - dietrichgebert/ponytail/skills/ponytail
+  active_owner: dietrichgebert/ponytail/skills/ponytail
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/ponytail/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - dietrichgebert/ponytail/skills/ponytail
+  active_owner: dietrichgebert/ponytail/skills/ponytail
+  content_hash: sha256:1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2
 - kind: project-relative
   target: codex
   value: .agents/skills/resolve-it
