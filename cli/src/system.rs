@@ -167,6 +167,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     let selection = Path::new("/etc/nix-darwin/flake.nix");
     let previous = selected_target(selection)?;
     validate_record(root, previous.as_deref())?;
+    let previous_generation = current_generation(Path::new("/run/current-system"))?;
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
     let _lock = if matches!(mode, Mode::Apply) {
@@ -252,11 +253,20 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         &brewfile_drv.drv_path,
         &workspace.path().join("brewfile"),
     )?;
+    println!(
+        "\n{}\n",
+        crate::inventory::preview(previous_generation.as_deref(), &system)?
+    );
     let status = Command::new(&backend)
         .arg("preview")
         .arg(&nix)
         .arg(&system)
         .arg(&brewfile)
+        .arg(
+            previous_generation
+                .as_deref()
+                .unwrap_or(&workspace.path().join("no-active-generation")),
+        )
         .status()?;
     if !status.success() {
         bail!("system preview failed");
@@ -274,9 +284,13 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     if selected_target(selection)? != previous {
         bail!("source record changed after preview; nothing was activated");
     }
+    if current_generation(Path::new("/run/current-system"))? != previous_generation {
+        bail!(
+            "active generation changed after preview; nothing was activated. Run plan/apply again"
+        );
+    }
     let paths = workspace.path().join("copy.json");
     fs::write(&paths, serde_json::to_vec(&configuration.copy)?)?;
-    let previous_generation = Path::new("/run/current-system").canonicalize().ok();
     let status = Command::new(&backend)
         .arg("activate")
         .arg(&nix)
@@ -300,6 +314,17 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         bail!("activation/copy failed; the previous source record is retained. The system may be partially changed. Run: sudo darwin-rebuild switch --rollback. See docs/operations.md for profile and Homebrew recovery");
     }
     Ok(ExitCode::SUCCESS)
+}
+
+fn current_generation(path: &Path) -> Result<Option<PathBuf>> {
+    match fs::symlink_metadata(path) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error).context("cannot inspect active generation"),
+        Ok(_) => path
+            .canonicalize()
+            .map(Some)
+            .context("cannot resolve active generation"),
+    }
 }
 
 pub struct InventoryInputs {
@@ -739,6 +764,25 @@ mod tests {
         assert!(validate_record(root, None).is_ok());
         assert!(validate_record(root, Some(&root.join("flake.nix"))).is_ok());
         assert!(validate_record(root, Some(Path::new("/other/flake.nix"))).is_err());
+    }
+
+    #[test]
+    fn active_generation_tracks_switches_and_rejects_broken_links() {
+        let root = tempfile::tempdir().unwrap();
+        let link = root.path().join("current-system");
+        assert_eq!(current_generation(&link).unwrap(), None);
+        for name in ["old", "new"] {
+            let generation = root.path().join(name);
+            fs::create_dir(&generation).unwrap();
+            let _ = fs::remove_file(&link);
+            std::os::unix::fs::symlink(&generation, &link).unwrap();
+            assert_eq!(
+                current_generation(&link).unwrap(),
+                Some(generation.canonicalize().unwrap())
+            );
+        }
+        fs::remove_dir(root.path().join("new")).unwrap();
+        assert!(current_generation(&link).is_err());
     }
 
     #[test]

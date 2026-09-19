@@ -67,8 +67,14 @@
         modules ? [ ],
         configuration ? defaultConfiguration,
         primaryUser,
+        privateSource ? null,
       }:
         let
+          inventory = darwinSystem.pkgs.writeText "dotfiles-inventory.json" (builtins.toJSON (import ./nix/inventory.nix {
+            inherit configuration inputs privateSource;
+            host = darwinSystem;
+            publicSource = self.outPath;
+          }));
           darwinSystem = nix-darwin.lib.darwinSystem {
             specialArgs = {
               inherit configuration dotfilesDirectory dotfilesSourceHome inputs;
@@ -76,6 +82,9 @@
             modules = [
               self.darwinModules.default
               ({ pkgs, ... }: {
+                system.systemBuilderCommands = ''
+                  ln -s ${inventory} "$out/dotfiles-inventory.json"
+                '';
                 environment.systemPackages = [
                   (mkDotfilesPackage (if configurationRevision == null then dotfilesRevision else configurationRevision))
                 ];
@@ -94,6 +103,7 @@
           };
         in
         darwinSystem // {
+          inherit inventory;
           homebrewBrewfile = darwinSystem.pkgs.writeText
             "Brewfile"
             darwinSystem.config.homebrew.brewfile;
@@ -114,6 +124,7 @@
           "private.path must export darwinModules.default";
         mkDarwinSystem {
           inherit configuration configurationRevision dotfilesDirectory primaryUser;
+          privateSource = if privateFlake == null then null else privateFlake.outPath or null;
           modules = nixpkgs.lib.optional (privateFlake != null) privateFlake.darwinModules.default;
         };
       publicSystem = mkHost {

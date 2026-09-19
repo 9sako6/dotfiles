@@ -10,6 +10,46 @@ REPOSITORY = Path(__file__).resolve().parents[2]
 
 
 class InventoryTests(unittest.TestCase):
+    def test_generation_keeps_its_inventory_and_frozen_skill_source_reachable(self):
+        expression = '''
+          let
+            public = builtins.getFlake ("git+file://" + builtins.getEnv "INVENTORY_REPOSITORY");
+            host = public.lib.mkHost {
+              configurationRevision = "fixture";
+              dotfilesDirectory = "/fixture";
+              primaryUser = "fixture";
+              privateFlake.darwinModules.default = { lib, ... }: {
+                _file = public.outPath + "/fixture-private.nix";
+                system.defaults.dock.show-recents = lib.mkForce true;
+              };
+            };
+          in host.pkgs.runCommand "dotfiles-generation-fixture" {} ''
+            mkdir -p "$out"
+            ${host.config.system.systemBuilderCommands}
+          ''
+        '''
+        result = subprocess.run(
+            ["nix", "build", "--no-link", "--json", "--impure", "--no-write-lock-file",
+             "--no-update-lock-file", "--expr", expression],
+            env={**os.environ, "INVENTORY_REPOSITORY": str(REPOSITORY)},
+            capture_output=True, text=True, timeout=120,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        generation = Path(json.loads(result.stdout)[0]["outputs"]["out"])
+        snapshot = generation / "dotfiles-inventory.json"
+        self.assertTrue(snapshot.is_symlink())
+        inventory = json.loads(snapshot.read_text())
+        values = {setting["key"]: setting["value"] for setting in inventory["system"]}
+        self.assertTrue(values["system.defaults.dock.show-recents"])
+        source = Path(inventory["source"])
+        self.assertTrue((source / "home/apm.yml").is_file())
+        self.assertTrue((source / "home/.agents/skills/jp/SKILL.md").is_file())
+        references = subprocess.check_output(
+            ["nix-store", "--query", "--requisites", str(generation)], text=True,
+        ).splitlines()
+        self.assertIn(str(snapshot.resolve()), references)
+        self.assertIn(str(source), references)
+
     def test_inventory_uses_effective_declarations_without_building_or_exporting_job_secrets(self):
         expression = '''
           let

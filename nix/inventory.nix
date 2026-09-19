@@ -79,6 +79,7 @@ let
   agentPath = path: lib.any (prefix: lib.hasPrefix prefix path)
     [ ".agents/" ".claude/" ".codex/" ".config/opencode/" ];
 in {
+  source = publicSource;
   packages = map nixPackage (builtins.filter (p: lib.getName p != "localllm" && lib.getVersion p != "") home.home.packages)
     ++ [ (nixPackage toolset.ankiConnect) ]
     ++ miseFile "home/.config/mise/config.toml"

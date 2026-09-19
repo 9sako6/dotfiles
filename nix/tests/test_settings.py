@@ -31,7 +31,8 @@ class SettingsTests(unittest.TestCase):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(REPOSITORY / name, destination)
         (self.root / "dotfiles.toml").write_text("copy = []\n")
-        (self.root / "nix/inventory.nix").write_text('''{ configuration, ... }: {
+        (self.root / "nix/inventory.nix").write_text('''{ configuration, publicSource, ... }: {
+          source = publicSource;
           packages = []; system = []; services = []; tools = [];
           localllm = configuration.localllm; timeZone = "UTC";
         }''')

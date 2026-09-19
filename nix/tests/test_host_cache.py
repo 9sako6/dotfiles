@@ -52,11 +52,7 @@ class HostCacheTests(unittest.TestCase):
                       };
                     };
                   in builtins.trace "host-cache-fixture-evaluated" {
-                    pkgs.writeText = name: text: builtins.derivation {
-                      inherit name text;
-                      system = "aarch64-darwin";
-                      builder = "/bin/sh";
-                    };
+                    inventory = builtins.trace "inventory-fixture-evaluated" (make "inventory");
                     homebrewBrewfile = make "Brewfile";
                     system = make "system";
                   };
@@ -70,9 +66,6 @@ class HostCacheTests(unittest.TestCase):
               };
             }''')
             (public / "dotfiles.toml").write_text('value = "original"')
-            (public / "nix/inventory.nix").write_text('''{ configuration, ... }:
-              builtins.trace "inventory-fixture-evaluated" configuration
-            ''')
             private = root / "private"
             private.mkdir()
             (private / "flake.nix").write_text('{ outputs = {self}: { value = "private"; }; }')

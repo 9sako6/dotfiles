@@ -19,103 +19,242 @@ use tabled::Table;
 
 use super::{latest::Checks, Inventory, Service};
 
-pub(super) fn report(inventory: &Inventory, width: Option<usize>) -> String {
-    let mut output = String::new();
-    heading(&mut output, "packages", 0, width.is_some());
-    table(
-        &mut output,
-        &["name", "manager", "declared", "latest"],
-        inventory.packages.iter().map(|p| {
-            vec![
-                p.name.clone(),
-                p.manager.replace(" (", "\n("),
-                p.declared.clone(),
-                p.latest.clone(),
-            ]
-        }),
-        2,
-        width,
-    );
-    heading(&mut output, "system", 0, width.is_some());
+struct Row {
+    key: String,
+    cells: Vec<String>,
+    change: char,
+}
+
+impl Row {
+    fn new(key: String, cells: Vec<String>) -> Self {
+        Self {
+            key,
+            cells,
+            change: ' ',
+        }
+    }
+}
+
+struct Section {
+    path: Vec<String>,
+    headers: Vec<&'static str>,
+    rows: Vec<Row>,
+}
+
+fn sections(inventory: &Inventory, latest: bool) -> Vec<Section> {
+    let mut headers = vec!["name", "manager", "declared"];
+    if latest {
+        headers.push("latest");
+    }
+    let mut sections = vec![Section {
+        path: vec!["packages".into()],
+        headers,
+        rows: inventory
+            .packages
+            .iter()
+            .map(|package| {
+                let mut cells = vec![
+                    package.name.clone(),
+                    package.manager.replace(" (", "\n("),
+                    package.declared.clone(),
+                ];
+                if latest {
+                    cells.push(package.latest.clone());
+                }
+                Row::new(format!("{}\0{}", package.name, package.manager), cells)
+            })
+            .collect(),
+    }];
     let mut groups = BTreeMap::<_, Vec<_>>::new();
     for setting in &inventory.system {
-        groups.entry(&setting.group).or_default().push(vec![
-            setting.name.clone(),
-            value(&setting.value),
-            setting_description(&setting.name, &setting.value),
-        ]);
+        groups
+            .entry(setting.group.clone())
+            .or_default()
+            .push(Row::new(
+                setting.key.clone(),
+                vec![
+                    setting.name.clone(),
+                    value(&setting.value),
+                    setting_description(&setting.name, &setting.value),
+                ],
+            ));
     }
-    let headers = &["setting", "value", "description"];
-    let system_width = width.map(|w| w.saturating_sub(4));
-    let combined = build_table(
-        headers,
-        groups.values().flatten().cloned(),
-        system_width,
-        None,
-    );
-    let mut dimensions = combined.get_dimension().clone();
-    dimensions.estimate(combined.get_records(), combined.get_config());
-    for (group, settings) in groups {
-        heading(&mut output, group, 2, width.is_some());
-        write_table(
-            &mut output,
-            build_table(headers, settings, system_width, dimensions.get_widths()),
-            4,
-        );
-    }
-    heading(&mut output, "services", 0, width.is_some());
-    table(
-        &mut output,
-        &["name", "mode", "start", "restart", "description"],
-        inventory
+    sections.extend(groups.into_iter().map(|(group, rows)| Section {
+        path: vec!["system".into(), group],
+        headers: vec!["setting", "value", "description"],
+        rows,
+    }));
+    sections.push(Section {
+        path: vec!["services".into()],
+        headers: vec!["name", "mode", "start", "restart", "description"],
+        rows: inventory
             .services
             .iter()
-            .map(|s| service(s, &inventory.time_zone)),
-        2,
-        width,
-    );
-    heading(&mut output, "agents", 0, width.is_some());
-    heading(&mut output, "skills", 2, width.is_some());
-    table(
-        &mut output,
-        &["name", "origin", "description"],
-        inventory
+            .map(|s| {
+                Row::new(
+                    format!("{}\0{}", s.name, s.scope),
+                    service(s, &inventory.time_zone),
+                )
+            })
+            .collect(),
+    });
+    sections.push(Section {
+        path: vec!["agents".into(), "skills".into()],
+        headers: vec!["name", "origin", "description"],
+        rows: inventory
             .skills
             .iter()
-            .map(|s| vec![s.name.clone(), s.origin.clone(), s.description.clone()]),
-        4,
-        width,
-    );
-    heading(&mut output, "tools", 2, width.is_some());
-    table(
-        &mut output,
-        &["tool", "deploy", "file"],
-        inventory.tools.iter().map(|t| {
+            .map(|s| {
+                Row::new(
+                    s.name.clone(),
+                    vec![s.name.clone(), s.origin.clone(), s.description.clone()],
+                )
+            })
+            .collect(),
+    });
+    sections.push(Section {
+        path: vec!["agents".into(), "tools".into()],
+        headers: vec!["tool", "deploy", "file"],
+        rows: inventory
+            .tools
+            .iter()
+            .map(|t| {
+                Row::new(
+                    t.path.clone(),
+                    vec![
+                        tool(&t.path).into(),
+                        t.deploy.clone(),
+                        format!("~/{}", t.path),
+                    ],
+                )
+            })
+            .collect(),
+    });
+    sections.push(Section {
+        path: vec!["agents".into(), "localllm".into()],
+        headers: vec!["enabled", "default model", "description"],
+        rows: vec![Row::new(
+            "localllm".into(),
             vec![
-                tool(&t.path).into(),
-                t.deploy.clone(),
-                format!("~/{}", t.path),
-            ]
-        }),
-        4,
-        width,
+                inventory.localllm.enabled.to_string(),
+                inventory
+                    .localllm
+                    .default_model
+                    .clone()
+                    .unwrap_or_else(|| "—".into()),
+                "コマンド実行時のみ推論サーバーを起動し、終了時にプロセスを停止する。".into(),
+            ],
+        )],
+    });
+    sections
+}
+
+pub(super) fn report(inventory: &Inventory, width: Option<usize>) -> String {
+    render_sections(&sections(inventory, true), width)
+}
+
+pub(super) fn diff(before: Option<&Inventory>, after: &Inventory, width: Option<usize>) -> String {
+    let mut previous: BTreeMap<_, _> = before
+        .into_iter()
+        .flat_map(|inventory| sections(inventory, false))
+        .map(|section| (section.path.clone(), section))
+        .collect();
+    let mut changed = Vec::new();
+    for mut section in sections(after, false) {
+        let old = previous
+            .remove(&section.path)
+            .map(|s| s.rows)
+            .unwrap_or_default();
+        section.rows = changed_rows(old, section.rows);
+        if !section.rows.is_empty() {
+            changed.push(section);
+        }
+    }
+    for (_, mut section) in previous {
+        section.rows = changed_rows(section.rows, Vec::new());
+        if !section.rows.is_empty() {
+            changed.push(section);
+        }
+    }
+    changed.sort_by_key(|section| {
+        let rank = match section.path[0].as_str() {
+            "packages" => 0,
+            "system" => 1,
+            "services" => 2,
+            _ => 3,
+        };
+        let subgroup = match section.path.get(1).map(String::as_str) {
+            Some("skills") => 0,
+            Some("tools") => 1,
+            Some("localllm") => 2,
+            _ => 0,
+        };
+        (rank, subgroup, section.path.clone())
+    });
+    if changed.is_empty() {
+        return "no resource changes".into();
+    }
+    render_sections(&changed, width)
+}
+
+fn changed_rows(before: Vec<Row>, mut after: Vec<Row>) -> Vec<Row> {
+    let mut rows = Vec::new();
+    for mut old in before {
+        if let Some(index) = after
+            .iter()
+            .position(|new| old.key == new.key && old.cells == new.cells)
+        {
+            after.remove(index);
+        } else {
+            old.change = '-';
+            rows.push(old);
+        }
+    }
+    rows.extend(after.into_iter().map(|mut row| {
+        row.change = '+';
+        row
+    }));
+    rows.sort_by_key(|row| (row.key.to_lowercase(), row.key.clone(), row.change != '-'));
+    rows
+}
+
+fn render_sections(sections: &[Section], width: Option<usize>) -> String {
+    let system_table = build_table(
+        &["setting", "value", "description"],
+        sections
+            .iter()
+            .filter(|s| s.path[0] == "system")
+            .flat_map(|s| s.rows.iter().map(|r| r.cells.clone())),
+        width.map(|w| w.saturating_sub(4)),
+        None,
     );
-    heading(&mut output, "localllm", 2, width.is_some());
-    table(
-        &mut output,
-        &["enabled", "default model", "description"],
-        [vec![
-            inventory.localllm.enabled.to_string(),
-            inventory
-                .localllm
-                .default_model
-                .clone()
-                .unwrap_or_else(|| "—".into()),
-            "コマンド実行時のみ推論サーバーを起動し、終了時にプロセスを停止する。".into(),
-        ]],
-        4,
-        width,
-    );
+    let mut system_dimensions = system_table.get_dimension().clone();
+    system_dimensions.estimate(system_table.get_records(), system_table.get_config());
+    let mut output = String::new();
+    let mut previous: &[String] = &[];
+    for section in sections {
+        let shared = previous
+            .iter()
+            .zip(&section.path)
+            .take_while(|(a, b)| a == b)
+            .count();
+        for (depth, name) in section.path.iter().enumerate().skip(shared) {
+            heading(&mut output, name, depth * 2, width.is_some());
+        }
+        let indent = section.path.len() * 2;
+        let table = build_table(
+            &section.headers,
+            section.rows.iter().map(|row| row.cells.clone()),
+            width.map(|w| w.saturating_sub(indent)),
+            if section.path[0] == "system" {
+                system_dimensions.get_widths()
+            } else {
+                None
+            },
+        );
+        write_table(&mut output, table, indent, &section.rows, width.is_some());
+        previous = &section.path;
+    }
     output.trim_end().to_owned()
 }
 
@@ -158,20 +297,6 @@ fn heading(output: &mut String, text: &str, indent: usize, color: bool) {
     output.push('\n');
 }
 
-fn table(
-    output: &mut String,
-    headers: &[&str],
-    rows: impl IntoIterator<Item = Vec<String>>,
-    indent: usize,
-    width: Option<usize>,
-) {
-    write_table(
-        output,
-        build_table(headers, rows, width.map(|w| w.saturating_sub(indent)), None),
-        indent,
-    );
-}
-
 fn build_table(
     headers: &[&str],
     rows: impl IntoIterator<Item = Vec<String>>,
@@ -206,11 +331,38 @@ fn build_table(
     table
 }
 
-fn write_table(output: &mut String, table: Table, indent: usize) {
-    for line in table.to_string().lines() {
-        output.push_str(&" ".repeat(indent));
-        output.push_str(line.trim_end());
-        output.push('\n');
+fn write_table(output: &mut String, table: Table, indent: usize, rows: &[Row], color: bool) {
+    let mut dimensions = table.get_dimension().clone();
+    dimensions.estimate(table.get_records(), table.get_config());
+    let rendered = table.to_string();
+    let mut lines = rendered.lines();
+    for (index, height) in dimensions
+        .get_heights()
+        .unwrap_or_default()
+        .iter()
+        .enumerate()
+    {
+        let change = index.checked_sub(1).map(|i| rows[i].change).unwrap_or(' ');
+        for line in lines.by_ref().take(*height) {
+            if change == ' ' {
+                output.push_str(&" ".repeat(indent));
+                output.push_str(line.trim_end());
+            } else {
+                let line = format!("{change}{}{line}", " ".repeat(indent.saturating_sub(1)));
+                let style = console::style(line.trim_end());
+                let style = if change == '-' {
+                    style.red()
+                } else {
+                    style.green()
+                };
+                output.push_str(
+                    &style
+                        .force_styling(color && console::colors_enabled())
+                        .to_string(),
+                );
+            }
+            output.push('\n');
+        }
     }
 }
 
@@ -493,6 +645,71 @@ fn mark_cancelled(inventory: &mut Inventory) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn diff_omits_unchanged_rows_and_keeps_removed_groups_and_wrapped_columns_aligned() {
+        let before = serde_json::json!({
+            "source": "/fixture",
+            "packages": [
+                {"name": "stable", "manager": "Nix", "declared": "1", "lookup": null},
+                {"name": "node", "manager": "mise", "declared": "1", "lookup": null}
+            ],
+            "system": [
+                {"key": "system.defaults.dock.show-recents", "group": "system.defaults.dock", "name": "show-recents", "value": true},
+                {"key": "system.defaults.finder.AppleShowAllExtensions", "group": "system.defaults.finder", "name": "AppleShowAllExtensions", "value": true}
+            ],
+            "services": [], "tools": [], "timeZone": "UTC",
+            "localllm": {"enabled": false, "default_model": null}
+        });
+        let mut after = before.clone();
+        after["packages"][1]["declared"] = "2".into();
+        after["packages"].as_array_mut().unwrap().reverse();
+        after["system"][0]["value"] = false.into();
+        after["system"].as_array_mut().unwrap().pop();
+        let before: Inventory = serde_json::from_value(before).unwrap();
+        let after: Inventory = serde_json::from_value(after).unwrap();
+        for width in [None, Some(60), Some(80), Some(120)] {
+            let result = diff(Some(&before), &after, width);
+            let result = console::strip_ansi_codes(&result);
+            assert!(!result.contains("stable"));
+            assert!(!result.contains("latest"));
+            assert!(!result.contains("agents"));
+            assert!(!result.contains("services"));
+            assert!(result.contains("system.defaults.finder"));
+            let headers: Vec<_> = result
+                .lines()
+                .filter(|line| line.trim_start().starts_with("setting "))
+                .collect();
+            assert_eq!(headers.len(), 2);
+            assert_eq!(headers[0], headers[1]);
+            let descriptions = result
+                .split("system.defaults.dock\n")
+                .nth(1)
+                .unwrap()
+                .split("system.defaults.finder\n")
+                .next()
+                .unwrap();
+            assert!(
+                descriptions
+                    .lines()
+                    .filter(|line| line.starts_with('-'))
+                    .count()
+                    >= 1
+            );
+            assert!(
+                descriptions
+                    .lines()
+                    .filter(|line| line.starts_with('+'))
+                    .count()
+                    >= 1
+            );
+            if let Some(width) = width {
+                assert!(result
+                    .lines()
+                    .all(|line| console::measure_text_width(line) <= width));
+            }
+        }
+    }
 
     #[test]
     fn scheduling_distinguishes_interval_calendar_and_login() {
