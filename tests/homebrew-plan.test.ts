@@ -15,6 +15,8 @@ async function runHomebrewMissingPlan(
   brewBin: string,
   exitStatus: number,
   output: string,
+  formulae = "",
+  casks = "",
 ) {
   const process = Bun.spawn([
     "/bin/sh",
@@ -26,6 +28,8 @@ async function runHomebrewMissingPlan(
   ], {
     env: {
       ...Bun.env,
+      INSTALLED_FORMULAE: formulae,
+      INSTALLED_CASKS: casks,
       BREW_EXIT_STATUS: String(exitStatus),
       BREW_OUTPUT: output,
     },
@@ -45,6 +49,10 @@ describe("Homebrew dependency plan", () => {
     await withTempDir("homebrew-missing-plan", async (tempDir) => {
       const brewBin = path.join(tempDir, "brew");
       await makeExecutable(brewBin, `#!/bin/sh
+case "$*" in
+  "list --formula --full-name") printf '%s\\n' "$INSTALLED_FORMULAE"; exit 0 ;;
+  "list --cask --full-name") printf '%s\\n' "$INSTALLED_CASKS"; exit 0 ;;
+esac
 printf '%s\n' "$BREW_OUTPUT"
 exit "$BREW_EXIT_STATUS"
 `);
@@ -67,12 +75,16 @@ exit "$BREW_EXIT_STATUS"
     await withTempDir("homebrew-complete-plan", async (tempDir) => {
       const brewBin = path.join(tempDir, "brew");
       await makeExecutable(brewBin, `#!/bin/sh
+case "$*" in
+  "list --formula --full-name") printf '%s\\n' "$INSTALLED_FORMULAE"; exit 0 ;;
+  "list --cask --full-name") printf '%s\\n' "$INSTALLED_CASKS"; exit 0 ;;
+esac
 exit "$BREW_EXIT_STATUS"
 `);
 
       const result = await runHomebrewMissingPlan(brewBin, 0, "");
 
-      expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "none\n" });
+      expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "  No package changes\n" });
     });
   });
 
@@ -80,6 +92,10 @@ exit "$BREW_EXIT_STATUS"
     await withTempDir("homebrew-plan-failure", async (tempDir) => {
       const brewBin = path.join(tempDir, "brew");
       await makeExecutable(brewBin, `#!/bin/sh
+case "$*" in
+  "list --formula --full-name") printf '%s\\n' "$INSTALLED_FORMULAE"; exit 0 ;;
+  "list --cask --full-name") printf '%s\\n' "$INSTALLED_CASKS"; exit 0 ;;
+esac
 printf '%s\n' "$BREW_OUTPUT" >&2
 exit "$BREW_EXIT_STATUS"
 `);
@@ -89,5 +105,78 @@ exit "$BREW_EXIT_STATUS"
       expect(result.exitCode).not.toBe(0);
       expect(result.stderr).toContain("Homebrew dependency plan failed");
     });
+  });
+});
+
+test("distinguishes new casks from installed formula and cask updates", async () => {
+  await withTempDir("homebrew-package-actions", async (tempDir) => {
+    const brewBin = path.join(tempDir, "brew");
+    await makeExecutable(brewBin, `#!/bin/sh
+case "$*" in
+  "list --formula --full-name") printf '%s\\n' "$INSTALLED_FORMULAE"; exit 0 ;;
+  "list --cask --full-name") printf '%s\\n' "$INSTALLED_CASKS"; exit 0 ;;
+esac
+printf '%s\\n' "$BREW_OUTPUT"
+exit "$BREW_EXIT_STATUS"
+`);
+    const result = await runHomebrewMissingPlan(brewBin, 1, [
+      "brew bundle can't satisfy your Brewfile's dependencies.",
+      "→ Cask cryptomator needs to be installed or updated.",
+      "→ Cask tinycast needs to be installed or updated.",
+      "→ Formula steipete/tap/remindctl needs to be installed or updated.",
+      "→ Formula libyaml needs to be installed or updated.",
+      "Satisfy missing dependencies with `brew bundle install`.",
+    ].join("\n"), "other-formula\nsteipete/tap/remindctl", "bitwarden\nabue-ammar/tinycast/tinycast");
+    expect(result).toEqual({exitCode: 0, stderr: "", stdout: [
+      "  + Install cryptomator (cask)",
+      "  ~ Update tinycast (cask)",
+      "  ~ Update steipete/tap/remindctl (formula)",
+      "  + Install libyaml (formula)",
+      "",
+    ].join("\n")});
+  });
+});
+
+test("installed inventory failure does not mislabel updates as installs", async () => {
+  await withTempDir("homebrew-inventory-failure", async (tempDir) => {
+    const brewBin = path.join(tempDir, "brew");
+    await makeExecutable(brewBin, `#!/bin/sh
+case "$1" in
+  list) exit 2 ;;
+esac
+exit 0
+`);
+    const result = await runHomebrewMissingPlan(brewBin, 0, "");
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain("installed formula inspection failed");
+  });
+});
+
+test("summarizes caches while retaining removals and unrelated warnings", async () => {
+  await withTempDir("homebrew-cleanup-summary", async (tempDir) => {
+    const brewBin = path.join(tempDir, "brew");
+    await makeExecutable(brewBin, `#!/bin/sh
+cat <<'OUTPUT'
+Would uninstall casks:
+obsolete-app
+Warning: Skipping steipete/tap/remindctl: most recent version 0.3.6 not installed
+Warning: another problem
+Would \`brew cleanup\`:
+Would remove: /cache/first (13KB)
+Would remove: /cache/second (20KB)
+Run \`brew bundle cleanup --force\` to make these changes.
+OUTPUT
+exit 1
+`);
+    const process = Bun.spawn(["/bin/sh", "-c",
+      '. "$1"; install_system_show_homebrew_cleanup "$2" /Brewfile',
+      "cleanup-test", installSystemLibrary, brewBin,
+    ], {stdout: "pipe", stderr: "pipe"});
+    const stdout = await new Response(process.stdout).text();
+    expect(await process.exited).toBe(0);
+    expect(stdout).toBe([
+      "Would uninstall casks:", "obsolete-app", "Warning: another problem",
+      "  Cache and old-version cleanup: 2 entries", "",
+    ].join("\n"));
   });
 });

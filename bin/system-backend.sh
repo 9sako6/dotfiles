@@ -20,7 +20,7 @@ case "$operation" in
       printf 'system diff: no active nix-darwin generation\n'
     fi
     if brew_bin="$(command -v brew 2>/dev/null)"; then
-      printf 'Homebrew missing dependencies:\n'
+      printf 'Homebrew package changes:\n'
       install_system_show_homebrew_missing "$brew_bin" "$brewfile_path"
       printf 'Homebrew cleanup candidates:\n'
       install_system_show_homebrew_cleanup "$brew_bin" "$brewfile_path"

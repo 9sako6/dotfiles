@@ -137,18 +137,45 @@ install_system_show_homebrew_missing() {
       "$brew_bin" bundle check --verbose --file "$brewfile_path" 2>&1
   )" || check_status=$?
   case "$check_status" in
-    0)
-      if [ -n "$check_output" ]; then
-        printf '%s\n' "$check_output"
-      else
-        printf 'none\n'
-      fi
+    0 | 1) ;;
+    *)
+      printf '%s\n' "$check_output" >&2
+      install_system_fail "Homebrew dependency plan failed"
       ;;
-    1)
-      [ -z "$check_output" ] || printf '%s\n' "$check_output"
-      ;;
-    *) install_system_fail "Homebrew dependency plan failed" ;;
   esac
+  installed_formulae="$(HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" list --formula --full-name)" ||
+    install_system_fail "Homebrew installed formula inspection failed"
+  installed_casks="$(HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" list --cask --full-name)" ||
+    install_system_fail "Homebrew installed cask inspection failed"
+  printf '%s\n' "$check_output" | DOTFILES_PLAN_FORMULAE="$installed_formulae" \
+    DOTFILES_PLAN_CASKS="$installed_casks" awk '
+    function record(values, kind, names, count, i, name) {
+      count = split(values, names, "\n")
+      for (i = 1; i <= count; i++) {
+        name = names[i]
+        installed[kind, name] = 1
+        sub(/^.*\//, "", name)
+        installed[kind, name] = 1
+      }
+    }
+    BEGIN {
+      record(ENVIRON["DOTFILES_PLAN_FORMULAE"], "Formula")
+      record(ENVIRON["DOTFILES_PLAN_CASKS"], "Cask")
+    }
+    /^→ (Cask|Formula) [^ ]+ needs to be installed( or updated)?\.$/ {
+      kind = $2
+      name = $3
+      action = installed[kind, name] ? "~ Update" : "+ Install"
+      printf "  %s %s (%s)\n", action, name, tolower(kind)
+      shown++
+      next
+    }
+    /^brew bundle can.t satisfy your Brewfile/ { next }
+    /^Satisfy missing dependencies with/ { next }
+    /^The Brewfile.s dependencies are satisfied\.$/ { next }
+    NF { print; shown++ }
+    END { if (!shown) print "  No package changes" }
+  '
 }
 
 install_system_show_homebrew_cleanup() {
@@ -158,11 +185,24 @@ install_system_show_homebrew_cleanup() {
   cleanup_output="$(
     HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" bundle cleanup --file "$brewfile_path" 2>&1
   )" || cleanup_status=$?
-  [ -z "$cleanup_output" ] || printf '%s\n' "$cleanup_output"
   case "$cleanup_status" in
     0 | 1) ;;
-    *) install_system_fail "Homebrew cleanup plan failed" ;;
+    *)
+      printf '%s\n' "$cleanup_output" >&2
+      install_system_fail "Homebrew cleanup plan failed"
+      ;;
   esac
+  printf '%s\n' "$cleanup_output" | awk '
+    /^Warning: Skipping [^ ]+: most recent version [^ ]+ not installed$/ { next }
+    /^Would `brew cleanup`:/ { next }
+    /^Would remove: / { cleanup++; next }
+    /^Run `brew bundle cleanup --force` to make these changes\.$/ { next }
+    NF { print; shown++ }
+    END {
+      if (cleanup) printf "  Cache and old-version cleanup: %d entries\n", cleanup
+      else if (!shown) print "  No cleanup candidates"
+    }
+  '
 }
 
 install_system_apply_built_system() (
