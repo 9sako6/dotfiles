@@ -20,7 +20,14 @@ pub enum Mode {
 
 #[derive(Deserialize)]
 struct Metadata {
+    locked: LockedSource,
     path: PathBuf,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LockedSource {
+    nar_hash: String,
 }
 
 #[derive(Serialize)]
@@ -28,7 +35,8 @@ struct Metadata {
 struct Inputs {
     directory: PathBuf,
     local_file: Option<PathBuf>,
-    private_source: Option<PathBuf>,
+    private_flake: Option<String>,
+    public_flake: String,
     public_revision: String,
     public_source: PathBuf,
     user: String,
@@ -58,14 +66,15 @@ struct LocalLlm {
 }
 
 #[derive(Deserialize)]
-struct Outputs {
-    brewfile: String,
-    system: String,
+#[serde(rename_all = "camelCase")]
+struct BuildResult {
+    drv_path: String,
 }
 
 struct Snapshot {
     directory: PathBuf,
     fingerprint: String,
+    reference: String,
     source: PathBuf,
     revision: String,
 }
@@ -117,9 +126,14 @@ impl Snapshot {
         } else {
             format!("{revision}-dirty")
         };
+        let mut reference = url::Url::parse(&format!("path:{}", metadata.path.display()))?;
+        reference
+            .query_pairs_mut()
+            .append_pair("narHash", &metadata.locked.nar_hash);
         Ok(Self {
             directory,
             fingerprint: before,
+            reference: reference.into(),
             source: metadata.path,
             revision,
         })
@@ -172,7 +186,8 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     let mut inputs = Inputs {
         directory: root.to_path_buf(),
         local_file: frozen_local,
-        private_source: None,
+        private_flake: None,
+        public_flake: public.reference.clone(),
         public_revision: public.revision.clone(),
         public_source: public.source.clone(),
         user: user.clone(),
@@ -194,9 +209,8 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         })
         .transpose()?;
     if let Some(private) = &private {
-        inputs.private_source = Some(private.source.clone());
+        inputs.private_flake = Some(private.reference.clone());
     }
-    fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
     public.verify()?;
     if let Some(private) = &private {
         private.verify()?;
@@ -216,10 +230,28 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     if configuration.localllm.enabled {
         println!("Local LLM is enabled: the first build may download several GB of pinned model data and its runtime.");
     }
-    let outputs: Outputs = evaluate(&nix, &public.source, &manifest, "outputs", show_trace)?;
+    inputs.local_file = inputs
+        .local_file
+        .map(|_| PathBuf::from("dotfiles.local.toml"));
+    fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
+    fs::copy(
+        public.source.join("nix/host-flake.nix"),
+        workspace.path().join("flake.nix"),
+    )?;
+    let host = String::from_utf8(capture(
+        nix_command(&nix)
+            .args(["store", "add-path", "--name", "source"])
+            .arg(workspace.path()),
+        "cannot freeze host evaluation inputs",
+    )?)?;
+    let [system_drv, brewfile_drv] = host_derivations(&nix, host.trim(), show_trace)?;
     let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
-    let system = build(&nix, &outputs.system, &workspace.path().join("system"))?;
-    let brewfile = build(&nix, &outputs.brewfile, &workspace.path().join("brewfile"))?;
+    let system = build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?;
+    let brewfile = build(
+        &nix,
+        &brewfile_drv.drv_path,
+        &workspace.path().join("brewfile"),
+    )?;
     let status = Command::new(&backend)
         .arg("preview")
         .arg(&nix)
@@ -372,14 +404,40 @@ fn evaluate<T: serde::de::DeserializeOwned>(
         .arg(source.join("nix/host-input.nix"))
         .env("DOTFILES_INPUT_MANIFEST", manifest)
         .env("DOTFILES_INPUT_OPERATION", operation);
+    evaluate_json(
+        &mut command,
+        "dotfiles.toml / dotfiles.local.toml: invalid TOML or unreadable configuration",
+        show_trace,
+    )
+}
+
+fn host_derivations(nix: &Path, source: &str, show_trace: bool) -> Result<[BuildResult; 2]> {
+    let builds: Vec<BuildResult> = evaluate_json(
+        nix_command(nix)
+            .args([
+                "build",
+                "--dry-run",
+                "--json",
+                "--no-write-lock-file",
+                "--no-update-lock-file",
+            ])
+            .args([format!("{source}#system"), format!("{source}#brewfile")]),
+        "Nix host composition failed: check private darwinModules.default, locked dependencies, option conflicts and package compatibility",
+        show_trace,
+    )?;
+    builds
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("Nix did not return both host derivations"))
+}
+
+fn evaluate_json<T: serde::de::DeserializeOwned>(
+    command: &mut Command,
+    error: &str,
+    show_trace: bool,
+) -> Result<T> {
     if show_trace {
         command.arg("--show-trace");
     }
-    let error = if matches!(operation, "configuration" | "settings") {
-        "dotfiles.toml / dotfiles.local.toml: invalid TOML or unreadable configuration"
-    } else {
-        "Nix host composition failed: check private darwinModules.default, locked dependencies, option conflicts and package compatibility"
-    };
     let error = if show_trace {
         error.to_owned()
     } else {
@@ -387,7 +445,7 @@ fn evaluate<T: serde::de::DeserializeOwned>(
     };
     let mut stderr = io::stderr().lock();
     let diagnostics = show_trace.then_some(&mut stderr as &mut dyn Write);
-    let bytes = capture_with_diagnostics(&mut command, &error, diagnostics)?;
+    let bytes = capture_with_diagnostics(command, &error, diagnostics)?;
     serde_json::from_slice(&bytes).context("Nix returned invalid JSON")
 }
 
