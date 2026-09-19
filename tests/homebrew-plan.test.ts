@@ -175,7 +175,9 @@ exit 1
     const stdout = await new Response(process.stdout).text();
     expect(await process.exited).toBe(0);
     expect(stdout).toBe([
-      "Would uninstall casks:", "obsolete-app", "Warning: another problem",
+      "Would uninstall casks:", "obsolete-app",
+      "Warning: Skipping steipete/tap/remindctl: most recent version 0.3.6 not installed",
+      "Warning: another problem",
       "  Cache and old-version cleanup: 2 entries", "",
     ].join("\n"));
   });

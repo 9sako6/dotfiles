@@ -193,7 +193,6 @@ install_system_show_homebrew_cleanup() {
       ;;
   esac
   printf '%s\n' "$cleanup_output" | awk '
-    /^Warning: Skipping [^ ]+: most recent version [^ ]+ not installed$/ { next }
     /^Would `brew cleanup`:/ { next }
     /^Would remove: / { cleanup++; next }
     /^Run `brew bundle cleanup --force` to make these changes\.$/ { next }
