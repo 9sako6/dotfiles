@@ -128,6 +128,49 @@ install_system_ensure_lix() {
   printf '%s\n' "$nix_bin"
 }
 
+install_system_show_homebrew_configuration_changes() (
+  nix_bin="$1"
+  brew_bin="$2"
+  current_system="$3"
+  brewfile_path="$4"
+  [ -e "$current_system" ] || return 0
+
+  references="$("${nix_bin%/nix}/nix-store" --query --references "$current_system")" ||
+    install_system_fail "active Homebrew configuration inspection failed"
+  previous_brewfile="$(printf '%s\n' "$references" | awk '/-Brewfile$/')"
+  case "$previous_brewfile" in
+    "") return 0 ;;
+    *'
+'*) install_system_fail "active system references multiple Brewfiles" ;;
+  esac
+  [ "$previous_brewfile" != "$brewfile_path" ] || return 0
+
+  shown=0
+  for kind in formula cask tap; do
+    previous="$(HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" bundle list --"$kind" --file "$previous_brewfile")" ||
+      install_system_fail "previous Homebrew $kind declarations could not be read"
+    desired="$(HOMEBREW_NO_AUTO_UPDATE=1 "$brew_bin" bundle list --"$kind" --file "$brewfile_path")" ||
+      install_system_fail "planned Homebrew $kind declarations could not be read"
+    changes="$(DOTFILES_PLAN_PREVIOUS="$previous" DOTFILES_PLAN_DESIRED="$desired" awk -v kind="$kind" '
+      BEGIN {
+        count = split(ENVIRON["DOTFILES_PLAN_PREVIOUS"], names, "\n")
+        for (i = 1; i <= count; i++) if (names[i] != "") previous[names[i]] = 1
+        count = split(ENVIRON["DOTFILES_PLAN_DESIRED"], names, "\n")
+        for (i = 1; i <= count; i++) if (names[i] != "") desired[names[i]] = 1
+        for (name in previous) if (!(name in desired)) printf "  - %s (%s)\n", name, kind
+        for (name in desired) if (!(name in previous)) printf "  + %s (%s)\n", name, kind
+      }
+    ')" || install_system_fail "Homebrew configuration comparison failed"
+    if [ -n "$changes" ]; then
+      if [ "$shown" -eq 0 ]; then
+        printf 'Homebrew configuration changes:\n'
+        shown=1
+      fi
+      printf '%s\n' "$changes" | LC_ALL=C sort
+    fi
+  done
+)
+
 install_system_show_homebrew_missing() {
   brew_bin="$1"
   brewfile_path="$2"

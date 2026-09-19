@@ -13,13 +13,15 @@ case "$operation" in
     nix_bin="$1"
     system_path="$2"
     brewfile_path="$3"
+    current_system="${4:-/run/current-system}"
     printf 'system generation: %s\n' "$system_path"
-    if [ -e /run/current-system ]; then
-      "$nix_bin" --extra-experimental-features 'nix-command flakes' store diff-closures /run/current-system "$system_path"
+    if [ -e "$current_system" ]; then
+      "$nix_bin" --extra-experimental-features 'nix-command flakes' store diff-closures "$current_system" "$system_path"
     else
       printf 'system diff: no active nix-darwin generation\n'
     fi
     if brew_bin="$(command -v brew 2>/dev/null)"; then
+      install_system_show_homebrew_configuration_changes "$nix_bin" "$brew_bin" "$current_system" "$brewfile_path"
       printf 'Homebrew package changes:\n'
       install_system_show_homebrew_missing "$brew_bin" "$brewfile_path"
       printf 'Homebrew cleanup candidates:\n'

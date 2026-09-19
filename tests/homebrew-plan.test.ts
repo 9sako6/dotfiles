@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, writeFile } from "node:fs/promises";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { withTempDir } from "./test-helpers";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installSystemLibrary = path.join(repoRoot, "lib", "install-system.sh");
+const systemBackend = path.join(repoRoot, "bin", "system-backend.sh");
 
 async function makeExecutable(filePath: string, content: string) {
   await writeFile(filePath, content);
@@ -181,4 +182,139 @@ exit 1
       "  Cache and old-version cleanup: 2 entries", "",
     ].join("\n"));
   });
+});
+
+type Declarations = { formula: string[]; cask: string[]; tap: string[] };
+
+async function runConfigurationPreview({
+  installed = false,
+  active = true,
+  previous = { formula: ["libyaml"], cask: ["cryptomator", "ghostty"], tap: [] },
+  desired = { formula: ["libyaml"], cask: ["ghostty"], tap: [] },
+  failure = "",
+}: {
+  installed?: boolean;
+  active?: boolean;
+  previous?: Declarations;
+  desired?: Declarations;
+  failure?: "" | "references" | "multiple" | "previous" | "planned";
+} = {}) {
+  return withTempDir("homebrew-configuration-preview", async (tempDir) => {
+    const fakeBin = path.join(tempDir, "bin");
+    const currentSystem = path.join(tempDir, "current-system");
+    const previousBrewfile = path.join(tempDir, "previous-Brewfile");
+    const desiredBrewfile = path.join(tempDir, "planned-Brewfile");
+    await mkdir(fakeBin);
+    if (active) await mkdir(currentSystem);
+    for (const [file, entries] of [[previousBrewfile, previous], [desiredBrewfile, desired]] as const) {
+      const lines = [];
+      for (const kind of ["formula", "cask", "tap"] as const) {
+        await writeFile(`${file}.${kind}`, entries[kind].join("\n"));
+        for (const name of entries[kind]) {
+          lines.push(`${kind === "formula" ? "brew" : kind} ${JSON.stringify(name)}`);
+        }
+      }
+      await writeFile(file, lines.join("\n"));
+    }
+    await makeExecutable(path.join(fakeBin, "nix"), "#!/bin/sh\nexit 0\n");
+    await makeExecutable(path.join(fakeBin, "nix-store"), `#!/bin/sh
+[ "$PREVIEW_FAILURE" != references ] || exit 2
+printf '%s\\n' "$PREVIOUS_BREWFILE"
+if [ "$PREVIEW_FAILURE" = multiple ]; then printf '%s\\n' "$PLANNED_BREWFILE"; fi
+`);
+    await makeExecutable(path.join(fakeBin, "brew"), `#!/bin/sh
+case "$1:$2:$3" in
+  bundle:list:--formula|bundle:list:--cask|bundle:list:--tap)
+    [ "$4" = --file ] || exit 2
+    if [ "$PREVIEW_FAILURE" = previous ] && [ "$5" = "$PREVIOUS_BREWFILE" ]; then exit 2; fi
+    if [ "$PREVIEW_FAILURE" = planned ] && [ "$5" = "$PLANNED_BREWFILE" ]; then exit 2; fi
+    cat "$5.\${3#--}"
+    ;;
+  bundle:check:--verbose) exit 0 ;;
+  list:--formula:--full-name) cat "$PLANNED_BREWFILE.formula" ;;
+  list:--cask:--full-name)
+    cat "$PLANNED_BREWFILE.cask"
+    if [ "$CRYPTOMATOR_INSTALLED" = yes ]; then printf '\\n%s\\n' cryptomator; fi
+    ;;
+  bundle:cleanup:--file)
+    if [ "$CRYPTOMATOR_INSTALLED" = yes ]; then
+      printf '%s\\n' 'Would uninstall casks:' cryptomator
+      exit 1
+    fi
+    ;;
+  *) exit 2 ;;
+esac
+`);
+    const process = Bun.spawn([
+      "/bin/sh", systemBackend, "preview", path.join(fakeBin, "nix"),
+      path.join(tempDir, "planned-system"), desiredBrewfile, currentSystem,
+    ], {
+      env: {
+        ...Bun.env,
+        PATH: `${fakeBin}:/usr/bin:/bin`,
+        CRYPTOMATOR_INSTALLED: installed ? "yes" : "no",
+        PLANNED_BREWFILE: desiredBrewfile,
+        PREVIOUS_BREWFILE: previousBrewfile,
+        PREVIEW_FAILURE: failure,
+      },
+      stderr: "pipe",
+      stdout: "pipe",
+    });
+    const [exitCode, stderr, stdout] = await Promise.all([
+      process.exited,
+      new Response(process.stderr).text(),
+      new Response(process.stdout).text(),
+    ]);
+    return { exitCode, stderr, stdout };
+  });
+}
+
+test.each([false, true])("shows removed Cryptomator declaration when installed=%s", async (installed) => {
+  const result = await runConfigurationPreview({ installed });
+  expect(result.exitCode).toBe(0);
+  expect(result.stderr).toBe("");
+  expect(result.stdout).toContain("Homebrew configuration changes:\n  - cryptomator (cask)\n");
+  if (installed) {
+    expect(result.stdout).toContain("Would uninstall casks:\ncryptomator\n");
+  } else {
+    expect(result.stdout).toContain("Homebrew cleanup candidates:\n  No cleanup candidates\n");
+    expect(result.stdout).not.toContain("Would uninstall");
+  }
+});
+
+test("compares formula, cask and tap declarations without treating order as a change", async () => {
+  const result = await runConfigurationPreview({
+    previous: { formula: ["kept", "retired"], cask: ["second", "first"], tap: ["example/old"] },
+    desired: { formula: ["added", "kept"], cask: ["first", "second"], tap: ["example/new"] },
+  });
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain([
+    "Homebrew configuration changes:",
+    "  + added (formula)",
+    "  - retired (formula)",
+    "  + example/new (tap)",
+    "  - example/old (tap)",
+  ].join("\n"));
+  expect(result.stdout).not.toContain("(cask)");
+});
+
+test("omits declaration changes when the active and planned configuration agree", async () => {
+  const entries = { formula: ["libyaml"], cask: ["ghostty"], tap: [] };
+  const result = await runConfigurationPreview({ previous: entries, desired: entries });
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).not.toContain("Homebrew configuration changes:");
+});
+
+test("can preview a first installation without an active system", async () => {
+  const result = await runConfigurationPreview({ active: false, failure: "references" });
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout).toContain("system diff: no active nix-darwin generation");
+  expect(result.stdout).not.toContain("Homebrew configuration changes:");
+});
+
+test.each(["references", "multiple", "previous", "planned"] as const)("refuses a misleading configuration comparison after %s failure", async (failure) => {
+  const result = await runConfigurationPreview({ failure });
+  expect(result.exitCode).not.toBe(0);
+  expect(result.stderr).toContain("system:");
+  expect(result.stdout).not.toContain("No cleanup candidates");
 });

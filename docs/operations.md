@@ -32,6 +32,14 @@ flowchart TD
 `apm.lock.yaml`、`flake.lock`、`nix/localllm/uv.lock` などの生成物は手動で編集しない。
 固定ファイルの更新は開発時のみ意図的に行い、`plan` や `apply` の実行中に自動更新されることはない。
 
+flake.lock は上流の inputs やリビジョンを固定するものであり、選択された cask の一覧を記録するものではないため、既存パッケージの選択・解除のみで更新する必要はありません。
+
+| トリガー | コマンド |
+| --- | --- |
+| flake inputs の追加・変更 | `nix flake lock` ([公式ドキュメント](https://docs.lix.systems/manual/lix/nightly/command-ref/new-cli/nix3-flake-lock.html)) |
+| nixpkgs など固定された input の意図的な更新 | `nix flake update nixpkgs` ([公式ドキュメント](https://docs.lix.systems/manual/lix/nightly/command-ref/new-cli/nix3-flake-update.html)) |
+| スキル依存の追加・削除・更新 | 対応する `dotfiles agents install`、`uninstall`、`update` および生成される `home/apm.lock.yaml` |
+
 ```mermaid
 flowchart TD
     target["変更対象"] --> generated{"生成物か"}
@@ -59,6 +67,8 @@ Home Managerの配備先に既存ファイルがある場合は、`.pre-home-man
 ## 日常コマンド
 
 システムの確認・反映、設定の一覧、エージェント管理のコマンドは[CLIのUsage](../cli/README.md#usage)を参照してください。個別の説明は[settings](../cli/README.md#settings)と[agents](../cli/README.md#agents)にあります。
+
+dotfiles plan および apply は、アクティブ世代の Brewfile と計画中の Brewfile に含まれる formula/cask/tap 名を比較します。手動でアンインストールした場合でも「Homebrew configuration changes」配下に構成上の追加・削除が表示されますが、保留中の実際の操作は現在インストールされている状態に基づいて判定されます。なお、アクティブ世代が存在しない場合は比較がスキップされます。
 
 公開リポジトリの更新には通常のGit操作を使います。
 
