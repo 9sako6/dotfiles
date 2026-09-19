@@ -68,6 +68,12 @@ Home Managerの配備先に既存ファイルがある場合は、`.pre-home-man
 
 システムの確認・反映、設定の一覧、エージェント管理のコマンドは[CLIのUsage](../cli/README.md#usage)を参照してください。個別の説明は[settings](../cli/README.md#settings)と[agents](../cli/README.md#agents)にあります。
 
+`dotfiles settings`
+
+dotfiles settingsの既存一覧の下にpackages、system、services、agentsを追加しました。稼働状態の照合やシステム構築・反映、lock更新は行わず、宣言構成から一覧JSONをNix storeへ生成します。入力が同一ならNix標準の評価・ビルドキャッシュを再利用します。
+
+Nixとmiseは固定版と最新安定版を比較し、Homebrew（nix-darwin）は固定なしで表示します。最新情報は毎回最大12秒で並列取得し、失敗時はerror:理由を表示します。取得中はスクロール表示し、終了後は通常出力、パイプ時は最終結果のみを出力します。
+
 dotfiles plan および apply は、アクティブ世代の Brewfile と計画中の Brewfile に含まれる formula/cask/tap 名を比較します。手動でアンインストールした場合でも「Homebrew configuration changes」配下に構成上の追加・削除が表示されますが、保留中の実際の操作は現在インストールされている状態に基づいて判定されます。なお、アクティブ世代が存在しない場合は比較がスキップされます。
 
 公開リポジトリの更新には通常のGit操作を使います。

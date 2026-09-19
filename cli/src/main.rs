@@ -1,5 +1,6 @@
 mod agents;
 mod home_copy;
+mod inventory;
 mod settings;
 mod system;
 
@@ -44,7 +45,7 @@ enum Commands {
         #[command(flatten)]
         options: SystemArgs,
     },
-    #[command(about = "Show all effective settings and their sources")]
+    #[command(about = "Show effective settings, managed resources and latest package versions")]
     Settings,
     #[command(about = "Show the commit used to build this CLI")]
     Version,

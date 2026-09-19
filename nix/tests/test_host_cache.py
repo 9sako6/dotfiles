@@ -52,6 +52,11 @@ class HostCacheTests(unittest.TestCase):
                       };
                     };
                   in builtins.trace "host-cache-fixture-evaluated" {
+                    pkgs.writeText = name: text: builtins.derivation {
+                      inherit name text;
+                      system = "aarch64-darwin";
+                      builder = "/bin/sh";
+                    };
                     homebrewBrewfile = make "Brewfile";
                     system = make "system";
                   };
@@ -65,6 +70,9 @@ class HostCacheTests(unittest.TestCase):
               };
             }''')
             (public / "dotfiles.toml").write_text('value = "original"')
+            (public / "nix/inventory.nix").write_text('''{ configuration, ... }:
+              builtins.trace "inventory-fixture-evaluated" configuration
+            ''')
             private = root / "private"
             private.mkdir()
             (private / "flake.nix").write_text('{ outputs = {self}: { value = "private"; }; }')
@@ -99,6 +107,11 @@ class HostCacheTests(unittest.TestCase):
             original_source, original_paths, evaluated = evaluate()
             self.assertTrue(evaluated)
             self.assertEqual(evaluate(), (original_source, original_paths, False))
+            inventory = nix("build", "--dry-run", "--json", "--no-write-lock-file", "--no-update-lock-file", original_source + "#inventory")
+            self.assertIn("inventory-fixture-evaluated", inventory.stderr)
+            cached_inventory = nix("build", "--dry-run", "--json", "--no-write-lock-file", "--no-update-lock-file", original_source + "#inventory")
+            self.assertEqual(json.loads(inventory.stdout), json.loads(cached_inventory.stdout))
+            self.assertNotIn("inventory-fixture-evaluated", cached_inventory.stderr)
             original_private = reference(private)
             (private / "flake.nix").write_text('{ outputs = {self}: { value = "changed"; }; }')
             seen_paths = {tuple(original_paths)}
@@ -120,6 +133,9 @@ class HostCacheTests(unittest.TestCase):
                     self.assertEqual(evaluate(changes, local), (source, paths, False))
             (public / "dotfiles.toml").write_text('value = "changed"')
             source, paths, evaluated = evaluate({"publicFlake": reference(public)})
+            changed_inventory = nix("build", "--dry-run", "--json", "--no-write-lock-file", "--no-update-lock-file", source + "#inventory")
+            self.assertNotEqual(json.loads(inventory.stdout), json.loads(changed_inventory.stdout))
+            self.assertIn("inventory-fixture-evaluated", changed_inventory.stderr)
             self.assertNotEqual(paths, original_paths)
             self.assertTrue(evaluated)
             self.assertEqual(evaluate(), (original_source, original_paths, False))

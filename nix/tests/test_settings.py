@@ -10,6 +10,7 @@ import struct
 import subprocess
 import tempfile
 import termios
+import time
 import unittest
 
 
@@ -22,19 +23,20 @@ class SettingsTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        for name in [
-            "bin/system-backend.sh",
-            "flake.lock",
-            "flake.nix",
-            "lib/install-system.sh",
-            "nix/configuration.nix",
-            "nix/host-input.nix",
-            "nix/localllm/catalog.nix",
-        ]:
+        tracked = subprocess.check_output(
+            ["git", "-C", str(REPOSITORY), "ls-files", "-z"], text=True,
+        )
+        for name in filter(None, tracked.split("\0")):
             destination = self.root / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(REPOSITORY / name, destination)
         (self.root / "dotfiles.toml").write_text("copy = []\n")
+        (self.root / "nix/inventory.nix").write_text('''{ configuration, ... }: {
+          packages = []; system = []; services = []; tools = [];
+          localllm = configuration.localllm; timeZone = "UTC";
+        }''')
+        (self.root / "home").mkdir(exist_ok=True)
+        (self.root / "home/apm.yml").write_text("dependencies:\n  apm: []\n")
         self.git("init", "--quiet")
         self.git("add", ".")
         self.git(
@@ -46,6 +48,7 @@ class SettingsTests(unittest.TestCase):
     def git(self, *arguments):
         return subprocess.run(
             ["git", "-C", str(self.root), *arguments],
+            env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"},
             check=True, capture_output=True, text=True,
         )
 
@@ -61,7 +64,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(result.stderr, "")
         rows = {}
         decoder = json.JSONDecoder()
-        lines = iter(result.stdout.splitlines())
+        lines = iter(result.stdout.split("\n\npackages", 1)[0].splitlines())
         for line in lines:
             key, rest = line.split(maxsplit=1)
             if rest.startswith("["):
@@ -86,18 +89,24 @@ class SettingsTests(unittest.TestCase):
             fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, width, 0, 0))
             chunks = []
             with os.fdopen(slave, "wb") as terminal:
-                result = subprocess.run(
+                process = subprocess.Popen(
                     [str(TARGET / "debug/dotfiles"), "settings"],
                     env={
                         **os.environ, "DOTFILES_DIR": str(self.root),
                         "TERM": "xterm-256color", "CLICOLOR_FORCE": str(int(color)),
                         "NO_COLOR": "" if color else "1",
                     },
-                    stdout=terminal, stderr=subprocess.PIPE, text=True, timeout=60,
+                    stdin=subprocess.DEVNULL, stdout=terminal, stderr=subprocess.PIPE, text=True,
                 )
-                while select.select([master], [], [], 0)[0]:
-                    chunks.append(os.read(master, 4096))
-            self.assertEqual(result.returncode, 0, result.stderr)
+                deadline = time.monotonic() + 30
+                while process.poll() is None or select.select([master], [], [], 0)[0]:
+                    if time.monotonic() > deadline:
+                        process.kill()
+                        self.fail("terminal output timed out")
+                    if select.select([master], [], [], 0.05)[0]:
+                        chunks.append(os.read(master, 65536))
+                _, errors = process.communicate(timeout=5)
+            self.assertEqual(process.returncode, 0, errors)
             return b"".join(chunks).decode().replace("\r\n", "\n")
         finally:
             os.close(master)
@@ -110,11 +119,11 @@ class SettingsTests(unittest.TestCase):
         )
         narrow = self.terminal_settings(80, color=True)
         header = narrow.splitlines()[0]
-        for label in ["Key", "Value", "Source"]:
+        for label in ["key", "value", "source"]:
             self.assertIn(f"\x1b[35m\x1b[3m{label}\x1b[0m", header)
         plain = re.sub(r"\x1b\[[0-9;]*m", "", narrow)
-        self.assertEqual(plain.splitlines()[0].split(), ["Key", "Value", "Source"])
-        self.assertTrue(all(len(line) <= 80 for line in plain.splitlines()))
+        self.assertEqual(plain.splitlines()[0].split(), ["key", "value", "source"])
+        self.assertTrue(all(len(line) <= 80 for line in plain.split("\n\npackages", 1)[0].splitlines()))
         self.assertNotIn(paths[0], plain.splitlines()[1])
         for path in paths:
             self.assertEqual(plain.count(json.dumps(path)), 1)
@@ -137,7 +146,7 @@ class SettingsTests(unittest.TestCase):
             "private.path": (None, None),
         })
 
-    def test_local_overrides_dirty_shared_values_without_resolving_private_checkout(self):
+    def test_local_overrides_remain_visible_when_private_checkout_is_missing(self):
         (self.root / "dotfiles.toml").write_text(
             'copy = ["a", "b"]\n[localllm]\nenabled = true\n'
             'models = ["qwen3.8-27b-4bit"]\ndefault_model = "qwen3.8-27b-4bit"\n'
@@ -148,7 +157,13 @@ class SettingsTests(unittest.TestCase):
         )
         before = self.git("status", "--porcelain").stdout
         lock = (self.root / "flake.lock").read_bytes()
-        self.assertEqual(self.rows(self.settings()), {
+        result = self.settings()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("private.path: checkout does not exist", result.stderr)
+        self.assertNotIn("\npackages\n", result.stdout)
+        result.returncode = 0
+        result.stderr = ""
+        self.assertEqual(self.rows(result), {
             "copy": (["a", "b"], "dotfiles.toml"),
             "localllm.default_model": ("qwen3.8-27b-4bit", "dotfiles.toml"),
             "localllm.enabled": (False, "dotfiles.local.toml"),

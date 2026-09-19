@@ -18,6 +18,13 @@
       };
     in {
       brewfile = host.homebrewBrewfile;
+      inventory = host.pkgs.writeText "dotfiles-inventory.json" (builtins.toJSON (import (public.outPath + "/nix/inventory.nix") {
+        inherit configuration host;
+        inputs = public.inputs;
+        privateSource = if input.privateFlake == null then null
+          else (builtins.getFlake input.privateFlake).outPath;
+        publicSource = public.outPath;
+      }));
       system = host.system;
     };
 }

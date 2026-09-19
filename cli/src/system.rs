@@ -302,7 +302,22 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
-pub fn load_settings(root: &Path) -> Result<Vec<Setting>> {
+pub struct InventoryInputs {
+    local: Option<Vec<u8>>,
+    nix: PathBuf,
+    private: Private,
+    public: Snapshot,
+    root: PathBuf,
+    workspace: tempfile::TempDir,
+}
+
+#[derive(Deserialize)]
+struct Inspection {
+    private: Private,
+    settings: Vec<Setting>,
+}
+
+pub fn load_settings(root: &Path) -> Result<(Vec<Setting>, InventoryInputs)> {
     let nix = resolve_nix(root, false)?;
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
@@ -319,10 +334,99 @@ pub fn load_settings(root: &Path) -> Result<Vec<Setting>> {
             "publicSource": public.source,
         }))?,
     )?;
-    let settings = evaluate_configuration(&nix, &public.source, &manifest, "settings", false)?;
+    let inspection: Inspection =
+        evaluate_configuration(&nix, &public.source, &manifest, "inspection", false)?;
     public.verify()?;
     verify_local(&local_path, &local)?;
-    Ok(settings)
+    Ok((
+        inspection.settings,
+        InventoryInputs {
+            local,
+            nix,
+            private: inspection.private,
+            public,
+            root: root.to_owned(),
+            workspace,
+        },
+    ))
+}
+
+impl InventoryInputs {
+    pub fn load<T: serde::de::DeserializeOwned>(self) -> Result<(T, PathBuf)> {
+        let Self {
+            local,
+            nix,
+            private,
+            public,
+            root,
+            workspace,
+        } = self;
+        let user = String::from_utf8(capture(
+            Command::new("/usr/bin/id").arg("-un"),
+            "cannot identify login user",
+        )?)?
+        .trim()
+        .to_owned();
+        let local_path = root.join("dotfiles.local.toml");
+        let frozen_local = local.as_ref().map(|_| PathBuf::from("dotfiles.local.toml"));
+        let manifest = workspace.path().join("inputs.json");
+        let mut inputs = Inputs {
+            directory: root.to_owned(),
+            local_file: frozen_local,
+            private_flake: None,
+            public_flake: public.reference.clone(),
+            public_revision: public.revision.clone(),
+            public_source: public.source.clone(),
+            user,
+        };
+        let private = private
+            .path
+            .as_ref()
+            .map(|path| Snapshot::capture(&nix, &root.join(path), true))
+            .transpose()?;
+        inputs.private_flake = private.as_ref().map(|snapshot| snapshot.reference.clone());
+        fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
+        fs::copy(
+            public.source.join("nix/host-flake.nix"),
+            workspace.path().join("flake.nix"),
+        )?;
+        let host = String::from_utf8(capture(
+            nix_command(&nix)
+                .args(["store", "add-path", "--name", "source"])
+                .arg(workspace.path()),
+            "cannot freeze inventory inputs",
+        )?)?;
+        let builds: Vec<serde_json::Value> = evaluate_json(
+            nix_command(&nix)
+                .args([
+                    "build",
+                    "--no-link",
+                    "--json",
+                    "--no-substitute",
+                    "--option",
+                    "builders",
+                    "",
+                    "--no-write-lock-file",
+                    "--no-update-lock-file",
+                ])
+                .arg(format!("{}#inventory", host.trim())),
+            "cannot evaluate managed resources",
+            false,
+        )?;
+        let path = builds
+            .first()
+            .and_then(|build| build["outputs"]["out"].as_str())
+            .context("Nix did not return the inventory data path")?;
+        let inventory =
+            serde_json::from_slice(&fs::read(path).context("cannot read inventory data")?)
+                .context("Nix returned invalid inventory data")?;
+        public.verify()?;
+        if let Some(private) = &private {
+            private.verify()?;
+        }
+        verify_local(&local_path, &local)?;
+        Ok((inventory, public.source))
+    }
 }
 
 fn resolve_nix(root: &Path, install: bool) -> Result<PathBuf> {

@@ -20,10 +20,11 @@ pub struct Setting {
 }
 
 pub fn run(root: &Path) -> Result<ExitCode> {
-    let settings = system::load_settings(root)?;
+    let (settings, inventory) = system::load_settings(root)?;
     let width = console::user_attended().then(|| usize::from(console::Term::stdout().size().1));
     write_settings(&mut io::stdout().lock(), &settings, width)?;
-    Ok(ExitCode::SUCCESS)
+    io::stdout().flush()?;
+    crate::inventory::run(inventory)
 }
 
 fn format_value(value: &Value) -> String {
@@ -46,7 +47,7 @@ fn write_settings(
     terminal_width: Option<usize>,
 ) -> Result<()> {
     let mut builder = Builder::default();
-    builder.push_record(["Key", "Value", "Source"]);
+    builder.push_record(["key", "value", "source"]);
     for setting in settings {
         builder.push_record([
             setting.key.clone(),

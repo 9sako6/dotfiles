@@ -18,10 +18,14 @@ let
     configurationRevision = input.publicRevision;
   };
 in
-if operation == "configuration" || operation == "settings" then {
+if operation == "configuration" || operation == "settings" || operation == "inspection" then {
   inherit (parsed) errors;
   config = if parsed.errors != [ ] then null
     else if operation == "settings" then parsed.settings
+    else if operation == "inspection" then {
+      inherit (parsed) settings;
+      inherit (parsed.config) private;
+    }
     else parsed.config;
 }
 else if operation == "outputs" then {
