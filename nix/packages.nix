@@ -32,6 +32,9 @@ let
   bunPackage = pkgs.bun;
   expectedBunVersion = "1.3.13";
 
+  cachixPackage = pkgs.cachix;
+  expectedCachixVersion = "1.11.1";
+
   fdPackage = pkgs.fd.overrideAttrs (final: previous: {
     version = "10.5.0";
     src = pkgs.fetchFromGitHub {
@@ -141,6 +144,8 @@ assert pkgs.lib.assertMsg (awscliPackage.version == expectedAwscliVersion)
   "AWS CLI version drifted: expected ${expectedAwscliVersion}, got ${awscliPackage.version}";
 assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
+assert pkgs.lib.assertMsg (cachixPackage.version == expectedCachixVersion)
+  "Cachix version drifted: expected ${expectedCachixVersion}, got ${cachixPackage.version}";
 assert pkgs.lib.assertMsg (fdPackage.version == expectedFdVersion)
   "fd version drifted: expected ${expectedFdVersion}, got ${fdPackage.version}";
 assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
@@ -167,6 +172,7 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
   "terminal-browser version drifted: expected ${expectedTerminalBrowserVersion}, got ${terminalBrowserPackage.version}";
 {
   ankiConnect = ankiConnectPackage;
+  cachix = cachixPackage;
   localllmClient = import ./localllm/client.nix { inherit pkgs; };
   localllmGoalPlugin = import ./localllm/goal-plugin.nix { inherit pkgs; };
   localllmRuntime = (import ./localllm/runtime.nix { inherit inputs pkgs; }).environment;

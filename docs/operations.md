@@ -85,6 +85,18 @@ git pull
 通常の設定ファイルや `.config`、`.zsh.d`、`mybin` は、稼働中のリポジトリへの直接のシンボリックリンクとし、編集内容を即座に反映させる。
 devcontainerから参照するエージェント用設定の実体配備は、CLIの[copy](../cli/README.md#copy)を参照してください。対象パスの制約、ディレクトリ配下の同期範囲、Home Managerとの重複検査、権限の扱いを説明しています。
 
+## CLI のビルドキャッシュ
+
+`.github/workflows/cache-cli.yml` は、`master` への push または手動実行時に macOS arm64 上で Lix をセットアップし、`.#dotfiles` をビルド（Rust の 26 テストを含む）します。CLI の version と `GITHUB_SHA` の一致を検証後、公開 CLI と実行時依存のみを [Cachix](https://docs.cachix.org/getting-started) へ [push](https://docs.cachix.org/pushing) します。Cachix 1.11.1 は root flake の `.#cachix` から取得し、`nix build` や `run` では `--no-update-lock-file` および `--no-write-lock-file` で固定ファイル更新を禁止しています。なお、本ワークフローのアップロード対象に private 構成を含むシステム世代や LLM モデルは含めません。
+
+### 必要な設定
+
+1. Cachix で公開 cache を作成します。
+2. cache 限定書き込み token を GitHub Actions secret の `CACHIX_AUTH_TOKEN`、cache 名を Actions variable の `CACHIX_CACHE_NAME` に登録します（token を公開ファイルへ書かないでください）。
+3. `nix/system.nix` の `nix.settings` に cache URL (`substituters`) と公開鍵 (`trusted-public-keys`) を追加し、`dotfiles apply` で反映します。
+
+導入後は、CI で公開済みで同一入力となる CLI をキャッシュから取得します。未公開コミット、未コミット変更を含む作業ツリー、CI 完了前などのキャッシュ未登録時はローカルビルドされます。Nix 評価と Homebrew 状態確認はローカルに残ります。
+
 ## 設定ファイル仕様 (dotfiles.toml / dotfiles.local.toml)
 
 設定項目、既定値、マージ規則、設定例はCLIの[設定ファイル](../cli/README.md#設定ファイル)を参照してください。

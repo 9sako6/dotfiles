@@ -1,0 +1,54 @@
+name: cache-cli
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: cache-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  cache-cli:
+    if: github.ref == 'refs/heads/master' && vars.CACHIX_CACHE_NAME != ''
+    runs-on: macos-latest
+    env:
+      NIX_CONFIG: extra-experimental-features = nix-command flakes
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Check cache configuration
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          CACHIX_CACHE_NAME: ${{ vars.CACHIX_CACHE_NAME }}
+        run: |
+          if [ -z "$CACHIX_AUTH_TOKEN" ] || [ -z "$CACHIX_CACHE_NAME" ]; then
+            echo 'Set CACHIX_AUTH_TOKEN and CACHIX_CACHE_NAME in repository Actions settings.' >&2
+            exit 1
+          fi
+
+      - name: Install Lix
+        run: |
+          ./bin/install-lix.sh
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
+
+      - name: Build and test the public CLI
+        run: |
+          test "$(uname -m)" = arm64
+          nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file .#dotfiles > "$RUNNER_TEMP/dotfiles-cli-path"
+          cli_path="$(cat "$RUNNER_TEMP/dotfiles-cli-path")"
+          test "$("$cli_path/bin/dotfiles" version)" = "dotfiles $GITHUB_SHA"
+
+      - name: Publish the CLI runtime closure to Cachix
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          CACHIX_CACHE_NAME: ${{ vars.CACHIX_CACHE_NAME }}
+        run: |
+          cli_path="$(cat "$RUNNER_TEMP/dotfiles-cli-path")"
+          nix run --no-update-lock-file --no-write-lock-file .#cachix -- push "$CACHIX_CACHE_NAME" "$cli_path"
+          nix path-info --store "https://$CACHIX_CACHE_NAME.cachix.org" "$cli_path"

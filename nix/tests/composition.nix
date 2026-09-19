@@ -20,11 +20,19 @@ let
     dotfilesDirectory = "/fixture";
     primaryUser = "fixture";
   };
+  cacheHost = self.lib.mkHost {
+    configurationRevision = self.rev or self.dirtyRev or "unknown";
+    dotfilesDirectory = "/cache-fixture";
+    primaryUser = "cache-fixture";
+    privateFlake.darwinModules.default.homebrew.casks = [ "fixture-cask" ];
+  };
   rejects = module: !(builtins.tryEval (builtins.deepSeq (make module).system.drvPath true)).success;
   results = {
     cliRevision = (lib.findFirst (package: (package.pname or "") == "dotfiles") null
       composed.config.environment.systemPackages).DOTFILES_BUILD_REVISION
       == "0123456789abcdef0123456789abcdef01234567-dirty";
+    cliCacheReuse = (lib.findFirst (package: (package.pname or "") == "dotfiles") null
+      cacheHost.config.environment.systemPackages).outPath == self.packages.${pkgs.stdenv.hostPlatform.system}.dotfiles.outPath;
     buildable = (builtins.tryEval composed.system.drvPath).success;
     service = composed.config.launchd.user.agents.fixture.serviceConfig.RunAtLoad;
     tap = builtins.any (tap: tap.name == "fixture/tap") composed.config.homebrew.taps;

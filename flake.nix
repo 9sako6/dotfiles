@@ -124,6 +124,7 @@
     in
     {
       packages.${system} = {
+        cachix = toolset.cachix;
         default = dotfilesPackage;
         dotfiles = dotfilesPackage;
         localllm = toolset.localllm (defaultConfiguration.localllm // {
