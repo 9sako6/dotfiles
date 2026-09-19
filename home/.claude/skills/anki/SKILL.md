@@ -11,7 +11,7 @@ Ankiを学習状態や目的地の管理における唯一の基準・保存先�
 
 同じ依頼を再実行する場合でも、Ankiの最新状態を読み直してから判断し、すでに存在する知識を重複して追加しない。
 
-カードを書く前に [references/card-design.md](references/card-design.md) をすべて読む。日本語のカードを作成する際は、`stop-ai-slop-jp` が利用可能であればその `SKILL.md` も読む。
+カードを書く前に [references/card-design.md](references/card-design.md) をすべて読む。
 
 ## 進め方
 

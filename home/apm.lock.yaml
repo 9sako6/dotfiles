@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-09-19T06:37:47.532794+00:00'
+generated_at: '2026-09-19T11:10:41.052941+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -42,15 +42,15 @@ dependencies:
   - .claude/skills/anki/tools/goal.test.ts
   - .claude/skills/anki/tools/goal.ts
   deployed_file_hashes:
-    .agents/skills/anki/SKILL.md: sha256:1b4ee1a5c61967936e50418c6ec50fd277cdf3c0f5616a7d62dc93abee8a856c
-    .agents/skills/anki/references/card-design.md: sha256:ba43a00e717426a2db24f8fc3f311ff8ff87c021dd4a9f23bb9cf6f9a2bf1817
+    .agents/skills/anki/SKILL.md: sha256:426d709f3c9505f6823d58a1dd137cf2455217f3b4762a37fba9566164b516ab
+    .agents/skills/anki/references/card-design.md: sha256:cfbe51602f2a62d931faa2d7a2018e1629f512c34532717940443ca18577ccb9
     .agents/skills/anki/tools/anki-connect-boundary.test.ts: sha256:0a4a00bec3b8ba4f9a5f94ddf96523a727abfb895f68dd77b83e36bdbddc0cb2
     .agents/skills/anki/tools/anki-connect.test.ts: sha256:8ba8d3d9156ea7c04489087b2c9943149285de2f0d2fb3d51c8ea9611ca31884
     .agents/skills/anki/tools/anki-connect.ts: sha256:1df52d590648000d72ac3f7596bb5b2d882653f5f126cadcd583b5f48c9da4bf
     .agents/skills/anki/tools/goal.test.ts: sha256:1421e208c572e920557fe20f39b6faf15ca41939a19431d634ede800cc22f0ca
     .agents/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
-    .claude/skills/anki/SKILL.md: sha256:1b4ee1a5c61967936e50418c6ec50fd277cdf3c0f5616a7d62dc93abee8a856c
-    .claude/skills/anki/references/card-design.md: sha256:ba43a00e717426a2db24f8fc3f311ff8ff87c021dd4a9f23bb9cf6f9a2bf1817
+    .claude/skills/anki/SKILL.md: sha256:426d709f3c9505f6823d58a1dd137cf2455217f3b4762a37fba9566164b516ab
+    .claude/skills/anki/references/card-design.md: sha256:cfbe51602f2a62d931faa2d7a2018e1629f512c34532717940443ca18577ccb9
     .claude/skills/anki/tools/anki-connect-boundary.test.ts: sha256:0a4a00bec3b8ba4f9a5f94ddf96523a727abfb895f68dd77b83e36bdbddc0cb2
     .claude/skills/anki/tools/anki-connect.test.ts: sha256:8ba8d3d9156ea7c04489087b2c9943149285de2f0d2fb3d51c8ea9611ca31884
     .claude/skills/anki/tools/anki-connect.ts: sha256:1df52d590648000d72ac3f7596bb5b2d882653f5f126cadcd583b5f48c9da4bf
@@ -68,8 +68,8 @@ dependencies:
   - .claude/skills/design-it
   - .claude/skills/design-it/SKILL.md
   deployed_file_hashes:
-    .agents/skills/design-it/SKILL.md: sha256:e4a143cc941144333d7970ccf00e0478faa11faeaad5aec3dfe50b9bfbf5fe91
-    .claude/skills/design-it/SKILL.md: sha256:e4a143cc941144333d7970ccf00e0478faa11faeaad5aec3dfe50b9bfbf5fe91
+    .agents/skills/design-it/SKILL.md: sha256:6cc6cdc04ae827a0d13a6ee5acb8a755336fa3af3fbbd3df15f5bd44bd9dabcc
+    .claude/skills/design-it/SKILL.md: sha256:6cc6cdc04ae827a0d13a6ee5acb8a755336fa3af3fbbd3df15f5bd44bd9dabcc
   source: local
   local_path: ./.apm/skills/design-it
 - repo_url: _local/jp
@@ -79,19 +79,15 @@ dependencies:
   deployed_files:
   - .agents/skills/jp
   - .agents/skills/jp/SKILL.md
-  - .agents/skills/jp/references/fallback.md
   - .agents/skills/jp/references/writing-rules.md
   - .claude/skills/jp
   - .claude/skills/jp/SKILL.md
-  - .claude/skills/jp/references/fallback.md
   - .claude/skills/jp/references/writing-rules.md
   deployed_file_hashes:
-    .agents/skills/jp/SKILL.md: sha256:9d055e6cf4c4c02aa3e1522979140badbd464fdb868c7c214b311d295b556487
-    .agents/skills/jp/references/fallback.md: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
-    .agents/skills/jp/references/writing-rules.md: sha256:dda0cc30814507009f4ac1fb588eb1f7cb033334c7826e201c4fe4e7e1072f11
-    .claude/skills/jp/SKILL.md: sha256:9d055e6cf4c4c02aa3e1522979140badbd464fdb868c7c214b311d295b556487
-    .claude/skills/jp/references/fallback.md: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
-    .claude/skills/jp/references/writing-rules.md: sha256:dda0cc30814507009f4ac1fb588eb1f7cb033334c7826e201c4fe4e7e1072f11
+    .agents/skills/jp/SKILL.md: sha256:8b215166d4427cbe67793397d9e8ef99b33474ffd80ca40e4e48a78e1fe7fa80
+    .agents/skills/jp/references/writing-rules.md: sha256:7fded38b12883e6778ab57db6526b83d3f692d8e8c7d6acc36ae45f1edc8b901
+    .claude/skills/jp/SKILL.md: sha256:8b215166d4427cbe67793397d9e8ef99b33474ffd80ca40e4e48a78e1fe7fa80
+    .claude/skills/jp/references/writing-rules.md: sha256:7fded38b12883e6778ab57db6526b83d3f692d8e8c7d6acc36ae45f1edc8b901
   source: local
   local_path: ./.apm/skills/jp
 - repo_url: _local/model-it
@@ -122,72 +118,6 @@ dependencies:
     .claude/skills/resolve-it/SKILL.md: sha256:d29def3739738c2c82f032bf842371885992846b61b275bd354beaa897f0c5b8
   source: local
   local_path: ./.apm/skills/resolve-it
-- repo_url: dietrichgebert/ponytail
-  name: ponytail
-  host: github.com
-  resolved_commit: e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156
-  resolved_ref: e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156
-  version: unknown
-  virtual_path: skills/ponytail
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/ponytail
-  - .agents/skills/ponytail/SKILL.md
-  - .claude/skills/ponytail
-  - .claude/skills/ponytail/SKILL.md
-  deployed_file_hashes:
-    .agents/skills/ponytail/SKILL.md: sha256:1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2
-    .claude/skills/ponytail/SKILL.md: sha256:1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2
-  content_hash: sha256:210fa0831f649ce9f8a305f7b7c8cf2a0dd09ac4dd53067109941b96e7811d4e
-- repo_url: ikora128/stop-ai-slop-jp
-  name: stop-ai-slop-jp
-  host: github.com
-  resolved_commit: e09d32796f253a62693885757cea484c275d06f2
-  resolved_ref: e09d32796f253a62693885757cea484c275d06f2
-  version: unknown
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/stop-ai-slop-jp
-  - .agents/skills/stop-ai-slop-jp/.gitignore
-  - .agents/skills/stop-ai-slop-jp/CHANGELOG.md
-  - .agents/skills/stop-ai-slop-jp/LICENSE
-  - .agents/skills/stop-ai-slop-jp/README.en.md
-  - .agents/skills/stop-ai-slop-jp/README.md
-  - .agents/skills/stop-ai-slop-jp/SKILL.md
-  - .agents/skills/stop-ai-slop-jp/references/examples.md
-  - .agents/skills/stop-ai-slop-jp/references/phrases.md
-  - .agents/skills/stop-ai-slop-jp/references/structures.md
-  - .claude/skills/stop-ai-slop-jp
-  - .claude/skills/stop-ai-slop-jp/.gitignore
-  - .claude/skills/stop-ai-slop-jp/CHANGELOG.md
-  - .claude/skills/stop-ai-slop-jp/LICENSE
-  - .claude/skills/stop-ai-slop-jp/README.en.md
-  - .claude/skills/stop-ai-slop-jp/README.md
-  - .claude/skills/stop-ai-slop-jp/SKILL.md
-  - .claude/skills/stop-ai-slop-jp/references/examples.md
-  - .claude/skills/stop-ai-slop-jp/references/phrases.md
-  - .claude/skills/stop-ai-slop-jp/references/structures.md
-  deployed_file_hashes:
-    .agents/skills/stop-ai-slop-jp/.gitignore: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
-    .agents/skills/stop-ai-slop-jp/CHANGELOG.md: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
-    .agents/skills/stop-ai-slop-jp/LICENSE: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
-    .agents/skills/stop-ai-slop-jp/README.en.md: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
-    .agents/skills/stop-ai-slop-jp/README.md: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
-    .agents/skills/stop-ai-slop-jp/SKILL.md: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
-    .agents/skills/stop-ai-slop-jp/references/examples.md: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
-    .agents/skills/stop-ai-slop-jp/references/phrases.md: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
-    .agents/skills/stop-ai-slop-jp/references/structures.md: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
-    .claude/skills/stop-ai-slop-jp/.gitignore: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
-    .claude/skills/stop-ai-slop-jp/CHANGELOG.md: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
-    .claude/skills/stop-ai-slop-jp/LICENSE: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
-    .claude/skills/stop-ai-slop-jp/README.en.md: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
-    .claude/skills/stop-ai-slop-jp/README.md: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
-    .claude/skills/stop-ai-slop-jp/SKILL.md: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
-    .claude/skills/stop-ai-slop-jp/references/examples.md: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
-    .claude/skills/stop-ai-slop-jp/references/phrases.md: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
-    .claude/skills/stop-ai-slop-jp/references/structures.md: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
-  content_hash: sha256:2e81e3a96cd7e5eaaf6fae3a597a76c8538c027a3ec86b8643cb454dc231f8ff
 - repo_url: mattpocock/skills
   name: grill-me
   host: github.com
@@ -207,6 +137,15 @@ dependencies:
     .claude/skills/grill-me/SKILL.md: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
   content_hash: sha256:784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea
 deployments:
+- kind: project-relative
+  target: agents
+  value: .agents/skills/jp/references/fallback.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
 - kind: project-relative
   target: agents
   value: .agents/skills/rails-mysql-explain
@@ -262,7 +201,7 @@ deployments:
   - ./.apm/skills/anki
   - .
   active_owner: ./.apm/skills/anki
-  content_hash: sha256:1b4ee1a5c61967936e50418c6ec50fd277cdf3c0f5616a7d62dc93abee8a856c
+  content_hash: sha256:426d709f3c9505f6823d58a1dd137cf2455217f3b4762a37fba9566164b516ab
 - kind: project-relative
   target: claude
   value: .claude/skills/anki/references/card-design.md
@@ -272,7 +211,7 @@ deployments:
   - ./.apm/skills/anki
   - .
   active_owner: ./.apm/skills/anki
-  content_hash: sha256:ba43a00e717426a2db24f8fc3f311ff8ff87c021dd4a9f23bb9cf6f9a2bf1817
+  content_hash: sha256:cfbe51602f2a62d931faa2d7a2018e1629f512c34532717940443ca18577ccb9
 - kind: project-relative
   target: claude
   value: .claude/skills/anki/tools/anki-connect-boundary.test.ts
@@ -342,7 +281,7 @@ deployments:
   - ./.apm/skills/design-it
   - .
   active_owner: ./.apm/skills/design-it
-  content_hash: sha256:e4a143cc941144333d7970ccf00e0478faa11faeaad5aec3dfe50b9bfbf5fe91
+  content_hash: sha256:6cc6cdc04ae827a0d13a6ee5acb8a755336fa3af3fbbd3df15f5bd44bd9dabcc
 - kind: project-relative
   target: claude
   value: .claude/skills/grill-me
@@ -380,17 +319,7 @@ deployments:
   - ./.apm/skills/jp
   - .
   active_owner: ./.apm/skills/jp
-  content_hash: sha256:9d055e6cf4c4c02aa3e1522979140badbd464fdb868c7c214b311d295b556487
-- kind: project-relative
-  target: claude
-  value: .claude/skills/jp/references/fallback.md
-  runtime: null
-  scope: project
-  owners:
-  - ./.apm/skills/jp
-  - .
-  active_owner: ./.apm/skills/jp
-  content_hash: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
+  content_hash: sha256:8b215166d4427cbe67793397d9e8ef99b33474ffd80ca40e4e48a78e1fe7fa80
 - kind: project-relative
   target: claude
   value: .claude/skills/jp/references/writing-rules.md
@@ -400,7 +329,7 @@ deployments:
   - ./.apm/skills/jp
   - .
   active_owner: ./.apm/skills/jp
-  content_hash: sha256:dda0cc30814507009f4ac1fb588eb1f7cb033334c7826e201c4fe4e7e1072f11
+  content_hash: sha256:7fded38b12883e6778ab57db6526b83d3f692d8e8c7d6acc36ae45f1edc8b901
 - kind: project-relative
   target: claude
   value: .claude/skills/minus
@@ -441,24 +370,6 @@ deployments:
   content_hash: sha256:af557817b18fcfa86f55e0a0c1ec892aa22e0c48e9c9ef926cc9001657de66de
 - kind: project-relative
   target: claude
-  value: .claude/skills/ponytail
-  runtime: null
-  scope: project
-  owners:
-  - dietrichgebert/ponytail/skills/ponytail
-  active_owner: dietrichgebert/ponytail/skills/ponytail
-  content_hash: null
-- kind: project-relative
-  target: claude
-  value: .claude/skills/ponytail/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - dietrichgebert/ponytail/skills/ponytail
-  active_owner: dietrichgebert/ponytail/skills/ponytail
-  content_hash: sha256:1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2
-- kind: project-relative
-  target: claude
   value: .claude/skills/resolve-it
   runtime: null
   scope: project
@@ -478,96 +389,6 @@ deployments:
   active_owner: ./.apm/skills/resolve-it
   content_hash: sha256:d29def3739738c2c82f032bf842371885992846b61b275bd354beaa897f0c5b8
 - kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: null
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/.gitignore
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/CHANGELOG.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/LICENSE
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/README.en.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/README.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/references/examples.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/references/phrases.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
-- kind: project-relative
-  target: claude
-  value: .claude/skills/stop-ai-slop-jp/references/structures.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
-- kind: project-relative
   target: codex
   value: .agents/skills/anki
   runtime: null
@@ -586,7 +407,7 @@ deployments:
   - ./.apm/skills/anki
   - .
   active_owner: ./.apm/skills/anki
-  content_hash: sha256:1b4ee1a5c61967936e50418c6ec50fd277cdf3c0f5616a7d62dc93abee8a856c
+  content_hash: sha256:426d709f3c9505f6823d58a1dd137cf2455217f3b4762a37fba9566164b516ab
 - kind: project-relative
   target: codex
   value: .agents/skills/anki/references/card-design.md
@@ -596,7 +417,7 @@ deployments:
   - ./.apm/skills/anki
   - .
   active_owner: ./.apm/skills/anki
-  content_hash: sha256:ba43a00e717426a2db24f8fc3f311ff8ff87c021dd4a9f23bb9cf6f9a2bf1817
+  content_hash: sha256:cfbe51602f2a62d931faa2d7a2018e1629f512c34532717940443ca18577ccb9
 - kind: project-relative
   target: codex
   value: .agents/skills/anki/tools/anki-connect-boundary.test.ts
@@ -666,7 +487,7 @@ deployments:
   - ./.apm/skills/design-it
   - .
   active_owner: ./.apm/skills/design-it
-  content_hash: sha256:e4a143cc941144333d7970ccf00e0478faa11faeaad5aec3dfe50b9bfbf5fe91
+  content_hash: sha256:6cc6cdc04ae827a0d13a6ee5acb8a755336fa3af3fbbd3df15f5bd44bd9dabcc
 - kind: project-relative
   target: codex
   value: .agents/skills/grill-me
@@ -704,17 +525,7 @@ deployments:
   - ./.apm/skills/jp
   - .
   active_owner: ./.apm/skills/jp
-  content_hash: sha256:9d055e6cf4c4c02aa3e1522979140badbd464fdb868c7c214b311d295b556487
-- kind: project-relative
-  target: codex
-  value: .agents/skills/jp/references/fallback.md
-  runtime: null
-  scope: project
-  owners:
-  - ./.apm/skills/jp
-  - .
-  active_owner: ./.apm/skills/jp
-  content_hash: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
+  content_hash: sha256:8b215166d4427cbe67793397d9e8ef99b33474ffd80ca40e4e48a78e1fe7fa80
 - kind: project-relative
   target: codex
   value: .agents/skills/jp/references/writing-rules.md
@@ -724,7 +535,7 @@ deployments:
   - ./.apm/skills/jp
   - .
   active_owner: ./.apm/skills/jp
-  content_hash: sha256:dda0cc30814507009f4ac1fb588eb1f7cb033334c7826e201c4fe4e7e1072f11
+  content_hash: sha256:7fded38b12883e6778ab57db6526b83d3f692d8e8c7d6acc36ae45f1edc8b901
 - kind: project-relative
   target: codex
   value: .agents/skills/minus
@@ -765,24 +576,6 @@ deployments:
   content_hash: sha256:af557817b18fcfa86f55e0a0c1ec892aa22e0c48e9c9ef926cc9001657de66de
 - kind: project-relative
   target: codex
-  value: .agents/skills/ponytail
-  runtime: null
-  scope: project
-  owners:
-  - dietrichgebert/ponytail/skills/ponytail
-  active_owner: dietrichgebert/ponytail/skills/ponytail
-  content_hash: null
-- kind: project-relative
-  target: codex
-  value: .agents/skills/ponytail/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - dietrichgebert/ponytail/skills/ponytail
-  active_owner: dietrichgebert/ponytail/skills/ponytail
-  content_hash: sha256:1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2
-- kind: project-relative
-  target: codex
   value: .agents/skills/resolve-it
   runtime: null
   scope: project
@@ -801,96 +594,6 @@ deployments:
   - .
   active_owner: ./.apm/skills/resolve-it
   content_hash: sha256:d29def3739738c2c82f032bf842371885992846b61b275bd354beaa897f0c5b8
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: null
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/.gitignore
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/CHANGELOG.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:13b54e7ba2750b34f62c04ee47a29495777348e7ff90847078e3029dd1c742bd
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/LICENSE
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:f9145903368bf0483fec06d7f2ed12d2e20667190783a7ffea161e92ff39f301
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/README.en.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:37874550afb353707d5ef3f2706c776c4f97e3fe904dcf1057fc4c3ab66d3d40
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/README.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:555c1fcabb809420cb5b8de240ab0be49e88a915bac872ce12a0b35b7916f4d8
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:4da89e5f9c69ce69a8d6c04e8f3d238686cd3a3ba3946c5cfadad805116c50f3
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/references/examples.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:a971dfc0f69e914365d29b7566cf1dbcf4cbaf3abf3c331b384e8d29beb9b5f5
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/references/phrases.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:0e23388b43146d7f560cdc04a1f8ebe3518b57889404e39fa258b025ab4d2003
-- kind: project-relative
-  target: codex
-  value: .agents/skills/stop-ai-slop-jp/references/structures.md
-  runtime: null
-  scope: project
-  owners:
-  - ikora128/stop-ai-slop-jp
-  active_owner: ikora128/stop-ai-slop-jp
-  content_hash: sha256:af7447458633e522394a153295ac2a5ef8c14c6e82befae212a0650058e52969
 local_deployed_files:
 - .agents/skills/anki
 - .agents/skills/anki/SKILL.md
@@ -926,39 +629,37 @@ local_deployed_files:
 - .claude/skills/design-it/SKILL.md
 - .claude/skills/jp
 - .claude/skills/jp/SKILL.md
-- .claude/skills/jp/references/fallback.md
 - .claude/skills/jp/references/writing-rules.md
 - .claude/skills/model-it
 - .claude/skills/model-it/SKILL.md
 - .claude/skills/resolve-it
 - .claude/skills/resolve-it/SKILL.md
 local_deployed_file_hashes:
-  .agents/skills/anki/SKILL.md: sha256:1b4ee1a5c61967936e50418c6ec50fd277cdf3c0f5616a7d62dc93abee8a856c
-  .agents/skills/anki/references/card-design.md: sha256:ba43a00e717426a2db24f8fc3f311ff8ff87c021dd4a9f23bb9cf6f9a2bf1817
+  .agents/skills/anki/SKILL.md: sha256:426d709f3c9505f6823d58a1dd137cf2455217f3b4762a37fba9566164b516ab
+  .agents/skills/anki/references/card-design.md: sha256:cfbe51602f2a62d931faa2d7a2018e1629f512c34532717940443ca18577ccb9
   .agents/skills/anki/tools/anki-connect-boundary.test.ts: sha256:0a4a00bec3b8ba4f9a5f94ddf96523a727abfb895f68dd77b83e36bdbddc0cb2
   .agents/skills/anki/tools/anki-connect.test.ts: sha256:8ba8d3d9156ea7c04489087b2c9943149285de2f0d2fb3d51c8ea9611ca31884
   .agents/skills/anki/tools/anki-connect.ts: sha256:1df52d590648000d72ac3f7596bb5b2d882653f5f126cadcd583b5f48c9da4bf
   .agents/skills/anki/tools/goal.test.ts: sha256:1421e208c572e920557fe20f39b6faf15ca41939a19431d634ede800cc22f0ca
   .agents/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
-  .agents/skills/design-it/SKILL.md: sha256:e4a143cc941144333d7970ccf00e0478faa11faeaad5aec3dfe50b9bfbf5fe91
-  .agents/skills/jp/SKILL.md: sha256:9d055e6cf4c4c02aa3e1522979140badbd464fdb868c7c214b311d295b556487
+  .agents/skills/design-it/SKILL.md: sha256:6cc6cdc04ae827a0d13a6ee5acb8a755336fa3af3fbbd3df15f5bd44bd9dabcc
+  .agents/skills/jp/SKILL.md: sha256:8b215166d4427cbe67793397d9e8ef99b33474ffd80ca40e4e48a78e1fe7fa80
   .agents/skills/jp/references/fallback.md: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
-  .agents/skills/jp/references/writing-rules.md: sha256:dda0cc30814507009f4ac1fb588eb1f7cb033334c7826e201c4fe4e7e1072f11
+  .agents/skills/jp/references/writing-rules.md: sha256:7fded38b12883e6778ab57db6526b83d3f692d8e8c7d6acc36ae45f1edc8b901
   .agents/skills/model-it/SKILL.md: sha256:af557817b18fcfa86f55e0a0c1ec892aa22e0c48e9c9ef926cc9001657de66de
   .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
   .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .agents/skills/resolve-it/SKILL.md: sha256:d29def3739738c2c82f032bf842371885992846b61b275bd354beaa897f0c5b8
   .claude/rules/global.md: sha256:1bde14b566a65a79d32da058eed5692ab79eda071e0fe307faa4a5fb0a69c141
-  .claude/skills/anki/SKILL.md: sha256:1b4ee1a5c61967936e50418c6ec50fd277cdf3c0f5616a7d62dc93abee8a856c
-  .claude/skills/anki/references/card-design.md: sha256:ba43a00e717426a2db24f8fc3f311ff8ff87c021dd4a9f23bb9cf6f9a2bf1817
+  .claude/skills/anki/SKILL.md: sha256:426d709f3c9505f6823d58a1dd137cf2455217f3b4762a37fba9566164b516ab
+  .claude/skills/anki/references/card-design.md: sha256:cfbe51602f2a62d931faa2d7a2018e1629f512c34532717940443ca18577ccb9
   .claude/skills/anki/tools/anki-connect-boundary.test.ts: sha256:0a4a00bec3b8ba4f9a5f94ddf96523a727abfb895f68dd77b83e36bdbddc0cb2
   .claude/skills/anki/tools/anki-connect.test.ts: sha256:8ba8d3d9156ea7c04489087b2c9943149285de2f0d2fb3d51c8ea9611ca31884
   .claude/skills/anki/tools/anki-connect.ts: sha256:1df52d590648000d72ac3f7596bb5b2d882653f5f126cadcd583b5f48c9da4bf
   .claude/skills/anki/tools/goal.test.ts: sha256:1421e208c572e920557fe20f39b6faf15ca41939a19431d634ede800cc22f0ca
   .claude/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
-  .claude/skills/design-it/SKILL.md: sha256:e4a143cc941144333d7970ccf00e0478faa11faeaad5aec3dfe50b9bfbf5fe91
-  .claude/skills/jp/SKILL.md: sha256:9d055e6cf4c4c02aa3e1522979140badbd464fdb868c7c214b311d295b556487
-  .claude/skills/jp/references/fallback.md: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
-  .claude/skills/jp/references/writing-rules.md: sha256:dda0cc30814507009f4ac1fb588eb1f7cb033334c7826e201c4fe4e7e1072f11
+  .claude/skills/design-it/SKILL.md: sha256:6cc6cdc04ae827a0d13a6ee5acb8a755336fa3af3fbbd3df15f5bd44bd9dabcc
+  .claude/skills/jp/SKILL.md: sha256:8b215166d4427cbe67793397d9e8ef99b33474ffd80ca40e4e48a78e1fe7fa80
+  .claude/skills/jp/references/writing-rules.md: sha256:7fded38b12883e6778ab57db6526b83d3f692d8e8c7d6acc36ae45f1edc8b901
   .claude/skills/model-it/SKILL.md: sha256:af557817b18fcfa86f55e0a0c1ec892aa22e0c48e9c9ef926cc9001657de66de
   .claude/skills/resolve-it/SKILL.md: sha256:d29def3739738c2c82f032bf842371885992846b61b275bd354beaa897f0c5b8
