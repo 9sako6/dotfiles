@@ -46,6 +46,14 @@ fn write_settings(
     settings: &[Setting],
     terminal_width: Option<usize>,
 ) -> Result<()> {
+    writeln!(
+        output,
+        "{}",
+        console::style("settings")
+            .magenta()
+            .italic()
+            .force_styling(terminal_width.is_some() && console::colors_enabled())
+    )?;
     let mut builder = Builder::default();
     builder.push_record(["key", "value", "source"]);
     for setting in settings {
@@ -82,7 +90,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn piped_output_displays_all_values_without_headers_or_duplicate_rows() {
+    fn piped_output_displays_all_values_without_column_headers_or_duplicate_rows() {
         let settings: Vec<Setting> = serde_json::from_value(json!([
             {"key": "copy", "value": ["a", "b"], "source": "dotfiles.toml"},
             {"key": "localllm.default_model", "value": null, "source": null},
@@ -96,6 +104,7 @@ mod tests {
         assert_eq!(
             String::from_utf8(output).unwrap(),
             concat!(
+                "settings\n",
                 "copy                    [            dotfiles.toml\n",
                 "                          \"a\",\n",
                 "                          \"b\"\n",

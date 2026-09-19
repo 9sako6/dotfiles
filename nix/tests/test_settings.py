@@ -66,6 +66,7 @@ class SettingsTests(unittest.TestCase):
         rows = {}
         decoder = json.JSONDecoder()
         lines = iter(result.stdout.split("\n\npackages", 1)[0].splitlines())
+        self.assertEqual(next(lines), "settings")
         for line in lines:
             key, rest = line.split(maxsplit=1)
             if rest.startswith("["):
@@ -119,13 +120,14 @@ class SettingsTests(unittest.TestCase):
             '[localllm]\nmodels = ["qwen3.8-27b-4bit"]\n'
         )
         narrow = self.terminal_settings(80, color=True)
-        header = narrow.splitlines()[0]
+        self.assertEqual(narrow.splitlines()[0], "\x1b[35m\x1b[3msettings\x1b[0m")
+        header = narrow.splitlines()[1]
         for label in ["key", "value", "source"]:
             self.assertIn(f"\x1b[35m\x1b[3m{label}\x1b[0m", header)
         plain = re.sub(r"\x1b\[[0-9;]*m", "", narrow)
-        self.assertEqual(plain.splitlines()[0].split(), ["key", "value", "source"])
+        self.assertEqual(plain.splitlines()[1].split(), ["key", "value", "source"])
         self.assertTrue(all(len(line) <= 80 for line in plain.split("\n\npackages", 1)[0].splitlines()))
-        self.assertNotIn(paths[0], plain.splitlines()[1])
+        self.assertNotIn(paths[0], plain.splitlines()[2])
         for path in paths:
             self.assertEqual(plain.count(json.dumps(path)), 1)
         wide = self.terminal_settings(160, color=False)
