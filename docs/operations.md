@@ -93,7 +93,7 @@ devcontainerから参照するエージェント用設定の実体配備は、CL
 
 1. Cachix で公開 cache を作成します。
 2. cache 限定書き込み token を GitHub Actions secret の `CACHIX_AUTH_TOKEN`、cache 名を Actions variable の `CACHIX_CACHE_NAME` に登録します（token を公開ファイルへ書かないでください）。
-3. `nix/system.nix` の `nix.settings` に cache URL (`substituters`) と公開鍵 (`trusted-public-keys`) を追加し、`dotfiles apply` で反映します。
+3. 利用者固有のCachix cache URLと公開鍵は、`dotfiles.local.toml` の `private.path` で結合する非公開側 `darwinModules.default` 内の `nix.settings.substituters` および `nix.settings.trusted-public-keys` に追加してください。その際、既定のNix公式キャッシュは保持したまま追記し、設定完了後に `dotfiles apply` を実行して変更を反映します。
 
 導入後は、CI で公開済みで同一入力となる CLI をキャッシュから取得します。未公開コミット、未コミット変更を含む作業ツリー、CI 完了前などのキャッシュ未登録時はローカルビルドされます。Nix 評価と Homebrew 状態確認はローカルに残ります。
 
