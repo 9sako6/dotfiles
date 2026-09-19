@@ -177,7 +177,7 @@ install_system_show_homebrew_missing() {
   check_status=0
   check_output="$(
     HOMEBREW_NO_AUTO_UPDATE=1 \
-      "$brew_bin" bundle check --verbose --file "$brewfile_path" 2>&1
+      "$brew_bin" bundle check --verbose --no-upgrade --file "$brewfile_path" 2>&1
   )" || check_status=$?
   case "$check_status" in
     0 | 1) ;;

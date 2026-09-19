@@ -153,6 +153,30 @@ exit 0
   });
 });
 
+test("preview skips outdated packages while retaining missing installations", async () => {
+  await withTempDir("homebrew-no-upgrade-plan", async (tempDir) => {
+    const brewBin = path.join(tempDir, "brew");
+    await makeExecutable(brewBin, `#!/bin/sh
+case "$*" in
+  "list --formula --full-name") exit 0 ;;
+  "list --cask --full-name") printf '%s\\n' bitwarden; exit 0 ;;
+esac
+case " $* " in
+  *" --no-upgrade "*) ;;
+  *) printf '%s\\n' '→ Cask bitwarden needs to be installed or updated.' ;;
+esac
+printf '%s\\n' '→ Cask ghostty needs to be installed or updated.'
+exit 1
+`);
+    const result = await runHomebrewMissingPlan(brewBin, 1, "");
+    expect(result).toEqual({
+      exitCode: 0,
+      stderr: "",
+      stdout: "  + Install ghostty (cask)\n",
+    });
+  });
+});
+
 test("summarizes caches while retaining removals and unrelated warnings", async () => {
   await withTempDir("homebrew-cleanup-summary", async (tempDir) => {
     const brewBin = path.join(tempDir, "brew");
