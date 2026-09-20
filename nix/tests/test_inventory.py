@@ -106,6 +106,8 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("must-not-export", result.stdout)
         inventory = json.loads(result.stdout)
+        for package in inventory["packages"]:
+            self.assertEqual(set(package), {"name", "manager", "declared"})
         settings = {setting["key"]: setting["value"] for setting in inventory["system"]}
         self.assertFalse(settings["system.defaults.finder.AppleShowAllFiles"])
         self.assertEqual(settings["system.defaults.finder.NewWindowTarget"], "Home")

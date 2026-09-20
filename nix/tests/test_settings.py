@@ -104,17 +104,16 @@ class SettingsTests(unittest.TestCase):
         mise = commands / "mise"
         mise.write_text('''#!/bin/sh
 printf invoked > "$DOTFILES_DIR/lookup-started"
-while [ ! -f "$DOTFILES_DIR/lookup-release" ]; do sleep 0.02; done
-printf '2.0.0\\n'
+exit 1
 ''')
         mise.chmod(0o755)
         return {"PATH": f"{commands}:{os.environ['PATH']}"}
 
-    def terminal_settings(self, width, color, interact=None, environment=None,
-                          stdin_terminal=True, term="xterm-256color", expected_code=0):
+    def terminal_settings(self, width, color, environment=None,
+                          stdin_terminal=True, term="xterm-256color"):
         master, slave = pty.openpty()
         try:
-            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 64, width, 0, 0))
+            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 12, width, 0, 0))
             attributes = termios.tcgetattr(slave)
             state = self.root / "terminal-state"
             state.unlink(missing_ok=True)
@@ -143,8 +142,6 @@ sys.exit(result.returncode)
                     stdout=terminal, stderr=subprocess.PIPE, text=True,
                     preexec_fn=attach_terminal,
                 )
-                quit_sent = False
-                completed_at = None
                 try:
                     deadline = time.monotonic() + 30
                     while process.poll() is None or select.select([master], [], [], 0)[0]:
@@ -160,31 +157,21 @@ sys.exit(result.returncode)
                             if not chunk:
                                 break
                             chunks.append(chunk)
-                        frame = b"".join(chunks).rsplit(b"\x1b[2J", 1)[-1]
-                        if interact:
-                            interact(process, master, frame)
-                        elif b"q quit" in frame and b"checking latest" not in frame:
-                            if completed_at is None:
-                                completed_at = time.monotonic()
-                            if not quit_sent and time.monotonic() - completed_at >= 0.15:
-                                self.assertIsNone(process.poll(), "viewer closed after lookup")
-                                os.write(master, b"q")
-                                quit_sent = True
                     _, errors = process.communicate(timeout=5)
                 finally:
                     if process.poll() is None:
                         process.kill()
                         process.wait(timeout=5)
                 self.assertEqual(state.read_text(), repr(attributes))
-            self.assertEqual(process.returncode, expected_code, errors)
+            self.assertEqual(process.returncode, 0, errors)
             output = b"".join(chunks).decode().replace("\r\n", "\n")
-            if stdin_terminal and term != "dumb":
-                self.assertTrue(output.startswith("\x1b[?1049h"), output)
-                self.assertTrue(output.endswith("\x1b[?1049l"), output)
-                if not interact:
-                    self.assertTrue(quit_sent, "viewer exited before q")
-                frame = output.rsplit("\x1b[2J", 1)[-1].split("\x1b[64;1H", 1)[0]
-                return re.sub(r"\x1b\[\d+;1H", "\n", frame).strip("\n")
+            self.assertNotIn("\x1b[?1049", output)
+            self.assertNotIn("q quit", output)
+            self.assertNotIn("checking", output)
+            self.assertNotIn("latest", output)
+            plain = re.sub(r"\x1b\[[0-9;]*m", "", output)
+            self.assertNotIn("\x1b", plain)
+            self.assertEqual(plain.count("\npackages\n"), 1)
             return output
         finally:
             os.close(master)
@@ -202,86 +189,18 @@ sys.exit(result.returncode)
         self.assertEqual(result.stdout.count("\npackages\n"), 1)
         self.assertFalse((self.root / "lookup-started").exists())
 
-    def test_noninteractive_terminal_falls_back_to_plain_output(self):
+    def test_terminal_outputs_all_rows_once_without_lookup_or_input(self):
         environment = self.package_fixture()
-        for options in [{"stdin_terminal": False}, {"term": "dumb"}]:
+        for options in [{}, {"stdin_terminal": False}, {"term": "dumb"}]:
             with self.subTest(options=options):
-                output = self.terminal_settings(80, color=True, environment=environment, **options)
+                output = self.terminal_settings(80, color=False, environment=environment, **options)
                 self.assertIn("current", output)
+                self.assertIn("fixture-package", output)
                 self.assertIn("1.0.0", output)
-                self.assertNotIn("latest", output)
+                self.assertIn("Homebrew (nix-darwin)", output)
+                self.assertIn("default model", output)
                 self.assertNotIn("\x1b", output)
                 self.assertFalse((self.root / "lookup-started").exists())
-
-    def test_viewer_shows_configuration_before_lookup_and_stays_open_after_results(self):
-        environment = self.package_fixture()
-        released = False
-        completed_at = None
-        quit_sent = False
-
-        def interact(process, terminal, frame):
-            nonlocal released, completed_at, quit_sent
-            if not released and b"checking latest" in frame and b"q quit" in frame:
-                self.assertIn(b"settings", frame)
-                self.assertIn(b"1.0.0", frame)
-                self.assertIn(b"current", frame)
-                (self.root / "lookup-release").touch()
-                released = True
-            if released and b"2.0.0" in frame and b"checking latest" not in frame:
-                self.assertIn(b"error: unsupported source", frame)
-                if completed_at is None:
-                    completed_at = time.monotonic()
-                if not quit_sent and time.monotonic() - completed_at >= 0.15:
-                    self.assertIsNone(process.poll(), "viewer closed after lookup")
-                    os.write(terminal, b"q")
-                    quit_sent = True
-
-        output = self.terminal_settings(160, color=False, interact=interact, environment=environment)
-        self.assertTrue(quit_sent)
-        self.assertIn("2.0.0", output)
-        self.assertIn("Homebrew (nix-darwin)", output)
-        self.assertTrue((self.root / "lookup-started").exists())
-
-    def test_quit_and_interrupt_cancel_pending_lookups_and_restore_terminal(self):
-        environment = self.package_fixture()
-        for key, code in [(b"q", 0), (b"\x1b", 0), (b"\x03", 130)]:
-            with self.subTest(key=key):
-                (self.root / "lookup-started").unlink(missing_ok=True)
-                sent_at = None
-
-                def interact(process, terminal, frame):
-                    nonlocal sent_at
-                    if sent_at is None and b"q quit" in frame and (self.root / "lookup-started").exists():
-                        os.write(terminal, key)
-                        sent_at = time.monotonic()
-
-                self.terminal_settings(160, color=False, interact=interact,
-                                       environment=environment, expected_code=code)
-                self.assertIsNotNone(sent_at)
-                self.assertLess(time.monotonic() - sent_at, 2)
-
-    def test_viewer_can_resize_and_scroll_back_to_settings_after_lookup(self):
-        stage = 0
-
-        def interact(process, terminal, frame):
-            nonlocal stage
-            if b"q quit" not in frame or b"checking latest" in frame:
-                return
-            if stage == 0:
-                fcntl.ioctl(terminal, termios.TIOCSWINSZ, struct.pack("HHHH", 12, 80, 0, 0))
-                stage = 1
-            elif stage == 1 and b"\x1b[12;1H" in frame:
-                os.write(terminal, b"\x1b[F")
-                stage = 2
-            elif stage == 2 and b"default model" in frame:
-                os.write(terminal, b"\x1b[H")
-                stage = 3
-            elif stage == 3 and b"\x1b[1;1Hsettings" in frame:
-                os.write(terminal, b"q")
-                stage = 4
-
-        self.terminal_settings(160, color=False, interact=interact)
-        self.assertEqual(stage, 4)
 
     def test_terminal_header_and_multiline_arrays_preserve_values_at_any_width(self):
         paths = ["a/" + "x" * 18, "b/" + "y" * 18, "c/" + "z" * 18]

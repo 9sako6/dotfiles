@@ -19,7 +19,7 @@ pub enum Mode {
 }
 
 enum Review {
-    Finished(ExitCode),
+    Finished,
     Apply,
 }
 
@@ -257,8 +257,8 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             Some(&mut diagnostics),
         )?)?;
     }
-    if let Review::Finished(status) = review_plan(mode, preview)? {
-        return Ok(status);
+    if let Review::Finished = review_plan(mode, preview)? {
+        return Ok(ExitCode::SUCCESS);
     }
     public.verify()?;
     if let Some(private) = &private {
@@ -482,11 +482,11 @@ fn evaluate_configuration<T: serde::de::DeserializeOwned>(
 
 fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review> {
     if !preview.has_changes() {
-        return Ok(Review::Finished(ExitCode::SUCCESS));
+        return Ok(Review::Finished);
     }
-    let status = preview.show()?;
-    if status != ExitCode::SUCCESS || matches!(mode, Mode::Plan) {
-        return Ok(Review::Finished(status));
+    preview.show()?;
+    if matches!(mode, Mode::Plan) {
+        return Ok(Review::Finished);
     }
     confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())?;
     Ok(Review::Apply)
@@ -728,8 +728,7 @@ mod tests {
             Mode::Plan
         };
         let code = match review_plan(mode, preview) {
-            Ok(Review::Finished(status)) if status == ExitCode::SUCCESS => 0,
-            Ok(Review::Finished(_)) => 130,
+            Ok(Review::Finished) => 0,
             Ok(Review::Apply) => {
                 fs::write(root.join("activation-requested"), "yes").unwrap();
                 0

@@ -21,13 +21,13 @@ pub struct Setting {
 
 pub fn run(root: &Path) -> Result<ExitCode> {
     let (settings, inventory) = system::load_settings(root)?;
-    let interactive = crate::pager::is_interactive();
-    if !interactive {
-        let mut output = io::stdout().lock();
-        write!(output, "{}", render(&settings, None))?;
-        output.flush()?;
-    }
-    crate::inventory::run(inventory, &settings, interactive)
+    let width = crate::terminal_width();
+    let mut output = io::stdout().lock();
+    write!(output, "{}", render(&settings, width))?;
+    output.flush()?;
+    writeln!(output, "\n{}", crate::inventory::report(inventory, width)?)?;
+    output.flush()?;
+    Ok(ExitCode::SUCCESS)
 }
 
 fn format_value(value: &Value) -> String {

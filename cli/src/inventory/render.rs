@@ -1,8 +1,5 @@
 use std::collections::BTreeMap;
-use std::process::ExitCode;
-use std::sync::mpsc::TryRecvError;
 
-use anyhow::Result;
 use serde_json::Value;
 use tabled::builder::Builder;
 use tabled::grid::dimension::Estimate;
@@ -11,7 +8,7 @@ use tabled::settings::peaker::PriorityMax;
 use tabled::settings::{Format, Modify, Padding, Style, Width};
 use tabled::Table;
 
-use super::{latest::Checks, Inventory, Service};
+use super::{Inventory, Service};
 
 struct Row {
     key: String,
@@ -35,27 +32,22 @@ struct Section {
     rows: Vec<Row>,
 }
 
-fn sections(inventory: &Inventory, latest: bool) -> Vec<Section> {
-    let mut headers = vec!["name", "manager", "current"];
-    if latest {
-        headers.push("latest");
-    }
+fn sections(inventory: &Inventory) -> Vec<Section> {
     let mut sections = vec![Section {
         path: vec!["packages".into()],
-        headers,
+        headers: vec!["name", "manager", "current"],
         rows: inventory
             .packages
             .iter()
             .map(|package| {
-                let mut cells = vec![
-                    package.name.clone(),
-                    package.manager.clone(),
-                    package.declared.clone(),
-                ];
-                if latest {
-                    cells.push(package.latest.clone());
-                }
-                Row::new(format!("{}\0{}", package.name, package.manager), cells)
+                Row::new(
+                    format!("{}\0{}", package.name, package.manager),
+                    vec![
+                        package.name.clone(),
+                        package.manager.clone(),
+                        package.declared.clone(),
+                    ],
+                )
             })
             .collect(),
     }];
@@ -143,8 +135,8 @@ fn sections(inventory: &Inventory, latest: bool) -> Vec<Section> {
     sections
 }
 
-pub(super) fn report(inventory: &Inventory, width: Option<usize>, latest: bool) -> String {
-    render_sections(&sections(inventory, latest), width)
+pub(super) fn report(inventory: &Inventory, width: Option<usize>) -> String {
+    render_sections(&sections(inventory), width)
 }
 
 pub(super) fn deployment(
@@ -191,11 +183,11 @@ pub(super) fn deployment(
 pub(super) fn diff(before: Option<&Inventory>, after: &Inventory, width: Option<usize>) -> String {
     let mut previous: BTreeMap<_, _> = before
         .into_iter()
-        .flat_map(|inventory| sections(inventory, false))
+        .flat_map(sections)
         .map(|section| (section.path.clone(), section))
         .collect();
     let mut changed = Vec::new();
-    for mut section in sections(after, false) {
+    for mut section in sections(after) {
         let old = previous
             .remove(&section.path)
             .map(|s| s.rows)
@@ -251,15 +243,17 @@ fn changed_rows(before: Vec<Row>, mut after: Vec<Row>) -> Vec<Row> {
 }
 
 fn render_sections(sections: &[Section], width: Option<usize>) -> String {
-    let system_table = build_table(
+    let mut system_table = build_table(
         &["setting", "value", "description"],
         sections
             .iter()
             .filter(|s| s.path[0] == "system")
             .flat_map(|s| s.rows.iter().map(|r| r.cells.clone())),
-        width.map(|w| w.saturating_sub(4)),
-        None,
     );
+    if let Some(width) = width {
+        system_table
+            .with(Width::wrap(width.saturating_sub(4).max(12)).priority(PriorityMax::default()));
+    }
     let mut system_dimensions = system_table.get_dimension().clone();
     system_dimensions.estimate(system_table.get_records(), system_table.get_config());
     let mut output = String::new();
@@ -274,16 +268,36 @@ fn render_sections(sections: &[Section], width: Option<usize>) -> String {
             heading(&mut output, name, depth * 2, width.is_some());
         }
         let indent = section.path.len() * 2;
-        let table = build_table(
+        let mut table = build_table(
             &section.headers,
             section.rows.iter().map(|row| row.cells.clone()),
-            width.map(|w| w.saturating_sub(indent)),
-            if section.path[0] == "system" {
-                system_dimensions.get_widths()
-            } else {
-                None
-            },
         );
+        if section.path[0] == "packages" {
+            table.with(Modify::new(Columns::first()).with(Width::increase(32)));
+        }
+        if width.is_some() {
+            table.with(Modify::new(Rows::first()).with(Format::content(|text| {
+                console::style(text).magenta().italic().to_string()
+            })));
+        }
+        if let Some(columns) = system_dimensions
+            .get_widths()
+            .filter(|_| section.path[0] == "system")
+        {
+            for (column, width) in columns.iter().enumerate() {
+                let padding = table.get_config().get_padding((0, column).into());
+                let content_width = width.saturating_sub(padding.left.size + padding.right.size);
+                table.with(
+                    Modify::new(Columns::new(column..=column)).with(Width::wrap(content_width)),
+                );
+            }
+            table.with(Width::list(columns.to_vec()));
+        } else if let Some(width) = width {
+            table.with(
+                Width::wrap(width.saturating_sub(indent).max(section.headers.len() * 4))
+                    .priority(PriorityMax::default()),
+            );
+        }
         write_table(&mut output, table, indent, &section.rows, width.is_some());
         previous = &section.path;
     }
@@ -329,12 +343,7 @@ fn heading(output: &mut String, text: &str, indent: usize, color: bool) {
     output.push('\n');
 }
 
-fn build_table(
-    headers: &[&str],
-    rows: impl IntoIterator<Item = Vec<String>>,
-    width: Option<usize>,
-    columns: Option<&[usize]>,
-) -> Table {
+fn build_table(headers: &[&str], rows: impl IntoIterator<Item = Vec<String>>) -> Table {
     let mut builder = Builder::default();
     builder.push_record(headers.iter().copied());
     for row in rows {
@@ -345,21 +354,6 @@ fn build_table(
     table
         .with(Modify::new(Columns::first()).with(Padding::new(0, 1, 0, 0)))
         .with(Modify::new(Columns::last()).with(Padding::zero()));
-    if width.is_some() {
-        table.with(Modify::new(Rows::first()).with(Format::content(|text| {
-            console::style(text).magenta().italic().to_string()
-        })));
-    }
-    if let Some(columns) = columns {
-        for (column, width) in columns.iter().enumerate() {
-            let padding = table.get_config().get_padding((0, column).into());
-            let content_width = width.saturating_sub(padding.left.size + padding.right.size);
-            table.with(Modify::new(Columns::new(column..=column)).with(Width::wrap(content_width)));
-        }
-        table.with(Width::list(columns.to_vec()));
-    } else if let Some(width) = width {
-        table.with(Width::wrap(width.max(headers.len() * 4)).priority(PriorityMax::default()));
-    }
     table
 }
 
@@ -578,64 +572,6 @@ fn calendar(schedule: &Value, timezone: &str) -> String {
     )
 }
 
-struct SettingsView<'a> {
-    settings: &'a [crate::settings::Setting],
-    inventory: &'a mut Inventory,
-    checks: &'a mut Checks,
-    checking: bool,
-}
-
-impl crate::pager::Content for SettingsView<'_> {
-    fn render(&self, width: Option<usize>) -> String {
-        format!(
-            "{}\n{}",
-            crate::settings::render(self.settings, width),
-            report(self.inventory, width, true)
-        )
-    }
-
-    fn update(&mut self) -> bool {
-        let mut changed = false;
-        while self.checking {
-            match self.checks.poll() {
-                Ok((indices, result)) => {
-                    for index in indices {
-                        self.inventory.packages[index].latest = result.clone();
-                    }
-                    changed = true;
-                }
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => {
-                    self.checking = false;
-                    changed = true;
-                }
-            }
-        }
-        changed
-    }
-
-    fn status(&self) -> &str {
-        if self.checking {
-            "checking latest · "
-        } else {
-            ""
-        }
-    }
-}
-
-pub(super) fn live(
-    settings: &[crate::settings::Setting],
-    inventory: &mut Inventory,
-    checks: &mut Checks,
-) -> Result<ExitCode> {
-    crate::pager::show(SettingsView {
-        settings,
-        inventory,
-        checks,
-        checking: true,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -645,8 +581,8 @@ mod tests {
         let before = serde_json::json!({
             "source": "/fixture",
             "packages": [
-                {"name": "stable", "manager": "Nix", "declared": "1", "lookup": null},
-                {"name": "node", "manager": "mise", "declared": "1", "lookup": null}
+                {"name": "stable", "manager": "Nix", "declared": "1"},
+                {"name": "node", "manager": "mise", "declared": "1"}
             ],
             "system": [
                 {"key": "system.defaults.dock.show-recents", "group": "system.defaults.dock", "name": "show-recents", "value": true},

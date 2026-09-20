@@ -1,7 +1,6 @@
 mod agents;
 mod home_copy;
 mod inventory;
-mod pager;
 mod settings;
 mod system;
 
@@ -46,7 +45,7 @@ enum Commands {
         #[command(flatten)]
         options: SystemArgs,
     },
-    #[command(about = "Show effective settings, managed resources and latest package versions")]
+    #[command(about = "Show effective settings and managed resources")]
     Settings,
     #[command(about = "Show the commit used to build this CLI")]
     Version,
@@ -139,6 +138,12 @@ fn require_flake(candidate: &Path) -> Result<()> {
         );
     }
     Ok(())
+}
+
+fn terminal_width() -> Option<usize> {
+    let terminal = console::Term::stdout();
+    (terminal.is_term() && env::var("TERM").is_ok_and(|term| term != "dumb"))
+        .then(|| usize::from(terminal.size().1))
 }
 
 #[cfg(test)]

@@ -5,17 +5,10 @@ let
   user = cfg.system.primaryUser;
   home = cfg.home-manager.users.${user};
   toolset = import ./packages.nix { pkgs = host.pkgs; inherit inputs; };
-  urls = package:
-    lib.flatten [
-      (package.meta.homepage or [ ])
-      (package.src.urls or [ ])
-      (lib.optional ((package.src or { }) ? url) package.src.url)
-    ];
   nixPackage = package: {
     name = lib.getName package;
     declared = lib.getVersion package;
     manager = "Nix";
-    lookup = { kind = "upstream"; urls = urls package; };
   };
   miseFile = path:
     let
@@ -28,13 +21,11 @@ let
       inherit name;
       declared = version value;
       manager = "mise";
-      lookup = { kind = "mise"; tool = name; };
     }) (config.tools or { });
-  brewPackage = cask: entry: {
+  brewPackage = entry: {
     name = entry.name;
     manager = "Homebrew (nix-darwin)";
     declared = "—";
-    lookup = { kind = "brew"; inherit cask; name = entry.name; };
   };
   flatten = path: value:
     if builtins.isAttrs value then lib.concatMap (key: flatten (path ++ [ key ]) value.${key}) (builtins.attrNames value)
@@ -85,8 +76,7 @@ in {
     ++ [ (nixPackage toolset.ankiConnect) ]
     ++ miseFile "home/.config/mise/config.toml"
     ++ miseFile ".mise.toml"
-    ++ map (brewPackage false) cfg.homebrew.brews
-    ++ map (brewPackage true) cfg.homebrew.casks;
+    ++ map brewPackage (cfg.homebrew.brews ++ cfg.homebrew.casks);
   system = settings [ "system" "defaults" ] host.options.system.defaults cfg.system.defaults
     ++ settings [ "system" "keyboard" ] host.options.system.keyboard cfg.system.keyboard
     ++ flatten [ "time" "timeZone" ] cfg.time.timeZone

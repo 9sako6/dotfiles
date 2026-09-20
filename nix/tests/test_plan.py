@@ -4,8 +4,8 @@ import json
 import os
 from pathlib import Path
 import pty
+import re
 import select
-import signal
 import struct
 import subprocess
 import sys
@@ -105,7 +105,7 @@ sys.exit(result.returncode)
                         break
                     output += chunk
                     if interact:
-                        interact(process, master, output.rsplit(b"\x1b[2J", 1)[-1])
+                        interact(process, master, output)
             _, errors = process.communicate(timeout=3)
             self.assertEqual(process.returncode, expected_code, errors.decode())
             self.assertEqual(state.read_text(), repr(original))
@@ -198,70 +198,51 @@ sys.exit(result.returncode)
         self.assertEqual(result.stdout.replace("running 1 test", "").strip(), "")
         self.assertFalse((self.root / "activation-requested").exists())
 
-    def test_diff_viewer_scrolls_resizes_and_closes_without_reprinting(self):
-        stage = 0
+    def test_terminal_prints_entire_colored_diff_once_without_input(self):
+        output = self.terminal()
+        self.assertIn("\x1b[31m- package-000", output)
+        self.assertIn("\x1b[32m+ package-000", output)
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", output)
+        self.assertNotIn("\x1b", plain)
+        self.assertNotIn("q close", plain)
+        self.assertNotIn("latest", plain)
+        self.assertNotIn("unchanged", plain)
+        self.assertEqual(plain.count("packages\n"), 1)
+        for index in range(30):
+            self.assertEqual(plain.count(f"- package-{index:03}"), 1)
+            self.assertEqual(plain.count(f"+ package-{index:03}"), 1)
+        header = next(line for line in plain.splitlines() if line.strip().startswith("name "))
+        self.assertGreaterEqual(header.index("manager") - header.index("name"), 34)
 
-        def interact(process, terminal, frame):
-            nonlocal stage
-            if b"q close" not in frame:
-                return
-            if stage == 0:
-                self.assertIn(b"\x1b[31m- package-000", frame)
-                self.assertIn(b"\x1b[32m+ package-000", frame)
-                self.assertNotIn(b"latest", frame)
-                os.write(terminal, b"f")
-                stage = 1
-            elif stage == 1 and b"package-000" not in frame:
-                os.write(terminal, b"b")
-                stage = 2
-            elif stage == 2 and b"package-000" in frame:
-                os.write(terminal, b"G")
-                stage = 3
-            elif stage == 3 and b"package-029" in frame:
-                fcntl.ioctl(terminal, termios.TIOCSWINSZ, struct.pack("HHHH", 16, 80, 0, 0))
-                os.killpg(process.pid, signal.SIGWINCH)
-                stage = 4
-            elif stage == 4 and b"\x1b[16;1H" in frame:
-                os.write(terminal, b"g")
-                stage = 5
-            elif stage == 5 and b"package-000" in frame:
-                os.write(terminal, b"q")
-                stage = 6
-
-        output = self.terminal(interact)
-        self.assertEqual(stage, 6)
-        self.assertEqual(output.count("\x1b[?1049h"), 1)
-        self.assertTrue(output.endswith("\x1b[?1049l"))
-
-    def test_apply_confirms_after_viewer_closes_and_ctrl_c_never_confirms(self):
-        for key, code in [(b"q", 1), (b"\x03", 130)]:
-            with self.subTest(key=key):
-                sent = False
+    def test_apply_confirms_after_printing_the_whole_diff(self):
+        for answer, code in [(b"no\n", 1), (b"yes\n", 0)]:
+            with self.subTest(answer=answer):
                 confirmed = False
+                activation = self.root / "activation-requested"
+                activation.unlink(missing_ok=True)
 
-                def interact(process, terminal, frame):
-                    nonlocal sent, confirmed
-                    if not sent and b"q close" in frame:
-                        self.assertNotIn(b"Apply this system plan?", frame)
-                        os.write(terminal, key)
-                        sent = True
-                    if sent and not confirmed and b"Apply this system plan?" in frame:
-                        self.assertIn(b"\x1b[?1049l", frame)
-                        os.write(terminal, b"no\n")
+                def interact(process, terminal, output):
+                    nonlocal confirmed
+                    if not confirmed and b"Apply this system plan?" in output:
+                        self.assertIn(b"+ package-029", output)
+                        self.assertNotIn(b"q close", output)
+                        self.assertNotIn(b"\x1b[?1049", output)
+                        self.assertFalse(activation.exists())
+                        os.write(terminal, answer)
                         confirmed = True
 
-                output = self.terminal(interact, apply=True, expected_code=code)
-                self.assertTrue(sent)
-                self.assertEqual(confirmed, key == b"q")
-                self.assertIn("\x1b[?1049l", output)
+                self.terminal(interact, apply=True, expected_code=code)
+                self.assertTrue(confirmed)
+                self.assertEqual(activation.exists(), answer == b"yes\n")
 
-    def test_noninteractive_terminals_get_plain_diff(self):
+    def test_terminal_output_does_not_require_terminal_input(self):
         for options in [{"stdin_terminal": False}, {"term": "dumb"}]:
             with self.subTest(options=options):
                 output = self.terminal(**options)
-                self.assertIn("- package-000", output)
-                self.assertIn("+ package-000", output)
-                self.assertNotIn("\x1b", output)
+                plain = re.sub(r"\x1b\[[0-9;]*m", "", output)
+                self.assertIn("- package-000", plain)
+                self.assertIn("+ package-029", plain)
+                self.assertNotIn("\x1b", plain)
 
 
 if __name__ == "__main__":

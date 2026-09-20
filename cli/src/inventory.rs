@@ -1,17 +1,13 @@
-mod latest;
 mod render;
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
-
-use crate::pager::{self, Content};
 
 #[derive(Deserialize)]
 pub struct Inventory {
@@ -29,14 +25,11 @@ pub struct Inventory {
     skills: Vec<Skill>,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Deserialize)]
 struct Package {
     name: String,
     manager: String,
     declared: String,
-    lookup: Value,
-    #[serde(skip)]
-    latest: String,
 }
 
 #[derive(Deserialize)]
@@ -72,21 +65,10 @@ struct Skill {
     description: String,
 }
 
-pub fn run(
-    inputs: crate::system::InventoryInputs,
-    settings: &[crate::settings::Setting],
-    interactive: bool,
-) -> Result<ExitCode> {
+pub fn report(inputs: crate::system::InventoryInputs, width: Option<usize>) -> Result<String> {
     let (mut inventory, source): (Inventory, _) = inputs.load()?;
     inventory.prepare(&source)?;
-    if interactive {
-        let mut checks = latest::Checks::start(&inventory.packages);
-        return render::live(settings, &mut inventory, &mut checks);
-    }
-    let mut output = io::stdout().lock();
-    writeln!(output, "\n{}", render::report(&inventory, None, false))?;
-    output.flush()?;
-    Ok(ExitCode::SUCCESS)
+    Ok(render::report(&inventory, width))
 }
 
 pub struct Preview {
@@ -151,22 +133,16 @@ impl Preview {
         !self.render(None).is_empty()
     }
 
-    pub fn show(self) -> Result<ExitCode> {
-        let text = self.render(None);
-        if text.is_empty() {
-            return Ok(ExitCode::SUCCESS);
+    pub fn show(&self) -> Result<()> {
+        let text = self.render(crate::terminal_width());
+        if !text.is_empty() {
+            let mut output = io::stdout().lock();
+            writeln!(output, "{text}")?;
+            output.flush()?;
         }
-        if pager::is_interactive() {
-            return pager::show(self);
-        }
-        let mut output = io::stdout().lock();
-        writeln!(output, "{text}")?;
-        output.flush()?;
-        Ok(ExitCode::SUCCESS)
+        Ok(())
     }
-}
 
-impl Content for Preview {
     fn render(&self, width: Option<usize>) -> String {
         let resources = if let Some(notice) = self.notice {
             format!("{notice}\n\n{}", self.native).trim_end().into()
@@ -179,10 +155,6 @@ impl Content for Preview {
             .filter(|text| !text.is_empty())
             .collect::<Vec<_>>()
             .join("\n\n")
-    }
-
-    fn close_action(&self) -> &str {
-        "close"
     }
 }
 
@@ -229,9 +201,6 @@ impl Inventory {
         self.packages.dedup_by(|a, b| {
             a.name == b.name && a.manager == b.manager && a.declared == b.declared
         });
-        for package in &mut self.packages {
-            package.latest = "checking".into();
-        }
         self.system.sort_by(|a, b| a.key.cmp(&b.key));
         self.services.sort_by(|a, b| a.name.cmp(&b.name));
         self.tools.sort_by(|a, b| a.path.cmp(&b.path));
@@ -426,7 +395,7 @@ mod tests {
             fs::write(path, serde_json::to_vec(&inventory).unwrap()).unwrap();
         }
         let inventory = read_generation(&new).unwrap().unwrap();
-        let report = render::report(&inventory, None, false);
+        let report = render::report(&inventory, None);
         assert!(report.contains("nightShift.schedule"));
         assert!(report.contains("21:15"));
         assert!(report.contains("07:00"));
