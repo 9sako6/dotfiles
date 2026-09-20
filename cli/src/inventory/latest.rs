@@ -66,10 +66,6 @@ impl Checks {
         }
     }
 
-    pub(super) fn recv(&self) -> Option<Update> {
-        self.receiver.recv().ok()
-    }
-
     pub(super) fn poll(&self) -> Result<Update, mpsc::TryRecvError> {
         self.receiver.try_recv()
     }

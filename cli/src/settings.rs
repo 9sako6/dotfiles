@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -21,10 +21,15 @@ pub struct Setting {
 
 pub fn run(root: &Path) -> Result<ExitCode> {
     let (settings, inventory) = system::load_settings(root)?;
-    let width = console::user_attended().then(|| usize::from(console::Term::stdout().size().1));
-    write_settings(&mut io::stdout().lock(), &settings, width)?;
-    io::stdout().flush()?;
-    crate::inventory::run(inventory)
+    let interactive = io::stdout().is_terminal()
+        && io::stdin().is_terminal()
+        && std::env::var("TERM").is_ok_and(|term| term != "dumb");
+    if !interactive {
+        let mut output = io::stdout().lock();
+        write!(output, "{}", render(&settings, None))?;
+        output.flush()?;
+    }
+    crate::inventory::run(inventory, &settings, interactive)
 }
 
 fn format_value(value: &Value) -> String {
@@ -41,19 +46,14 @@ fn format_value(value: &Value) -> String {
     }
 }
 
-fn write_settings(
-    output: &mut impl Write,
-    settings: &[Setting],
-    terminal_width: Option<usize>,
-) -> Result<()> {
-    writeln!(
-        output,
-        "{}",
+pub(crate) fn render(settings: &[Setting], terminal_width: Option<usize>) -> String {
+    let mut output = format!(
+        "{}\n",
         console::style("settings")
             .magenta()
             .italic()
             .force_styling(terminal_width.is_some() && console::colors_enabled())
-    )?;
+    );
     let mut builder = Builder::default();
     builder.push_record(["key", "value", "source"]);
     for setting in settings {
@@ -79,9 +79,10 @@ fn write_settings(
         .with(Modify::new(Columns::first()).with(Padding::new(0, 1, 0, 0)))
         .with(Modify::new(Columns::last()).with(Padding::zero()));
     for line in table.to_string().lines() {
-        writeln!(output, "{}", line.trim_end())?;
+        output.push_str(line.trim_end());
+        output.push('\n');
     }
-    Ok(())
+    output
 }
 
 #[cfg(test)]
@@ -99,10 +100,8 @@ mod tests {
             {"key": "private.path", "value": "../private", "source": "dotfiles.local.toml"}
         ]))
         .unwrap();
-        let mut output = Vec::new();
-        write_settings(&mut output, &settings, None).unwrap();
         assert_eq!(
-            String::from_utf8(output).unwrap(),
+            render(&settings, None),
             concat!(
                 "settings\n",
                 "copy                    [            dotfiles.toml\n",

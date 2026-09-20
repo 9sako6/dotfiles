@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::{self, Write};
+use std::process::ExitCode;
 use std::sync::mpsc::TryRecvError;
 use std::time::Duration;
 
@@ -42,7 +43,7 @@ struct Section {
 }
 
 fn sections(inventory: &Inventory, latest: bool) -> Vec<Section> {
-    let mut headers = vec!["name", "manager", "declared"];
+    let mut headers = vec!["name", "manager", "current"];
     if latest {
         headers.push("latest");
     }
@@ -55,7 +56,7 @@ fn sections(inventory: &Inventory, latest: bool) -> Vec<Section> {
             .map(|package| {
                 let mut cells = vec![
                     package.name.clone(),
-                    package.manager.replace(" (", "\n("),
+                    package.manager.clone(),
                     package.declared.clone(),
                 ];
                 if latest {
@@ -149,8 +150,8 @@ fn sections(inventory: &Inventory, latest: bool) -> Vec<Section> {
     sections
 }
 
-pub(super) fn report(inventory: &Inventory, width: Option<usize>) -> String {
-    render_sections(&sections(inventory, true), width)
+pub(super) fn report(inventory: &Inventory, width: Option<usize>, latest: bool) -> String {
+    render_sections(&sections(inventory, latest), width)
 }
 
 pub(super) fn diff(before: Option<&Inventory>, after: &Inventory, width: Option<usize>) -> String {
@@ -552,16 +553,26 @@ impl Drop for Screen {
     }
 }
 
-pub(super) fn live(inventory: &mut Inventory, checks: &mut Checks) -> Result<bool> {
+pub(super) fn live(
+    settings: &[crate::settings::Setting],
+    inventory: &mut Inventory,
+    checks: &mut Checks,
+) -> Result<ExitCode> {
     let _screen = Screen::enter()?;
     let mut offset = 0usize;
     let mut dirty = true;
+    let mut checking = true;
     let mut rendered = String::new();
     loop {
         let (width, height) = terminal::size()?;
         let rows = usize::from(height.saturating_sub(1)).max(1);
         if dirty {
-            rendered = report(inventory, Some(usize::from(width)));
+            let width = Some(usize::from(width));
+            rendered = format!(
+                "{}\n{}",
+                crate::settings::render(settings, width),
+                report(inventory, width, true)
+            );
         }
         let lines: Vec<_> = rendered.lines().collect();
         offset = offset.min(lines.len().saturating_sub(rows));
@@ -581,7 +592,11 @@ pub(super) fn live(inventory: &mut Inventory, checks: &mut Checks) -> Result<boo
                 output,
                 "{}",
                 console::truncate_str(
-                    "checking latest · ↑↓ scroll · q cancel",
+                    if checking {
+                        "checking latest · j/k line · f/b page · d/u half · g/G ends · q quit"
+                    } else {
+                        "j/k line · f/b page · d/u half · g/G ends · q quit"
+                    },
                     usize::from(width),
                     ""
                 )
@@ -589,7 +604,7 @@ pub(super) fn live(inventory: &mut Inventory, checks: &mut Checks) -> Result<boo
             output.flush()?;
             dirty = false;
         }
-        loop {
+        while checking {
             match checks.poll() {
                 Ok((indices, result)) => {
                     for index in indices {
@@ -598,7 +613,10 @@ pub(super) fn live(inventory: &mut Inventory, checks: &mut Checks) -> Result<boo
                     dirty = true;
                 }
                 Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => return Ok(false),
+                Err(TryRecvError::Disconnected) => {
+                    checking = false;
+                    dirty = true;
+                }
             }
         }
         if event::poll(Duration::from_millis(50))? {
@@ -606,23 +624,23 @@ pub(super) fn live(inventory: &mut Inventory, checks: &mut Checks) -> Result<boo
                 Event::Key(key) => {
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => {
-                            checks.cancel();
-                            mark_cancelled(inventory);
-                            return Ok(true);
+                            return Ok(ExitCode::SUCCESS);
                         }
                         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            checks.cancel();
-                            mark_cancelled(inventory);
-                            return Ok(true);
+                            return Ok(ExitCode::from(130));
                         }
                         KeyCode::Down | KeyCode::Char('j') => offset = offset.saturating_add(1),
                         KeyCode::Up | KeyCode::Char('k') => offset = offset.saturating_sub(1),
-                        KeyCode::PageDown | KeyCode::Char(' ') => {
+                        KeyCode::PageDown | KeyCode::Char(' ' | 'f') => {
                             offset = offset.saturating_add(rows)
                         }
-                        KeyCode::PageUp => offset = offset.saturating_sub(rows),
-                        KeyCode::Home => offset = 0,
-                        KeyCode::End => offset = lines.len(),
+                        KeyCode::PageUp | KeyCode::Char('b') => {
+                            offset = offset.saturating_sub(rows)
+                        }
+                        KeyCode::Char('d') => offset = offset.saturating_add(rows.div_ceil(2)),
+                        KeyCode::Char('u') => offset = offset.saturating_sub(rows.div_ceil(2)),
+                        KeyCode::Home | KeyCode::Char('g') => offset = 0,
+                        KeyCode::End | KeyCode::Char('G') => offset = lines.len(),
                         _ => (),
                     }
                     dirty = true;
@@ -630,14 +648,6 @@ pub(super) fn live(inventory: &mut Inventory, checks: &mut Checks) -> Result<boo
                 Event::Resize(_, _) => dirty = true,
                 _ => (),
             }
-        }
-    }
-}
-
-fn mark_cancelled(inventory: &mut Inventory) {
-    for package in &mut inventory.packages {
-        if package.latest == "checking" {
-            package.latest = "error: cancelled".into();
         }
     }
 }

@@ -68,34 +68,21 @@ struct Skill {
     description: String,
 }
 
-pub fn run(inputs: crate::system::InventoryInputs) -> Result<ExitCode> {
+pub fn run(
+    inputs: crate::system::InventoryInputs,
+    settings: &[crate::settings::Setting],
+    interactive: bool,
+) -> Result<ExitCode> {
     let (mut inventory, source): (Inventory, _) = inputs.load()?;
     inventory.prepare(&source)?;
-    let interactive = io::stdout().is_terminal()
-        && io::stdin().is_terminal()
-        && std::env::var("TERM").is_ok_and(|term| term != "dumb");
-    let mut checks = latest::Checks::start(&inventory.packages);
-    let cancelled = if interactive {
-        render::live(&mut inventory, &mut checks)?
-    } else {
-        while let Some((indices, result)) = checks.recv() {
-            for index in indices {
-                inventory.packages[index].latest = result.clone();
-            }
-        }
-        false
-    };
-    let width = io::stdout()
-        .is_terminal()
-        .then(|| usize::from(console::Term::stdout().size().1));
+    if interactive {
+        let mut checks = latest::Checks::start(&inventory.packages);
+        return render::live(settings, &mut inventory, &mut checks);
+    }
     let mut output = io::stdout().lock();
-    writeln!(output, "\n{}", render::report(&inventory, width))?;
+    writeln!(output, "\n{}", render::report(&inventory, None, false))?;
     output.flush()?;
-    Ok(if cancelled {
-        ExitCode::from(130)
-    } else {
-        ExitCode::SUCCESS
-    })
+    Ok(ExitCode::SUCCESS)
 }
 
 pub fn preview(current: Option<&Path>, desired: &Path) -> Result<String> {
