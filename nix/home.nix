@@ -40,13 +40,7 @@ let
       ".zsh.d"
       "mybin"
     ];
-  nightShift = {
-    schedule = {
-      start = "22:00";
-      end = "07:00";
-    };
-    temperature = 80;
-  };
+  inherit (import ./macos-settings.nix) nightShift;
 in
 {
   _file = toString ./home.nix;

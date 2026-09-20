@@ -13,6 +13,8 @@ use serde_json::Value;
 
 #[derive(Deserialize)]
 pub struct Inventory {
+    #[serde(default, rename = "schemaVersion")]
+    schema_version: u32,
     source: PathBuf,
     packages: Vec<Package>,
     system: Vec<Setting>,
@@ -93,6 +95,12 @@ pub fn preview(current: Option<&Path>, desired: &Path) -> Result<String> {
     let previous = current.map(read_generation).transpose()?.flatten();
     if current.is_some() && previous.is_none() {
         return Ok("resource diff unavailable: active generation has no inventory; using native diff for this transition".into());
+    }
+    if previous
+        .as_ref()
+        .is_some_and(|previous| previous.schema_version != next.schema_version)
+    {
+        return Ok("resource diff unavailable: generation inventories cover different settings; using native diff for this transition".into());
     }
     Ok(render::diff(previous.as_ref(), &next, width))
 }
@@ -268,5 +276,81 @@ mod tests {
         assert!(preview(Some(&old), &new).is_err());
         fs::remove_file(new.join("dotfiles-inventory.json")).unwrap();
         assert!(preview(None, &new).is_err());
+    }
+
+    #[test]
+    fn changed_inventory_coverage_is_not_reported_as_added_or_removed_settings() {
+        let root = tempfile::tempdir().unwrap();
+        let old = generation(root.path(), "old", "1.0.0", "A description.");
+        let new = generation(root.path(), "new", "1.0.0", "A description.");
+        let path = new.join("dotfiles-inventory.json");
+        let mut inventory: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        inventory["schemaVersion"] = 2.into();
+        inventory["system"] = serde_json::json!([
+            {"key": "nightShift.temperature", "group": "nightShift", "name": "temperature", "value": 80}
+        ]);
+        fs::write(path, serde_json::to_vec(&inventory).unwrap()).unwrap();
+        for (before, after) in [(&old, &new), (&new, &old)] {
+            let output = preview(Some(before), after).unwrap();
+            assert!(output.contains("inventories cover different settings"));
+            assert!(!output.contains("+ "));
+            assert!(!output.contains("- "));
+            assert!(!output.contains("no resource changes"));
+        }
+    }
+
+    #[test]
+    fn activation_settings_appear_in_reports_and_generation_diffs() {
+        let root = tempfile::tempdir().unwrap();
+        let old = generation(root.path(), "old", "1.0.0", "A description.");
+        let new = generation(root.path(), "new", "1.0.0", "A description.");
+        for (generation, start, temperature, shortcut) in
+            [(&old, "22:00", 80, true), (&new, "21:15", 65, false)]
+        {
+            let path = generation.join("dotfiles-inventory.json");
+            let mut inventory: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+            inventory["schemaVersion"] = 2.into();
+            inventory["system"] = serde_json::json!([
+                {"key": "nightShift.schedule.start", "group": "nightShift.schedule", "name": "start", "value": start},
+                {"key": "nightShift.schedule.end", "group": "nightShift.schedule", "name": "end", "value": "07:00"},
+                {"key": "nightShift.temperature", "group": "nightShift", "name": "temperature", "value": temperature},
+                {"key": "dictationShortcut.enabled", "group": "dictationShortcut", "name": "enabled", "value": shortcut}
+            ]);
+            fs::write(path, serde_json::to_vec(&inventory).unwrap()).unwrap();
+        }
+        let inventory = read_generation(&new).unwrap().unwrap();
+        let report = render::report(&inventory, None, false);
+        assert!(report.contains("nightShift.schedule"));
+        assert!(report.contains("21:15"));
+        assert!(report.contains("07:00"));
+        assert!(report.contains("dictationShortcut"));
+        for (before, after, removed, added) in [
+            (
+                &old,
+                &new,
+                ["22:00", "80", "true"],
+                ["21:15", "65", "false"],
+            ),
+            (
+                &new,
+                &old,
+                ["21:15", "65", "false"],
+                ["22:00", "80", "true"],
+            ),
+        ] {
+            let output = preview(Some(before), after).unwrap();
+            let output = console::strip_ansi_codes(&output);
+            for (prefix, values) in [('-', removed), ('+', added)] {
+                for value in values {
+                    assert!(output.lines().any(|line| {
+                        line.starts_with(prefix)
+                            && line.split_whitespace().any(|word| word == value)
+                    }));
+                }
+            }
+            assert!(!output.contains("07:00"));
+            assert!(!output.contains("latest"));
+            assert!(!output.contains("packages"));
+        }
     }
 }

@@ -79,6 +79,7 @@ let
   agentPath = path: lib.any (prefix: lib.hasPrefix prefix path)
     [ ".agents/" ".claude/" ".codex/" ".config/opencode/" ];
 in {
+  schemaVersion = 2;
   source = publicSource;
   packages = map nixPackage (builtins.filter (p: lib.getName p != "localllm" && lib.getVersion p != "") home.home.packages)
     ++ [ (nixPackage toolset.ankiConnect) ]
@@ -88,7 +89,8 @@ in {
     ++ map (brewPackage true) cfg.homebrew.casks;
   system = settings [ "system" "defaults" ] host.options.system.defaults cfg.system.defaults
     ++ settings [ "system" "keyboard" ] host.options.system.keyboard cfg.system.keyboard
-    ++ flatten [ "time" "timeZone" ] cfg.time.timeZone;
+    ++ flatten [ "time" "timeZone" ] cfg.time.timeZone
+    ++ flatten [ ] (import ./macos-settings.nix);
   services = services "system" cfg.launchd.daemons
     ++ services "all users" cfg.launchd.agents
     ++ services "user" cfg.launchd.user.agents

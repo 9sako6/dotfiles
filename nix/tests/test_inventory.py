@@ -1,6 +1,9 @@
 import json
 import os
 from pathlib import Path
+import plistlib
+import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -41,6 +44,13 @@ class InventoryTests(unittest.TestCase):
         inventory = json.loads(snapshot.read_text())
         values = {setting["key"]: setting["value"] for setting in inventory["system"]}
         self.assertTrue(values["system.defaults.dock.show-recents"])
+        self.assertEqual(inventory["schemaVersion"], 2)
+        self.assertEqual(values["nightShift.schedule.start"], "22:00")
+        self.assertEqual(values["nightShift.schedule.end"], "07:00")
+        self.assertEqual(values["nightShift.temperature"], 80)
+        self.assertTrue(values["dictationShortcut.enabled"])
+        self.assertEqual(values["dictationShortcut.parameters"], ["1048576", "18446744073708503039"])
+        self.assertEqual(values["dictationShortcut.type"], "modifier")
         source = Path(inventory["source"])
         self.assertTrue((source / "home/apm.yml").is_file())
         self.assertTrue((source / "home/.agents/skills/jp/SKILL.md").is_file())
@@ -107,6 +117,70 @@ class InventoryTests(unittest.TestCase):
         shared = next(job for job in inventory["services"] if job["name"] == "inventory-shared")
         self.assertEqual(shared["scope"], "all users")
         self.assertFalse(inventory["localllm"]["enabled"])
+
+    def test_activation_commands_and_inventory_follow_the_same_setting_changes(self):
+        expression = '''
+          let
+            public = builtins.getFlake (builtins.getEnv "INVENTORY_FLAKE");
+            host = public.lib.mkHost { dotfilesDirectory = "/fixture"; primaryUser = "fixture"; };
+          in {
+            source = public.outPath;
+            inventory = host.inventory.text;
+            nightShift = host.config.home-manager.users.fixture.home.activation.configureNightShift.data;
+            dictation = host.config.system.activationScripts.postActivation.text;
+          }
+        '''
+
+        def evaluate(reference):
+            result = subprocess.run(
+                ["nix", "eval", "--json", "--impure", "--no-write-lock-file",
+                 "--no-update-lock-file", "--expr", expression],
+                env={**os.environ, "INVENTORY_FLAKE": reference},
+                capture_output=True, text=True, timeout=60,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            snapshot = json.loads(result.stdout)
+            snapshot["inventory"] = json.loads(snapshot["inventory"])
+            return snapshot
+
+        original = evaluate("git+file://" + str(REPOSITORY))
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source"
+            shutil.copytree(original["source"], source)
+            settings_file = source / "nix/macos-settings.nix"
+            settings_file.chmod(0o644)
+            settings_file.write_text('''{
+              dictationShortcut = {
+                enabled = false;
+                parameters = [ "131072" "42" ];
+                type = "standard";
+              };
+              nightShift = {
+                schedule = { start = "21:15"; end = "08:30"; };
+                temperature = 65;
+              };
+            }''')
+            changed = evaluate("path:" + str(source))
+
+        for snapshot, start, end, temperature, enabled, parameters, kind in [
+            (original, "22:00", "07:00", 80, True, [1048576, 18446744073708503039], "modifier"),
+            (changed, "21:15", "08:30", 65, False, [131072, 42], "standard"),
+        ]:
+            with self.subTest(start=start):
+                values = {setting["key"]: setting["value"] for setting in snapshot["inventory"]["system"]}
+                commands = [shlex.split(line) for line in snapshot["nightShift"].splitlines() if line.strip()]
+                self.assertEqual(commands[0][1:], ["schedule", start, end])
+                self.assertEqual(commands[1][1:], ["temp", str(temperature)])
+                self.assertEqual(values["nightShift.schedule.start"], start)
+                self.assertEqual(values["nightShift.schedule.end"], end)
+                self.assertEqual(values["nightShift.temperature"], temperature)
+                command = shlex.split(snapshot["dictation"].replace("\\\n", ""))
+                self.assertEqual(command[-3:-1], ["-dict-add", "164"])
+                shortcut = plistlib.loads(("<plist>" + command[-1] + "</plist>").encode())
+                self.assertEqual(shortcut, {"enabled": enabled, "value": {"parameters": parameters, "type": kind}})
+                self.assertEqual(values["dictationShortcut.enabled"], enabled)
+                self.assertEqual(values["dictationShortcut.parameters"], [str(value) for value in parameters])
+                self.assertEqual(values["dictationShortcut.type"], kind)
 
 
 if __name__ == "__main__":

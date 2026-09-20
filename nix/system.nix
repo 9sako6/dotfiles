@@ -1,19 +1,19 @@
-{ config, inputs, pkgs, ... }:
+{ config, inputs, lib, pkgs, ... }:
 
 let
-  commandKeyTwiceDictationShortcut = ''
+  inherit (import ./macos-settings.nix) dictationShortcut;
+  dictationShortcutPlist = ''
     <dict>
       <key>enabled</key>
-      <true/>
+      <${lib.boolToString dictationShortcut.enabled}/>
       <key>value</key>
       <dict>
         <key>parameters</key>
         <array>
-          <integer>1048576</integer>
-          <integer>18446744073708503039</integer>
+          ${lib.concatMapStringsSep "\n" (parameter: "<integer>${lib.escapeXML parameter}</integer>") dictationShortcut.parameters}
         </array>
         <key>type</key>
-        <string>modifier</string>
+        <string>${lib.escapeXML dictationShortcut.type}</string>
       </dict>
     </dict>
   '';
@@ -88,7 +88,7 @@ in
       postActivation.text = ''
         launchctl asuser "$(id -u -- "${primaryUser}")" sudo --user="${primaryUser}" -- \
           defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 164 \
-          '${commandKeyTwiceDictationShortcut}'
+          ${lib.escapeShellArg dictationShortcutPlist}
       '';
     };
 

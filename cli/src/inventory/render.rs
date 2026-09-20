@@ -76,7 +76,7 @@ fn sections(inventory: &Inventory, latest: bool) -> Vec<Section> {
                 vec![
                     setting.name.clone(),
                     value(&setting.value),
-                    setting_description(&setting.name, &setting.value),
+                    setting_description(&setting.key, &setting.name, &setting.value),
                 ],
             ));
     }
@@ -374,7 +374,19 @@ fn value(value: &Value) -> String {
         .unwrap_or_else(|| value.to_string())
 }
 
-fn setting_description(name: &str, value: &Value) -> String {
+fn setting_description(key: &str, name: &str, value: &Value) -> String {
+    let custom_description = match key {
+        "dictationShortcut.enabled" => Some("音声入力ショートカットの有効化状態"),
+        "dictationShortcut.parameters" => Some("音声入力開始キーの修飾キーコード"),
+        "dictationShortcut.type" => Some("音声入力ショートカットの入力方式"),
+        "nightShift.schedule.end" => Some("Night Shiftの翌朝の終了時刻"),
+        "nightShift.schedule.start" => Some("Night Shiftの毎日の開始時刻"),
+        "nightShift.temperature" => Some("Night Shiftにおける暖色の強さ"),
+        _ => None,
+    };
+    if let Some(description) = custom_description {
+        return description.into();
+    }
     match (name, value.as_i64()) {
         ("wvous-br-corner", Some(1)) => "右下ホットコーナー：何もしない".into(),
         ("ShowDate", Some(0)) => "メニューバーの日付：空きがある場合に表示".into(),
