@@ -70,9 +70,10 @@ let
   agentPath = path: lib.any (prefix: lib.hasPrefix prefix path)
     [ ".agents/" ".claude/" ".codex/" ".config/opencode/" ];
 in {
-  schemaVersion = 2;
+  schemaVersion = 3;
   source = publicSource;
-  packages = map nixPackage (builtins.filter (p: lib.getName p != "localllm" && lib.getVersion p != "") home.home.packages)
+  packages = map nixPackage (builtins.filter (p: lib.getName p != "localllm" && lib.getVersion p != "")
+    (home.home.packages ++ cfg.environment.systemPackages))
     ++ [ (nixPackage toolset.ankiConnect) ]
     ++ miseFile "home/.config/mise/config.toml"
     ++ miseFile ".mise.toml"
@@ -80,7 +81,15 @@ in {
   system = settings [ "system" "defaults" ] host.options.system.defaults cfg.system.defaults
     ++ settings [ "system" "keyboard" ] host.options.system.keyboard cfg.system.keyboard
     ++ flatten [ "time" "timeZone" ] cfg.time.timeZone
-    ++ flatten [ ] (import ./macos-settings.nix);
+    ++ flatten [ ] (import ./macos-settings.nix)
+    ++ flatten [ ] {
+      homebrew = {
+        global = { inherit (cfg.homebrew.global) autoUpdate; };
+        onActivation = { inherit (cfg.homebrew.onActivation) autoUpdate cleanup upgrade; };
+      };
+      nix.gc = { inherit (cfg.nix.gc) automatic options; };
+      nix-homebrew = { inherit (cfg.nix-homebrew) mutableTaps; };
+    };
   services = services "system" cfg.launchd.daemons
     ++ services "all users" cfg.launchd.agents
     ++ services "user" cfg.launchd.user.agents

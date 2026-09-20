@@ -404,9 +404,16 @@ fn setting_description(key: &str, name: &str, value: &Value) -> String {
         "dictationShortcut.enabled" => Some("音声入力ショートカットの有効化状態"),
         "dictationShortcut.parameters" => Some("音声入力開始キーの修飾キーコード"),
         "dictationShortcut.type" => Some("音声入力ショートカットの入力方式"),
+        "homebrew.global.autoUpdate" => Some("通常のHomebrew実行時に自動更新を行うか"),
+        "homebrew.onActivation.autoUpdate" => Some("構成反映時にHomebrewの自動更新を許可するか"),
+        "homebrew.onActivation.cleanup" => Some("宣言外のHomebrewパッケージに対する削除方針"),
+        "homebrew.onActivation.upgrade" => Some("構成反映時にHomebrewパッケージを更新するか"),
         "nightShift.schedule.end" => Some("Night Shiftの翌朝の終了時刻"),
         "nightShift.schedule.start" => Some("Night Shiftの毎日の開始時刻"),
         "nightShift.temperature" => Some("Night Shiftにおける暖色の強さ"),
+        "nix-homebrew.mutableTaps" => Some("宣言外のリポジトリ（tap）の手動追加と更新を許可するか"),
+        "nix.gc.automatic" => Some("Nixのガベージコレクションを自動実行するか"),
+        "nix.gc.options" => Some("Nixのガベージコレクションに渡す削除条件の引数"),
         _ => None,
     };
     if let Some(description) = custom_description {

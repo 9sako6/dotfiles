@@ -238,6 +238,32 @@ sys.exit(result.returncode)
             "private.path": (None, None),
         })
 
+    def test_real_inventory_reports_system_packages_and_management_policies(self):
+        (self.root / "nix/inventory.nix").write_text((REPOSITORY / "nix/inventory.nix").read_text())
+        result = self.settings()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        sections = result.stdout.split("\nsystem\n", 1)
+        self.assertEqual(len(sections), 2)
+        packages = sections[0].split("\npackages\n", 1)[1]
+        for name in ["dotfiles", "lix", "zundamonotify"]:
+            rows = [line.split() for line in packages.splitlines() if line.split()[:1] == [name]]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0][1], "Nix")
+            self.assertTrue(rows[0][2])
+        system = sections[1].split("\nservices\n", 1)[0]
+        for group, fields in {
+            "homebrew.global": {"autoUpdate": ["false"]},
+            "homebrew.onActivation": {"autoUpdate": ["false"], "cleanup": ["uninstall"], "upgrade": ["false"]},
+            "nix-homebrew": {"mutableTaps": ["false"]},
+            "nix.gc": {"automatic": ["true"], "options": ["--delete-older-than", "2d"]},
+        }.items():
+            section = system.split(group + "\n", 1)[1].split("\n\n", 1)[0]
+            self.assertNotIn("—", section)
+            for name, value in fields.items():
+                self.assertTrue(any(line.split()[:len(value) + 1] == [name, *value] for line in section.splitlines()))
+        self.assertNotIn("latest", result.stdout)
+        self.assertNotIn("\x1b", result.stdout)
+
     def test_local_overrides_remain_visible_when_private_checkout_is_missing(self):
         (self.root / "dotfiles.toml").write_text(
             'copy = ["a", "b"]\n[localllm]\nenabled = true\n'

@@ -355,23 +355,147 @@ mod tests {
     }
 
     #[test]
-    fn changed_inventory_coverage_is_not_reported_as_added_or_removed_settings() {
+    fn changed_inventory_coverage_is_not_reported_as_added_or_removed_resources() {
         let root = tempfile::tempdir().unwrap();
         let old = generation(root.path(), "old", "1.0.0", "A description.");
         let new = generation(root.path(), "new", "1.0.0", "A description.");
-        let path = new.join("dotfiles-inventory.json");
-        let mut inventory: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        inventory["schemaVersion"] = 2.into();
-        inventory["system"] = serde_json::json!([
-            {"key": "nightShift.temperature", "group": "nightShift", "name": "temperature", "value": 80}
-        ]);
-        fs::write(path, serde_json::to_vec(&inventory).unwrap()).unwrap();
-        for (before, after) in [(&old, &new), (&new, &old)] {
+        for (old_schema, new_schema) in [(0, 2), (2, 3)] {
+            for (generation, schema) in [(&old, old_schema), (&new, new_schema)] {
+                let path = generation.join("dotfiles-inventory.json");
+                let mut inventory: Value =
+                    serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+                inventory["schemaVersion"] = schema.into();
+                if generation == &new {
+                    inventory["system"] = serde_json::json!([
+                        {"key": "nix.gc.options", "group": "nix.gc", "name": "options", "value": "--delete-older-than 2d"}
+                    ]);
+                    inventory["packages"] = serde_json::json!([
+                        {"name": "lix", "manager": "Nix", "declared": "2.95.2"}
+                    ]);
+                }
+                fs::write(path, serde_json::to_vec(&inventory).unwrap()).unwrap();
+            }
+            for (before, after) in [(&old, &new), (&new, &old)] {
+                let output = preview(Some(before), after).unwrap();
+                assert!(output.contains("inventories cover different settings"));
+                assert!(!output.contains("+ "));
+                assert!(!output.contains("- "));
+                assert!(!output.contains("no resource changes"));
+            }
+        }
+    }
+
+    #[test]
+    fn management_policies_and_system_packages_are_reported_and_compared_without_duplicates() {
+        let root = tempfile::tempdir().unwrap();
+        let old = generation(root.path(), "old", "1.0.0", "A description.");
+        let new = generation(root.path(), "new", "1.0.0", "A description.");
+        let policies = [
+            (
+                "homebrew.global.autoUpdate",
+                serde_json::json!(false),
+                serde_json::json!(true),
+            ),
+            (
+                "homebrew.onActivation.autoUpdate",
+                serde_json::json!(false),
+                serde_json::json!(true),
+            ),
+            (
+                "homebrew.onActivation.cleanup",
+                serde_json::json!("uninstall"),
+                serde_json::json!("zap"),
+            ),
+            (
+                "homebrew.onActivation.upgrade",
+                serde_json::json!(false),
+                serde_json::json!(true),
+            ),
+            (
+                "nix-homebrew.mutableTaps",
+                serde_json::json!(false),
+                serde_json::json!(true),
+            ),
+            (
+                "nix.gc.automatic",
+                serde_json::json!(true),
+                serde_json::json!(false),
+            ),
+            (
+                "nix.gc.options",
+                serde_json::json!("--delete-older-than 2d"),
+                serde_json::json!("--delete-older-than 7d"),
+            ),
+        ];
+        for (generation, version, changed) in [(&old, "1.0.0", false), (&new, "2.0.0", true)] {
+            let path = generation.join("dotfiles-inventory.json");
+            let mut inventory: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+            inventory["schemaVersion"] = 3.into();
+            inventory["packages"] = serde_json::json!([
+                {"name": "dotfiles", "manager": "Nix", "declared": version},
+                {"name": "lix", "manager": "Nix", "declared": version},
+                {"name": "lix", "manager": "Nix", "declared": version},
+                {"name": "zundamonotify", "manager": "Nix", "declared": version}
+            ]);
+            inventory["system"] = policies.iter().map(|(key, before, after)| {
+                let (group, name) = key.rsplit_once('.').unwrap();
+                serde_json::json!({"key": key, "group": group, "name": name, "value": if changed {after} else {before}})
+            }).collect();
+            fs::write(path, serde_json::to_vec(&inventory).unwrap()).unwrap();
+        }
+        let inventory = read_generation(&new).unwrap().unwrap();
+        let report = render::report(&inventory, None);
+        for name in ["dotfiles", "lix", "zundamonotify"] {
+            assert_eq!(
+                report
+                    .lines()
+                    .filter(|line| line.split_whitespace().next() == Some(name))
+                    .count(),
+                1
+            );
+        }
+        let system = report
+            .split("\nsystem\n")
+            .nth(1)
+            .unwrap()
+            .split("\nservices\n")
+            .next()
+            .unwrap();
+        assert!(!system.contains('—'));
+        for (before, after, removed, added) in [
+            (&old, &new, "1.0.0", "2.0.0"),
+            (&new, &old, "2.0.0", "1.0.0"),
+        ] {
             let output = preview(Some(before), after).unwrap();
-            assert!(output.contains("inventories cover different settings"));
-            assert!(!output.contains("+ "));
-            assert!(!output.contains("- "));
-            assert!(!output.contains("no resource changes"));
+            for name in ["dotfiles", "lix", "zundamonotify"] {
+                for (sign, version) in [("-", removed), ("+", added)] {
+                    assert_eq!(
+                        output
+                            .lines()
+                            .filter(|line| line.split_whitespace().collect::<Vec<_>>()
+                                == [sign, name, "Nix", version])
+                            .count(),
+                        1
+                    );
+                }
+            }
+            for (key, _, _) in &policies {
+                let (group, name) = key.rsplit_once('.').unwrap();
+                let section = output
+                    .split(&format!("{group}\n"))
+                    .nth(1)
+                    .unwrap()
+                    .split("\n\n")
+                    .next()
+                    .unwrap();
+                for sign in ["-", "+"] {
+                    assert!(section.lines().any(|line| line
+                        .split_whitespace()
+                        .take(2)
+                        .collect::<Vec<_>>()
+                        == [sign, name]));
+                }
+            }
         }
     }
 

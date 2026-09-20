@@ -74,6 +74,8 @@ dotfiles settingsの既存一覧の下にpackages、system、services、agents�
 
 settingsは端末でもパイプでも全画面表示やスクロール操作を行わず、全一覧を標準出力に一度だけ出力して終了する。packagesはname、manager、currentの3列で構成され、currentには宣言バージョン（固定のないHomebrewは—）を表示し、最新バージョンの照会と列は廃止された。
 
+packagesにはHome Managerとenvironment.systemPackagesの宣言バージョン（Lix、zundamonotify、dotfiles CLIを含む）を表示する。名前・管理方式・版が一致する重複をまとめ、バージョン情報のない補助ラッパーを除外する。systemには、Nixのガベージコレクション自動実行や削除条件の引数、Homebrewの自動更新・パッケージ更新・宣言外パッケージ削除方針の有効値を表示する。旧範囲の世代との比較では、既存のネイティブ差分へフォールバックして架空の追加扱いを避ける。
+
 リソース宣言の差分はsettingsと同様の表形式で表示され、追加は緑の`+`、削除は赤の`-`で示されます。copyリソースは変更が生じる対象のみハッシュ値とともにdeployment表へ表示します。宣言一覧が同一でもシステム世代が異なる場合は前後のrevision（またはビルド識別子）を出力し、CLI自身の更新なども確認できます。過去世代と比較できない場合は、従来のNixやHomebrewの差分を併記します。Night Shiftや音声入力ショートカットの設定は、`nix/macos-settings.nix`の共通宣言を反映し、一覧からも参照されます。
 
 変更がない場合、planとapplyは差分表示や確認を行わずに正常終了する。変更がある場合は差分を標準出力に一度だけ出力し、applyのみ表示後にyesの確認を行う。

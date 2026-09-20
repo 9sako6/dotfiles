@@ -44,7 +44,18 @@ class InventoryTests(unittest.TestCase):
         inventory = json.loads(snapshot.read_text())
         values = {setting["key"]: setting["value"] for setting in inventory["system"]}
         self.assertTrue(values["system.defaults.dock.show-recents"])
-        self.assertEqual(inventory["schemaVersion"], 2)
+        self.assertEqual(inventory["schemaVersion"], 3)
+        self.assertEqual(values["nix.gc.options"], "--delete-older-than 2d")
+        self.assertTrue(values["nix.gc.automatic"])
+        self.assertFalse(values["homebrew.global.autoUpdate"])
+        self.assertFalse(values["homebrew.onActivation.autoUpdate"])
+        self.assertEqual(values["homebrew.onActivation.cleanup"], "uninstall")
+        self.assertFalse(values["homebrew.onActivation.upgrade"])
+        self.assertFalse(values["nix-homebrew.mutableTaps"])
+        packages = {package["name"]: package["declared"] for package in inventory["packages"]}
+        self.assertEqual(packages["dotfiles"], "fixture")
+        self.assertTrue(packages["lix"])
+        self.assertTrue(packages["zundamonotify"])
         self.assertEqual(values["nightShift.schedule.start"], "22:00")
         self.assertEqual(values["nightShift.schedule.end"], "07:00")
         self.assertEqual(values["nightShift.temperature"], 80)
@@ -79,6 +90,13 @@ class InventoryTests(unittest.TestCase):
                 darwinModules.default = { lib, pkgs, ... }: {
                   _file = public.outPath + "/fixture-private.nix";
                   system.defaults.finder.AppleShowAllFiles = lib.mkForce false;
+                  environment.systemPackages = lib.mkAfter [ pkgs.hello ];
+                  homebrew.global.autoUpdate = lib.mkForce true;
+                  homebrew.onActivation = {
+                    autoUpdate = lib.mkForce true;
+                    cleanup = lib.mkForce "zap";
+                    upgrade = lib.mkForce true;
+                  };
                   home-manager.users.fixture.home.packages = lib.mkAfter [ pkgs.hello ];
                   launchd.daemons.inventory-example.serviceConfig = {
                     EnvironmentVariables.SENSITIVE = "must-not-export";
@@ -87,6 +105,12 @@ class InventoryTests(unittest.TestCase):
                     StartInterval = 42;
                   };
                   launchd.agents.inventory-shared.serviceConfig.RunAtLoad = true;
+                  nix.gc = {
+                    automatic = lib.mkForce false;
+                    options = lib.mkForce "--delete-older-than 7d";
+                  };
+                  nix.package = lib.mkForce (pkgs.lix.overrideAttrs { version = "9.8.7"; });
+                  nix-homebrew.mutableTaps = lib.mkForce true;
                 };
               };
             };
@@ -112,6 +136,14 @@ class InventoryTests(unittest.TestCase):
         self.assertFalse(settings["system.defaults.finder.AppleShowAllFiles"])
         self.assertEqual(settings["system.defaults.finder.NewWindowTarget"], "Home")
         self.assertNotIn("system.keyboard.userKeyMapping", settings)
+        self.assertEqual(settings["nix.gc.options"], "--delete-older-than 7d")
+        self.assertFalse(settings["nix.gc.automatic"])
+        self.assertTrue(settings["homebrew.global.autoUpdate"])
+        self.assertTrue(settings["homebrew.onActivation.autoUpdate"])
+        self.assertEqual(settings["homebrew.onActivation.cleanup"], "zap")
+        self.assertTrue(settings["homebrew.onActivation.upgrade"])
+        self.assertTrue(settings["nix-homebrew.mutableTaps"])
+        self.assertIn({"name": "lix", "manager": "Nix", "declared": "9.8.7"}, inventory["packages"])
         self.assertTrue(any(p["name"] == "hello" and p["manager"] == "Nix" for p in inventory["packages"]))
         self.assertTrue(any(p["name"] == "node" and p["manager"] == "mise" for p in inventory["packages"]))
         job = next(job for job in inventory["services"] if job["name"] == "inventory-example")
