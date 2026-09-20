@@ -18,6 +18,11 @@ pub enum Mode {
     Apply,
 }
 
+enum Review {
+    Finished(ExitCode),
+    Apply,
+}
+
 #[derive(Deserialize)]
 struct Metadata {
     locked: LockedSource,
@@ -226,9 +231,10 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         "cannot freeze host evaluation inputs",
     )?)?;
     let [system_drv, brewfile_drv] = host_derivations(&nix, host.trim(), show_trace)?;
-    home_copy::plan(&public.source, &home, &configuration.copy)?;
+    let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
     let system = build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?;
     let mut preview = crate::inventory::Preview::load(previous_generation.as_deref(), &system)?;
+    preview.copy_changes = copy_plan.changes()?;
     if preview.needs_native() {
         let brewfile = build(
             &nix,
@@ -251,8 +257,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             Some(&mut diagnostics),
         )?)?;
     }
-    let status = review_plan(mode, preview)?;
-    if status != ExitCode::SUCCESS || matches!(mode, Mode::Plan) {
+    if let Review::Finished(status) = review_plan(mode, preview)? {
         return Ok(status);
     }
     public.verify()?;
@@ -475,12 +480,16 @@ fn evaluate_configuration<T: serde::de::DeserializeOwned>(
         .context("configuration was not returned by Nix")
 }
 
-fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<ExitCode> {
-    let status = preview.show()?;
-    if status == ExitCode::SUCCESS && matches!(mode, Mode::Apply) {
-        confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())?;
+fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review> {
+    if !preview.has_changes() {
+        return Ok(Review::Finished(ExitCode::SUCCESS));
     }
-    Ok(status)
+    let status = preview.show()?;
+    if status != ExitCode::SUCCESS || matches!(mode, Mode::Plan) {
+        return Ok(Review::Finished(status));
+    }
+    confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())?;
+    Ok(Review::Apply)
 }
 
 fn confirm_apply(input: &mut impl io::BufRead, output: &mut impl Write) -> Result<()> {
@@ -701,17 +710,30 @@ mod tests {
         let Some(root) = env::var_os("DOTFILES_TEST_REVIEW_ROOT").map(PathBuf::from) else {
             return;
         };
-        let preview =
+        let mut preview =
             crate::inventory::Preview::load(Some(&root.join("before")), &root.join("after"))
                 .unwrap();
+        if root.join("copy.json").exists() {
+            let paths: Vec<String> =
+                serde_json::from_slice(&fs::read(root.join("copy.json")).unwrap()).unwrap();
+            preview.copy_changes =
+                home_copy::plan(&root.join("source"), &root.join("home"), &paths)
+                    .unwrap()
+                    .changes()
+                    .unwrap();
+        }
         let mode = if env::var_os("DOTFILES_TEST_REVIEW_APPLY").is_some() {
             Mode::Apply
         } else {
             Mode::Plan
         };
         let code = match review_plan(mode, preview) {
-            Ok(status) if status == ExitCode::SUCCESS => 0,
-            Ok(_) => 130,
+            Ok(Review::Finished(status)) if status == ExitCode::SUCCESS => 0,
+            Ok(Review::Finished(_)) => 130,
+            Ok(Review::Apply) => {
+                fs::write(root.join("activation-requested"), "yes").unwrap();
+                0
+            }
             Err(error) => {
                 eprintln!("{error:#}");
                 1

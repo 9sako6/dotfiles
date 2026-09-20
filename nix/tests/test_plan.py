@@ -59,9 +59,9 @@ class PlanTests(unittest.TestCase):
         self.environment.pop("DOTFILES_TEST_REVIEW_APPLY", None)
 
     def unchanged(self):
-        (self.root / "after/dotfiles-inventory.json").write_bytes(
-            (self.root / "before/dotfiles-inventory.json").read_bytes()
-        )
+        (self.root / "after/dotfiles-inventory.json").unlink()
+        (self.root / "after").rmdir()
+        (self.root / "after").symlink_to(self.root / "before", target_is_directory=True)
 
     def terminal(self, interact=None, apply=False, expected_code=0, term="xterm-256color",
                  stdin_terminal=True):
@@ -133,6 +133,70 @@ sys.exit(result.returncode)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.replace("running 1 test", "").strip(), "")
         self.assertEqual(self.terminal().replace("running 1 test", "").strip(), "")
+
+    def test_unchanged_apply_neither_confirms_nor_requests_activation(self):
+        self.unchanged()
+        environment = {**self.environment, "DOTFILES_TEST_REVIEW_APPLY": "1"}
+        for answer in ["", "yes\n"]:
+            with self.subTest(answer=answer):
+                result = subprocess.run(self.command, env=environment, input=answer,
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.replace("running 1 test", "").strip(), "")
+                self.assertFalse((self.root / "activation-requested").exists())
+        self.assertEqual(self.terminal(apply=True).replace("running 1 test", "").strip(), "")
+        self.assertFalse((self.root / "activation-requested").exists())
+
+    def test_changed_apply_requires_yes_before_requesting_activation(self):
+        result = subprocess.run(
+            self.command, env={**self.environment, "DOTFILES_TEST_REVIEW_APPLY": "1"},
+            input="yes\n", capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertLess(result.stdout.index("+ package-000"), result.stdout.index("Apply this system plan?"))
+        self.assertTrue((self.root / "activation-requested").exists())
+
+    def test_different_build_with_identical_inventory_still_shows_its_deployment(self):
+        (self.root / "after/dotfiles-inventory.json").write_bytes(
+            (self.root / "before/dotfiles-inventory.json").read_bytes()
+        )
+        for generation, revision in [("before", "old-revision"), ("after", "new-revision")]:
+            (self.root / generation / "darwin-version.json").write_text(
+                json.dumps({"configurationRevision": revision})
+            )
+        result = subprocess.run(
+            self.command, env={**self.environment, "DOTFILES_TEST_REVIEW_APPLY": "1"},
+            input="no\n", capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("- system", result.stdout)
+        self.assertIn("old-revision", result.stdout)
+        self.assertIn("+ system", result.stdout)
+        self.assertIn("new-revision", result.stdout)
+        self.assertIn("Apply this system plan?", result.stdout)
+        self.assertFalse((self.root / "activation-requested").exists())
+
+    def test_copy_changes_are_visible_even_when_the_generation_is_unchanged(self):
+        self.unchanged()
+        (self.root / "copy.json").write_text('["settings"]')
+        (self.root / "source/home/settings").write_text("desired")
+        (self.root / "home").mkdir()
+        target = self.root / "home/settings"
+        target.write_text("current")
+        environment = {**self.environment, "DOTFILES_TEST_REVIEW_APPLY": "1"}
+        result = subprocess.run(self.command, env=environment, input="no\n",
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("- ~/settings", result.stdout)
+        self.assertIn("+ ~/settings", result.stdout)
+        self.assertIn("Apply this system plan?", result.stdout)
+        self.assertFalse((self.root / "activation-requested").exists())
+        target.write_text("desired")
+        result = subprocess.run(self.command, env=environment, input="yes\n",
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.replace("running 1 test", "").strip(), "")
+        self.assertFalse((self.root / "activation-requested").exists())
 
     def test_diff_viewer_scrolls_resizes_and_closes_without_reprinting(self):
         stage = 0

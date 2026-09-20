@@ -93,6 +93,8 @@ pub struct Preview {
     previous: Option<Inventory>,
     next: Inventory,
     notice: Option<&'static str>,
+    generation: Option<(String, String)>,
+    pub copy_changes: Vec<crate::home_copy::CopyChange>,
     pub native: String,
 }
 
@@ -110,16 +112,43 @@ impl Preview {
         } else {
             None
         };
+        let generation =
+            if notice.is_none() && render::diff(previous.as_ref(), &next, None).is_empty() {
+                current
+                    .map(|current| -> Result<_> {
+                        let current = current.canonicalize()?;
+                        let desired = desired.canonicalize()?;
+                        if current == desired {
+                            return Ok(None);
+                        }
+                        let before = generation_revision(&current)?;
+                        let after = generation_revision(&desired)?;
+                        if before != after {
+                            return Ok(Some((before, after)));
+                        }
+                        Ok(Some((generation_id(&current), generation_id(&desired))))
+                    })
+                    .transpose()?
+                    .flatten()
+            } else {
+                None
+            };
         Ok(Self {
             previous,
             next,
             notice,
+            generation,
+            copy_changes: Vec::new(),
             native: String::new(),
         })
     }
 
     pub fn needs_native(&self) -> bool {
         self.notice.is_some()
+    }
+
+    pub fn has_changes(&self) -> bool {
+        !self.render(None).is_empty()
     }
 
     pub fn show(self) -> Result<ExitCode> {
@@ -139,15 +168,44 @@ impl Preview {
 
 impl Content for Preview {
     fn render(&self, width: Option<usize>) -> String {
-        if let Some(notice) = self.notice {
-            return format!("{notice}\n\n{}", self.native).trim_end().into();
-        }
-        render::diff(self.previous.as_ref(), &self.next, width)
+        let resources = if let Some(notice) = self.notice {
+            format!("{notice}\n\n{}", self.native).trim_end().into()
+        } else {
+            render::diff(self.previous.as_ref(), &self.next, width)
+        };
+        let deployment = render::deployment(self.generation.as_ref(), &self.copy_changes, width);
+        [resources, deployment]
+            .into_iter()
+            .filter(|text| !text.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n\n")
     }
 
     fn close_action(&self) -> &str {
         "close"
     }
+}
+
+fn generation_revision(path: &Path) -> Result<String> {
+    let bytes = match fs::read(path.join("darwin-version.json")) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(generation_id(path)),
+        Err(error) => return Err(error).context("cannot read generation revision"),
+    };
+    let version: Value = serde_json::from_slice(&bytes).context("invalid generation revision")?;
+    Ok(version["configurationRevision"]
+        .as_str()
+        .map(str::to_owned)
+        .unwrap_or_else(|| generation_id(path)))
+}
+
+fn generation_id(path: &Path) -> String {
+    use sha2::{Digest, Sha256};
+    format!(
+        "build {:x}",
+        Sha256::digest(path.as_os_str().as_encoded_bytes())
+    )[..18]
+        .into()
 }
 
 fn read_generation(generation: &Path) -> Result<Option<Inventory>> {

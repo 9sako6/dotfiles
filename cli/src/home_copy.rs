@@ -4,6 +4,13 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
+use sha2::{Digest, Sha256};
+
+pub struct CopyChange {
+    pub path: String,
+    pub before: Option<String>,
+    pub after: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct CopyPlan {
@@ -18,6 +25,22 @@ struct CopyEntry {
 }
 
 impl CopyPlan {
+    pub fn changes(&self) -> Result<Vec<CopyChange>> {
+        let mut changes = Vec::new();
+        for entry in &self.entries {
+            let after = fingerprint(&entry.source, true)?.context("copy source disappeared")?;
+            let before = fingerprint(&entry.destination, false)?;
+            if before.as_ref() != Some(&after) {
+                changes.push(CopyChange {
+                    path: entry.relative.display().to_string(),
+                    before,
+                    after,
+                });
+            }
+        }
+        Ok(changes)
+    }
+
     pub fn apply(&self) -> Result<()> {
         for entry in &self.entries {
             sync_entry(&entry.source, &entry.destination).with_context(|| {
@@ -30,6 +53,43 @@ impl CopyPlan {
         }
         Ok(())
     }
+}
+
+fn fingerprint(path: &Path, source: bool) -> Result<Option<String>> {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(error).with_context(|| format!("cannot inspect {}", path.display()))
+        }
+    };
+    let mut digest = Sha256::new();
+    if metadata.file_type().is_symlink() {
+        if source {
+            bail!("copy source contains a symlink: {}", path.display());
+        }
+        digest.update(b"symlink");
+        digest.update(fs::read_link(path)?.as_os_str().as_encoded_bytes());
+    } else if metadata.is_file() {
+        digest.update(b"file");
+        let mode = (metadata.permissions().mode() | if source { 0o200 } else { 0 }) & 0o777;
+        digest.update(mode.to_be_bytes());
+        digest.update(fs::read(path)?);
+    } else if metadata.is_dir() {
+        digest.update(b"directory");
+        let mut entries = read_entries(path)?;
+        entries.sort_by_key(|entry| entry.file_name());
+        for entry in entries {
+            let name = entry.file_name();
+            let name = name.as_encoded_bytes();
+            digest.update(name.len().to_be_bytes());
+            digest.update(name);
+            digest.update(fingerprint(&entry.path(), source)?.context("copy entry disappeared")?);
+        }
+    } else {
+        bail!("unsupported copy entry: {}", path.display());
+    }
+    Ok(Some(format!("{:x}", digest.finalize())))
 }
 
 pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan> {
@@ -234,6 +294,7 @@ mod tests {
         symlink(&store_file, home.join(".claude/skills/design-it/SKILL.md")).unwrap();
 
         let plan = plan(&repo, &home, &[".claude/skills".into()]).unwrap();
+        assert_eq!(plan.changes().unwrap().len(), 1);
         assert_eq!(
             fs::read_to_string(home.join(".claude/skills/design-it/SKILL.md")).unwrap(),
             "store\n"
@@ -252,5 +313,39 @@ mod tests {
             fs::read_to_string(home.join(".claude/runtime.json")).unwrap(),
             "keep\n"
         );
+        assert!(plan.changes().unwrap().is_empty());
+    }
+
+    #[test]
+    fn copy_changes_detect_content_modes_missing_files_and_extras() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("source");
+        let home = temp.path().join("home");
+        fs::create_dir_all(source.join("home/managed")).unwrap();
+        let original = source.join("home/managed/tool");
+        fs::write(&original, "original").unwrap();
+        fs::set_permissions(&original, fs::Permissions::from_mode(0o555)).unwrap();
+        let plan = plan(&source, &home, &["managed".into()]).unwrap();
+        let changes = plan.changes().unwrap();
+        assert_eq!(changes.len(), 1);
+        assert!(changes[0].before.is_none());
+        plan.apply().unwrap();
+        assert!(plan.changes().unwrap().is_empty());
+        let target = home.join("managed/tool");
+        for change in ["content", "mode", "missing", "extra"] {
+            match change {
+                "content" => fs::write(&target, "changed").unwrap(),
+                "mode" => fs::set_permissions(&target, fs::Permissions::from_mode(0o644)).unwrap(),
+                "missing" => fs::remove_file(&target).unwrap(),
+                "extra" => fs::write(home.join("managed/extra"), "obsolete").unwrap(),
+                _ => unreachable!(),
+            }
+            let changes = plan.changes().unwrap();
+            assert_eq!(changes.len(), 1, "{change}");
+            assert_ne!(changes[0].before.as_ref(), Some(&changes[0].after));
+            plan.apply().unwrap();
+            assert!(plan.changes().unwrap().is_empty(), "{change}");
+        }
     }
 }
