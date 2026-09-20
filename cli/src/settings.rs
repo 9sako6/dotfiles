@@ -1,4 +1,4 @@
-use std::io::{self, IsTerminal, Write};
+use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -21,9 +21,7 @@ pub struct Setting {
 
 pub fn run(root: &Path) -> Result<ExitCode> {
     let (settings, inventory) = system::load_settings(root)?;
-    let interactive = io::stdout().is_terminal()
-        && io::stdin().is_terminal()
-        && std::env::var("TERM").is_ok_and(|term| term != "dumb");
+    let interactive = crate::pager::is_interactive();
     if !interactive {
         let mut output = io::stdout().lock();
         write!(output, "{}", render(&settings, None))?;

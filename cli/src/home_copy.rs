@@ -18,21 +18,6 @@ struct CopyEntry {
 }
 
 impl CopyPlan {
-    pub fn preview(&self) -> String {
-        if self.entries.is_empty() {
-            return String::new();
-        }
-        let mut lines = vec!["home copy plan:".to_owned()];
-        lines.extend(self.entries.iter().map(|entry| {
-            format!(
-                "  {} -> {}",
-                entry.relative.display(),
-                entry.destination.display()
-            )
-        }));
-        lines.join("\n")
-    }
-
     pub fn apply(&self) -> Result<()> {
         for entry in &self.entries {
             sync_entry(&entry.source, &entry.destination).with_context(|| {
@@ -249,13 +234,6 @@ mod tests {
         symlink(&store_file, home.join(".claude/skills/design-it/SKILL.md")).unwrap();
 
         let plan = plan(&repo, &home, &[".claude/skills".into()]).unwrap();
-        assert_eq!(
-            plan.preview(),
-            format!(
-                "home copy plan:\n  .claude/skills -> {}",
-                home.join(".claude/skills").display()
-            )
-        );
         assert_eq!(
             fs::read_to_string(home.join(".claude/skills/design-it/SKILL.md")).unwrap(),
             "store\n"

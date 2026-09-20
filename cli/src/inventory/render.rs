@@ -1,15 +1,8 @@
 use std::collections::BTreeMap;
-use std::io::{self, Write};
 use std::process::ExitCode;
 use std::sync::mpsc::TryRecvError;
-use std::time::Duration;
 
 use anyhow::Result;
-use crossterm::{
-    cursor,
-    event::{self, Event, KeyCode, KeyModifiers},
-    execute, queue, terminal,
-};
 use serde_json::Value;
 use tabled::builder::Builder;
 use tabled::grid::dimension::Estimate;
@@ -192,9 +185,6 @@ pub(super) fn diff(before: Option<&Inventory>, after: &Inventory, width: Option<
         };
         (rank, subgroup, section.path.clone())
     });
-    if changed.is_empty() {
-        return "no resource changes".into();
-    }
     render_sections(&changed, width)
 }
 
@@ -547,21 +537,48 @@ fn calendar(schedule: &Value, timezone: &str) -> String {
     )
 }
 
-struct Screen;
-
-impl Screen {
-    fn enter() -> Result<Self> {
-        terminal::enable_raw_mode()?;
-        let guard = Self;
-        execute!(io::stdout(), terminal::EnterAlternateScreen, cursor::Hide)?;
-        Ok(guard)
-    }
+struct SettingsView<'a> {
+    settings: &'a [crate::settings::Setting],
+    inventory: &'a mut Inventory,
+    checks: &'a mut Checks,
+    checking: bool,
 }
 
-impl Drop for Screen {
-    fn drop(&mut self) {
-        let _ = execute!(io::stdout(), cursor::Show, terminal::LeaveAlternateScreen);
-        let _ = terminal::disable_raw_mode();
+impl crate::pager::Content for SettingsView<'_> {
+    fn render(&self, width: Option<usize>) -> String {
+        format!(
+            "{}\n{}",
+            crate::settings::render(self.settings, width),
+            report(self.inventory, width, true)
+        )
+    }
+
+    fn update(&mut self) -> bool {
+        let mut changed = false;
+        while self.checking {
+            match self.checks.poll() {
+                Ok((indices, result)) => {
+                    for index in indices {
+                        self.inventory.packages[index].latest = result.clone();
+                    }
+                    changed = true;
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    self.checking = false;
+                    changed = true;
+                }
+            }
+        }
+        changed
+    }
+
+    fn status(&self) -> &str {
+        if self.checking {
+            "checking latest · "
+        } else {
+            ""
+        }
     }
 }
 
@@ -570,98 +587,12 @@ pub(super) fn live(
     inventory: &mut Inventory,
     checks: &mut Checks,
 ) -> Result<ExitCode> {
-    let _screen = Screen::enter()?;
-    let mut offset = 0usize;
-    let mut dirty = true;
-    let mut checking = true;
-    let mut rendered = String::new();
-    loop {
-        let (width, height) = terminal::size()?;
-        let rows = usize::from(height.saturating_sub(1)).max(1);
-        if dirty {
-            let width = Some(usize::from(width));
-            rendered = format!(
-                "{}\n{}",
-                crate::settings::render(settings, width),
-                report(inventory, width, true)
-            );
-        }
-        let lines: Vec<_> = rendered.lines().collect();
-        offset = offset.min(lines.len().saturating_sub(rows));
-        if dirty {
-            let mut output = io::stdout().lock();
-            queue!(
-                output,
-                cursor::MoveTo(0, 0),
-                terminal::Clear(terminal::ClearType::All)
-            )?;
-            for (row, line) in lines.iter().skip(offset).take(rows).enumerate() {
-                queue!(output, cursor::MoveTo(0, row as u16))?;
-                write!(output, "{line}")?;
-            }
-            queue!(output, cursor::MoveTo(0, height.saturating_sub(1)))?;
-            write!(
-                output,
-                "{}",
-                console::truncate_str(
-                    if checking {
-                        "checking latest · j/k line · f/b page · d/u half · g/G ends · q quit"
-                    } else {
-                        "j/k line · f/b page · d/u half · g/G ends · q quit"
-                    },
-                    usize::from(width),
-                    ""
-                )
-            )?;
-            output.flush()?;
-            dirty = false;
-        }
-        while checking {
-            match checks.poll() {
-                Ok((indices, result)) => {
-                    for index in indices {
-                        inventory.packages[index].latest = result.clone();
-                    }
-                    dirty = true;
-                }
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => {
-                    checking = false;
-                    dirty = true;
-                }
-            }
-        }
-        if event::poll(Duration::from_millis(50))? {
-            match event::read()? {
-                Event::Key(key) => {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            return Ok(ExitCode::SUCCESS);
-                        }
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(ExitCode::from(130));
-                        }
-                        KeyCode::Down | KeyCode::Char('j') => offset = offset.saturating_add(1),
-                        KeyCode::Up | KeyCode::Char('k') => offset = offset.saturating_sub(1),
-                        KeyCode::PageDown | KeyCode::Char(' ' | 'f') => {
-                            offset = offset.saturating_add(rows)
-                        }
-                        KeyCode::PageUp | KeyCode::Char('b') => {
-                            offset = offset.saturating_sub(rows)
-                        }
-                        KeyCode::Char('d') => offset = offset.saturating_add(rows.div_ceil(2)),
-                        KeyCode::Char('u') => offset = offset.saturating_sub(rows.div_ceil(2)),
-                        KeyCode::Home | KeyCode::Char('g') => offset = 0,
-                        KeyCode::End | KeyCode::Char('G') => offset = lines.len(),
-                        _ => (),
-                    }
-                    dirty = true;
-                }
-                Event::Resize(_, _) => dirty = true,
-                _ => (),
-            }
-        }
-    }
+    crate::pager::show(SettingsView {
+        settings,
+        inventory,
+        checks,
+        checking: true,
+    })
 }
 
 #[cfg(test)]

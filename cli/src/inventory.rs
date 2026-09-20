@@ -3,13 +3,15 @@ mod render;
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::io::{self, IsTerminal, Write};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
+
+use crate::pager::{self, Content};
 
 #[derive(Deserialize)]
 pub struct Inventory {
@@ -87,22 +89,65 @@ pub fn run(
     Ok(ExitCode::SUCCESS)
 }
 
-pub fn preview(current: Option<&Path>, desired: &Path) -> Result<String> {
-    let width = io::stdout()
-        .is_terminal()
-        .then(|| usize::from(console::Term::stdout().size().1));
-    let next = read_generation(desired)?.context("planned generation has no inventory")?;
-    let previous = current.map(read_generation).transpose()?.flatten();
-    if current.is_some() && previous.is_none() {
-        return Ok("resource diff unavailable: active generation has no inventory; using native diff for this transition".into());
+pub struct Preview {
+    previous: Option<Inventory>,
+    next: Inventory,
+    notice: Option<&'static str>,
+    pub native: String,
+}
+
+impl Preview {
+    pub fn load(current: Option<&Path>, desired: &Path) -> Result<Self> {
+        let next = read_generation(desired)?.context("planned generation has no inventory")?;
+        let previous = current.map(read_generation).transpose()?.flatten();
+        let notice = if current.is_some() && previous.is_none() {
+            Some("resource diff unavailable: active generation has no inventory; using native diff for this transition")
+        } else if previous
+            .as_ref()
+            .is_some_and(|previous| previous.schema_version != next.schema_version)
+        {
+            Some("resource diff unavailable: generation inventories cover different settings; using native diff for this transition")
+        } else {
+            None
+        };
+        Ok(Self {
+            previous,
+            next,
+            notice,
+            native: String::new(),
+        })
     }
-    if previous
-        .as_ref()
-        .is_some_and(|previous| previous.schema_version != next.schema_version)
-    {
-        return Ok("resource diff unavailable: generation inventories cover different settings; using native diff for this transition".into());
+
+    pub fn needs_native(&self) -> bool {
+        self.notice.is_some()
     }
-    Ok(render::diff(previous.as_ref(), &next, width))
+
+    pub fn show(self) -> Result<ExitCode> {
+        let text = self.render(None);
+        if text.is_empty() {
+            return Ok(ExitCode::SUCCESS);
+        }
+        if pager::is_interactive() {
+            return pager::show(self);
+        }
+        let mut output = io::stdout().lock();
+        writeln!(output, "{text}")?;
+        output.flush()?;
+        Ok(ExitCode::SUCCESS)
+    }
+}
+
+impl Content for Preview {
+    fn render(&self, width: Option<usize>) -> String {
+        if let Some(notice) = self.notice {
+            return format!("{notice}\n\n{}", self.native).trim_end().into();
+        }
+        render::diff(self.previous.as_ref(), &self.next, width)
+    }
+
+    fn close_action(&self) -> &str {
+        "close"
+    }
 }
 
 fn read_generation(generation: &Path) -> Result<Option<Inventory>> {
@@ -193,6 +238,10 @@ mod tests {
     use super::*;
     use std::os::unix::fs::symlink;
 
+    fn preview(current: Option<&Path>, desired: &Path) -> Result<String> {
+        Ok(Preview::load(current, desired)?.render(None))
+    }
+
     fn generation(root: &Path, name: &str, version: &str, description: &str) -> PathBuf {
         let generation = root.join(name);
         let source = generation.join("source");
@@ -252,7 +301,7 @@ mod tests {
         assert!(forward.contains("Updated description. Use when needed."));
         assert!(!forward.contains("latest"));
         assert!(!forward.contains("localllm"));
-        assert_eq!(preview(Some(&new), &new).unwrap(), "no resource changes");
+        assert_eq!(preview(Some(&new), &new).unwrap(), "");
         let initial = preview(None, &new).unwrap();
         let initial = console::strip_ansi_codes(&initial);
         assert!(initial.lines().any(|s| s.starts_with('+')));

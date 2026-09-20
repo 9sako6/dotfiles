@@ -51,18 +51,12 @@ struct ConfigurationResult<T> {
 #[derive(Deserialize)]
 struct Configuration {
     copy: Vec<String>,
-    localllm: LocalLlm,
     private: Private,
 }
 
 #[derive(Deserialize)]
 struct Private {
     path: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct LocalLlm {
-    enabled: bool,
 }
 
 #[derive(Deserialize)]
@@ -217,20 +211,6 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         private.verify()?;
     }
     verify_local(&local_path, &local)?;
-    println!("public revision: {}", public.revision);
-    if let Some(private) = &private {
-        println!("private revision: {}", private.revision);
-    }
-    println!(
-        "local input hash: {}",
-        local
-            .as_ref()
-            .map(|b| hash(b))
-            .unwrap_or_else(|| "absent".into())
-    );
-    if configuration.localllm.enabled {
-        println!("Local LLM is enabled: the first build may download several GB of pinned model data and its runtime.");
-    }
     inputs.local_file = inputs
         .local_file
         .map(|_| PathBuf::from("dotfiles.local.toml"));
@@ -246,36 +226,35 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         "cannot freeze host evaluation inputs",
     )?)?;
     let [system_drv, brewfile_drv] = host_derivations(&nix, host.trim(), show_trace)?;
-    let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
+    home_copy::plan(&public.source, &home, &configuration.copy)?;
     let system = build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?;
-    let brewfile = build(
-        &nix,
-        &brewfile_drv.drv_path,
-        &workspace.path().join("brewfile"),
-    )?;
-    println!(
-        "\n{}\n",
-        crate::inventory::preview(previous_generation.as_deref(), &system)?
-    );
-    let status = Command::new(&backend)
-        .arg("preview")
-        .arg(&nix)
-        .arg(&system)
-        .arg(&brewfile)
-        .arg(
-            previous_generation
-                .as_deref()
-                .unwrap_or(&workspace.path().join("no-active-generation")),
-        )
-        .status()?;
-    if !status.success() {
-        bail!("system preview failed");
+    let mut preview = crate::inventory::Preview::load(previous_generation.as_deref(), &system)?;
+    if preview.needs_native() {
+        let brewfile = build(
+            &nix,
+            &brewfile_drv.drv_path,
+            &workspace.path().join("brewfile"),
+        )?;
+        let mut diagnostics = io::stderr().lock();
+        preview.native = String::from_utf8(capture_with_diagnostics(
+            Command::new(&backend)
+                .arg("preview")
+                .arg(&nix)
+                .arg(&system)
+                .arg(&brewfile)
+                .arg(
+                    previous_generation
+                        .as_deref()
+                        .unwrap_or(&workspace.path().join("no-active-generation")),
+                ),
+            "system preview failed",
+            Some(&mut diagnostics),
+        )?)?;
     }
-    println!("{}", copy_plan.preview());
-    if matches!(mode, Mode::Plan) {
-        return Ok(ExitCode::SUCCESS);
+    let status = review_plan(mode, preview)?;
+    if status != ExitCode::SUCCESS || matches!(mode, Mode::Plan) {
+        return Ok(status);
     }
-    confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())?;
     public.verify()?;
     if let Some(private) = &private {
         private.verify()?;
@@ -496,6 +475,14 @@ fn evaluate_configuration<T: serde::de::DeserializeOwned>(
         .context("configuration was not returned by Nix")
 }
 
+fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<ExitCode> {
+    let status = preview.show()?;
+    if status == ExitCode::SUCCESS && matches!(mode, Mode::Apply) {
+        confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())?;
+    }
+    Ok(status)
+}
+
 fn confirm_apply(input: &mut impl io::BufRead, output: &mut impl Write) -> Result<()> {
     write!(output, "Apply this system plan? Type yes: ")?;
     output.flush()?;
@@ -579,13 +566,14 @@ fn evaluate_json<T: serde::de::DeserializeOwned>(
 }
 
 fn build(nix: &Path, derivation: &str, link: &Path) -> Result<PathBuf> {
-    let status = nix_command(nix)
+    let output = nix_command(nix)
         .arg("build")
         .arg("--out-link")
         .arg(link)
         .arg(format!("{derivation}^*"))
-        .status()?;
-    if !status.success() {
+        .output()?;
+    if !output.status.success() {
+        io::stderr().write_all(&output.stderr)?;
         bail!("building the frozen generation failed");
     }
     link.canonicalize()
@@ -616,10 +604,6 @@ fn git(root: &Path, args: &[&str]) -> Result<Vec<u8>> {
         Command::new("git").arg("-C").arg(root).args(args),
         "Git input inspection failed",
     )
-}
-
-fn hash(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
 }
 
 fn fingerprint(root: &Path) -> Result<String> {
@@ -711,6 +695,30 @@ fn acquire_lock(path: &Path) -> Result<ApplyLock> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn review_fixture() {
+        let Some(root) = env::var_os("DOTFILES_TEST_REVIEW_ROOT").map(PathBuf::from) else {
+            return;
+        };
+        let preview =
+            crate::inventory::Preview::load(Some(&root.join("before")), &root.join("after"))
+                .unwrap();
+        let mode = if env::var_os("DOTFILES_TEST_REVIEW_APPLY").is_some() {
+            Mode::Apply
+        } else {
+            Mode::Plan
+        };
+        let code = match review_plan(mode, preview) {
+            Ok(status) if status == ExitCode::SUCCESS => 0,
+            Ok(_) => 130,
+            Err(error) => {
+                eprintln!("{error:#}");
+                1
+            }
+        };
+        std::process::exit(code);
+    }
 
     #[test]
     fn failed_command_diagnostics_require_explicit_output() {
