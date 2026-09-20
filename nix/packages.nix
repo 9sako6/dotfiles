@@ -100,6 +100,9 @@ let
   nightlightPackage = pkgs.nightlight;
   expectedNightlightVersion = "1.0.0";
 
+  pnpmPackage = pkgs.pnpm_11;
+  expectedPnpmVersion = "11.20.0";
+
   quintPackage = pkgs.quint;
   expectedQuintVersion = "0.32.0";
 
@@ -162,6 +165,8 @@ assert pkgs.lib.assertMsg (herdrPackage.version == expectedHerdrVersion)
   "Herdr version drifted: expected ${expectedHerdrVersion}, got ${herdrPackage.version}";
 assert pkgs.lib.assertMsg (nightlightPackage.version == expectedNightlightVersion)
   "Nightlight version drifted: expected ${expectedNightlightVersion}, got ${nightlightPackage.version}";
+assert pkgs.lib.assertMsg (pnpmPackage.version == expectedPnpmVersion)
+  "pnpm version drifted: expected ${expectedPnpmVersion}, got ${pnpmPackage.version}";
 assert pkgs.lib.assertMsg (quintPackage.version == expectedQuintVersion)
   "Quint version drifted: expected ${expectedQuintVersion}, got ${quintPackage.version}";
 assert pkgs.lib.assertMsg (ripgrepPackage.version == expectedRipgrepVersion)
@@ -209,6 +214,8 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     # Nightlight 1.0.0
     nightlightPackage
+
+    pnpmPackage
 
     # Quint 0.32.0
     quintPackage
