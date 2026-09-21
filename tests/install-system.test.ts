@@ -321,7 +321,6 @@ printf '\n' >> "$SYSTEM_APPLY_LOG"
         "",
       ].join("\n"));
       expect(await readlink(selection)).toBe("/source/flake.nix");
-      expect(await Bun.file(applyLock).exists()).toBe(false);
 
       const refused = await runInstallSystemFunction(
         'install_system_apply_built_system "$1" /usr/bin/env "$2" test-user "$3" "$4" /other/flake.nix /new/flake.nix',
@@ -339,7 +338,6 @@ printf '\n' >> "$SYSTEM_APPLY_LOG"
       );
       expect(failedActivation.exitCode).toBe(42);
       expect(await readlink(selection)).toBe("/source/flake.nix");
-      expect(await Bun.file(applyLock).exists()).toBe(false);
     });
   });
 

@@ -263,7 +263,29 @@ install_system_apply_built_system() (
 
   [ -x "$nix_env_bin" ] || install_system_fail "built Lix has no nix-env"
   [ -x "$rebuild_bin" ] || install_system_fail "built system has no darwin-rebuild"
-  "$sudo_bin" "$env_bin" SUDO_USER="$primary_user" /bin/sh -eu -c '
+  [ -x /usr/bin/perl ] || install_system_fail 'system Perl is required for the apply lock'
+
+  # Keep one stable inode. The kernel releases its lock when the last inherited
+  # descriptor closes, including after an interrupted parent or failed activation.
+  lock_program='
+    use strict;
+    use warnings;
+    use Fcntl qw(:DEFAULT :flock F_SETFD O_NOFOLLOW);
+    use File::Basename qw(dirname);
+    use File::Path qw(make_path);
+    my $path = shift @ARGV;
+    make_path(dirname($path));
+    sysopen(my $lock, $path, O_RDWR | O_CREAT | O_NOFOLLOW, 0600)
+      or die "system: cannot open system apply lock: $!\n";
+    -f $lock or die "system: system apply lock is not a regular file\n";
+    flock($lock, LOCK_EX | LOCK_NB)
+      or die "system: system apply is already running (or lock unavailable): $!\n";
+    fcntl($lock, F_SETFD, 0)
+      or die "system: cannot retain system apply lock: $!\n";
+    exec { $ARGV[0] } @ARGV or die "system: cannot start activation: $!\n";
+  '
+  "$sudo_bin" "$env_bin" -u PERL5OPT -u PERL5LIB -u PERLLIB SUDO_USER="$primary_user" \
+    /usr/bin/perl -e "$lock_program" "${selection_path}.apply.lock" /bin/sh -eu -c '
     nix_env_bin="$1"
     rebuild_bin="$2"
     system_path="$3"
@@ -272,45 +294,6 @@ install_system_apply_built_system() (
     desired_target="$6"
 
     selection_dir="$(/usr/bin/dirname -- "$selection_path")"
-    lock_path="${selection_path}.apply.lock"
-    lock_candidate="${lock_path}.$$.candidate"
-    /bin/mkdir -p -- "$selection_dir"
-    while :; do
-      /bin/rm -f -- "$lock_candidate"
-      printf "%s\n" "$$" > "$lock_candidate"
-      if /bin/ln -- "$lock_candidate" "$lock_path" 2>/dev/null; then
-        /bin/rm -f -- "$lock_candidate"
-        break
-      fi
-      /bin/rm -f -- "$lock_candidate"
-      [ -e "$lock_path" ] || {
-        printf "system: could not acquire system apply lock\n" >&2
-        exit 1
-      }
-
-      lock_owner="$(/bin/cat -- "$lock_path" 2>/dev/null || :)"
-      case "$lock_owner" in
-        "" | *[!0-9]*) ;;
-        *)
-          if /bin/kill -0 "$lock_owner" 2>/dev/null; then
-            printf "system: system apply is already running\n" >&2
-            exit 1
-          fi
-          ;;
-      esac
-
-      stale_lock="${lock_path}.$$.stale"
-      if /bin/mv -- "$lock_path" "$stale_lock" 2>/dev/null; then
-        /bin/rm -f -- "$stale_lock"
-      fi
-    done
-    install_system_release_apply_lock() {
-      lock_owner="$(/bin/cat -- "$lock_path" 2>/dev/null || :)"
-      if [ "$lock_owner" = "$$" ]; then
-        /bin/rm -f -- "$lock_path"
-      fi
-    }
-    trap install_system_release_apply_lock 0
     trap "exit 1" HUP INT TERM
 
     install_system_verify_record() {
