@@ -1,0 +1,148 @@
+diff --git a/home/.zshrc b/home/.zshrc
+index 899238b..f9a58d1 100644
+--- a/home/.zshrc
++++ b/home/.zshrc
+@@ -56,11 +56,10 @@ fi
+       local config="${XDG_CONFIG_HOME:-${HOME}/.config}/mise/config.toml"
+ 
+       local revision
+-      revision="$(command sed -n "/${repository//\//---}/s/.*ref = \"//p" "$config" 2>/dev/null | command sed -n '1s/".*//p')"
+-      if [ -z "$revision" ]; then
+-        print -u2 "zinit: refusing ${repository}; no pin for it in ${config}"
++      revision="$(command bun "$HOME/mybin/lib/zinit-pin.ts" "$config" "$plugin_dir")" || {
++        print -u2 "zinit: refusing ${repository}; its pin could not be read"
+         return 1
+-      fi
++      }
+ 
+       local resolved_revision="$(command git -C "$plugin_dir" rev-parse HEAD 2>/dev/null)"
+       if [[ "$resolved_revision" != "$revision" || -n "$(command git -C "$plugin_dir" status --porcelain 2>/dev/null)" ]]; then
+diff --git a/home/mybin/lib/zinit-pin.ts b/home/mybin/lib/zinit-pin.ts
+new file mode 100644
+index 0000000..186f5b0
+--- /dev/null
++++ b/home/mybin/lib/zinit-pin.ts
+@@ -0,0 +1,34 @@
++import { readFile } from "node:fs/promises";
++import path from "node:path";
++
++function record(value: unknown): value is Record<string, unknown> {
++  return typeof value === "object" && value !== null && !Array.isArray(value);
++}
++
++async function main(): Promise<void> {
++  const [configPath, destination, ...extra] = process.argv.slice(2);
++  const home = process.env.HOME;
++  if (!configPath || !destination || extra.length || !home) {
++    throw new Error("expected a mise configuration, plugin directory and HOME");
++  }
++  const config = Bun.TOML.parse(await readFile(configPath, "utf8"));
++  const bootstrap = config.bootstrap;
++  const repos = record(bootstrap) ? bootstrap.repos : undefined;
++  if (!record(repos)) throw new Error("mise configuration has no bootstrap.repos");
++  const matches = Object.entries(repos).filter(([directory]) => {
++    const expanded = directory.startsWith("~/") ? path.join(home, directory.slice(2)) : directory;
++    return path.isAbsolute(expanded) && path.resolve(expanded) === path.resolve(destination);
++  });
++  if (matches.length !== 1) throw new Error("plugin directory must have exactly one pin");
++  const specification = matches[0][1];
++  const revision = record(specification) ? specification.ref : undefined;
++  if (typeof revision !== "string" || !/^[0-9a-f]{40}$/.test(revision)) {
++    throw new Error("plugin pin must be a complete Git commit hash");
++  }
++  process.stdout.write(`${revision}\n`);
++}
++
++main().catch((error: unknown) => {
++  console.error(`zinit: ${error instanceof Error ? error.message : String(error)}`);
++  process.exitCode = 1;
++});
+diff --git a/tests/shell-config.test.ts b/tests/shell-config.test.ts
+index c613d89..7a1b634 100644
+--- a/tests/shell-config.test.ts
++++ b/tests/shell-config.test.ts
+@@ -220,7 +220,7 @@ const ZINIT_PLUGINS = [
+   { name: "zsh-users/zsh-autosuggestions", dir: "zsh-users---zsh-autosuggestions", sha: "85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5" },
+ ] as const;
+ 
+-async function preparePinnedZinitHome(tempDir: string, options: { revisionOverrides?: Partial<Record<string, string>>; dirty?: string[] } = {}) {
++async function preparePinnedZinitHome(tempDir: string, options: { revisionOverrides?: Partial<Record<string, string>>; dirty?: string[]; format?: "compact" | "single" | "tables" } = {}) {
+   const fakeBin = path.join(tempDir, "bin");
+   const gitLogPath = path.join(tempDir, "zinit-git.log");
+   const loadLogPath = path.join(tempDir, "zinit-load.log");
+@@ -228,12 +228,22 @@ async function preparePinnedZinitHome(tempDir: string, options: { revisionOverri
+   const pluginsDir = path.join(homeDir, ".local", "share", "zinit", "plugins");
+   const zinitHome = path.join(homeDir, ".local", "share", "zinit", "zinit.git");
+ 
++  await mkdir(path.join(homeDir, "mybin", "lib"), { recursive: true });
++  await copyFile("home/mybin/lib/zinit-pin.ts", path.join(homeDir, "mybin", "lib", "zinit-pin.ts"));
+   const configDir = path.join(homeDir, ".config", "mise");
+   const configLines = ZINIT_PLUGINS.map(
+     (plugin) =>
+       `"~/.local/share/zinit/plugins/${plugin.dir}" = { url = "https://github.com/${plugin.name}.git", ref = "${plugin.sha}" }`,
+   );
+-  await writeTree(configDir, { "config.toml": `[bootstrap.repos]\n${configLines.join("\n")}\n` });
++  let configuration = `[bootstrap.repos]\n${configLines.join("\n")}\n`;
++  if (options.format === "compact") configuration = configuration.replaceAll('ref = "', 'ref="');
++  if (options.format === "single") configuration = configuration.replaceAll('"', "'");
++  if (options.format === "tables") {
++    configuration = ZINIT_PLUGINS.map((plugin) =>
++      `[bootstrap.repos."~/.local/share/zinit/plugins/${plugin.dir}"]\nurl = "https://github.com/${plugin.name}.git"\nref = "${plugin.sha}"\n`,
++    ).join("\n");
++  }
++  await writeTree(configDir, { "config.toml": configuration });
+ 
+   for (const plugin of ZINIT_PLUGINS) {
+     const pluginDir = path.join(pluginsDir, plugin.dir);
+@@ -282,7 +292,7 @@ esac
+       ...process.env,
+       DOTFILES_NO_BANNER: "1",
+       HOME: homeDir,
+-      PATH: `${fakeBin}:${path.join(homeDir, ".local", "bin")}:/usr/bin:/bin`,
++      PATH: `${fakeBin}:${path.join(homeDir, ".local", "bin")}:${path.dirname(process.execPath)}:/usr/bin:/bin`,
+       XDG_CONFIG_HOME: "",
+       ZINIT_GIT_LOG: gitLogPath,
+       ZINIT_LOAD_LOG: loadLogPath,
+@@ -505,6 +515,30 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
+     });
+   });
+ 
++  for (const format of ["compact", "single", "tables"] as const) {
++    test(`TOMLの${format}表記でも同じピンのpluginを読み込む`, async () => {
++      await withTempDir(`zinit-format-${format}`, async (tempDir) => {
++        const { env, loadLogPath } = await preparePinnedZinitHome(tempDir, { format });
++        const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
++        expect(result.code).toBe(0);
++        expect(result.stderr).not.toContain("refusing");
++        expect((await readFile(loadLogPath, "utf8")).trim().split("\n")).toEqual(
++          ZINIT_PLUGINS.map((plugin) => plugin.name),
++        );
++      });
++    });
++  }
++
++  test("登録されていないpluginを読み込まない", async () => {
++    await withTempDir("zinit-unregistered", async (tempDir) => {
++      const { env, loadLogPath } = await preparePinnedZinitHome(tempDir);
++      await writeFile(path.join(env.HOME!, ".config/mise/config.toml"), "[bootstrap.repos]\n");
++      const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
++      expect(result.stderr).toContain("refusing");
++      expect(await Bun.file(loadLogPath).exists()).toBe(false);
++    });
++  });
++
+   test("Zinit pluginのresolved commitが固定値と違えば読み込まない", async () => {
+     await withTempDir("zinit-mismatch", async (tempDir) => {
+       const { env, loadLogPath } = await preparePinnedZinitHome(tempDir, {
+diff --git a/tsconfig.json b/tsconfig.json
+index 1177d20..ad62929 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -13,6 +13,7 @@
+   },
+   "include": [
+     "home/.apm/skills/anki/tools/**/*.ts",
++    "home/mybin/lib/**/*.ts",
+     "tests/**/*.ts"
+   ]
+ }

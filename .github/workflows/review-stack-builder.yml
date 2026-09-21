@@ -1,0 +1,43 @@
+name: review-stack-builder
+on:
+  push:
+    branches: [work/minus-stack-builder]
+permissions:
+  contents: write
+concurrency:
+  group: minus-stack-builder
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      NIX_CONFIG: extra-experimental-features = nix-command flakes
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+      - name: Install Lix
+        run: |
+          ./bin/install-lix.sh
+          echo /nix/var/nix/profiles/default/bin >> "$GITHUB_PATH"
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+      - name: Build and test the explicitly listed fix commits
+        run: |
+          nix shell --no-write-lock-file --no-update-lock-file .#userTools --command python3 .review/build-stack.py
+      - name: Archive the tested source without Git credentials
+        if: always()
+        run: |
+          if test -d "$RUNNER_TEMP/minus-stack"; then
+            git -C "$RUNNER_TEMP/minus-stack" archive --format=tar.gz --output="$RUNNER_TEMP/stack-source.tar.gz" HEAD
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: minus-stack-result
+          path: |
+            ${{ runner.temp }}/stack-results.json
+            ${{ runner.temp }}/stack-source.tar.gz
+          retention-days: 1

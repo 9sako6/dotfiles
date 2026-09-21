@@ -1,0 +1,349 @@
+diff --git a/cli/src/inventory.rs b/cli/src/inventory.rs
+index 9c04199..fc708bf 100644
+--- a/cli/src/inventory.rs
++++ b/cli/src/inventory.rs
+@@ -1,5 +1,8 @@
++mod diff;
+ mod render;
+ 
++use diff::ResourceDiff;
++
+ use std::collections::BTreeMap;
+ use std::fs;
+ use std::io::{self, Write};
+@@ -9,7 +12,7 @@ use anyhow::{Context, Result};
+ use serde::Deserialize;
+ use serde_json::Value;
+ 
+-#[derive(Deserialize)]
++#[derive(Clone, Deserialize, PartialEq)]
+ pub struct Inventory {
+     #[serde(default, rename = "schemaVersion")]
+     schema_version: u32,
+@@ -25,14 +28,14 @@ pub struct Inventory {
+     skills: Vec<Skill>,
+ }
+ 
+-#[derive(Deserialize)]
++#[derive(Clone, Deserialize, PartialEq)]
+ struct Package {
+     name: String,
+     manager: String,
+     declared: String,
+ }
+ 
+-#[derive(Deserialize)]
++#[derive(Clone, Deserialize, PartialEq)]
+ struct Setting {
+     key: String,
+     group: String,
+@@ -40,25 +43,26 @@ struct Setting {
+     value: Value,
+ }
+ 
+-#[derive(Deserialize)]
++#[derive(Clone, Deserialize, PartialEq)]
+ struct Service {
+     name: String,
+     scope: String,
+     config: Value,
+ }
+ 
+-#[derive(Deserialize)]
++#[derive(Clone, Deserialize, PartialEq)]
+ struct Tool {
+     path: String,
+     deploy: String,
+ }
+ 
+-#[derive(Deserialize)]
++#[derive(Clone, Deserialize, PartialEq)]
+ struct LocalLlm {
+     enabled: bool,
+     default_model: Option<String>,
+ }
+ 
++#[derive(Clone, PartialEq)]
+ struct Skill {
+     name: String,
+     origin: String,
+@@ -72,8 +76,7 @@ pub fn report(inputs: crate::system::InventoryInputs, width: Option<usize>) -> R
+ }
+ 
+ pub struct Preview {
+-    previous: Option<Inventory>,
+-    next: Inventory,
++    resources: ResourceDiff,
+     notice: Option<&'static str>,
+     generation: Option<(String, String)>,
+     pub copy_changes: Vec<crate::home_copy::CopyChange>,
+@@ -108,8 +111,7 @@ impl Preview {
+             None
+         };
+         Ok(Self {
+-            previous,
+-            next,
++            resources: ResourceDiff::between(previous.as_ref(), &next),
+             notice,
+             generation: None,
+             copy_changes: Vec::new(),
+@@ -122,7 +124,7 @@ impl Preview {
+     }
+ 
+     pub fn needs_generation_comparison(&self) -> bool {
+-        self.notice.is_none() && render::diff(self.previous.as_ref(), &self.next, None).is_empty()
++        self.notice.is_none() && self.resources.is_empty()
+     }
+ 
+     pub fn compare_generation(
+@@ -148,7 +150,10 @@ impl Preview {
+     }
+ 
+     pub fn has_changes(&self) -> bool {
+-        !self.render(None).is_empty()
++        self.notice.is_some()
++            || !self.resources.is_empty()
++            || self.generation.is_some()
++            || !self.copy_changes.is_empty()
+     }
+ 
+     pub fn show(&self) -> Result<()> {
+@@ -165,7 +170,7 @@ impl Preview {
+         let resources = if let Some(notice) = self.notice {
+             format!("{notice}\n\n{}", self.native).trim_end().into()
+         } else {
+-            render::diff(self.previous.as_ref(), &self.next, width)
++            render::diff(&self.resources, width)
+         };
+         let deployment = render::deployment(self.generation.as_ref(), &self.copy_changes, width);
+         [resources, deployment]
+ diff --git a/cli/src/inventory/diff.rs b/cli/src/inventory/diff.rs
+new file mode 100644
+index 0000000..c18d6af
+--- /dev/null
++++ b/cli/src/inventory/diff.rs
+@@ -0,0 +1,118 @@
++use super::Inventory;
++
++/// Typed resource deltas. Formatting is not involved in deciding what changed.
++pub(super) struct ResourceDiff {
++    pub removed: Option<Inventory>,
++    pub added: Inventory,
++    pub localllm_changed: bool,
++}
++
++impl ResourceDiff {
++    pub fn between(before: Option<&Inventory>, after: &Inventory) -> Self {
++        let mut added = after.clone();
++        let mut removed = before.cloned();
++        let localllm_changed = before.is_none_or(|before| before.localllm != after.localllm);
++        if let Some(old) = &mut removed {
++            subtract(&mut old.packages, &mut added.packages, PartialEq::eq);
++            subtract(&mut old.system, &mut added.system, PartialEq::eq);
++            let same_zone = old.time_zone == added.time_zone;
++            subtract(&mut old.services, &mut added.services, |a, b| {
++                a == b && (same_zone || a.config["StartCalendarInterval"].is_null())
++            });
++            subtract(&mut old.tools, &mut added.tools, PartialEq::eq);
++            subtract(&mut old.skills, &mut added.skills, PartialEq::eq);
++        }
++        Self {
++            removed,
++            added,
++            localllm_changed,
++        }
++    }
++
++    pub fn is_empty(&self) -> bool {
++        let empty = |inventory: &Inventory| {
++            inventory.packages.is_empty()
++                && inventory.system.is_empty()
++                && inventory.services.is_empty()
++                && inventory.tools.is_empty()
++                && inventory.skills.is_empty()
++        };
++        !self.localllm_changed
++            && self.removed.as_ref().is_none_or(empty)
++            && empty(&self.added)
++    }
++}
++
++fn subtract<T>(before: &mut Vec<T>, after: &mut Vec<T>, equal: impl Fn(&T, &T) -> bool) {
++    before.retain(|old| {
++        if let Some(index) = after.iter().position(|new| equal(old, new)) {
++            after.remove(index);
++            false
++        } else {
++            true
++        }
++    });
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use serde_json::json;
++
++    fn inventory() -> Inventory {
++        serde_json::from_value(json!({
++            "source": "/fixture",
++            "packages": [
++                {"name": "one", "manager": "Nix", "declared": "1"},
++                {"name": "two", "manager": "Nix", "declared": "2"}
++            ],
++            "system": [{"key": "value", "group": "group", "name": "value", "value": 1}],
++            "services": [], "tools": [], "timeZone": "UTC",
++            "localllm": {"enabled": false, "default_model": null}
++        }))
++        .unwrap()
++    }
++
++    #[test]
++    fn ordering_does_not_create_changes() {
++        let before = inventory();
++        let mut after = before.clone();
++        after.packages.reverse();
++        assert!(ResourceDiff::between(Some(&before), &after).is_empty());
++    }
++
++    #[test]
++    fn values_with_the_same_display_text_are_still_different_values() {
++        let before = inventory();
++        let mut after = before.clone();
++        after.system[0].value = json!("1");
++        let changes = ResourceDiff::between(Some(&before), &after);
++        assert!(!changes.is_empty());
++        assert_eq!(changes.removed.as_ref().unwrap().system[0].value, json!(1));
++        assert_eq!(changes.added.system[0].value, json!("1"));
++        assert!(changes.added.packages.is_empty());
++    }
++
++    #[test]
++    fn initial_install_has_additions_without_invented_removals() {
++        let changes = ResourceDiff::between(None, &inventory());
++        assert!(changes.removed.is_none());
++        assert_eq!(changes.added.packages.len(), 2);
++        assert!(changes.localllm_changed);
++    }
++
++    #[test]
++    fn timezone_changes_only_affect_services_with_calendar_schedules() {
++        let mut before = inventory();
++        before.services = serde_json::from_value(json!([
++            {"name": "scheduled", "scope": "user", "config": {"StartCalendarInterval": {"Hour": 1}}},
++            {"name": "on-demand", "scope": "user", "config": {}}
++        ]))
++        .unwrap();
++        let mut after = before.clone();
++        after.time_zone = "Asia/Tokyo".into();
++        let changes = ResourceDiff::between(Some(&before), &after);
++        assert_eq!(changes.added.services.len(), 1);
++        assert_eq!(changes.added.services[0].name, "scheduled");
++    }
++}
+diff --git a/cli/src/inventory/render.rs b/cli/src/inventory/render.rs
+index 08d9478..dc98d1a 100644
+--- a/cli/src/inventory/render.rs
++++ b/cli/src/inventory/render.rs
+@@ -8,6 +8,7 @@ use tabled::settings::peaker::PriorityMax;
+ use tabled::settings::{Format, Modify, Padding, Style, Width};
+ use tabled::Table;
+ 
++use super::diff::ResourceDiff;
+ use super::{Inventory, Service};
+ 
+ struct Row {
+@@ -180,28 +181,36 @@ pub(super) fn deployment(
+     )
+ }
+ 
+-pub(super) fn diff(before: Option<&Inventory>, after: &Inventory, width: Option<usize>) -> String {
+-    let mut previous: BTreeMap<_, _> = before
+-        .into_iter()
+-        .flat_map(sections)
+-        .map(|section| (section.path.clone(), section))
+-        .collect();
+-    let mut changed = Vec::new();
+-    for mut section in sections(after) {
+-        let old = previous
+-            .remove(&section.path)
+-            .map(|s| s.rows)
+-            .unwrap_or_default();
+-        section.rows = changed_rows(old, section.rows);
+-        if !section.rows.is_empty() {
+-            changed.push(section);
++pub(super) fn diff(changes: &ResourceDiff, width: Option<usize>) -> String {
++    let mut groups = BTreeMap::<Vec<String>, Section>::new();
++    let sides = changes
++        .removed
++        .iter()
++        .map(|inventory| (inventory, '-'))
++        .chain(std::iter::once((&changes.added, '+')));
++    for (inventory, sign) in sides {
++        for mut section in sections(inventory) {
++            if section.path == ["agents", "localllm"] && !changes.localllm_changed {
++                continue;
++            }
++            if section.rows.is_empty() {
++                continue;
++            }
++            for row in &mut section.rows {
++                row.change = sign;
++            }
++            if let Some(existing) = groups.get_mut(&section.path) {
++                existing.rows.extend(section.rows);
++            } else {
++                groups.insert(section.path.clone(), section);
++            }
+         }
+     }
+-    for (_, mut section) in previous {
+-        section.rows = changed_rows(section.rows, Vec::new());
+-        if !section.rows.is_empty() {
+-            changed.push(section);
+-        }
++    let mut changed: Vec<_> = groups.into_values().collect();
++    for section in &mut changed {
++        section.rows.sort_by_key(|row| {
++            (row.key.to_lowercase(), row.key.clone(), row.change != '-')
++        });
+     }
+     changed.sort_by_key(|section| {
+         let rank = match section.path[0].as_str() {
+@@ -221,27 +230,6 @@ pub(super) fn diff(before: Option<&Inventory>, after: &Inventory, width: Option<
+     render_sections(&changed, width)
+ }
+ 
+-fn changed_rows(before: Vec<Row>, mut after: Vec<Row>) -> Vec<Row> {
+-    let mut rows = Vec::new();
+-    for mut old in before {
+-        if let Some(index) = after
+-            .iter()
+-            .position(|new| old.key == new.key && old.cells == new.cells)
+-        {
+-            after.remove(index);
+-        } else {
+-            old.change = '-';
+-            rows.push(old);
+-        }
+-    }
+-    rows.extend(after.into_iter().map(|mut row| {
+-        row.change = '+';
+-        row
+-    }));
+-    rows.sort_by_key(|row| (row.key.to_lowercase(), row.key.clone(), row.change != '-'));
+-    rows
+-}
+-
+ fn render_sections(sections: &[Section], width: Option<usize>) -> String {
+     let mut system_table = build_table(
+         &["setting", "value", "description"],
+@@ -606,7 +594,7 @@ mod tests {
+         let before: Inventory = serde_json::from_value(before).unwrap();
+         let after: Inventory = serde_json::from_value(after).unwrap();
+         for width in [None, Some(60), Some(80), Some(120)] {
+-            let result = diff(Some(&before), &after, width);
++            let result = diff(&ResourceDiff::between(Some(&before), &after), width);
+             let result = console::strip_ansi_codes(&result);
+             assert!(!result.contains("stable"));
+             assert!(!result.contains("latest"));
