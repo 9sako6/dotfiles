@@ -264,7 +264,7 @@ sys.exit(result.returncode)
         self.assertNotIn("latest", result.stdout)
         self.assertNotIn("\x1b", result.stdout)
 
-    def test_local_overrides_remain_visible_when_private_checkout_is_missing(self):
+    def test_missing_private_checkout_fails_without_partial_output(self):
         (self.root / "dotfiles.toml").write_text(
             'copy = ["a", "b"]\n[localllm]\nenabled = true\n'
             'models = ["qwen3.8-27b-4bit"]\ndefault_model = "qwen3.8-27b-4bit"\n'
@@ -278,16 +278,7 @@ sys.exit(result.returncode)
         result = self.settings()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("private.path: checkout does not exist", result.stderr)
-        self.assertNotIn("\npackages\n", result.stdout)
-        result.returncode = 0
-        result.stderr = ""
-        self.assertEqual(self.rows(result), {
-            "copy": (["a", "b"], "dotfiles.toml"),
-            "localllm.default_model": ("qwen3.8-27b-4bit", "dotfiles.toml"),
-            "localllm.enabled": (False, "dotfiles.local.toml"),
-            "localllm.models": ([], "dotfiles.local.toml"),
-            "private.path": ("../missing-private", "dotfiles.local.toml"),
-        })
+        self.assertEqual(result.stdout, "")
         self.assertEqual(self.git("status", "--porcelain").stdout, before)
         self.assertEqual((self.root / "flake.lock").read_bytes(), lock)
 

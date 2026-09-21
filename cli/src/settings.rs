@@ -22,10 +22,13 @@ pub struct Setting {
 pub fn run(root: &Path) -> Result<ExitCode> {
     let (settings, inventory) = system::load_settings(root)?;
     let width = crate::terminal_width();
+    let report = format!(
+        "{}\n{}\n",
+        render(&settings, width),
+        crate::inventory::report(inventory, width)?
+    );
     let mut output = io::stdout().lock();
-    write!(output, "{}", render(&settings, width))?;
-    output.flush()?;
-    writeln!(output, "\n{}", crate::inventory::report(inventory, width)?)?;
+    output.write_all(report.as_bytes())?;
     output.flush()?;
     Ok(ExitCode::SUCCESS)
 }
