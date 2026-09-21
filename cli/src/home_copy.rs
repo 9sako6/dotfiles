@@ -14,6 +14,7 @@ pub struct CopyChange {
 
 #[derive(Debug, Clone)]
 pub struct CopyPlan {
+    home: PathBuf,
     entries: Vec<CopyEntry>,
 }
 
@@ -28,6 +29,7 @@ impl CopyPlan {
     pub fn changes(&self) -> Result<Vec<CopyChange>> {
         let mut changes = Vec::new();
         for entry in &self.entries {
+            validate_unowned_parents(&self.home, &entry.relative)?;
             let after = fingerprint(&entry.source, true)?.context("copy source disappeared")?;
             let before = fingerprint(&entry.destination, false)?;
             if before.as_ref() != Some(&after) {
@@ -42,7 +44,11 @@ impl CopyPlan {
     }
 
     pub fn apply(&self) -> Result<()> {
+        // Validate every destination and source before changing the first entry.
+        // Only declared entries are owned; their ancestors must never be replaced.
+        self.changes()?;
         for entry in &self.entries {
+            validate_unowned_parents(&self.home, &entry.relative)?;
             sync_entry(&entry.source, &entry.destination).with_context(|| {
                 format!(
                     "failed to copy {} to {}",
@@ -53,6 +59,36 @@ impl CopyPlan {
         }
         Ok(())
     }
+}
+
+fn validate_unowned_parents(home: &Path, relative: &Path) -> Result<()> {
+    // HOME is the caller's anchor (and may itself resolve through a system link).
+    match fs::metadata(home) {
+        Ok(metadata) if metadata.is_dir() => (),
+        Ok(_) => bail!("copy root is not a directory: {}", home.display()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+        Err(error) => return Err(error).context("cannot inspect copy root"),
+    }
+    let mut parent = home.to_path_buf();
+    for component in relative
+        .parent()
+        .context("copy entry has no parent")?
+        .components()
+    {
+        parent.push(component);
+        match fs::symlink_metadata(&parent) {
+            Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => (),
+            Ok(_) => bail!(
+                "copy parent must be a real directory; refusing to replace {}",
+                parent.display()
+            ),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Err(error) => {
+                return Err(error).with_context(|| format!("cannot inspect {}", parent.display()))
+            }
+        }
+    }
+    Ok(())
 }
 
 fn fingerprint(path: &Path, source: bool) -> Result<Option<String>> {
@@ -99,6 +135,8 @@ pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan>
     let mut entries = Vec::with_capacity(paths.len());
     for relative in paths {
         let relative_path = PathBuf::from(&relative);
+        validate_unowned_parents(home, &relative_path)?;
+        validate_unowned_parents(&source_root, &relative_path)?;
         let source = source_root.join(&relative_path);
         let metadata = fs::symlink_metadata(&source).with_context(|| {
             format!(
@@ -125,7 +163,10 @@ pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan>
         });
     }
 
-    Ok(CopyPlan { entries })
+    Ok(CopyPlan {
+        home: home.to_path_buf(),
+        entries,
+    })
 }
 
 fn validate_paths(paths: &[String]) -> Result<()> {
@@ -196,7 +237,9 @@ fn sync_entry(source: &Path, destination: &Path) -> Result<()> {
 
 fn sync_file(source: &Path, destination: &Path) -> Result<()> {
     if let Some(parent) = destination.parent() {
-        ensure_directory(parent)?;
+        // Parents are not owned by this file entry. Never repair them by removal.
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create parent {}", parent.display()))?;
     }
     if fs::symlink_metadata(destination).is_ok() {
         remove_entry(destination)?;
@@ -347,5 +390,23 @@ mod tests {
             plan.apply().unwrap();
             assert!(plan.changes().unwrap().is_empty(), "{change}");
         }
+    }
+
+    #[test]
+    fn unsafe_parent_is_rejected_before_preview_or_any_copy() {
+        let temp = tempfile::tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        let home = temp.path().join("home");
+        let outside = temp.path().join("outside");
+        fs::create_dir_all(repo.join("home/.claude")).unwrap();
+        fs::create_dir_all(&home).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(repo.join("home/.claude/settings.json"), "new").unwrap();
+        fs::write(outside.join("history"), "keep").unwrap();
+        symlink(&outside, home.join(".claude")).unwrap();
+        assert!(plan(&repo, &home, &[".claude/settings.json".into()]).is_err());
+        assert!(home.join(".claude").is_symlink());
+        assert_eq!(fs::read_to_string(outside.join("history")).unwrap(), "keep");
+        assert!(!outside.join("settings.json").exists());
     }
 }
