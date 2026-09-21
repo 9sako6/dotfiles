@@ -15,6 +15,9 @@ import urllib.error
 import urllib.request
 
 
+_PROCESS_STOP_TIMEOUT = 15.0
+
+
 def metal_check():
     import mlx.core as mx
 
@@ -94,21 +97,35 @@ def wait_ready(process, port, token, timeout=180):
     raise RuntimeError("local server startup timed out")
 
 
+def stop_process_group(process):
+    """Stop the owned group even when its leader has already exited."""
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        process.wait()
+        return
+    deadline = time.monotonic() + _PROCESS_STOP_TIMEOUT
+    while True:
+        process.poll()  # Reap the leader, but do not confuse it with the whole group.
+        try:
+            os.killpg(process.pid, 0)
+        except ProcessLookupError:
+            break
+        if time.monotonic() >= deadline:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            break
+        time.sleep(0.05)
+    process.wait()
+
+
 @contextlib.contextmanager
 def owned_process(command, **kwargs):
     process = subprocess.Popen(command, start_new_session=True, **kwargs)
     try:
         yield process
     finally:
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-        try:
-            process.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
-            process.wait()
+        stop_process_group(process)
 
 
 def profile(model, port, token, goal_plugin=None):
