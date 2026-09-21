@@ -1,6 +1,7 @@
 mod agents;
 mod home_copy;
 mod inventory;
+mod progress;
 mod settings;
 mod system;
 

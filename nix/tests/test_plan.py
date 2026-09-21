@@ -127,6 +127,44 @@ sys.exit(result.returncode)
         for unwanted in ["unchanged", "latest", "\x1b", "no resource changes"]:
             self.assertNotIn(unwanted, result.stdout)
 
+    def test_progress_is_visible_during_captured_evaluation_and_stops_before_confirmation(self):
+        environment = {
+            **self.environment, "DOTFILES_TEST_REVIEW_APPLY": "1",
+            "DOTFILES_TEST_REVIEW_PROGRESS": "1",
+        }
+        process = subprocess.Popen(
+            self.command, env=environment, stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        try:
+            self.assertTrue(select.select([process.stderr], [], [], 3)[0])
+            first = os.read(process.stderr.fileno(), 65536)
+            self.assertIn(b"dotfiles: Evaluating system...\n", first)
+            self.assertTrue(select.select([process.stderr], [], [], 11)[0])
+            heartbeat = os.read(process.stderr.fileno(), 65536)
+            self.assertRegex(heartbeat, rb"Evaluating system\.\.\. \(\d+s\)")
+            output = b""
+            deadline = time.monotonic() + 5
+            while b"Apply this system plan?" not in output:
+                self.assertLess(time.monotonic(), deadline)
+                if select.select([process.stdout], [], [], 0.1)[0]:
+                    output += os.read(process.stdout.fileno(), 65536)
+            process.stdin.write(b"yes\n")
+            process.stdin.flush()
+            tail, errors = process.communicate(timeout=3)
+            self.assertEqual(process.returncode, 0, errors.decode())
+            self.assertIn(b"Evaluating system (", errors)
+            self.assertNotIn(b"Evaluating system...", errors)
+            self.assertNotIn(b"\x1b", first + heartbeat + errors)
+            self.assertNotIn(b"dotfiles:", output + tail)
+            self.assertTrue((self.root / "activation-requested").exists())
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=3)
+            for stream in [process.stdin, process.stdout, process.stderr]:
+                stream.close()
+
     def test_unchanged_plan_is_silent_and_does_not_open_a_viewer(self):
         self.unchanged()
         result = subprocess.run(self.command, env=self.environment, capture_output=True, text=True, timeout=10)

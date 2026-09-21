@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::home_copy;
+use crate::progress::Progress;
 use crate::settings::Setting;
 
 #[derive(Clone, Copy)]
@@ -147,6 +148,7 @@ impl Snapshot {
 }
 
 pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
+    let progress = Progress::start("Preparing configuration");
     let user = String::from_utf8(capture(
         Command::new("/usr/bin/id").arg("-un"),
         "cannot identify login user",
@@ -230,9 +232,15 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             .arg(workspace.path()),
         "cannot freeze host evaluation inputs",
     )?)?;
+    drop(progress);
+    let progress = Progress::start("Evaluating system");
     let [system_drv, brewfile_drv] = host_derivations(&nix, host.trim(), show_trace)?;
+    drop(progress);
+    let progress = Progress::start("Building system");
     let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
     let system = build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?;
+    drop(progress);
+    let progress = Progress::start("Checking changes");
     let mut preview = crate::inventory::Preview::load(previous_generation.as_deref(), &system)?;
     preview.copy_changes = copy_plan.changes()?;
     if preview.needs_native() {
@@ -241,7 +249,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             &brewfile_drv.drv_path,
             &workspace.path().join("brewfile"),
         )?;
-        let mut diagnostics = io::stderr().lock();
+        let mut diagnostics = io::stderr();
         preview.native = String::from_utf8(capture_with_diagnostics(
             Command::new(&backend)
                 .arg("preview")
@@ -257,6 +265,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             Some(&mut diagnostics),
         )?)?;
     }
+    drop(progress);
     if let Review::Finished = review_plan(mode, preview)? {
         return Ok(ExitCode::SUCCESS);
     }
@@ -568,7 +577,7 @@ fn evaluate_json<T: serde::de::DeserializeOwned>(
     } else {
         format!("{error} (details omitted; run dotfiles plan --show-trace to inspect locally)")
     };
-    let mut stderr = io::stderr().lock();
+    let mut stderr = io::stderr();
     let diagnostics = show_trace.then_some(&mut stderr as &mut dyn Write);
     let bytes = capture_with_diagnostics(command, &error, diagnostics)?;
     serde_json::from_slice(&bytes).context("Nix returned invalid JSON")
@@ -710,6 +719,15 @@ mod tests {
         let Some(root) = env::var_os("DOTFILES_TEST_REVIEW_ROOT").map(PathBuf::from) else {
             return;
         };
+        if env::var_os("DOTFILES_TEST_REVIEW_PROGRESS").is_some() {
+            let _progress = Progress::start("Evaluating system");
+            evaluate_json::<serde_json::Value>(
+                Command::new("/bin/sh").args(["-c", "sleep 11; printf '{}' "]),
+                "evaluation failed",
+                false,
+            )
+            .unwrap();
+        }
         let mut preview =
             crate::inventory::Preview::load(Some(&root.join("before")), &root.join("after"))
                 .unwrap();
