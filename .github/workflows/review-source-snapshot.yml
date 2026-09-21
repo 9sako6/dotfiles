@@ -1,0 +1,20 @@
+name: review-source-snapshot
+on:
+  push:
+    branches: [work/minus-source-snapshot]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+      - name: Archive only the reviewed Git tree
+        run: git archive --format=tar.gz --output="$RUNNER_TEMP/dotfiles-source.tar.gz" HEAD
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dotfiles-source
+          path: ${{ runner.temp }}/dotfiles-source.tar.gz
+          retention-days: 1
