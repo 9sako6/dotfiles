@@ -6,6 +6,9 @@ targets:
   - claude
   - codex
   - opencode
+compilation:
+  output: .codex/AGENTS.md
+  strategy: single-file
 dependencies:
   apm:
     - ./.apm/skills/anki

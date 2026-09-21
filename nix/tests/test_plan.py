@@ -216,7 +216,7 @@ sys.exit(result.returncode)
 
     def test_copy_changes_are_visible_even_when_the_generation_is_unchanged(self):
         self.unchanged()
-        (self.root / "copy.json").write_text('{"settings": "settings"}')
+        (self.root / "copy.json").write_text('["settings"]')
         (self.root / "source/home/settings").write_text("desired")
         (self.root / "home").mkdir()
         target = self.root / "home/settings"

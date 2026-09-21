@@ -128,40 +128,6 @@ let
   nightlightPackage = pkgs.nightlight;
   expectedNightlightVersion = "1.0.0";
 
-  piPackage = pkgs.stdenvNoCC.mkDerivation (final: {
-    pname = "pi-coding-agent";
-    version = "0.86.1";
-    src = pkgs.fetchurl {
-      url = "https://github.com/earendil-works/pi/releases/download/v${final.version}/pi-darwin-arm64.tar.gz";
-      hash = "sha256-A70JetRUCuTD2cG1sZxRcEfNoPFQa/y5krFzCEYLA4M=";
-    };
-    sourceRoot = "pi";
-    nativeBuildInputs = [ pkgs.makeWrapper ];
-    dontFixup = true;
-    installPhase = ''
-      runHook preInstall
-      mkdir -p "$out/bin" "$out/lib/pi"
-      cp -R . "$out/lib/pi/"
-      makeWrapper "$out/lib/pi/pi" "$out/bin/pi" \
-        --prefix PATH : ${pkgs.lib.makeBinPath [ ripgrepPackage fdPackage ]} \
-        --set-default PI_SKIP_VERSION_CHECK 1 \
-        --set-default PI_TELEMETRY 0
-      runHook postInstall
-    '';
-    doInstallCheck = true;
-    nativeInstallCheckInputs = [ pkgs.writableTmpDirAsHomeHook pkgs.versionCheckHook ];
-    versionCheckKeepEnvironment = [ "HOME" ];
-    versionCheckProgram = "${placeholder "out"}/bin/pi";
-    meta = {
-      description = "Coding agent CLI with tools and session management";
-      homepage = "https://pi.dev/";
-      license = pkgs.lib.licenses.mit;
-      mainProgram = "pi";
-      platforms = [ "aarch64-darwin" ];
-    };
-  });
-  expectedPiVersion = "0.86.1";
-
   pnpmPackage = pkgs.pnpm_11;
   expectedPnpmVersion = "11.20.0";
 
@@ -229,8 +195,6 @@ assert pkgs.lib.assertMsg (herdrPackage.version == expectedHerdrVersion)
   "Herdr version drifted: expected ${expectedHerdrVersion}, got ${herdrPackage.version}";
 assert pkgs.lib.assertMsg (nightlightPackage.version == expectedNightlightVersion)
   "Nightlight version drifted: expected ${expectedNightlightVersion}, got ${nightlightPackage.version}";
-assert pkgs.lib.assertMsg (piPackage.version == expectedPiVersion)
-  "Pi version drifted: expected ${expectedPiVersion}, got ${piPackage.version}";
 assert pkgs.lib.assertMsg (pnpmPackage.version == expectedPnpmVersion)
   "pnpm version drifted: expected ${expectedPnpmVersion}, got ${pnpmPackage.version}";
 assert pkgs.lib.assertMsg (quintPackage.version == expectedQuintVersion)
@@ -282,8 +246,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     # Nightlight 1.0.0
     nightlightPackage
-
-    piPackage
 
     pnpmPackage
 

@@ -66,6 +66,8 @@ Home Managerの配備先に既存ファイルがある場合は、`.pre-home-man
 
 ## 日常コマンド
 
+Piの導入は見送り、APMの管理対象は`home/apm.yml`の`targets`のみとします。現行のAPM 0.26.0のまま更新は不要で、`compilation.output`を`.codex/AGENTS.md`、`strategy`を`single-file`と指定してリポジトリの`home/`配下に生成します。ホームへの実体配備は`dotfiles.toml`の`copy`配列に列挙した相対パスのみで行い、生成物の再配置やツール別の個別コピーはありません。OpenCodeは`opencode.json`の`instructions`設定でCodexと同じ生成ファイルを参照します。
+
 システムの確認・反映、設定の一覧、エージェント管理のコマンドは[CLIのUsage](../cli/README.md#usage)を参照してください。個別の説明は[settings](../cli/README.md#settings)と[agents](../cli/README.md#agents)にあります。
 
 `dotfiles settings`
@@ -121,14 +123,6 @@ devcontainerから参照するエージェント用設定の実体配備は、CL
 
 設定項目、既定値、マージ規則、設定例はCLIの[設定ファイル](../cli/README.md#設定ファイル)を参照してください。
 
-`copy`は共有設定`dotfiles.toml`のみで定義できるテーブル形式の設定であり、ローカル設定`dotfiles.local.toml`での記述は禁止されています。キーに`$HOME`からの配備先相対パス、値にリポジトリの`home/`からのコピー元相対パスを指定し、コピー元ファイルは複数の配備先で共有できます。配備先の重複やパスの包含関係は認められず、キーのアルファベット順に記述します。
-
-```toml
-[copy]
-".codex/AGENTS.md" = "AGENTS.md"
-".pi/agent/AGENTS.md" = "AGENTS.md"
-```
-
 ## 反映ライフサイクルとソース管理
 
 入力の扱いはCLIの[実行対象の選択](../cli/README.md#実行対象の選択)、反映順序と整合性の設計は[設計文書](repo-map.md#cli-と評価反映の整合性)を参照してください。失敗時は[ロールバック](#ロールバック)の手順で復旧します。
@@ -150,12 +144,6 @@ sudo darwin-rebuild switch --rollback
 
 Nix のガベージコレクションは日本時間で毎日 0:00 に実行され、2日を超えた古い世代を削除する。
 手動で `nix-collect-garbage` を実行する場合も、ロールバックに必要な世代が含まれていないことを事前に確認する。
-
-## Pi
-
-Pi 0.86.1の公式macOS Apple Siliconアーカイブは`nix/packages.nix`で版とSHA256を固定し、Home Managerから提供します。`AGENTS.md`の生成とスキル配備はAPMが担い、`home/apm.yml`の`targets`で生成対象を指定します。Pi専用の生成処理は持たず、`dotfiles.toml`の`copy`により共通の`home/AGENTS.md`を配備し、スキルは[Piスキル仕様](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/docs/skills.md)に準拠して共有の`home/.agents/skills`を利用します。
-
-設定の反映には`dotfiles apply`を実行する。反映後に`pi`を起動し、初回認証は`/login`で行う（手順は[PiのQuickstart](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/docs/quickstart.md)を参照）。なお、セッション情報や認証情報はリポジトリ管理に含めない。
 
 ## ローカル LLM と OpenCode (localllm)
 

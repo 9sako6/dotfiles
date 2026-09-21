@@ -311,8 +311,6 @@ fn tool(path: &str) -> &str {
         "Codex"
     } else if path.starts_with(".config/opencode/") {
         "OpenCode"
-    } else if path.starts_with(".pi/") {
-        "Pi"
     } else {
         "(shared)"
     }

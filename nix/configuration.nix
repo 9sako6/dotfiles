@@ -3,7 +3,7 @@ let
   inherit (lib) mkOption types;
   schema = {
     options = {
-      copy = mkOption { type = types.attrsOf types.str; default = { }; };
+      copy = mkOption { type = types.listOf types.str; default = [ ]; };
       localllm = mkOption {
         default = { };
         type = types.submodule {
@@ -26,8 +26,6 @@ let
   validType = type: value: type.check value && (
     if builtins.isList value && type ? nestedTypes.elemType then
       builtins.all (validType type.nestedTypes.elemType) value
-    else if builtins.isAttrs value && type ? nestedTypes.elemType then
-      builtins.all (validType type.nestedTypes.elemType) (builtins.attrValues value)
     else true
   );
   check = file: prefix: opts: value:
@@ -55,12 +53,11 @@ let
   validPath = value: value != "" && !(lib.hasPrefix "/" value)
     && builtins.all (part: part != "" && part != "." && part != "..") (lib.splitString "/" value);
   llm = merged.localllm;
-  copyTargets = builtins.attrNames merged.copy;
   owner = key: if (local.localllm or { }) ? ${key} then "dotfiles.local.toml" else "dotfiles.toml";
   valueErrors =
-    lib.optional (!(builtins.all validPath (copyTargets ++ builtins.attrValues merged.copy)))
-      "dotfiles.toml: copy: invalid relative path"
-    ++ lib.optional (builtins.any (a: builtins.any (b: a != b && lib.hasPrefix (a + "/") b) copyTargets) copyTargets)
+    lib.optional (!sortedUnique merged.copy) "dotfiles.toml: copy: entries must be unique and alphabetical"
+    ++ lib.optional (!(builtins.all validPath merged.copy)) "dotfiles.toml: copy: invalid relative path"
+    ++ lib.optional (builtins.any (a: builtins.any (b: a != b && lib.hasPrefix (a + "/") b) merged.copy) merged.copy)
       "dotfiles.toml: copy: entries must not overlap"
     ++ lib.optional (!sortedUnique llm.models) "${owner "models"}: localllm.models: entries must be unique and alphabetical"
     ++ lib.optional (!(builtins.all (name: builtins.hasAttr name catalog) llm.models))

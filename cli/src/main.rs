@@ -91,8 +91,7 @@ fn run() -> Result<ExitCode> {
         home,
     } = command
     {
-        let paths: std::collections::BTreeMap<String, String> =
-            serde_json::from_slice(&std::fs::read(paths)?)?;
+        let paths: Vec<String> = serde_json::from_slice(&std::fs::read(paths)?)?;
         home_copy::plan(&source, &home, &paths)?.apply()?;
         return Ok(ExitCode::SUCCESS);
     }
