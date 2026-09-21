@@ -8,6 +8,7 @@ use tabled::settings::peaker::PriorityMax;
 use tabled::settings::{Format, Modify, Padding, Style, Width};
 use tabled::Table;
 
+use super::diff::ResourceDiff;
 use super::{Inventory, Service};
 
 struct Row {
@@ -180,28 +181,36 @@ pub(super) fn deployment(
     )
 }
 
-pub(super) fn diff(before: Option<&Inventory>, after: &Inventory, width: Option<usize>) -> String {
-    let mut previous: BTreeMap<_, _> = before
-        .into_iter()
-        .flat_map(sections)
-        .map(|section| (section.path.clone(), section))
-        .collect();
-    let mut changed = Vec::new();
-    for mut section in sections(after) {
-        let old = previous
-            .remove(&section.path)
-            .map(|s| s.rows)
-            .unwrap_or_default();
-        section.rows = changed_rows(old, section.rows);
-        if !section.rows.is_empty() {
-            changed.push(section);
+pub(super) fn diff(changes: &ResourceDiff, width: Option<usize>) -> String {
+    let mut groups = BTreeMap::<Vec<String>, Section>::new();
+    let sides = changes
+        .removed
+        .iter()
+        .map(|inventory| (inventory, '-'))
+        .chain(std::iter::once((&changes.added, '+')));
+    for (inventory, sign) in sides {
+        for mut section in sections(inventory) {
+            if section.path == ["agents", "localllm"] && !changes.localllm_changed {
+                continue;
+            }
+            if section.rows.is_empty() {
+                continue;
+            }
+            for row in &mut section.rows {
+                row.change = sign;
+            }
+            if let Some(existing) = groups.get_mut(&section.path) {
+                existing.rows.extend(section.rows);
+            } else {
+                groups.insert(section.path.clone(), section);
+            }
         }
     }
-    for (_, mut section) in previous {
-        section.rows = changed_rows(section.rows, Vec::new());
-        if !section.rows.is_empty() {
-            changed.push(section);
-        }
+    let mut changed: Vec<_> = groups.into_values().collect();
+    for section in &mut changed {
+        section
+            .rows
+            .sort_by_key(|row| (row.key.to_lowercase(), row.key.clone(), row.change != '-'));
     }
     changed.sort_by_key(|section| {
         let rank = match section.path[0].as_str() {
@@ -219,27 +228,6 @@ pub(super) fn diff(before: Option<&Inventory>, after: &Inventory, width: Option<
         (rank, subgroup, section.path.clone())
     });
     render_sections(&changed, width)
-}
-
-fn changed_rows(before: Vec<Row>, mut after: Vec<Row>) -> Vec<Row> {
-    let mut rows = Vec::new();
-    for mut old in before {
-        if let Some(index) = after
-            .iter()
-            .position(|new| old.key == new.key && old.cells == new.cells)
-        {
-            after.remove(index);
-        } else {
-            old.change = '-';
-            rows.push(old);
-        }
-    }
-    rows.extend(after.into_iter().map(|mut row| {
-        row.change = '+';
-        row
-    }));
-    rows.sort_by_key(|row| (row.key.to_lowercase(), row.key.clone(), row.change != '-'));
-    rows
 }
 
 fn render_sections(sections: &[Section], width: Option<usize>) -> String {
@@ -606,7 +594,7 @@ mod tests {
         let before: Inventory = serde_json::from_value(before).unwrap();
         let after: Inventory = serde_json::from_value(after).unwrap();
         for width in [None, Some(60), Some(80), Some(120)] {
-            let result = diff(Some(&before), &after, width);
+            let result = diff(&ResourceDiff::between(Some(&before), &after), width);
             let result = console::strip_ansi_codes(&result);
             assert!(!result.contains("stable"));
             assert!(!result.contains("latest"));
