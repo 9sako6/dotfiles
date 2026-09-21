@@ -35,6 +35,34 @@ let
   cachixPackage = pkgs.cachix;
   expectedCachixVersion = "1.11.1";
 
+  codexPackage = pkgs.stdenvNoCC.mkDerivation (final: {
+    pname = "codex";
+    version = "0.155.1";
+    src = pkgs.fetchurl {
+      url = "https://github.com/openai/codex/releases/download/rust-v${final.version}/codex-package-aarch64-apple-darwin.tar.gz";
+      hash = "sha256-5uCHF9qeNbcjMu/3U1J/55qa6HYIEDPFxoIKjl9YuUM=";
+    };
+    sourceRoot = ".";
+    dontFixup = true;
+    installPhase = ''
+      runHook preInstall
+      mkdir -p "$out"
+      cp -R bin codex-package.json codex-path codex-resources "$out/"
+      runHook postInstall
+    '';
+    doInstallCheck = true;
+    nativeInstallCheckInputs = [ pkgs.versionCheckHook ];
+    versionCheckProgram = "${placeholder "out"}/bin/codex";
+    meta = {
+      description = "Coding agent that runs in your terminal";
+      homepage = "https://github.com/openai/codex";
+      license = pkgs.lib.licenses.asl20;
+      mainProgram = "codex";
+      platforms = [ "aarch64-darwin" ];
+    };
+  });
+  expectedCodexVersion = "0.155.1";
+
   fdPackage = pkgs.fd.overrideAttrs (final: previous: {
     version = "10.5.0";
     src = pkgs.fetchFromGitHub {
@@ -149,6 +177,8 @@ assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
 assert pkgs.lib.assertMsg (cachixPackage.version == expectedCachixVersion)
   "Cachix version drifted: expected ${expectedCachixVersion}, got ${cachixPackage.version}";
+assert pkgs.lib.assertMsg (codexPackage.version == expectedCodexVersion)
+  "Codex version drifted: expected ${expectedCodexVersion}, got ${codexPackage.version}";
 assert pkgs.lib.assertMsg (fdPackage.version == expectedFdVersion)
   "fd version drifted: expected ${expectedFdVersion}, got ${fdPackage.version}";
 assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
@@ -194,6 +224,8 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     # Bun 1.3.13
     bunPackage
+
+    codexPackage
 
     fdPackage
 
