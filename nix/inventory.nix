@@ -95,7 +95,7 @@ in {
     ++ services "user" cfg.launchd.user.agents
     ++ services "user" home.launchd.agents;
   timeZone = cfg.time.timeZone;
-  tools = map (path: { inherit path; deploy = "copy"; }) (builtins.filter agentPath configuration.copy)
+  tools = map (path: { inherit path; deploy = "copy"; }) (builtins.filter agentPath (builtins.attrNames configuration.copy))
     ++ lib.mapAttrsToList (_: file: { path = file.target; deploy = "symlink"; })
       (lib.filterAttrs (_: file: file.enable && agentPath file.target) home.home.file);
   localllm = builtins.intersectAttrs { enabled = null; default_model = null; } configuration.localllm;

@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Component, Path, PathBuf};
@@ -92,31 +92,21 @@ fn fingerprint(path: &Path, source: bool) -> Result<Option<String>> {
     Ok(Some(format!("{:x}", digest.finalize())))
 }
 
-pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan> {
+pub fn plan(repo_root: &Path, home: &Path, paths: &BTreeMap<String, String>) -> Result<CopyPlan> {
     validate_paths(paths)?;
     let source_root = repo_root.join("home");
 
     let mut entries = Vec::with_capacity(paths.len());
-    for relative in paths {
+    for (relative, source_path) in paths {
         let relative_path = PathBuf::from(&relative);
-        let source = source_root.join(&relative_path);
-        let metadata = fs::symlink_metadata(&source).with_context(|| {
-            format!(
-                "dotfiles.toml: copy source does not exist: {}",
-                relative_path.display()
-            )
-        })?;
+        let source = source_root.join(source_path);
+        let metadata = fs::symlink_metadata(&source)
+            .with_context(|| format!("dotfiles.toml: copy source does not exist: {source_path}"))?;
         if metadata.file_type().is_symlink() {
-            bail!(
-                "dotfiles.toml: copy source must not be a symlink: {}",
-                relative_path.display()
-            );
+            bail!("dotfiles.toml: copy source must not be a symlink: {source_path}");
         }
         if !metadata.is_file() && !metadata.is_dir() {
-            bail!(
-                "dotfiles.toml: copy source must be a file or directory: {}",
-                relative_path.display()
-            );
+            bail!("dotfiles.toml: copy source must be a file or directory: {source_path}");
         }
         entries.push(CopyEntry {
             source,
@@ -128,24 +118,12 @@ pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan>
     Ok(CopyPlan { entries })
 }
 
-fn validate_paths(paths: &[String]) -> Result<()> {
-    let mut seen = BTreeSet::new();
-    let mut previous: Option<&str> = None;
-
-    for value in paths {
-        validate_relative_path(value)?;
-        if !seen.insert(value.as_str()) {
-            bail!("dotfiles.toml: copy contains duplicate entry: {value}");
-        }
-        if let Some(previous) = previous {
-            if value.as_str() < previous {
-                bail!(
-                    "dotfiles.toml: copy entries must be alphabetical; {value} should come before {previous}"
-                );
-            }
-        }
-        previous = Some(value);
+fn validate_paths(paths: &BTreeMap<String, String>) -> Result<()> {
+    for (target, source) in paths {
+        validate_relative_path(target)?;
+        validate_relative_path(source)?;
     }
+    let paths: Vec<_> = paths.keys().collect();
 
     for (index, path) in paths.iter().enumerate() {
         let path = Path::new(path);
@@ -271,6 +249,7 @@ mod tests {
     use std::os::unix::fs::symlink;
 
     use super::plan;
+    use std::collections::BTreeMap;
 
     #[test]
     fn apply_replaces_store_links_and_prunes_owned_directory_only() {
@@ -279,11 +258,6 @@ mod tests {
         let home = temp.path().join("home-target");
         fs::create_dir_all(repo.join("home/.claude/skills/design-it")).unwrap();
         fs::write(repo.join("home/.claude/skills/design-it/SKILL.md"), "new\n").unwrap();
-        fs::write(
-            repo.join("dotfiles.toml"),
-            "copy = [\n  \".claude/skills\",\n]\n",
-        )
-        .unwrap();
 
         fs::create_dir_all(home.join(".claude/skills/old")).unwrap();
         fs::write(home.join(".claude/skills/old/SKILL.md"), "old\n").unwrap();
@@ -293,7 +267,12 @@ mod tests {
         fs::create_dir_all(home.join(".claude/skills/design-it")).unwrap();
         symlink(&store_file, home.join(".claude/skills/design-it/SKILL.md")).unwrap();
 
-        let plan = plan(&repo, &home, &[".claude/skills".into()]).unwrap();
+        let plan = plan(
+            &repo,
+            &home,
+            &BTreeMap::from([(".claude/skills".into(), ".claude/skills".into())]),
+        )
+        .unwrap();
         assert_eq!(plan.changes().unwrap().len(), 1);
         assert_eq!(
             fs::read_to_string(home.join(".claude/skills/design-it/SKILL.md")).unwrap(),
@@ -326,7 +305,12 @@ mod tests {
         let original = source.join("home/managed/tool");
         fs::write(&original, "original").unwrap();
         fs::set_permissions(&original, fs::Permissions::from_mode(0o555)).unwrap();
-        let plan = plan(&source, &home, &["managed".into()]).unwrap();
+        let plan = plan(
+            &source,
+            &home,
+            &BTreeMap::from([("managed".into(), "managed".into())]),
+        )
+        .unwrap();
         let changes = plan.changes().unwrap();
         assert_eq!(changes.len(), 1);
         assert!(changes[0].before.is_none());

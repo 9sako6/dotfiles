@@ -8,7 +8,6 @@ use anyhow::{bail, Context, Result};
 use clap::Subcommand;
 use serde::Deserialize;
 
-const TARGETS: &str = "claude,codex,opencode";
 const LOCAL_SKILL_PREFIX: &str = "./.apm/skills/";
 const LOCAL_SKILL_PREFIX_WITHOUT_DOT: &str = ".apm/skills/";
 
@@ -116,7 +115,6 @@ fn run_with<R: CommandRunner>(
             }
         };
 
-        finalize_compiled_agents(&home_root)?;
         if let Some(source_path) = source_to_remove {
             fs::remove_dir_all(&source_path).with_context(|| {
                 format!(
@@ -155,7 +153,7 @@ fn run_build_operation<R: CommandRunner>(
 fn create_build_plan(operation: BuildOperation, args: &[String]) -> Result<Vec<CommandPlan>> {
     let compile = CommandPlan {
         command: "apm",
-        args: ["compile", "--clean", "--target", TARGETS]
+        args: ["compile", "--clean"]
             .into_iter()
             .map(String::from)
             .collect(),
@@ -163,14 +161,14 @@ fn create_build_plan(operation: BuildOperation, args: &[String]) -> Result<Vec<C
     let mut plans = match operation {
         BuildOperation::Build => vec![CommandPlan {
             command: "apm",
-            args: ["install", "--frozen", "--only", "apm", "--target", TARGETS]
+            args: ["install", "--frozen", "--only", "apm"]
                 .into_iter()
                 .map(String::from)
                 .collect(),
         }],
         BuildOperation::Install => vec![CommandPlan {
             command: "apm",
-            args: with_target("install", args),
+            args: with_args("install", "", args),
         }],
         BuildOperation::Update => vec![CommandPlan {
             command: "apm",
@@ -192,13 +190,6 @@ fn create_build_plan(operation: BuildOperation, args: &[String]) -> Result<Vec<C
     };
     plans.push(compile);
     Ok(plans)
-}
-
-fn with_target(command: &str, args: &[String]) -> Vec<String> {
-    let mut result = vec![command.to_owned()];
-    result.extend(args.iter().cloned());
-    result.extend(["--target".to_owned(), TARGETS.to_owned()]);
-    result
 }
 
 fn with_args(first: &str, second: &str, args: &[String]) -> Vec<String> {
@@ -226,7 +217,7 @@ fn remove_local_skill<R: CommandRunner>(
     if !has_apm_dependency(&home_root.join("apm.yml"), &dependency)? {
         runner.run(
             "apm",
-            &with_target("install", std::slice::from_ref(&dependency)),
+            &with_args("install", "", std::slice::from_ref(&dependency)),
             home_root,
         )?;
     }
@@ -257,39 +248,6 @@ fn assert_remote_uninstall_targets(home_root: &Path, args: &[String]) -> Result<
         }
     }
     Ok(())
-}
-
-fn finalize_compiled_agents(root: &Path) -> Result<()> {
-    let source_agents = root.join("AGENTS.md");
-    require_file(&source_agents, "APM did not generate AGENTS.md")?;
-
-    let codex_dir = root.join(".codex");
-    fs::create_dir_all(&codex_dir)
-        .with_context(|| format!("failed to create {}", codex_dir.display()))?;
-    let codex_agents = codex_dir.join("AGENTS.md");
-    fs::rename(&source_agents, &codex_agents).with_context(|| {
-        format!(
-            "failed to move {} to {}",
-            source_agents.display(),
-            codex_agents.display()
-        )
-    })?;
-
-    for relative in [".config/opencode", ".pi/agent"] {
-        let target_dir = root.join(relative);
-        fs::create_dir_all(&target_dir)
-            .with_context(|| format!("failed to create {}", target_dir.display()))?;
-        fs::copy(&codex_agents, target_dir.join("AGENTS.md"))
-            .with_context(|| format!("failed to copy {} to {relative}", codex_agents.display()))?;
-    }
-
-    for relative in ["CLAUDE.md", "GEMINI.md", ".codex/config.toml", ".mcp.json"] {
-        remove_file_if_exists(&root.join(relative))?;
-    }
-    require_file(
-        &codex_agents,
-        "APM finalization did not produce .codex/AGENTS.md",
-    )
 }
 
 fn has_apm_dependency(config_path: &Path, dependency: &str) -> Result<bool> {
@@ -395,14 +353,6 @@ fn require_file(path: &Path, message: &str) -> Result<()> {
     }
 }
 
-fn remove_file_if_exists(path: &Path) -> Result<()> {
-    match fs::remove_file(path) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(error).with_context(|| format!("failed to remove {}", path.display())),
-    }
-}
-
 fn validate_skill_name(value: &str) -> Result<()> {
     if is_valid_skill_name(value) {
         Ok(())
@@ -477,23 +427,11 @@ mod tests {
     fn creates_expected_build_plans() {
         assert_eq!(
             create_build_plan(BuildOperation::Build, &[]).unwrap()[0].args,
-            [
-                "install",
-                "--frozen",
-                "--only",
-                "apm",
-                "--target",
-                "claude,codex,opencode"
-            ]
+            ["install", "--frozen", "--only", "apm"]
         );
         assert_eq!(
             create_build_plan(BuildOperation::Install, &["owner/skill".into()]).unwrap()[0].args,
-            [
-                "install",
-                "owner/skill",
-                "--target",
-                "claude,codex,opencode"
-            ]
+            ["install", "owner/skill"]
         );
         assert_eq!(
             create_build_plan(BuildOperation::Update, &["owner/skill".into()]).unwrap()[0].args,
@@ -520,37 +458,6 @@ mod tests {
     }
 
     #[test]
-    fn rebuilds_shared_instructions_without_replacing_pi_runtime_files() {
-        let temp = setup_repo();
-        let home = temp.path().join("home");
-        let pi = home.join(".pi/agent");
-        fs::create_dir_all(&pi).unwrap();
-        fs::write(pi.join("settings.json"), "{}\n").unwrap();
-        fs::write(pi.join("AGENTS.md"), "stale\n").unwrap();
-        let runner = FakeRunner::default();
-
-        for instructions in ["# agents\n", "# updated instructions\n"] {
-            fs::write(home.join("AGENTS.md"), instructions).unwrap();
-            run_with(Operation::Build, temp.path(), &runner).unwrap();
-            for relative in [
-                ".codex/AGENTS.md",
-                ".config/opencode/AGENTS.md",
-                ".pi/agent/AGENTS.md",
-            ] {
-                assert_eq!(
-                    fs::read_to_string(home.join(relative)).unwrap(),
-                    instructions
-                );
-            }
-            assert_eq!(
-                fs::read_to_string(pi.join("settings.json")).unwrap(),
-                "{}\n"
-            );
-            assert!(!home.join("AGENTS.md").exists());
-        }
-    }
-
-    #[test]
     fn parses_yaml_dependencies_instead_of_matching_lines() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("apm.yml");
@@ -564,7 +471,7 @@ mod tests {
     }
 
     #[test]
-    fn removes_source_only_after_build_and_finalize_succeed() {
+    fn removes_source_only_after_build_succeeds() {
         let temp = setup_repo();
         let runner = FakeRunner::default();
         run_with(

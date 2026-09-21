@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
@@ -56,7 +57,7 @@ struct ConfigurationResult<T> {
 
 #[derive(Deserialize)]
 struct Configuration {
-    copy: Vec<String>,
+    copy: BTreeMap<String, String>,
     private: Private,
 }
 
@@ -813,7 +814,7 @@ mod tests {
             crate::inventory::Preview::load(Some(&root.join("before")), &root.join("after"))
                 .unwrap();
         if root.join("copy.json").exists() {
-            let paths: Vec<String> =
+            let paths: BTreeMap<String, String> =
                 serde_json::from_slice(&fs::read(root.join("copy.json")).unwrap()).unwrap();
             preview.copy_changes =
                 home_copy::plan(&root.join("source"), &root.join("home"), &paths)

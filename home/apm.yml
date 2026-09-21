@@ -2,6 +2,10 @@ name: 9sako6-agents
 version: 1.0.0
 description: APM project for 9sako6
 author: 9sako6
+targets:
+  - claude
+  - codex
+  - opencode
 dependencies:
   apm:
     - ./.apm/skills/anki

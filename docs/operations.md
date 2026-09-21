@@ -121,6 +121,14 @@ devcontainerから参照するエージェント用設定の実体配備は、CL
 
 設定項目、既定値、マージ規則、設定例はCLIの[設定ファイル](../cli/README.md#設定ファイル)を参照してください。
 
+`copy`は共有設定`dotfiles.toml`のみで定義できるテーブル形式の設定であり、ローカル設定`dotfiles.local.toml`での記述は禁止されています。キーに`$HOME`からの配備先相対パス、値にリポジトリの`home/`からのコピー元相対パスを指定し、コピー元ファイルは複数の配備先で共有できます。配備先の重複やパスの包含関係は認められず、キーのアルファベット順に記述します。
+
+```toml
+[copy]
+".codex/AGENTS.md" = "AGENTS.md"
+".pi/agent/AGENTS.md" = "AGENTS.md"
+```
+
 ## 反映ライフサイクルとソース管理
 
 入力の扱いはCLIの[実行対象の選択](../cli/README.md#実行対象の選択)、反映順序と整合性の設計は[設計文書](repo-map.md#cli-と評価反映の整合性)を参照してください。失敗時は[ロールバック](#ロールバック)の手順で復旧します。
@@ -145,7 +153,7 @@ Nix のガベージコレクションは日本時間で毎日 0:00 に実行さ�
 
 ## Pi
 
-Pi 0.86.1は、公式macOS Apple Silicon版アーカイブを`nix/packages.nix`でバージョンとSHA256を固定して管理し、Home Managerから提供する。APM 0.26.0にはPiターゲットがないため、`dotfiles agents build`の生成後処理で`home/.pi/agent/AGENTS.md`を生成し、`dotfiles.toml`の`copy`指定で配備する。既存の`home/.agents/skills`を共有するため、スキルの複製やターゲット追加は不要である（詳細は[PiのSkills仕様](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/docs/skills.md)を参照）。
+Pi 0.86.1の公式macOS Apple Siliconアーカイブは`nix/packages.nix`で版とSHA256を固定し、Home Managerから提供します。`AGENTS.md`の生成とスキル配備はAPMが担い、`home/apm.yml`の`targets`で生成対象を指定します。Pi専用の生成処理は持たず、`dotfiles.toml`の`copy`により共通の`home/AGENTS.md`を配備し、スキルは[Piスキル仕様](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/docs/skills.md)に準拠して共有の`home/.agents/skills`を利用します。
 
 設定の反映には`dotfiles apply`を実行する。反映後に`pi`を起動し、初回認証は`/login`で行う（手順は[PiのQuickstart](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/docs/quickstart.md)を参照）。なお、セッション情報や認証情報はリポジトリ管理に含めない。
 

@@ -32,7 +32,7 @@ class SettingsTests(unittest.TestCase):
             destination = self.root / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(REPOSITORY / name, destination)
-        (self.root / "dotfiles.toml").write_text("copy = []\n")
+        (self.root / "dotfiles.toml").write_text("copy = {}\n")
         (self.root / "nix/inventory.nix").write_text('''{ configuration, publicSource, ... }: {
           source = publicSource;
           packages = []; system = []; services = []; tools = [];
@@ -205,7 +205,7 @@ sys.exit(result.returncode)
     def test_terminal_header_and_multiline_arrays_preserve_values_at_any_width(self):
         paths = ["a/" + "x" * 18, "b/" + "y" * 18, "c/" + "z" * 18]
         (self.root / "dotfiles.toml").write_text(
-            f"copy = {json.dumps(paths)}\n"
+            "[copy]\n" + "".join(f'{json.dumps(path)} = {json.dumps(path)}\n' for path in paths) +
             '[localllm]\nmodels = ["qwen3.8-27b-4bit"]\n'
         )
         narrow = self.terminal_settings(80, color=True)
@@ -216,7 +216,6 @@ sys.exit(result.returncode)
         plain = re.sub(r"\x1b\[[0-9;]*m", "", narrow)
         self.assertEqual(plain.splitlines()[1].split(), ["key", "value", "source"])
         self.assertTrue(all(len(line) <= 80 for line in plain.split("\n\npackages", 1)[0].splitlines()))
-        self.assertNotIn(paths[0], plain.splitlines()[2])
         for path in paths:
             self.assertEqual(plain.count(json.dumps(path)), 1)
         wide = self.terminal_settings(160, color=False)
@@ -227,11 +226,11 @@ sys.exit(result.returncode)
             self.assertRegex(output, r'localllm.models +\[ +dotfiles.toml\n +"qwen3.8-27b-4bit"\n +\]')
             for path in paths:
                 self.assertEqual(output.count(json.dumps(path)), 1)
-        self.assertEqual(self.rows(piped)["copy"], (paths, "dotfiles.toml"))
+        for path in paths:
+            self.assertEqual(self.rows(piped)[f"copy.{path}"], (path, "dotfiles.toml"))
 
     def test_absent_local_file_includes_every_default(self):
         self.assertEqual(self.rows(self.settings()), {
-            "copy": ([], "dotfiles.toml"),
             "localllm.default_model": (None, None),
             "localllm.enabled": (False, None),
             "localllm.models": ([], None),
@@ -266,7 +265,7 @@ sys.exit(result.returncode)
 
     def test_missing_private_checkout_fails_without_partial_output(self):
         (self.root / "dotfiles.toml").write_text(
-            'copy = ["a", "b"]\n[localllm]\nenabled = true\n'
+            'copy = { a = "a", b = "b" }\n[localllm]\nenabled = true\n'
             'models = ["qwen3.8-27b-4bit"]\ndefault_model = "qwen3.8-27b-4bit"\n'
         )
         (self.root / "dotfiles.local.toml").write_text(
@@ -287,7 +286,7 @@ sys.exit(result.returncode)
             ('[private]\npath = "secret-do-not-print', "invalid TOML"),
             ('unknown = "secret-do-not-print"', "unknown key"),
             ('[localllm]\nenabled = "secret-do-not-print"', "invalid type"),
-            ('copy = []', "only allowed in dotfiles.toml"),
+            ('copy = {}', "only allowed in dotfiles.toml"),
             ('[localllm]\nenabled = true', "enabled requires a model"),
         ]:
             with self.subTest(content=content):

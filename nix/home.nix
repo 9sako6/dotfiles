@@ -11,7 +11,7 @@ let
   };
   overlapsCopy = path: builtins.any (owned:
     path == owned || lib.hasPrefix (owned + "/") path || lib.hasPrefix (path + "/") owned
-  ) configuration.copy;
+  ) (builtins.attrNames configuration.copy);
   collectLiveFiles = relativeRoot: sourceRoot:
     let
       entries = builtins.readDir sourceRoot;
@@ -66,6 +66,7 @@ in
   } ];
 
   home.file = lib.filterAttrs (path: _: !(overlapsCopy path)) ({
+    ".config/opencode/AGENTS.md" = liveLink "AGENTS.md";
     ".gitconfig" = liveLink ".gitconfig";
     ".gitignore_global" = liveLink ".gitignore_global";
     ".zshenv" = liveLink ".zshenv";

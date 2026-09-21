@@ -15,7 +15,7 @@ let
   };
   copyConfigured = self.lib.mkHost {
     configuration = composed.config.dotfiles.configuration // {
-      copy = lib.sort builtins.lessThan (composed.config.dotfiles.configuration.copy ++ [ ".zshenv" ]);
+      copy = composed.config.dotfiles.configuration.copy // { ".zshenv" = ".zshenv"; };
     };
     dotfilesDirectory = "/fixture";
     primaryUser = "fixture";

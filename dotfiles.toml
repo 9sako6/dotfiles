@@ -1,12 +1,11 @@
-copy = [
-  ".agents/skills",
-  ".claude/rules",
-  ".claude/settings.json",
-  ".claude/skills",
-  ".codex/AGENTS.md",
-  ".gitconfig",
-  ".pi/agent/AGENTS.md",
-]
+[copy]
+".agents/skills" = ".agents/skills"
+".claude/rules" = ".claude/rules"
+".claude/settings.json" = ".claude/settings.json"
+".claude/skills" = ".claude/skills"
+".codex/AGENTS.md" = "AGENTS.md"
+".gitconfig" = ".gitconfig"
+".pi/agent/AGENTS.md" = "AGENTS.md"
 
 [localllm]
 enabled = false
