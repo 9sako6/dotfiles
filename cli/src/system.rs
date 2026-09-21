@@ -276,13 +276,9 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     if preview.needs_native() || preview.needs_generation_comparison() {
         let [system_drv, brewfile_drv] = host_derivations(&nix, host.trim(), show_trace)?;
         if preview.needs_native() {
-            let built = build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?;
+            let built = build(&nix, &system_drv, &workspace.path().join("system"))?;
             preview = crate::inventory::Preview::load(previous_generation.as_deref(), &built)?;
-            let brewfile = build(
-                &nix,
-                &brewfile_drv.drv_path,
-                &workspace.path().join("brewfile"),
-            )?;
+            let brewfile = build(&nix, &brewfile_drv, &workspace.path().join("brewfile"))?;
             let mut diagnostics = io::stderr();
             preview.native = String::from_utf8(capture_with_diagnostics(
                 Command::new(&backend)
@@ -340,7 +336,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             };
             drop(progress);
             let _progress = Progress::start("Building system");
-            build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?
+            build(&nix, &system_drv, &workspace.path().join("system"))?
         }
     };
     verify()?;
@@ -646,12 +642,24 @@ fn evaluate_json<T: serde::de::DeserializeOwned>(
     serde_json::from_slice(&bytes).context("Nix returned invalid JSON")
 }
 
-fn build(nix: &Path, derivation: &str, link: &Path) -> Result<PathBuf> {
+fn build(nix: &Path, derivation: &BuildResult, link: &Path) -> Result<PathBuf> {
+    if derivation.outputs.out.exists() {
+        let output = nix_command(nix)
+            .args(["build", "--offline", "--out-link"])
+            .arg(link)
+            .arg(&derivation.outputs.out)
+            .output()?;
+        if output.status.success() {
+            return link
+                .canonicalize()
+                .context("Nix did not retain the requested output");
+        }
+    }
     let output = nix_command(nix)
         .arg("build")
         .arg("--out-link")
         .arg(link)
-        .arg(format!("{derivation}^*"))
+        .arg(format!("{}^*", derivation.drv_path))
         .output()?;
     if !output.status.success() {
         io::stderr().write_all(&output.stderr)?;
@@ -776,6 +784,16 @@ fn acquire_lock(path: &Path) -> Result<ApplyLock> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn build_fixture() {
+        let Some(root) = env::var_os("DOTFILES_TEST_BUILD_ROOT").map(PathBuf::from) else {
+            return;
+        };
+        let derivation =
+            serde_json::from_slice(&fs::read(root.join("build.json")).unwrap()).unwrap();
+        build(Path::new("nix"), &derivation, &root.join("result")).unwrap();
+    }
 
     #[test]
     fn review_fixture() {
