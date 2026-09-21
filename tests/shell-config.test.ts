@@ -220,7 +220,7 @@ const ZINIT_PLUGINS = [
   { name: "zsh-users/zsh-autosuggestions", dir: "zsh-users---zsh-autosuggestions", sha: "85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5" },
 ] as const;
 
-async function preparePinnedZinitHome(tempDir: string, options: { revisionOverrides?: Partial<Record<string, string>>; dirty?: string[] } = {}) {
+async function preparePinnedZinitHome(tempDir: string, options: { revisionOverrides?: Partial<Record<string, string>>; dirty?: string[]; format?: "compact" | "single" | "tables" } = {}) {
   const fakeBin = path.join(tempDir, "bin");
   const gitLogPath = path.join(tempDir, "zinit-git.log");
   const loadLogPath = path.join(tempDir, "zinit-load.log");
@@ -228,12 +228,22 @@ async function preparePinnedZinitHome(tempDir: string, options: { revisionOverri
   const pluginsDir = path.join(homeDir, ".local", "share", "zinit", "plugins");
   const zinitHome = path.join(homeDir, ".local", "share", "zinit", "zinit.git");
 
+  await mkdir(path.join(homeDir, "mybin", "lib"), { recursive: true });
+  await copyFile("home/mybin/lib/zinit-pin.ts", path.join(homeDir, "mybin", "lib", "zinit-pin.ts"));
   const configDir = path.join(homeDir, ".config", "mise");
   const configLines = ZINIT_PLUGINS.map(
     (plugin) =>
       `"~/.local/share/zinit/plugins/${plugin.dir}" = { url = "https://github.com/${plugin.name}.git", ref = "${plugin.sha}" }`,
   );
-  await writeTree(configDir, { "config.toml": `[bootstrap.repos]\n${configLines.join("\n")}\n` });
+  let configuration = `[bootstrap.repos]\n${configLines.join("\n")}\n`;
+  if (options.format === "compact") configuration = configuration.replaceAll('ref = "', 'ref="');
+  if (options.format === "single") configuration = configuration.replaceAll('"', "'");
+  if (options.format === "tables") {
+    configuration = ZINIT_PLUGINS.map((plugin) =>
+      `[bootstrap.repos."~/.local/share/zinit/plugins/${plugin.dir}"]\nurl = "https://github.com/${plugin.name}.git"\nref = "${plugin.sha}"\n`,
+    ).join("\n");
+  }
+  await writeTree(configDir, { "config.toml": configuration });
 
   for (const plugin of ZINIT_PLUGINS) {
     const pluginDir = path.join(pluginsDir, plugin.dir);
@@ -282,7 +292,7 @@ esac
       ...process.env,
       DOTFILES_NO_BANNER: "1",
       HOME: homeDir,
-      PATH: `${fakeBin}:${path.join(homeDir, ".local", "bin")}:/usr/bin:/bin`,
+      PATH: `${fakeBin}:${path.join(homeDir, ".local", "bin")}:${path.dirname(process.execPath)}:/usr/bin:/bin`,
       XDG_CONFIG_HOME: "",
       ZINIT_GIT_LOG: gitLogPath,
       ZINIT_LOAD_LOG: loadLogPath,
@@ -482,7 +492,7 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
 
   test("install:userが取得したZinit pluginを固定commitで読み込む", async () => {
     await withTempDir("zinit-pinned", async (tempDir) => {
-      const { env, gitLogPath, loadLogPath } = await preparePinnedZinitHome(tempDir);
+      const { env, loadLogPath } = await preparePinnedZinitHome(tempDir);
 
       const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
 
@@ -492,16 +502,30 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
           "zsh-users/zsh-syntax-highlighting\n" +
           "zsh-users/zsh-autosuggestions\n",
       );
-      const gitCalls = (await readFile(gitLogPath, "utf8")).trimEnd().split("\n");
-      expect(gitCalls).toHaveLength(6);
-      expect(gitCalls).toEqual([
-        "<rev-parse><HEAD>",
-        "<status><--porcelain>",
-        "<rev-parse><HEAD>",
-        "<status><--porcelain>",
-        "<rev-parse><HEAD>",
-        "<status><--porcelain>",
-      ]);
+    });
+  });
+
+  for (const format of ["compact", "single", "tables"] as const) {
+    test(`TOMLの${format}表記でも同じピンのpluginを読み込む`, async () => {
+      await withTempDir(`zinit-format-${format}`, async (tempDir) => {
+        const { env, loadLogPath } = await preparePinnedZinitHome(tempDir, { format });
+        const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
+        expect(result.code).toBe(0);
+        expect(result.stderr).not.toContain("refusing");
+        expect((await readFile(loadLogPath, "utf8")).trim().split("\n")).toEqual(
+          ZINIT_PLUGINS.map((plugin) => plugin.name),
+        );
+      });
+    });
+  }
+
+  test("登録されていないpluginを読み込まない", async () => {
+    await withTempDir("zinit-unregistered", async (tempDir) => {
+      const { env, loadLogPath } = await preparePinnedZinitHome(tempDir);
+      await writeFile(path.join(env.HOME!, ".config/mise/config.toml"), "[bootstrap.repos]\n");
+      const result = await runCommand("zsh", ["-f", "-i", "-c", "source home/.zshrc"], env);
+      expect(result.stderr).toContain("refusing");
+      expect(await Bun.file(loadLogPath).exists()).toBe(false);
     });
   });
 

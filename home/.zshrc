@@ -56,11 +56,10 @@ fi
       local config="${XDG_CONFIG_HOME:-${HOME}/.config}/mise/config.toml"
 
       local revision
-      revision="$(command sed -n "/${repository//\//---}/s/.*ref = \"//p" "$config" 2>/dev/null | command sed -n '1s/".*//p')"
-      if [ -z "$revision" ]; then
-        print -u2 "zinit: refusing ${repository}; no pin for it in ${config}"
+      revision="$(command bun "$HOME/mybin/lib/zinit-pin.ts" "$config" "$plugin_dir")" || {
+        print -u2 "zinit: refusing ${repository}; its pin could not be read"
         return 1
-      fi
+      }
 
       local resolved_revision="$(command git -C "$plugin_dir" rev-parse HEAD 2>/dev/null)"
       if [[ "$resolved_revision" != "$revision" || -n "$(command git -C "$plugin_dir" status --porcelain 2>/dev/null)" ]]; then

@@ -13,6 +13,7 @@
   },
   "include": [
     "home/.apm/skills/anki/tools/**/*.ts",
+    "home/mybin/lib/**/*.ts",
     "tests/**/*.ts"
   ]
 }
