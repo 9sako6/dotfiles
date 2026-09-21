@@ -143,6 +143,12 @@ sudo darwin-rebuild switch --rollback
 Nix のガベージコレクションは日本時間で毎日 0:00 に実行され、2日を超えた古い世代を削除する。
 手動で `nix-collect-garbage` を実行する場合も、ロールバックに必要な世代が含まれていないことを事前に確認する。
 
+## Pi
+
+Pi 0.86.1は、公式macOS Apple Silicon版アーカイブを`nix/packages.nix`でバージョンとSHA256を固定して管理し、Home Managerから提供する。APM 0.26.0にはPiターゲットがないため、`dotfiles agents build`の生成後処理で`home/.pi/agent/AGENTS.md`を生成し、`dotfiles.toml`の`copy`指定で配備する。既存の`home/.agents/skills`を共有するため、スキルの複製やターゲット追加は不要である（詳細は[PiのSkills仕様](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/docs/skills.md)を参照）。
+
+設定の反映には`dotfiles apply`を実行する。反映後に`pi`を起動し、初回認証は`/login`で行う（手順は[PiのQuickstart](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/docs/quickstart.md)を参照）。なお、セッション情報や認証情報はリポジトリ管理に含めない。
+
 ## ローカル LLM と OpenCode (localllm)
 
 macOS 27環境においてNix版OpenCode 1.18.13がコード署名不正によりSIGKILLで終了する事象に対応するため、設定検査の失敗時に終了コードおよびシグナル名を表示するよう改修するとともに、Darwin用ビルドで実行前に再署名を行い署名後のstripを停止する修正（[nixpkgs PR #550458](https://github.com/NixOS/nixpkgs/pull/550458)）をバックポート適用しました。

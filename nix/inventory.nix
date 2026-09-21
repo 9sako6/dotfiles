@@ -68,7 +68,7 @@ let
   services = scope: jobs:
     lib.mapAttrsToList (service scope) (lib.filterAttrs (_: job: job.enable or true) jobs);
   agentPath = path: lib.any (prefix: lib.hasPrefix prefix path)
-    [ ".agents/" ".claude/" ".codex/" ".config/opencode/" ];
+    [ ".agents/" ".claude/" ".codex/" ".config/opencode/" ".pi/" ];
 in {
   schemaVersion = 3;
   source = publicSource;

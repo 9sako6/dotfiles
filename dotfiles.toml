@@ -5,6 +5,7 @@ copy = [
   ".claude/skills",
   ".codex/AGENTS.md",
   ".gitconfig",
+  ".pi/agent/AGENTS.md",
 ]
 
 [localllm]

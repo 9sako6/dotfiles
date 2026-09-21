@@ -56,6 +56,8 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(packages["dotfiles"], "fixture")
         self.assertTrue(packages["lix"])
         self.assertTrue(packages["zundamonotify"])
+        self.assertEqual(packages["pi-coding-agent"], "0.86.1")
+        self.assertIn({"path": ".pi/agent/AGENTS.md", "deploy": "copy"}, inventory["tools"])
         self.assertEqual(values["nightShift.schedule.start"], "22:00")
         self.assertEqual(values["nightShift.schedule.end"], "07:00")
         self.assertEqual(values["nightShift.temperature"], 80)

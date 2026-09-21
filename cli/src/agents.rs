@@ -275,11 +275,13 @@ fn finalize_compiled_agents(root: &Path) -> Result<()> {
         )
     })?;
 
-    let opencode_dir = root.join(".config/opencode");
-    fs::create_dir_all(&opencode_dir)
-        .with_context(|| format!("failed to create {}", opencode_dir.display()))?;
-    fs::copy(&codex_agents, opencode_dir.join("AGENTS.md"))
-        .with_context(|| format!("failed to copy {} to opencode", codex_agents.display()))?;
+    for relative in [".config/opencode", ".pi/agent"] {
+        let target_dir = root.join(relative);
+        fs::create_dir_all(&target_dir)
+            .with_context(|| format!("failed to create {}", target_dir.display()))?;
+        fs::copy(&codex_agents, target_dir.join("AGENTS.md"))
+            .with_context(|| format!("failed to copy {} to {relative}", codex_agents.display()))?;
+    }
 
     for relative in ["CLAUDE.md", "GEMINI.md", ".codex/config.toml", ".mcp.json"] {
         remove_file_if_exists(&root.join(relative))?;
@@ -515,6 +517,37 @@ mod tests {
             &[".apm/skills/example-skill".into()]
         )
         .is_err());
+    }
+
+    #[test]
+    fn rebuilds_shared_instructions_without_replacing_pi_runtime_files() {
+        let temp = setup_repo();
+        let home = temp.path().join("home");
+        let pi = home.join(".pi/agent");
+        fs::create_dir_all(&pi).unwrap();
+        fs::write(pi.join("settings.json"), "{}\n").unwrap();
+        fs::write(pi.join("AGENTS.md"), "stale\n").unwrap();
+        let runner = FakeRunner::default();
+
+        for instructions in ["# agents\n", "# updated instructions\n"] {
+            fs::write(home.join("AGENTS.md"), instructions).unwrap();
+            run_with(Operation::Build, temp.path(), &runner).unwrap();
+            for relative in [
+                ".codex/AGENTS.md",
+                ".config/opencode/AGENTS.md",
+                ".pi/agent/AGENTS.md",
+            ] {
+                assert_eq!(
+                    fs::read_to_string(home.join(relative)).unwrap(),
+                    instructions
+                );
+            }
+            assert_eq!(
+                fs::read_to_string(pi.join("settings.json")).unwrap(),
+                "{}\n"
+            );
+            assert!(!home.join("AGENTS.md").exists());
+        }
     }
 
     #[test]
