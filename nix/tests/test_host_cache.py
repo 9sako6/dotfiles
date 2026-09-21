@@ -87,7 +87,7 @@ class HostCacheTests(unittest.TestCase):
                         (workspace / "dotfiles.local.toml").write_text(local)
                     source = nix("store", "add-path", "--name", "source", str(workspace)).stdout.strip()
                     result = nix(
-                        "build", "--dry-run", "--json", "--no-update-lock-file",
+                        "build", "--dry-run", "--json", "--no-substitute", "--no-update-lock-file",
                         "--no-write-lock-file", source + "#system", source + "#brewfile",
                     )
                     self.assertFalse((workspace / "flake.lock").exists())
@@ -95,6 +95,8 @@ class HostCacheTests(unittest.TestCase):
                     self.assertEqual(len(paths), 2)
                     self.assertTrue(paths[0].endswith("-system.drv"))
                     self.assertTrue(paths[1].endswith("-Brewfile.drv"))
+                    for build in json.loads(result.stdout):
+                        self.assertFalse(Path(build["outputs"]["out"]).exists())
                     return source, paths, "host-cache-fixture-evaluated" in result.stderr
 
             original_source, original_paths, evaluated = evaluate()

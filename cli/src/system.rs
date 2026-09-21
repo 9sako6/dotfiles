@@ -69,6 +69,12 @@ struct Private {
 #[serde(rename_all = "camelCase")]
 struct BuildResult {
     drv_path: String,
+    outputs: BuildOutputs,
+}
+
+#[derive(Deserialize)]
+struct BuildOutputs {
+    out: PathBuf,
 }
 
 struct Snapshot {
@@ -232,56 +238,112 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             .arg(workspace.path()),
         "cannot freeze host evaluation inputs",
     )?)?;
-    drop(progress);
-    let progress = Progress::start("Evaluating system");
-    let [system_drv, brewfile_drv] = host_derivations(&nix, host.trim(), show_trace)?;
-    drop(progress);
-    let progress = Progress::start("Building system");
-    let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
-    let system = build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?;
+    let mut retain = nix_command(&nix);
+    retain
+        .args([
+            "build",
+            "--offline",
+            "--no-write-lock-file",
+            "--no-update-lock-file",
+            "--out-link",
+        ])
+        .arg(workspace.path().join("input"))
+        .arg(host.trim())
+        .arg(&public.source);
+    if let Some(private) = &private {
+        retain.arg(&private.source);
+    }
+    capture(&mut retain, "cannot retain frozen inputs")?;
     drop(progress);
     let progress = Progress::start("Checking changes");
-    let mut preview = crate::inventory::Preview::load(previous_generation.as_deref(), &system)?;
-    preview.copy_changes = copy_plan.changes()?;
-    if preview.needs_native() {
-        let brewfile = build(
-            &nix,
-            &brewfile_drv.drv_path,
-            &workspace.path().join("brewfile"),
-        )?;
-        let mut diagnostics = io::stderr();
-        preview.native = String::from_utf8(capture_with_diagnostics(
-            Command::new(&backend)
-                .arg("preview")
-                .arg(&nix)
-                .arg(&system)
-                .arg(&brewfile)
-                .arg(
-                    previous_generation
-                        .as_deref()
-                        .unwrap_or(&workspace.path().join("no-active-generation")),
-                ),
-            "system preview failed",
-            Some(&mut diagnostics),
-        )?)?;
+    let inventory = evaluate_json(
+        nix_command(&nix)
+            .args([
+                "eval",
+                "--raw",
+                "--no-write-lock-file",
+                "--no-update-lock-file",
+            ])
+            .arg(format!("{}#inventory.text", host.trim())),
+        "cannot evaluate managed resources",
+        show_trace,
+    )?;
+    let mut preview =
+        crate::inventory::Preview::from_inventory(previous_generation.as_deref(), inventory)?;
+    let mut derivations = None;
+    let mut system = None;
+    let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
+    if preview.needs_native() || preview.needs_generation_comparison() {
+        let [system_drv, brewfile_drv] = host_derivations(&nix, host.trim(), show_trace)?;
+        if preview.needs_native() {
+            let built = build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?;
+            preview = crate::inventory::Preview::load(previous_generation.as_deref(), &built)?;
+            let brewfile = build(
+                &nix,
+                &brewfile_drv.drv_path,
+                &workspace.path().join("brewfile"),
+            )?;
+            let mut diagnostics = io::stderr();
+            preview.native = String::from_utf8(capture_with_diagnostics(
+                Command::new(&backend)
+                    .arg("preview")
+                    .arg(&nix)
+                    .arg(&built)
+                    .arg(&brewfile)
+                    .arg(
+                        previous_generation
+                            .as_deref()
+                            .unwrap_or(&workspace.path().join("no-active-generation")),
+                    ),
+                "system preview failed",
+                Some(&mut diagnostics),
+            )?)?;
+            system = Some(built);
+        } else {
+            preview.compare_generation(
+                previous_generation.as_deref(),
+                &system_drv.outputs.out,
+                &public.revision,
+            )?;
+        }
+        derivations = Some([system_drv, brewfile_drv]);
     }
+    preview.copy_changes = copy_plan.changes()?;
     drop(progress);
     if let Review::Finished = review_plan(mode, preview)? {
         return Ok(ExitCode::SUCCESS);
     }
-    public.verify()?;
-    if let Some(private) = &private {
-        private.verify()?;
-    }
-    verify_local(&local_path, &local)?;
-    if selected_target(selection)? != previous {
-        bail!("source record changed after preview; nothing was activated");
-    }
-    if current_generation(Path::new("/run/current-system"))? != previous_generation {
-        bail!(
-            "active generation changed after preview; nothing was activated. Run plan/apply again"
-        );
-    }
+    let verify = || -> Result<()> {
+        public.verify()?;
+        if let Some(private) = &private {
+            private.verify()?;
+        }
+        verify_local(&local_path, &local)?;
+        if selected_target(selection)? != previous {
+            bail!("source record changed after preview; nothing was activated");
+        }
+        if current_generation(Path::new("/run/current-system"))? != previous_generation {
+            bail!(
+                "active generation changed after preview; nothing was activated. Run plan/apply again"
+            );
+        }
+        Ok(())
+    };
+    verify()?;
+    let system = match system {
+        Some(system) => system,
+        None => {
+            let progress = Progress::start("Evaluating system");
+            let [system_drv, _] = match derivations {
+                Some(derivations) => derivations,
+                None => host_derivations(&nix, host.trim(), show_trace)?,
+            };
+            drop(progress);
+            let _progress = Progress::start("Building system");
+            build(&nix, &system_drv.drv_path, &workspace.path().join("system"))?
+        }
+    };
+    verify()?;
     let paths = workspace.path().join("copy.json");
     fs::write(&paths, serde_json::to_vec(&configuration.copy)?)?;
     let status = Command::new(&backend)
@@ -552,6 +614,7 @@ fn host_derivations(nix: &Path, source: &str, show_trace: bool) -> Result<[Build
                 "build",
                 "--dry-run",
                 "--json",
+                "--no-substitute",
                 "--no-write-lock-file",
                 "--no-update-lock-file",
             ])

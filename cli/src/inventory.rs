@@ -83,6 +83,19 @@ pub struct Preview {
 impl Preview {
     pub fn load(current: Option<&Path>, desired: &Path) -> Result<Self> {
         let next = read_generation(desired)?.context("planned generation has no inventory")?;
+        let mut preview = Self::from_inventory(current, next)?;
+        if preview.needs_generation_comparison() {
+            preview.compare_generation(
+                current,
+                &desired.canonicalize()?,
+                &generation_revision(desired)?,
+            )?;
+        }
+        Ok(preview)
+    }
+
+    pub fn from_inventory(current: Option<&Path>, mut next: Inventory) -> Result<Self> {
+        next.prepare(&next.source.clone())?;
         let previous = current.map(read_generation).transpose()?.flatten();
         let notice = if current.is_some() && previous.is_none() {
             Some("resource diff unavailable: active generation has no inventory; using native diff for this transition")
@@ -94,32 +107,11 @@ impl Preview {
         } else {
             None
         };
-        let generation =
-            if notice.is_none() && render::diff(previous.as_ref(), &next, None).is_empty() {
-                current
-                    .map(|current| -> Result<_> {
-                        let current = current.canonicalize()?;
-                        let desired = desired.canonicalize()?;
-                        if current == desired {
-                            return Ok(None);
-                        }
-                        let before = generation_revision(&current)?;
-                        let after = generation_revision(&desired)?;
-                        if before != after {
-                            return Ok(Some((before, after)));
-                        }
-                        Ok(Some((generation_id(&current), generation_id(&desired))))
-                    })
-                    .transpose()?
-                    .flatten()
-            } else {
-                None
-            };
         Ok(Self {
             previous,
             next,
             notice,
-            generation,
+            generation: None,
             copy_changes: Vec::new(),
             native: String::new(),
         })
@@ -127,6 +119,32 @@ impl Preview {
 
     pub fn needs_native(&self) -> bool {
         self.notice.is_some()
+    }
+
+    pub fn needs_generation_comparison(&self) -> bool {
+        self.notice.is_none() && render::diff(self.previous.as_ref(), &self.next, None).is_empty()
+    }
+
+    pub fn compare_generation(
+        &mut self,
+        current: Option<&Path>,
+        desired: &Path,
+        revision: &str,
+    ) -> Result<()> {
+        if self.needs_generation_comparison() {
+            if let Some(current) = current {
+                let current = current.canonicalize()?;
+                if current != desired {
+                    let before = generation_revision(&current)?;
+                    self.generation = Some(if before != revision {
+                        (before, revision.to_owned())
+                    } else {
+                        (generation_id(&current), generation_id(desired))
+                    });
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn has_changes(&self) -> bool {
@@ -333,6 +351,61 @@ mod tests {
         let initial = console::strip_ansi_codes(&initial);
         assert!(initial.lines().any(|s| s.starts_with('+')));
         assert!(!initial.lines().any(|s| s.starts_with('-')));
+    }
+
+    #[test]
+    fn resource_changes_can_be_reviewed_without_building_the_desired_generation() {
+        let root = tempfile::tempdir().unwrap();
+        let old = generation(root.path(), "old", "1.0.0", "A description.");
+        let new = generation(root.path(), "new", "2.0.0", "A description.");
+        let expected = preview(Some(&old), &new).unwrap();
+        let mut inventory: Value =
+            serde_json::from_slice(&fs::read(new.join("dotfiles-inventory.json")).unwrap())
+                .unwrap();
+        inventory["source"] = serde_json::json!(old.join("source"));
+        fs::remove_dir_all(&new).unwrap();
+        let preview =
+            Preview::from_inventory(Some(&old), serde_json::from_value(inventory).unwrap())
+                .unwrap();
+        assert!(!new.exists());
+        assert!(!preview.needs_native());
+        assert!(!preview.needs_generation_comparison());
+        assert_eq!(preview.render(None), expected);
+    }
+
+    #[test]
+    fn identical_inventory_compares_planned_paths_without_realizing_them() {
+        let root = tempfile::tempdir().unwrap();
+        let old = generation(root.path(), "old", "1.0.0", "A description.");
+        let new = root.path().join("not-built");
+        fs::write(
+            old.join("darwin-version.json"),
+            r#"{"configurationRevision":"same-revision"}"#,
+        )
+        .unwrap();
+        for (desired, revision, changed) in [
+            (&old, "same-revision", false),
+            (&new, "same-revision", true),
+            (&new, "new-revision", true),
+        ] {
+            let mut preview =
+                Preview::from_inventory(Some(&old), read_generation(&old).unwrap().unwrap())
+                    .unwrap();
+            assert!(preview.needs_generation_comparison());
+            let desired = if desired == &old {
+                desired.canonicalize().unwrap()
+            } else {
+                desired.to_owned()
+            };
+            preview
+                .compare_generation(Some(&old), &desired, revision)
+                .unwrap();
+            assert_eq!(preview.has_changes(), changed);
+            if changed {
+                assert!(preview.render(None).contains("system"));
+            }
+            assert!(!new.exists());
+        }
     }
 
     #[test]
