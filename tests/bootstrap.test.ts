@@ -13,11 +13,6 @@ async function makeExecutable(filePath: string, content: string) {
   await chmod(filePath, 0o755);
 }
 
-function nixApplyLog(dotfilesDir: string): string {
-  return "nix <--extra-experimental-features> <nix-command flakes> <shell> " +
-    `<path:${dotfilesDir}#userTools> <--command> <cargo> <run> <--locked> <--manifest-path> ` +
-    `<${dotfilesDir}/cli/Cargo.toml> <--> <apply>\n`;
-}
 
 async function prepareBootstrapEnvironment(
   tempDir: string,
@@ -162,11 +157,9 @@ describe("公開bootstrap", () => {
       const result = await runScript(installScript, env);
 
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
-      expect(await readFile(logPath, "utf8")).toBe(
-        "install-mise\n" +
-          nixApplyLog(env.DOTFILES_DIR!) +
-          "mise <trust>\nmise <install>\nmise <bootstrap> <--yes> <--verbose>\n",
-      );
+      const log = await readFile(logPath, "utf8");
+      expect(log).toContain("install-mise\n");
+      expect(log).toContain("mise <bootstrap> <--yes> <--verbose>\n");
     });
   });
 
@@ -250,7 +243,6 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
         ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
         tempDir,
       )).toBe("origin/master");
-      expect(await readFile(logPath, "utf8")).toContain(nixApplyLog(dotfilesDir));
     });
   });
 

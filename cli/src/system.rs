@@ -153,6 +153,13 @@ impl Snapshot {
     }
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SystemPaths {
+    source_record: PathBuf,
+    current_generation: PathBuf,
+}
+
 pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     let progress = Progress::start("Preparing configuration");
     let user = String::from_utf8(capture(
@@ -171,10 +178,15 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         bail!("run system commands as the login user");
     }
     let home = PathBuf::from(env::var_os("HOME").context("HOME is not set")?);
-    let selection = Path::new("/etc/nix-darwin/flake.nix");
+    let backend = root.join("bin/system-backend.sh");
+    let system_paths: SystemPaths = serde_json::from_slice(&capture(
+        Command::new(&backend).arg("paths"),
+        "cannot identify system paths",
+    )?)?;
+    let selection = system_paths.source_record.as_path();
     let previous = selected_target(selection)?;
     validate_record(root, previous.as_deref())?;
-    let previous_generation = current_generation(Path::new("/run/current-system"))?;
+    let previous_generation = current_generation(&system_paths.current_generation)?;
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
     let _lock = if matches!(mode, Mode::Apply) {
@@ -184,7 +196,6 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     } else {
         None
     };
-    let backend = root.join("bin/system-backend.sh");
     let nix = resolve_nix(root, matches!(mode, Mode::Apply))?;
     let workspace = tempfile::Builder::new()
         .prefix("dotfiles-input-")
@@ -318,7 +329,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         if selected_target(selection)? != previous {
             bail!("source record changed after preview; nothing was activated");
         }
-        if current_generation(Path::new("/run/current-system"))? != previous_generation {
+        if current_generation(&system_paths.current_generation)? != previous_generation {
             bail!(
                 "active generation changed after preview; nothing was activated. Run plan/apply again"
             );
