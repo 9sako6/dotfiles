@@ -27,6 +27,8 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     #[command(hide = true)]
+    CompleteInventory { input: PathBuf },
+    #[command(hide = true)]
     CompleteApply {
         source: PathBuf,
         paths: PathBuf,
@@ -85,6 +87,9 @@ fn run() -> Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     }
 
+    if let Commands::CompleteInventory { input } = command {
+        return agents::complete_inventory(&input);
+    }
     if let Commands::CompleteApply {
         source,
         paths,
@@ -97,7 +102,9 @@ fn run() -> Result<ExitCode> {
     }
     let dotfiles_dir = resolve_dotfiles_dir()?;
     match command {
-        Commands::CompleteApply { .. } | Commands::Version => unreachable!(),
+        Commands::CompleteInventory { .. } | Commands::CompleteApply { .. } | Commands::Version => {
+            unreachable!()
+        }
         Commands::Agents { operation } => agents::run(operation, &dotfiles_dir),
         Commands::Plan { options } => {
             system::run(system::Mode::Plan, &dotfiles_dir, options.show_trace)

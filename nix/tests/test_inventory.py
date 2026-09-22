@@ -44,7 +44,8 @@ class InventoryTests(unittest.TestCase):
         inventory = json.loads(snapshot.read_text())
         values = {setting["key"]: setting["value"] for setting in inventory["system"]}
         self.assertTrue(values["system.defaults.dock.show-recents"])
-        self.assertEqual(inventory["schemaVersion"], 3)
+        self.assertEqual(inventory["schemaVersion"], 4)
+        self.assertTrue(any(skill["name"] == "jp" for skill in inventory["skills"]))
         self.assertEqual(values["nix.gc.options"], "--delete-older-than 2d")
         self.assertTrue(values["nix.gc.automatic"])
         self.assertFalse(values["homebrew.global.autoUpdate"])
@@ -159,7 +160,7 @@ class InventoryTests(unittest.TestCase):
             host = public.lib.mkHost { dotfilesDirectory = "/fixture"; primaryUser = "fixture"; };
           in {
             source = public.outPath;
-            inventory = host.inventory.text;
+            inventory = host.inventory.drvPath;
             nightShift = host.config.home-manager.users.fixture.home.activation.configureNightShift.data;
             dictation = host.config.system.activationScripts.postActivation.text;
           }
@@ -174,7 +175,12 @@ class InventoryTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             snapshot = json.loads(result.stdout)
-            snapshot["inventory"] = json.loads(snapshot["inventory"])
+            built = subprocess.run(
+                ["nix", "build", "--no-link", "--print-out-paths", snapshot["inventory"] + "^*"],
+                capture_output=True, text=True, timeout=180,
+            )
+            self.assertEqual(built.returncode, 0, built.stderr)
+            snapshot["inventory"] = json.loads(Path(built.stdout.strip()).read_text())
             return snapshot
 
         original = evaluate("git+file://" + str(REPOSITORY))

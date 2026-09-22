@@ -267,18 +267,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     capture(&mut retain, "cannot retain frozen inputs")?;
     drop(progress);
     let progress = Progress::start("Checking changes");
-    let inventory = evaluate_json(
-        nix_command(&nix)
-            .args([
-                "eval",
-                "--raw",
-                "--no-write-lock-file",
-                "--no-update-lock-file",
-            ])
-            .arg(format!("{}#inventory.text", host.trim())),
-        "cannot evaluate managed resources",
-        show_trace,
-    )?;
+    let inventory = load_inventory(&nix, host.trim(), show_trace)?;
     let mut preview =
         crate::inventory::Preview::from_inventory(previous_generation.as_deref(), inventory)?;
     let mut derivations = None;
@@ -439,7 +428,7 @@ pub fn load_settings(root: &Path) -> Result<(Vec<Setting>, InventoryInputs)> {
 }
 
 impl InventoryInputs {
-    pub fn load<T: serde::de::DeserializeOwned>(self) -> Result<(T, PathBuf)> {
+    pub fn load(self) -> Result<(crate::inventory::Inventory, PathBuf)> {
         let Self {
             local,
             nix,
@@ -483,30 +472,7 @@ impl InventoryInputs {
                 .arg(workspace.path()),
             "cannot freeze inventory inputs",
         )?)?;
-        let builds: Vec<serde_json::Value> = evaluate_json(
-            nix_command(&nix)
-                .args([
-                    "build",
-                    "--no-link",
-                    "--json",
-                    "--no-substitute",
-                    "--option",
-                    "builders",
-                    "",
-                    "--no-write-lock-file",
-                    "--no-update-lock-file",
-                ])
-                .arg(format!("{}#inventory", host.trim())),
-            "cannot evaluate managed resources",
-            false,
-        )?;
-        let path = builds
-            .first()
-            .and_then(|build| build["outputs"]["out"].as_str())
-            .context("Nix did not return the inventory data path")?;
-        let inventory =
-            serde_json::from_slice(&fs::read(path).context("cannot read inventory data")?)
-                .context("Nix returned invalid inventory data")?;
+        let inventory = load_inventory(&nix, host.trim(), false)?;
         public.verify()?;
         if let Some(private) = &private {
             private.verify()?;
@@ -790,6 +756,32 @@ fn acquire_lock(path: &Path) -> Result<ApplyLock> {
         .open(path)?;
     fs2::FileExt::try_lock_exclusive(&file).context("system apply is already running")?;
     Ok(ApplyLock { file })
+}
+
+fn load_inventory(nix: &Path, host: &str, show_trace: bool) -> Result<crate::inventory::Inventory> {
+    let builds: Vec<serde_json::Value> = evaluate_json(
+        nix_command(nix)
+            .args([
+                "build",
+                "--no-link",
+                "--json",
+                "--option",
+                "builders",
+                "",
+                "--no-write-lock-file",
+                "--no-update-lock-file",
+            ])
+            .arg(format!("{}#inventory", host.trim())),
+        "cannot evaluate managed resources",
+        show_trace,
+    )?;
+    let path = builds
+        .first()
+        .and_then(|build| build["outputs"]["out"].as_str())
+        .context("Nix did not return the inventory data path")?;
+    let inventory = serde_json::from_slice(&fs::read(path).context("cannot read inventory data")?)
+        .context("Nix returned invalid inventory data")?;
+    Ok(inventory)
 }
 
 #[cfg(test)]

@@ -41,7 +41,7 @@ class ReviewTerminalTests(unittest.TestCase):
             destination = self.root / generation
             destination.mkdir()
             inventory = {
-                "schemaVersion": 2, "source": str(source),
+                "schemaVersion": 4, "source": str(source), "skills": [],
                 "packages": [
                     {"name": f"package-{index:03}", "manager": "Nix", "declared": version,
                      "lookup": {"kind": "must-not-fetch"}}

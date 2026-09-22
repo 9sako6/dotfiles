@@ -70,11 +70,14 @@
         privateSource ? null,
       }:
         let
-          inventory = darwinSystem.pkgs.writeText "dotfiles-inventory.json" (builtins.toJSON (import ./nix/inventory.nix {
+          inventoryInput = darwinSystem.pkgs.writeText "dotfiles-inventory-input.json" (builtins.toJSON (import ./nix/inventory.nix {
             inherit configuration inputs privateSource;
             host = darwinSystem;
             publicSource = self.outPath;
           }));
+          inventory = darwinSystem.pkgs.runCommand "dotfiles-inventory.json" { } ''
+            ${dotfilesPackage}/bin/dotfiles complete-inventory ${inventoryInput} > "$out"
+          '';
           darwinSystem = nix-darwin.lib.darwinSystem {
             specialArgs = {
               inherit configuration dotfilesDirectory dotfilesSourceHome inputs;
