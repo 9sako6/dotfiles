@@ -6,7 +6,9 @@ use std::process::{Command, ExitCode, Stdio};
 
 use anyhow::{bail, Context, Result};
 use clap::Subcommand;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::io::{self, Write};
 
 const LOCAL_SKILL_PREFIX: &str = "./.apm/skills/";
 const LOCAL_SKILL_PREFIX_WITHOUT_DOT: &str = ".apm/skills/";
@@ -379,6 +381,82 @@ fn is_local_skill_path(value: &str) -> bool {
         return false;
     };
     !name.is_empty()
+}
+
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
+pub struct Skill {
+    pub name: String,
+    pub origin: String,
+    pub description: String,
+}
+
+/// Normalize compiled APM resources once while constructing the generation.
+pub fn complete_inventory(input: &Path) -> Result<ExitCode> {
+    let mut inventory: serde_json::Value = serde_json::from_slice(&fs::read(input)?)?;
+    let source = inventory["source"]
+        .as_str()
+        .context("inventory has no source")?;
+    let records = skills(Path::new(source))?;
+    let object = inventory
+        .as_object_mut()
+        .context("inventory must be an object")?;
+    object.insert("schemaVersion".into(), 4.into());
+    object.insert("skills".into(), serde_json::to_value(records)?);
+    let mut output = io::stdout().lock();
+    serde_json::to_writer(&mut output, &inventory)?;
+    writeln!(output)?;
+    Ok(ExitCode::SUCCESS)
+}
+
+pub fn skills(source: &Path) -> Result<Vec<Skill>> {
+    let manifest: serde_yaml_ng::Value = serde_yaml_ng::from_str(
+        &fs::read_to_string(source.join("home/apm.yml"))
+            .context("cannot read skill declarations")?,
+    )?;
+    let dependencies = manifest["dependencies"]["apm"]
+        .as_sequence()
+        .context("invalid APM skill declarations")?;
+    let mut skills = Vec::new();
+    for dependency in dependencies {
+        let dependency = dependency
+            .as_str()
+            .context("invalid APM skill dependency")?;
+        let name = dependency
+            .split('#')
+            .next()
+            .unwrap_or(dependency)
+            .rsplit('/')
+            .next()
+            .unwrap_or(dependency);
+        let path = source
+            .join("home/.agents/skills")
+            .join(name)
+            .join("SKILL.md");
+        let text = fs::read_to_string(&path)
+            .with_context(|| format!("cannot read compiled skill {name}"))?;
+        let metadata = text
+            .strip_prefix("---\n")
+            .and_then(|s| s.split_once("\n---"))
+            .context("invalid skill frontmatter")?
+            .0;
+        let metadata: BTreeMap<String, serde_yaml_ng::Value> = serde_yaml_ng::from_str(metadata)?;
+        let description = metadata
+            .get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("—")
+            .to_owned();
+        skills.push(Skill {
+            name: name.into(),
+            origin: if dependency.starts_with('.') {
+                "local".into()
+            } else {
+                dependency.split('/').take(2).collect::<Vec<_>>().join("/")
+            },
+            description,
+        });
+    }
+    skills.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(skills)
 }
 
 #[cfg(test)]

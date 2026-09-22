@@ -59,7 +59,7 @@ mod tests {
 
     fn inventory() -> Inventory {
         serde_json::from_value(json!({
-            "source": "/fixture",
+            "source": "/fixture", "skills": [],
             "packages": [
                 {"name": "one", "manager": "Nix", "declared": "1"},
                 {"name": "two", "manager": "Nix", "declared": "2"}

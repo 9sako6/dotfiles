@@ -3,12 +3,12 @@ mod render;
 
 use diff::ResourceDiff;
 
-use std::collections::BTreeMap;
+use crate::agents::Skill;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -24,7 +24,6 @@ pub struct Inventory {
     localllm: LocalLlm,
     #[serde(rename = "timeZone")]
     time_zone: String,
-    #[serde(skip)]
     skills: Vec<Skill>,
 }
 
@@ -62,16 +61,9 @@ struct LocalLlm {
     default_model: Option<String>,
 }
 
-#[derive(Clone, PartialEq)]
-struct Skill {
-    name: String,
-    origin: String,
-    description: String,
-}
-
 pub fn report(inputs: crate::system::InventoryInputs, width: Option<usize>) -> Result<String> {
-    let (mut inventory, source): (Inventory, _) = inputs.load()?;
-    inventory.prepare(&source)?;
+    let (mut inventory, _): (Inventory, _) = inputs.load()?;
+    inventory.prepare();
     Ok(render::report(&inventory, width))
 }
 
@@ -98,15 +90,20 @@ impl Preview {
     }
 
     pub fn from_inventory(current: Option<&Path>, mut next: Inventory) -> Result<Self> {
-        next.prepare(&next.source.clone())?;
-        let previous = current.map(read_generation).transpose()?.flatten();
-        let notice = if current.is_some() && previous.is_none() {
+        next.prepare();
+        let stored = current.map(read_generation_json).transpose()?.flatten();
+        let notice = if current.is_some() && stored.is_none() {
             Some("resource diff unavailable: active generation has no inventory; using native diff for this transition")
-        } else if previous
-            .as_ref()
-            .is_some_and(|previous| previous.schema_version != next.schema_version)
-        {
+        } else if stored.as_ref().is_some_and(|previous| {
+            previous["schemaVersion"].as_u64().unwrap_or(0) != u64::from(next.schema_version)
+        }) {
             Some("resource diff unavailable: generation inventories cover different settings; using native diff for this transition")
+        } else {
+            None
+        };
+        // Decode only compatible payloads, without consulting the old APM tree.
+        let previous = if notice.is_none() {
+            stored.map(parse_inventory).transpose()?
         } else {
             None
         };
@@ -203,7 +200,7 @@ fn generation_id(path: &Path) -> String {
         .into()
 }
 
-fn read_generation(generation: &Path) -> Result<Option<Inventory>> {
+fn read_generation_json(generation: &Path) -> Result<Option<Value>> {
     let path = generation.join("dotfiles-inventory.json");
     match fs::symlink_metadata(&path) {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
@@ -211,14 +208,32 @@ fn read_generation(generation: &Path) -> Result<Option<Inventory>> {
         Ok(_) => (),
     }
     let bytes = fs::read(path).context("cannot read generation inventory")?;
+    let value: Value = serde_json::from_slice(&bytes).context("invalid generation inventory")?;
+    if !value.is_object()
+        || value
+            .get("schemaVersion")
+            .is_some_and(|v| v.as_u64().is_none())
+    {
+        bail!("invalid generation inventory header");
+    }
+    Ok(Some(value))
+}
+
+fn parse_inventory(value: Value) -> Result<Inventory> {
     let mut inventory: Inventory =
-        serde_json::from_slice(&bytes).context("invalid generation inventory")?;
-    inventory.prepare(&inventory.source.clone())?;
-    Ok(Some(inventory))
+        serde_json::from_value(value).context("invalid generation inventory")?;
+    inventory.prepare();
+    Ok(inventory)
+}
+
+fn read_generation(generation: &Path) -> Result<Option<Inventory>> {
+    read_generation_json(generation)?
+        .map(parse_inventory)
+        .transpose()
 }
 
 impl Inventory {
-    fn prepare(&mut self, source: &Path) -> Result<()> {
+    fn prepare(&mut self) {
         self.packages
             .sort_by_key(|p| (p.name.to_lowercase(), p.manager.clone(), p.declared.clone()));
         self.packages.dedup_by(|a, b| {
@@ -227,60 +242,8 @@ impl Inventory {
         self.system.sort_by(|a, b| a.key.cmp(&b.key));
         self.services.sort_by(|a, b| a.name.cmp(&b.name));
         self.tools.sort_by(|a, b| a.path.cmp(&b.path));
-        self.skills = skills(source)?;
-        Ok(())
+        self.skills.sort_by(|a, b| a.name.cmp(&b.name));
     }
-}
-
-fn skills(source: &Path) -> Result<Vec<Skill>> {
-    let manifest: serde_yaml_ng::Value = serde_yaml_ng::from_str(
-        &fs::read_to_string(source.join("home/apm.yml"))
-            .context("cannot read skill declarations")?,
-    )?;
-    let dependencies = manifest["dependencies"]["apm"]
-        .as_sequence()
-        .context("invalid APM skill declarations")?;
-    let mut skills = Vec::new();
-    for dependency in dependencies {
-        let dependency = dependency
-            .as_str()
-            .context("invalid APM skill dependency")?;
-        let name = dependency
-            .split('#')
-            .next()
-            .unwrap_or(dependency)
-            .rsplit('/')
-            .next()
-            .unwrap_or(dependency);
-        let path = source
-            .join("home/.agents/skills")
-            .join(name)
-            .join("SKILL.md");
-        let text = fs::read_to_string(&path)
-            .with_context(|| format!("cannot read compiled skill {name}"))?;
-        let metadata = text
-            .strip_prefix("---\n")
-            .and_then(|s| s.split_once("\n---"))
-            .context("invalid skill frontmatter")?
-            .0;
-        let metadata: BTreeMap<String, serde_yaml_ng::Value> = serde_yaml_ng::from_str(metadata)?;
-        let description = metadata
-            .get("description")
-            .and_then(|v| v.as_str())
-            .unwrap_or("—")
-            .to_owned();
-        skills.push(Skill {
-            name: name.into(),
-            origin: if dependency.starts_with('.') {
-                "local".into()
-            } else {
-                dependency.split('/').take(2).collect::<Vec<_>>().join("/")
-            },
-            description,
-        });
-    }
-    skills.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(skills)
 }
 
 #[cfg(test)]
@@ -295,20 +258,10 @@ mod tests {
     fn generation(root: &Path, name: &str, version: &str, description: &str) -> PathBuf {
         let generation = root.join(name);
         let source = generation.join("source");
-        let skill = source.join("home/.agents/skills/example");
-        fs::create_dir_all(&skill).unwrap();
-        fs::write(
-            source.join("home/apm.yml"),
-            "dependencies:\n  apm: [./skills/example]\n",
-        )
-        .unwrap();
-        fs::write(
-            skill.join("SKILL.md"),
-            format!("---\ndescription: {description}\n---\n"),
-        )
-        .unwrap();
+        fs::create_dir_all(&generation).unwrap();
         fs::write(generation.join("dotfiles-inventory.json"), serde_json::to_vec(&serde_json::json!({
-            "source": source,
+            "schemaVersion": 4, "source": source,
+            "skills": [{"name": "example", "origin": "local", "description": description}],
             "packages": [{"name": "node", "manager": "mise", "declared": version, "lookup": {"kind": "must-not-fetch"}}],
             "system": [], "services": [], "tools": [], "timeZone": "UTC",
             "localllm": {"enabled": false, "default_model": null}
@@ -630,5 +583,24 @@ mod tests {
             assert!(!output.contains("latest"));
             assert!(!output.contains("packages"));
         }
+    }
+
+    #[test]
+    fn legacy_payload_does_not_need_the_current_schema_or_apm_tree() {
+        let root = tempfile::tempdir().unwrap();
+        let new = generation(root.path(), "new", "2", "Saved description");
+        let old = root.path().join("old");
+        fs::create_dir(&old).unwrap();
+        fs::write(
+            old.join("dotfiles-inventory.json"),
+            r#"{"schemaVersion":3,"obsolete":"legacy representation"}"#,
+        )
+        .unwrap();
+        assert!(Preview::load(Some(&old), &new).unwrap().needs_native());
+        let path = new.join("dotfiles-inventory.json");
+        let mut broken: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        broken.as_object_mut().unwrap().remove("skills");
+        fs::write(&path, serde_json::to_vec(&broken).unwrap()).unwrap();
+        assert!(Preview::load(None, &new).is_err());
     }
 }

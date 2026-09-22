@@ -574,7 +574,7 @@ mod tests {
     #[test]
     fn diff_omits_unchanged_rows_and_keeps_removed_groups_and_wrapped_columns_aligned() {
         let before = serde_json::json!({
-            "source": "/fixture",
+            "source": "/fixture", "skills": [],
             "packages": [
                 {"name": "stable", "manager": "Nix", "declared": "1"},
                 {"name": "node", "manager": "mise", "declared": "1"}
