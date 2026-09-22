@@ -1,11 +1,11 @@
 name: review-stack-builder
 on:
   push:
-    branches: [work/minus-stack-builder]
+    branches: [work/minus-completion]
 permissions:
   contents: write
 concurrency:
-  group: minus-stack-builder
+  group: minus-completion-builder
   cancel-in-progress: false
 jobs:
   build:
