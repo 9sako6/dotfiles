@@ -33,6 +33,14 @@ while True:
 
 
 class ProcessTreeTests(unittest.TestCase):
+    def test_fast_exit_and_normal_termination_are_reaped(self):
+        for script in ("pass", "import time; time.sleep(60)"):
+            for _ in range(8):
+                with launcher.owned_process([sys.executable, "-c", script]) as process:
+                    if script == "pass":
+                        process.wait(timeout=5)
+                self.assertIsNotNone(process.returncode)
+
     def wait_for_child(self, root):
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
@@ -86,8 +94,7 @@ class ProcessTreeTests(unittest.TestCase):
                     self.assertIsNone(other.poll())
                 finally:
                     if group is not None:
-                        with contextlib.suppress(ProcessLookupError):
-                            os.killpg(group, signal.SIGKILL)
+                        launcher.signal_process_group(group, signal.SIGKILL)
                     other.terminate()
                     other.wait(timeout=5)
 
@@ -114,8 +121,7 @@ except KeyboardInterrupt:
                 self.assert_stopped(child, root)
             finally:
                 if group is not None:
-                    with contextlib.suppress(ProcessLookupError):
-                        os.killpg(group, signal.SIGKILL)
+                    launcher.signal_process_group(group, signal.SIGKILL)
                 if process.poll() is None:
                     process.kill()
                 process.wait(timeout=5)
