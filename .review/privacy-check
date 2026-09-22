@@ -1,0 +1,47 @@
+#!/bin/sh
+exec /usr/bin/env -u PERL5OPT -u PERL5LIB -u PERLLIB /usr/bin/perl -x "$0" "$@"
+exit 1
+#!perl
+use strict;
+use warnings;
+
+sub git_output {
+    open(my $pipe, '-|', 'git', @_) or die "privacy check: cannot execute Git: $!\n";
+    local $/;
+    my $output = <$pipe> // '';
+    close($pipe) or die "privacy check: Git inspection failed\n";
+    return $output;
+}
+
+my $pattern = qr{(^|[^[:alnum:]_./-])(/Users/[[:alnum:]_][[:alnum:]_.-]*|/home/[[:alnum:]_][[:alnum:]_.-]*|file://[^\s`)<"']+|vscode://[^\s`)<"']+)};
+my @issues;
+my $names = git_output('diff', '--cached', '--name-only', '-z', '--diff-filter=ACMR', '--', '*.md');
+for my $path (split(/\0/, $names)) {
+    my $patch = git_output('--literal-pathspecs', 'diff', '--cached', '--no-ext-diff', '--no-textconv', '--no-color', '--unified=0', '--', $path);
+    my $display = $path;
+    $display =~ s/\\/\\\\/g;
+    $display =~ s/\n/\\n/g;
+    $display =~ s/\r/\\r/g;
+    $display =~ s/\t/\\t/g;
+    my $number;
+    for my $line (split(/\n/, $patch)) {
+        if ($line =~ /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/) {
+            $number = $1;
+            next;
+        }
+        next unless defined($number);
+        if ($line =~ /^\+/) {
+            my $text = substr($line, 1);
+            push(@issues, "$display:$number:$text") if $text =~ $pattern;
+            $number++;
+        } elsif ($line !~ /^[-\\]/) {
+            $number++;
+        }
+    }
+}
+if (@issues) {
+    print STDERR "public document privacy issues detected in staged markdown:\n";
+    print STDERR join("\n", @issues), "\n";
+    exit 1;
+}
+exit 0;
