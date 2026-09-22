@@ -14,7 +14,7 @@ if [ "$#" -gt 0 ]; then
   if [ "$status" -ne 1 ]; then
     exit "$status"
   fi
-  git restore --staged -- "$@"
+  git reset --quiet -- "$@"
   exit $?
 fi
 
@@ -24,7 +24,7 @@ else
   status=$?
 fi
 if [ "$status" -eq 1 ]; then
-  git restore --staged .
+  git reset --quiet -- :/
   exit $?
 fi
 if [ "$status" -ne 0 ]; then
