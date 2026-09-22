@@ -7,6 +7,7 @@ script_dir="$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && pwd)"
 operation="${1:-}"
 shift
 case "$operation" in
+  paths) printf '%s\n' '{"sourceRecord":"/etc/nix-darwin/flake.nix","currentGeneration":"/run/current-system"}' ;;
   ensure-nix) install_system_ensure_lix "${script_dir}/install-lix.sh" ;;
   require-nix) install_system_require_lix ;;
   preview)

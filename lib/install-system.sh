@@ -292,6 +292,7 @@ install_system_apply_built_system() (
     selection_path="$4"
     expected_target="$5"
     desired_target="$6"
+    sudo_bin="$7"
 
     selection_dir="$(/usr/bin/dirname -- "$selection_path")"
     trap "exit 1" HUP INT TERM
@@ -316,13 +317,13 @@ install_system_apply_built_system() (
 
     "$nix_env_bin" -p /nix/var/nix/profiles/system --set "$system_path"
     "$rebuild_bin" activate
-    shift 6
+    shift 7
     if [ "$#" -gt 0 ]; then
       cli_bin="$1"
       source="$2"
       paths="$3"
       home_directory="$4"
-      /usr/bin/sudo --user="$SUDO_USER" -- "$cli_bin" complete-apply "$source" "$paths" "$home_directory"
+      "$sudo_bin" --user="$SUDO_USER" -- "$cli_bin" complete-apply "$source" "$paths" "$home_directory"
     fi
 
     install_system_verify_record
@@ -338,5 +339,5 @@ install_system_apply_built_system() (
     fi
   ' install-system-apply \
     "$nix_env_bin" "$rebuild_bin" "$system_path" "$selection_path" \
-    "$expected_target" "$desired_target" "$@"
+    "$expected_target" "$desired_target" "$sudo_bin" "$@"
 )
