@@ -1,25 +1,60 @@
-# Managed by dotfiles — fixed ssh-agent socket for nix-daemon SSH fetch
-if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "${SSH_AUTH_SOCK:-}" ]; then
-  _dotfiles_ssh_sock="${HOME}/.ssh/agent.sock"
-  if [ -S "$_dotfiles_ssh_sock" ]; then
-    export SSH_AUTH_SOCK="$_dotfiles_ssh_sock"
+# Only the fixed dotfiles socket is owned here. Preserve externally supplied agents.
+if [ -z "${SSH_AUTH_SOCK:-}" ] || [ "$SSH_AUTH_SOCK" = "$HOME/.ssh/agent.sock" ]; then
+  if /usr/bin/env -u PERL5OPT -u PERL5LIB -u PERLLIB /usr/bin/perl - "$HOME/.ssh/agent.sock" <<'PERL'
+use strict;
+use warnings;
+use Fcntl qw(:DEFAULT :flock :mode O_NOFOLLOW);
+use File::Basename qw(dirname);
+
+sub quiet_status {
+    my $pid = fork();
+    defined($pid) or die "ssh-agent: cannot fork: $!\n";
+    if (!$pid) {
+        open(STDOUT, '>', '/dev/null') or exit 127;
+        open(STDERR, '>&', \*STDOUT) or exit 127;
+        exec { $_[0] } @_ or exit 127;
+    }
+    waitpid($pid, 0) == $pid or die "ssh-agent: cannot inspect command result: $!\n";
+    return $?;
+}
+
+sub reachable {
+    my $status = quiet_status('ssh-add', '-l');
+    return 1 if $status == 0 || $status == 256;
+    return 0 if $status == 512;
+    die "ssh-agent: identity probe failed (status $status)\n";
+}
+
+my $socket = shift @ARGV;
+my $directory = dirname($socket);
+if (!-e $directory) {
+    mkdir($directory, 0700) or -d $directory or die "ssh-agent: cannot create SSH directory: $!\n";
+}
+my @directory = lstat($directory);
+@directory && S_ISDIR($directory[2]) && $directory[4] == $<
+    or die "ssh-agent: refusing an unowned or linked SSH directory\n";
+sysopen(my $lock, "$directory/.dotfiles-agent.lock", O_RDWR | O_CREAT | O_NOFOLLOW, 0600)
+    or die "ssh-agent: cannot open startup lock: $!\n";
+my @lock = stat($lock);
+S_ISREG($lock[2]) && $lock[4] == $< or die "ssh-agent: invalid startup lock\n";
+flock($lock, LOCK_EX) or die "ssh-agent: cannot lock startup: $!\n";
+$ENV{SSH_AUTH_SOCK} = $socket;
+my @socket = lstat($socket);
+if (@socket) {
+    S_ISSOCK($socket[2]) && $socket[4] == $<
+        or die "ssh-agent: refusing to replace an unowned or non-socket path\n";
+    exit 0 if reachable();
+    unlink($socket) or die "ssh-agent: cannot remove stale owned socket: $!\n";
+} elsif (!$!{ENOENT}) {
+    die "ssh-agent: cannot inspect socket: $!\n";
+}
+quiet_status('ssh-agent', '-a', $socket, '-s') == 0
+    or die "ssh-agent: could not start the managed agent\n";
+reachable() or die "ssh-agent: started agent is not reachable\n";
+PERL
+  then
+    export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
   else
-    _dotfiles_ssh_agent_out="$(ssh-agent -a "$_dotfiles_ssh_sock" -s 2>/dev/null)" || true
-    if [ -S "$_dotfiles_ssh_sock" ]; then
-      eval "$_dotfiles_ssh_agent_out" >/dev/null 2>&1 || true
-      export SSH_AUTH_SOCK="$_dotfiles_ssh_sock"
-      # Do not auto-add keys; user runs `ssh-add` as needed.
-      # Hint once per shell if no identities are loaded.
-      if ! ssh-add -l >/dev/null 2>&1; then
-        case "$-" in *i*) printf 'ssh-agent: no identities loaded. run: ssh-add ~/.ssh/id_ed25519\n' >&2 ;; esac
-      fi
-    else
-      case "$-" in *i*) printf 'dotfiles: could not start ssh-agent at %s\n' "$_dotfiles_ssh_sock" >&2 ;; esac
-    fi
-    unset _dotfiles_ssh_agent_out
+    printf '%s\n' 'dotfiles: managed SSH agent is unavailable; existing paths were not replaced unless they were owned stale sockets' >&2
   fi
-  unset _dotfiles_ssh_sock
-else
-  # SSH_AUTH_SOCK is already a live socket (e.g. forwarded or launchd); keep it.
-  :
 fi
