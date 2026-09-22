@@ -97,23 +97,41 @@ def wait_ready(process, port, token, timeout=180):
     raise RuntimeError("local server startup timed out")
 
 
-def stop_process_group(process):
-    """Stop the owned group even when its leader has already exited."""
+def process_group_running(group):
+    # A process-table entry for an exited child is not a running process.
+    # Darwin can return EPERM from killpg(group, 0) for an exiting group.
+    result = subprocess.run(
+        ["/bin/ps", "-axo", "pid=,pgid=,stat="],
+        capture_output=True, text=True, check=True,
+    )
+    for line in result.stdout.splitlines():
+        _, pgid, state = line.split()
+        if int(pgid) == group and not state.startswith(("Z", "X")):
+            return True
+    return False
+
+
+def signal_process_group(group, signum):
     try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        process.wait()
-        return
+        os.killpg(group, signum)
+    except (ProcessLookupError, PermissionError):
+        # Do not swallow a real permission failure for a live process.
+        if process_group_running(group):
+            raise
+
+
+def stop_process_group(process):
+    """Stop all executing members; do not wait for orphan zombie reaping."""
+    signal_process_group(process.pid, signal.SIGTERM)
     deadline = time.monotonic() + _PROCESS_STOP_TIMEOUT
-    while True:
-        process.poll()  # Reap the leader, but do not confuse it with the whole group.
-        try:
-            os.killpg(process.pid, 0)
-        except ProcessLookupError:
-            break
+    while process_group_running(process.pid):
         if time.monotonic() >= deadline:
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(process.pid, signal.SIGKILL)
+            signal_process_group(process.pid, signal.SIGKILL)
+            deadline = time.monotonic() + 5
+            while process_group_running(process.pid):
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("owned process group did not stop")
+                time.sleep(0.05)
             break
         time.sleep(0.05)
     process.wait()
