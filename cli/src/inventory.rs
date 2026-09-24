@@ -1,4 +1,7 @@
+mod diff;
 mod render;
+
+use diff::ResourceDiff;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -9,7 +12,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize, PartialEq)]
 pub struct Inventory {
     #[serde(default, rename = "schemaVersion")]
     schema_version: u32,
@@ -25,14 +28,14 @@ pub struct Inventory {
     skills: Vec<Skill>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize, PartialEq)]
 struct Package {
     name: String,
     manager: String,
     declared: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize, PartialEq)]
 struct Setting {
     key: String,
     group: String,
@@ -40,25 +43,26 @@ struct Setting {
     value: Value,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize, PartialEq)]
 struct Service {
     name: String,
     scope: String,
     config: Value,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize, PartialEq)]
 struct Tool {
     path: String,
     deploy: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize, PartialEq)]
 struct LocalLlm {
     enabled: bool,
     default_model: Option<String>,
 }
 
+#[derive(Clone, PartialEq)]
 struct Skill {
     name: String,
     origin: String,
@@ -72,8 +76,7 @@ pub fn report(inputs: crate::system::InventoryInputs, width: Option<usize>) -> R
 }
 
 pub struct Preview {
-    previous: Option<Inventory>,
-    next: Inventory,
+    resources: ResourceDiff,
     notice: Option<&'static str>,
     generation: Option<(String, String)>,
     pub copy_changes: Vec<crate::home_copy::CopyChange>,
@@ -108,8 +111,7 @@ impl Preview {
             None
         };
         Ok(Self {
-            previous,
-            next,
+            resources: ResourceDiff::between(previous.as_ref(), &next),
             notice,
             generation: None,
             copy_changes: Vec::new(),
@@ -122,7 +124,7 @@ impl Preview {
     }
 
     pub fn needs_generation_comparison(&self) -> bool {
-        self.notice.is_none() && render::diff(self.previous.as_ref(), &self.next, None).is_empty()
+        self.notice.is_none() && self.resources.is_empty()
     }
 
     pub fn compare_generation(
@@ -148,7 +150,10 @@ impl Preview {
     }
 
     pub fn has_changes(&self) -> bool {
-        !self.render(None).is_empty()
+        self.notice.is_some()
+            || !self.resources.is_empty()
+            || self.generation.is_some()
+            || !self.copy_changes.is_empty()
     }
 
     pub fn show(&self) -> Result<()> {
@@ -165,7 +170,7 @@ impl Preview {
         let resources = if let Some(notice) = self.notice {
             format!("{notice}\n\n{}", self.native).trim_end().into()
         } else {
-            render::diff(self.previous.as_ref(), &self.next, width)
+            render::diff(&self.resources, width)
         };
         let deployment = render::deployment(self.generation.as_ref(), &self.copy_changes, width);
         [resources, deployment]
