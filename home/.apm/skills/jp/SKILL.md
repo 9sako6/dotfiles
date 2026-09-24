@@ -1,6 +1,7 @@
 ---
 name: jp
-description: 日本語の文章を書くときに使用する。
+description: 日本語の文章を書くときに使用する。ユーザーに指定された場合にのみ使用する。
+user-invocable: true
 ---
 
 日本語の文章作成を開始する前に、必ず [references/writing-rules.md](references/writing-rules.md) を通読する。
