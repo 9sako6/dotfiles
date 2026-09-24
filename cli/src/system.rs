@@ -1,3 +1,7 @@
+#[cfg(test)]
+mod fast_path_tests;
+mod inputs;
+
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
@@ -45,6 +49,8 @@ struct Inputs {
     public_flake: String,
     public_revision: String,
     public_source: PathBuf,
+    resource_flake: String,
+    system_inputs: Option<String>,
     user: String,
 }
 
@@ -153,7 +159,34 @@ impl Snapshot {
     }
 }
 
+struct Runtime {
+    home: PathBuf,
+    selection: PathBuf,
+    current_generation: PathBuf,
+    executable: PathBuf,
+    lock: PathBuf,
+    confirm: Box<dyn FnOnce() -> Result<()>>,
+}
+
 pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
+    run_with(
+        mode,
+        root,
+        show_trace,
+        Runtime {
+            home: PathBuf::from(env::var_os("HOME").context("HOME is not set")?),
+            selection: "/etc/nix-darwin/flake.nix".into(),
+            current_generation: "/run/current-system".into(),
+            executable: env::current_exe()?,
+            lock: env::temp_dir().join(format!("dotfiles-{}-apply.lock", unsafe {
+                libc::geteuid()
+            })),
+            confirm: Box::new(|| confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())),
+        },
+    )
+}
+
+fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Result<ExitCode> {
     let progress = Progress::start("Preparing configuration");
     let user = String::from_utf8(capture(
         Command::new("/usr/bin/id").arg("-un"),
@@ -161,26 +194,18 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     )?)?
     .trim()
     .to_owned();
-    let uid = String::from_utf8(capture(
-        Command::new("/usr/bin/id").arg("-u"),
-        "cannot identify login user",
-    )?)?
-    .trim()
-    .to_owned();
-    if uid == "0" {
+    if unsafe { libc::geteuid() } == 0 {
         bail!("run system commands as the login user");
     }
-    let home = PathBuf::from(env::var_os("HOME").context("HOME is not set")?);
-    let selection = Path::new("/etc/nix-darwin/flake.nix");
+    let home = runtime.home;
+    let selection = runtime.selection.as_path();
     let previous = selected_target(selection)?;
     validate_record(root, previous.as_deref())?;
-    let previous_generation = current_generation(Path::new("/run/current-system"))?;
+    let previous_generation = current_generation(&runtime.current_generation)?;
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
     let _lock = if matches!(mode, Mode::Apply) {
-        Some(acquire_lock(
-            &env::temp_dir().join(format!("dotfiles-{uid}-apply.lock")),
-        )?)
+        Some(acquire_lock(&runtime.lock)?)
     } else {
         None
     };
@@ -198,6 +223,8 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         public_flake: public.reference.clone(),
         public_revision: public.revision.clone(),
         public_source: public.source.clone(),
+        resource_flake: public.reference.clone(),
+        system_inputs: None,
         user: user.clone(),
     };
     let manifest = workspace.path().join("inputs.json");
@@ -224,20 +251,54 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         private.verify()?;
     }
     verify_local(&local_path, &local)?;
-    inputs.local_file = inputs
-        .local_file
-        .map(|_| PathBuf::from("dotfiles.local.toml"));
-    fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
-    fs::copy(
-        public.source.join("nix/host-flake.nix"),
-        workspace.path().join("flake.nix"),
-    )?;
-    let host = String::from_utf8(capture(
-        nix_command(&nix)
-            .args(["store", "add-path", "--name", "source"])
-            .arg(workspace.path()),
-        "cannot freeze host evaluation inputs",
-    )?)?;
+    let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
+    let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
+    let identity = inputs::identity(&system_source, &inputs, &local, &home)?;
+    let copy_only = inputs::matches_generation(previous_generation.as_deref(), &identity)?;
+    inputs.system_inputs = Some(identity);
+    let host = if copy_only {
+        None
+    } else {
+        let projected = tempfile::Builder::new()
+            .prefix("dotfiles-system-")
+            .tempdir()?;
+        let source = projected.path().join("source");
+        system_source.materialize(&public.source, &source)?;
+        let source = String::from_utf8(capture(
+            nix_command(&nix)
+                .args(["store", "add-path", "--name", "source"])
+                .arg(source),
+            "cannot freeze system inputs",
+        )?)?;
+        let hash = String::from_utf8(capture(
+            nix_command(&nix).args(["hash", "path", "--sri", source.trim()]),
+            "cannot identify frozen system inputs",
+        )?)?;
+        let mut reference = url::Url::parse(&format!("path:{}", source.trim()))?;
+        reference
+            .query_pairs_mut()
+            .append_pair("narHash", hash.trim());
+        inputs.public_flake = reference.into();
+        inputs.public_source = PathBuf::from(source.trim());
+        inputs.local_file = inputs
+            .local_file
+            .map(|_| PathBuf::from("dotfiles.local.toml"));
+        fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
+        fs::copy(
+            public.source.join("nix/host-flake.nix"),
+            workspace.path().join("flake.nix"),
+        )?;
+        Some(
+            String::from_utf8(capture(
+                nix_command(&nix)
+                    .args(["store", "add-path", "--name", "source"])
+                    .arg(workspace.path()),
+                "cannot freeze host evaluation inputs",
+            )?)?
+            .trim()
+            .to_owned(),
+        )
+    };
     let mut retain = nix_command(&nix);
     retain
         .args([
@@ -248,33 +309,45 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             "--out-link",
         ])
         .arg(workspace.path().join("input"))
-        .arg(host.trim())
         .arg(&public.source);
+    if let Some(host) = &host {
+        retain.arg(host).arg(&inputs.public_source);
+    }
     if let Some(private) = &private {
         retain.arg(&private.source);
     }
     capture(&mut retain, "cannot retain frozen inputs")?;
     drop(progress);
     let progress = Progress::start("Checking changes");
-    let inventory = evaluate_json(
-        nix_command(&nix)
-            .args([
-                "eval",
-                "--raw",
-                "--no-write-lock-file",
-                "--no-update-lock-file",
-            ])
-            .arg(format!("{}#inventory.text", host.trim())),
-        "cannot evaluate managed resources",
-        show_trace,
-    )?;
-    let mut preview =
-        crate::inventory::Preview::from_inventory(previous_generation.as_deref(), inventory)?;
+    let mut preview = if let Some(host) = &host {
+        let inventory = evaluate_json(
+            nix_command(&nix)
+                .args([
+                    "eval",
+                    "--raw",
+                    "--no-write-lock-file",
+                    "--no-update-lock-file",
+                ])
+                .arg(format!("{host}#inventory.text")),
+            "cannot evaluate managed resources",
+            show_trace,
+        )?;
+        crate::inventory::Preview::from_inventory(previous_generation.as_deref(), inventory)?
+    } else {
+        crate::inventory::Preview::copy_only()
+    };
     let mut derivations = None;
-    let mut system = None;
-    let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
+    let mut system = if copy_only {
+        previous_generation.clone()
+    } else {
+        None
+    };
     if preview.needs_native() || preview.needs_generation_comparison() {
-        let [system_drv, brewfile_drv] = host_derivations(&nix, host.trim(), show_trace)?;
+        let [system_drv, brewfile_drv] = host_derivations(
+            &nix,
+            host.as_deref().context("system inputs are unavailable")?,
+            show_trace,
+        )?;
         if preview.needs_native() {
             let built = build(&nix, &system_drv, &workspace.path().join("system"))?;
             preview = crate::inventory::Preview::load(previous_generation.as_deref(), &built)?;
@@ -306,7 +379,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     }
     preview.copy_changes = copy_plan.changes()?;
     drop(progress);
-    if let Review::Finished = review_plan(mode, preview)? {
+    if let Review::Finished = review_plan_with(mode, preview, runtime.confirm)? {
         return Ok(ExitCode::SUCCESS);
     }
     let verify = || -> Result<()> {
@@ -318,7 +391,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         if selected_target(selection)? != previous {
             bail!("source record changed after preview; nothing was activated");
         }
-        if current_generation(Path::new("/run/current-system"))? != previous_generation {
+        if current_generation(&runtime.current_generation)? != previous_generation {
             bail!(
                 "active generation changed after preview; nothing was activated. Run plan/apply again"
             );
@@ -332,7 +405,11 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
             let progress = Progress::start("Evaluating system");
             let [system_drv, _] = match derivations {
                 Some(derivations) => derivations,
-                None => host_derivations(&nix, host.trim(), show_trace)?,
+                None => host_derivations(
+                    &nix,
+                    host.as_deref().context("system inputs are unavailable")?,
+                    show_trace,
+                )?,
             };
             drop(progress);
             let _progress = Progress::start("Building system");
@@ -342,19 +419,29 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     verify()?;
     let paths = workspace.path().join("copy.json");
     fs::write(&paths, serde_json::to_vec(&configuration.copy)?)?;
-    let status = Command::new(&backend)
+    let mut activation = Command::new(&backend);
+    activation
         .arg("activate")
         .arg(&nix)
         .arg(&user)
         .arg(&system)
         .arg(previous.as_deref().unwrap_or_else(|| Path::new("missing")))
         .arg(root.join("flake.nix"))
-        .arg(env::current_exe()?)
+        .arg(&runtime.executable)
         .arg(&public.source)
         .arg(&paths)
-        .arg(&home)
-        .status()?;
+        .arg(&home);
+    if copy_only {
+        activation
+            .arg("--copy-only")
+            .arg("--current-generation")
+            .arg(&runtime.current_generation);
+    }
+    let status = activation.status()?;
     if !status.success() {
+        if copy_only {
+            bail!("home copy failed; the source record is retained. Some home files may be partially changed. Run plan/apply again");
+        }
         if let Some(previous) = previous_generation {
             eprintln!("Restore the previous profile: sudo nix-env -p /nix/var/nix/profiles/system --set {}", previous.display());
             eprintln!(
@@ -453,6 +540,8 @@ impl InventoryInputs {
             public_flake: public.reference.clone(),
             public_revision: public.revision.clone(),
             public_source: public.source.clone(),
+            resource_flake: public.reference.clone(),
+            system_inputs: None,
             user,
         };
         let private = private
@@ -547,7 +636,18 @@ fn evaluate_configuration<T: serde::de::DeserializeOwned>(
         .context("configuration was not returned by Nix")
 }
 
+#[cfg(test)]
 fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review> {
+    review_plan_with(mode, preview, || {
+        confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())
+    })
+}
+
+fn review_plan_with(
+    mode: Mode,
+    preview: crate::inventory::Preview,
+    confirm: impl FnOnce() -> Result<()>,
+) -> Result<Review> {
     if !preview.has_changes() {
         return Ok(Review::Finished);
     }
@@ -555,7 +655,7 @@ fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review>
     if matches!(mode, Mode::Plan) {
         return Ok(Review::Finished);
     }
-    confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())?;
+    confirm()?;
     Ok(Review::Apply)
 }
 

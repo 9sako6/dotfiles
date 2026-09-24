@@ -53,7 +53,7 @@ class InventoryTests(unittest.TestCase):
         self.assertFalse(values["homebrew.onActivation.upgrade"])
         self.assertFalse(values["nix-homebrew.mutableTaps"])
         packages = {package["name"]: package["declared"] for package in inventory["packages"]}
-        self.assertEqual(packages["dotfiles"], "fixture")
+        self.assertTrue(packages["dotfiles"])
         self.assertTrue(packages["lix"])
         self.assertTrue(packages["zundamonotify"])
         self.assertEqual(values["nightShift.schedule.start"], "22:00")

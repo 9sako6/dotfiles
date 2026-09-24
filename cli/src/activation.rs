@@ -13,6 +13,10 @@ use anyhow::{bail, Context, Result};
 
 #[derive(clap::Args, Debug)]
 pub struct Args {
+    #[arg(long)]
+    copy_only: bool,
+    #[arg(long, default_value = "/run/current-system")]
+    current_generation: PathBuf,
     nix: PathBuf,
     user: String,
     system: PathBuf,
@@ -27,8 +31,10 @@ pub struct Args {
 pub fn run(args: Args) -> Result<ExitCode> {
     let nix_env = args.nix.with_file_name("nix-env");
     let rebuild = args.system.join("sw/bin/darwin-rebuild");
-    require_executable(&nix_env).context("built Lix has no nix-env")?;
-    require_executable(&rebuild).context("built system has no darwin-rebuild")?;
+    if !args.copy_only {
+        require_executable(&nix_env).context("built Lix has no nix-env")?;
+        require_executable(&rebuild).context("built system has no darwin-rebuild")?;
+    }
     let directory = args
         .selection
         .parent()
@@ -38,28 +44,33 @@ pub fn run(args: Args) -> Result<ExitCode> {
     lock_path.push(".apply.lock");
     let _lock = acquire_lock(Path::new(&lock_path))?;
     verify_record(&args)?;
+    verify_generation(&args)?;
 
-    for mut command in [
-        {
-            let mut command = Command::new(nix_env);
-            command.args(["-p", "/nix/var/nix/profiles/system", "--set"]);
-            command.arg(&args.system);
-            command
-        },
-        {
-            let mut command = Command::new(rebuild);
-            command.arg("activate");
-            command
-        },
-        {
-            let mut command = Command::new(env::current_exe()?);
-            command.args(["complete-apply", "--user", &args.user]);
-            command.args([&args.source, &args.paths, &args.home]);
-            command.env("HOME", &args.home);
-            command.env("USER", &args.user).env("LOGNAME", &args.user);
-            command
-        },
-    ] {
+    let mut commands = Vec::new();
+    if !args.copy_only {
+        commands.extend([
+            {
+                let mut command = Command::new(nix_env);
+                command.args(["-p", "/nix/var/nix/profiles/system", "--set"]);
+                command.arg(&args.system);
+                command
+            },
+            {
+                let mut command = Command::new(rebuild);
+                command.arg("activate");
+                command
+            },
+        ]);
+    }
+    commands.push({
+        let mut command = Command::new(env::current_exe()?);
+        command.args(["complete-apply", "--user", &args.user]);
+        command.args([&args.source, &args.paths, &args.home]);
+        command.env("HOME", &args.home);
+        command.env("USER", &args.user).env("LOGNAME", &args.user);
+        command
+    });
+    for mut command in commands {
         let status = command
             .env("SUDO_USER", &args.user)
             .status()
@@ -70,6 +81,7 @@ pub fn run(args: Args) -> Result<ExitCode> {
     }
 
     verify_record(&args)?;
+    verify_generation(&args)?;
     let staging = tempfile::Builder::new()
         .prefix(".dotfiles-record-")
         .tempdir_in(directory)?;
@@ -77,6 +89,14 @@ pub fn run(args: Args) -> Result<ExitCode> {
     symlink(&args.desired, &link)?;
     fs::rename(&link, &args.selection).context("could not persist system source selection")?;
     Ok(ExitCode::SUCCESS)
+}
+
+fn verify_generation(args: &Args) -> Result<()> {
+    if args.copy_only && args.current_generation.canonicalize().ok().as_ref() != Some(&args.system)
+    {
+        bail!("active generation changed during copy; the source record is retained");
+    }
+    Ok(())
 }
 
 fn acquire_lock(path: &Path) -> Result<File> {

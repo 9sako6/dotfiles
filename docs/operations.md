@@ -84,7 +84,11 @@ packagesにはHome Managerとenvironment.systemPackagesの宣言バージョン�
 
 planとapplyの実行中は、設定の準備、システムの評価、ビルド、差分の確認という各処理の開始と終了時の所要時間に加え、同じ処理が続く間は10秒ごとに経過秒数が標準エラー出力に表示されます（完了割合の表示ではありません）。進捗通知に外部コマンドの非公開の診断情報は含まれず、経過秒数の追加表示によって処理が継続中であることを確認できます。差分一覧は標準出力に一括表示され、applyのyes確認に進む前に進捗通知は停止します。
 
-通常のplanおよびapplyでは宣言一覧を評価して差分を先行表示し、applyのyes確認後に必要なシステム評価とビルドを行い、処理前後に入力とアクティブ世代を再検証した上で同一の固定入力に基づく世代を反映する。宣言一覧が同一でも世代が異なる場合は評価時の出力パスを比較して差分を示し、旧世代とのinventory形式が異なる場合のみ従来のビルド付きネイティブ差分へフォールバックするため処理時間を要する。
+実行時に入力ハッシュが一致した場合、Nix全体のinventory評価やシステム評価、build、nix-env、darwin-rebuild、Homebrew反映を省略します。処理はcopy対象の実体差分確認と表示に進み、対話的な承認後に配置処理を実施します。差分がない場合はそのまま終了します。初回適用時や旧世代の記録が存在しない場合、あるいはCLI、Nixコード、private flake、ローカル設定に変更がある場合は、通常システム評価と反映処理を実行します。settingsなどの管理項目も通常の一覧表示を維持します。
+
+短縮経路を利用するには、更新後のRust CLIから通常applyを一度実行し、世代に入力記録を作成する必要があります。更新前CLIで新しいCLIを反映した段階では入力記録がないため、更新後CLIで再度通常applyを実行してください。
+
+通常経路のplanおよびapplyでは宣言一覧を評価して差分を先行表示し、applyのyes確認後に必要なシステム評価とビルドを行い、処理前後に入力とアクティブ世代を再検証した上で同一の固定入力に基づく世代を反映する。宣言一覧が同一でも世代が異なる場合は評価時の出力パスを比較して差分を示し、旧世代とのinventory形式が異なる場合のみ従来のビルド付きネイティブ差分へフォールバックするため処理時間を要する。
 
 公開リポジトリの更新には通常のGit操作を使います。
 
@@ -103,7 +107,7 @@ devcontainerから参照するエージェント用設定の実体配備は、CL
 
 ## CLI のビルドキャッシュ
 
-`.github/workflows/cache-cli.yml` は、`master` への push または手動実行時に macOS arm64 上で Lix をセットアップし、`.#dotfiles` をビルド（Rust の 26 テストを含む）します。CLI の version と `GITHUB_SHA` の一致を検証後、公開 CLI と実行時依存のみを [Cachix](https://docs.cachix.org/getting-started) へ [push](https://docs.cachix.org/pushing) します。Cachix 1.11.1 は root flake の `.#cachix` から取得し、`nix build` や `run` では `--no-update-lock-file` および `--no-write-lock-file` で固定ファイル更新を禁止しています。なお、本ワークフローのアップロード対象に private 構成を含むシステム世代や LLM モデルは含めません。
+`.github/workflows/cache-cli.yml` は、`master` への push または手動実行時に macOS arm64 上で Lix をセットアップし、`.#dotfiles` をビルド（Rustの回帰テストを含む）します。CLIのversionと`.#dotfiles.version`の一致を検証後、公開 CLI と実行時依存のみを [Cachix](https://docs.cachix.org/getting-started) へ [push](https://docs.cachix.org/pushing) します。Cachix 1.11.1 は root flake の `.#cachix` から取得し、`nix build` や `run` では `--no-update-lock-file` および `--no-write-lock-file` で固定ファイル更新を禁止しています。なお、本ワークフローのアップロード対象に private 構成を含むシステム世代や LLM モデルは含めません。
 
 ### 必要な設定
 
@@ -111,13 +115,13 @@ devcontainerから参照するエージェント用設定の実体配備は、CL
 2. cache 限定書き込み token を GitHub Actions secret の `CACHIX_AUTH_TOKEN`、cache 名を Actions variable の `CACHIX_CACHE_NAME` に登録します（token を公開ファイルへ書かないでください）。
 3. 利用者固有のCachix cache URLと公開鍵は、`dotfiles.local.toml` の `private.path` で結合する非公開側 `darwinModules.default` 内の `nix.settings.substituters` および `nix.settings.trusted-public-keys` に追加してください。その際、既定のNix公式キャッシュは保持したまま追記し、設定完了後に `dotfiles apply` を実行して変更を反映します。
 
-導入後は、CI で公開済みで同一入力となる CLI をキャッシュから取得します。未公開コミット、未コミット変更を含む作業ツリー、CI 完了前などのキャッシュ未登録時はローカルビルドされます。Nix 評価と Homebrew 状態確認はローカルに残ります。
+CLIのNix derivationバージョンはcli/の内容ハッシュに基づくsource-...として定義し、システムのconfigurationRevisionと独立して管理します。CIではこのバージョンが.#dotfiles.versionと一致することを検証します。直接cargo buildを実行した場合は、cli/に最後に触れたコミットと未コミット変更の有無（dirty）を表示します。CLIキャッシュは、cli/のソースに加えflake.lock由来のtoolchain等ビルド入力が同一である場合に再利用します。cli/以外のコミット進行のみによる再コンパイルを抑止します。
 
 完成済み出力がローカルNix storeにあれば出力を直接指定して一時GCルートで保持し、依存ビルド計画の再走査を避ける。未取得または保持に失敗する場合は同じ固定derivationから従来どおりキャッシュ取得やビルドを行い、入力やアクティブ世代の検証は省略しない。
 
 個別のシステム世代はこのリポジトリのCIで公開しないため、最上位世代のallowSubstitutesをfalseに設定して外部キャッシュへの問い合わせを省略しています。CLI本体や依存パッケージのバイナリキャッシュ取得は維持されます。
 
-公開・非公開・ローカル設定の入力が同一であればローカルのNix評価キャッシュを再利用し、入力変更時やキャッシュ削除時には再評価を行います。評価キャッシュの外部アップロードはなく、Cachixは公開CLI成果物の配信にのみ利用されます。なお、キャッシュ利用時であってもHomebrew状態の確認、copy計画の策定、およびapply直前の入力検証は毎回必ず実施されます。
+公開・非公開・ローカル設定の入力が同一であればローカルのNix評価キャッシュを再利用し、入力変更時やキャッシュ削除時には再評価を行います。評価キャッシュの外部アップロードはなく、Cachixは公開CLI成果物の配信にのみ利用されます。copy計画の策定とapply直前の入力検証は毎回実施します。Homebrewの確認・反映は通常のシステム反映経路で行います。
 
 ## 設定ファイル仕様 (dotfiles.toml / dotfiles.local.toml)
 
@@ -194,6 +198,8 @@ Nix管理のユーザーツールに `FFmpeg 8.1.2` を追加し、`ffmpeg` お�
 
 背景と計測事例の詳細は[#151](https://github.com/9sako6/dotfiles/issues/151)および[#152](https://github.com/9sako6/dotfiles/issues/152)を参照する。
 
+[短縮経路の計測結果と再現手順](apply-performance.md)を記録している。
+
 ## 検証
 
 変更した振る舞いはコマンドやスクリプトを用いて観測する。リポジトリ全体を検証する際はラッパーを挟まず、CI と同一のテストコマンドを直接実行する。
@@ -205,6 +211,7 @@ bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
 cargo fmt --check --manifest-path cli/Cargo.toml
 cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
 cargo test --locked --manifest-path cli/Cargo.toml
+cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::fast_path_tests::nix_generation_contains_the_inputs_used_by_the_copy_fast_path -- --ignored --exact
 nix build --no-link .#checks.aarch64-darwin.composition .#checks.aarch64-darwin.configuration .#checks.aarch64-darwin.modelFetch
 opencode_package="$(nix build --no-link --print-out-paths .#localllmClient)"
 goal_plugin="$(nix build --no-link --print-out-paths .#localllmGoalPlugin)"

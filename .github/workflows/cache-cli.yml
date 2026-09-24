@@ -42,7 +42,8 @@ jobs:
           test "$(uname -m)" = arm64
           nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file .#dotfiles > "$RUNNER_TEMP/dotfiles-cli-path"
           cli_path="$(cat "$RUNNER_TEMP/dotfiles-cli-path")"
-          test "$("$cli_path/bin/dotfiles" version)" = "dotfiles $GITHUB_SHA"
+          cli_version="$(nix eval --raw --no-update-lock-file --no-write-lock-file .#dotfiles.version)"
+          test "$("$cli_path/bin/dotfiles" version)" = "dotfiles $cli_version"
 
       - name: Publish the CLI runtime closure to Cachix
         env:

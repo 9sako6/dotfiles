@@ -53,7 +53,7 @@ enum Commands {
     },
     #[command(about = "Show effective settings and managed resources")]
     Settings,
-    #[command(about = "Show the commit used to build this CLI")]
+    #[command(about = "Show the source identity used to build this CLI")]
     Version,
 }
 

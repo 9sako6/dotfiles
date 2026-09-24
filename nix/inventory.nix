@@ -1,4 +1,4 @@
-{ configuration, host, inputs, publicSource, privateSource ? null }:
+{ configuration, host, inputs, publicSource, privateSource ? null, resourceSource ? publicSource }:
 let
   inherit (host.pkgs) lib;
   cfg = host.config;
@@ -12,7 +12,7 @@ let
   };
   miseFile = path:
     let
-      config = builtins.fromTOML (builtins.readFile (publicSource + "/${path}"));
+      config = builtins.fromTOML (builtins.readFile (resourceSource + "/${path}"));
       version = value:
         if builtins.isString value then value
         else if builtins.isList value then lib.concatMapStringsSep ", " version value
@@ -71,7 +71,7 @@ let
     [ ".agents/" ".claude/" ".codex/" ".config/opencode/" ];
 in {
   schemaVersion = 3;
-  source = publicSource;
+  source = resourceSource;
   packages = map nixPackage (builtins.filter (p: lib.getName p != "localllm" && lib.getVersion p != "")
     (home.home.packages ++ cfg.environment.systemPackages))
     ++ [ (nixPackage toolset.ankiConnect) ]

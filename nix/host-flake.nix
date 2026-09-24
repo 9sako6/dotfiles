@@ -10,6 +10,8 @@
       }).config;
       host = public.lib.mkHost {
         inherit configuration;
+        resourceSource = (builtins.getFlake (input.resourceFlake or input.publicFlake)).outPath;
+        systemInputs = input.systemInputs or null;
         configurationRevision = input.publicRevision;
         dotfilesDirectory = input.directory;
         primaryUser = input.user;

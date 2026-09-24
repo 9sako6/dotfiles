@@ -14,7 +14,8 @@ let
   ) configuration.copy;
   collectLiveFiles = relativeRoot: sourceRoot:
     let
-      entries = builtins.readDir sourceRoot;
+      entries = if builtins.any (owned: relativeRoot == owned || lib.hasPrefix (owned + "/") relativeRoot) configuration.copy
+        then { } else builtins.readDir sourceRoot;
     in
     builtins.foldl'
       (files: name:

@@ -30,7 +30,7 @@ let
   results = {
     cliRevision = (lib.findFirst (package: (package.pname or "") == "dotfiles") null
       composed.config.environment.systemPackages).DOTFILES_BUILD_REVISION
-      == "0123456789abcdef0123456789abcdef01234567-dirty";
+      == self.packages.${pkgs.stdenv.hostPlatform.system}.dotfiles.version;
     cliCacheReuse = (lib.findFirst (package: (package.pname or "") == "dotfiles") null
       cacheHost.config.environment.systemPackages).outPath == self.packages.${pkgs.stdenv.hostPlatform.system}.dotfiles.outPath;
     buildable = (builtins.tryEval composed.system.drvPath).success;

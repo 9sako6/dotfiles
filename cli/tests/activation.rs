@@ -56,14 +56,19 @@ while [ ! -e "$FIXTURE_ROOT/release" ]; do sleep 0.01; done
     }
 
     fn start(&mut self, expected: &str, desired: &str) -> usize {
+        self.start_with(expected, desired, &[])
+    }
+
+    fn start_with(&mut self, expected: &str, desired: &str, options: &[&str]) -> usize {
         let user = Command::new("/usr/bin/id").arg("-un").output().unwrap();
         assert!(user.status.success());
         let index = self.children.len();
         let child = Command::new(cargo_bin!("dotfiles"))
             .arg("apply-built")
+            .args(options)
             .arg(self.path("lix/bin/nix"))
             .arg(String::from_utf8(user.stdout).unwrap().trim())
-            .arg(self.path("system"))
+            .arg(self.path("system").canonicalize().unwrap())
             .arg(self.path("etc/flake.nix"))
             .args([expected, desired])
             .args([
@@ -292,4 +297,69 @@ fn home_copy_follows_activation_and_failure_does_not_commit_the_record() {
     );
     fs::write(fixture.path("source/home/managed"), "next").unwrap();
     fixture.run("/source/flake.nix", "/next/flake.nix", 0);
+}
+
+#[test]
+fn copy_only_keeps_the_system_generation_and_checks_it_under_the_shared_lock() {
+    let mut fixture = Fixture::new();
+    let generation = fixture.path("system").canonicalize().unwrap();
+    let current = fixture.path("current-system");
+    symlink(&generation, &current).unwrap();
+    fs::write(fixture.path("source/home/resource"), "new resource").unwrap();
+    fs::write(fixture.path("paths.json"), r#"["resource"]"#).unwrap();
+    let options = [
+        "--copy-only",
+        "--current-generation",
+        current.to_str().unwrap(),
+    ];
+    let contender = fixture.start("missing", "/full/flake.nix");
+    wait_for(|| fixture.path("entries").exists());
+    let copy = fixture.start_with("missing", "/copy/flake.nix", &options);
+    assert!(!fixture.finish(copy).success());
+    assert!(fixture
+        .errors(copy)
+        .contains("system apply is already running"));
+    assert!(!fixture.path("home/resource").exists());
+    fixture.release();
+    assert!(fixture.finish(contender).success());
+    fs::remove_file(fixture.path("home/resource")).unwrap();
+    fs::remove_file(fixture.path("order")).unwrap();
+    fs::remove_file(fixture.path("lix/bin/nix-env")).unwrap();
+    fs::remove_file(fixture.path("system/sw/bin/darwin-rebuild")).unwrap();
+    let copy = fixture.start_with("/full/flake.nix", "/copy/flake.nix", &options);
+    assert!(fixture.finish(copy).success(), "{}", fixture.errors(copy));
+    assert_eq!(
+        fs::read_to_string(fixture.path("home/resource")).unwrap(),
+        "new resource"
+    );
+    assert_eq!(current.canonicalize().unwrap(), generation);
+    assert!(!fixture.path("order").exists());
+    assert_eq!(
+        fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+        Path::new("/copy/flake.nix")
+    );
+    fs::write(fixture.path("source/home/resource"), "must not copy").unwrap();
+    fs::remove_file(&current).unwrap();
+    fs::create_dir(fixture.path("other-system")).unwrap();
+    symlink(fixture.path("other-system"), &current).unwrap();
+    let copy = fixture.start_with("/copy/flake.nix", "/wrong/flake.nix", &options);
+    assert!(!fixture.finish(copy).success());
+    assert!(fixture.errors(copy).contains("active generation changed"));
+    assert_eq!(
+        fs::read_to_string(fixture.path("home/resource")).unwrap(),
+        "new resource"
+    );
+    assert_eq!(
+        fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+        Path::new("/copy/flake.nix")
+    );
+    fs::remove_file(&current).unwrap();
+    symlink(&generation, &current).unwrap();
+    fs::remove_file(fixture.path("source/home/resource")).unwrap();
+    let copy = fixture.start_with("/copy/flake.nix", "/failed/flake.nix", &options);
+    assert!(!fixture.finish(copy).success());
+    assert_eq!(
+        fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+        Path::new("/copy/flake.nix")
+    );
 }

@@ -76,7 +76,7 @@ pub fn report(inputs: crate::system::InventoryInputs, width: Option<usize>) -> R
 }
 
 pub struct Preview {
-    resources: ResourceDiff,
+    resources: Option<ResourceDiff>,
     notice: Option<&'static str>,
     generation: Option<(String, String)>,
     pub copy_changes: Vec<crate::home_copy::CopyChange>,
@@ -84,6 +84,16 @@ pub struct Preview {
 }
 
 impl Preview {
+    pub fn copy_only() -> Self {
+        Self {
+            resources: None,
+            notice: None,
+            generation: None,
+            copy_changes: Vec::new(),
+            native: String::new(),
+        }
+    }
+
     pub fn load(current: Option<&Path>, desired: &Path) -> Result<Self> {
         let next = read_generation(desired)?.context("planned generation has no inventory")?;
         let mut preview = Self::from_inventory(current, next)?;
@@ -111,7 +121,7 @@ impl Preview {
             None
         };
         Ok(Self {
-            resources: ResourceDiff::between(previous.as_ref(), &next),
+            resources: Some(ResourceDiff::between(previous.as_ref(), &next)),
             notice,
             generation: None,
             copy_changes: Vec::new(),
@@ -124,7 +134,7 @@ impl Preview {
     }
 
     pub fn needs_generation_comparison(&self) -> bool {
-        self.notice.is_none() && self.resources.is_empty()
+        self.notice.is_none() && self.resources.as_ref().is_some_and(ResourceDiff::is_empty)
     }
 
     pub fn compare_generation(
@@ -151,7 +161,10 @@ impl Preview {
 
     pub fn has_changes(&self) -> bool {
         self.notice.is_some()
-            || !self.resources.is_empty()
+            || self
+                .resources
+                .as_ref()
+                .is_some_and(|resources| !resources.is_empty())
             || self.generation.is_some()
             || !self.copy_changes.is_empty()
     }
@@ -170,7 +183,10 @@ impl Preview {
         let resources = if let Some(notice) = self.notice {
             format!("{notice}\n\n{}", self.native).trim_end().into()
         } else {
-            render::diff(&self.resources, width)
+            self.resources
+                .as_ref()
+                .map(|resources| render::diff(resources, width))
+                .unwrap_or_default()
         };
         let deployment = render::deployment(self.generation.as_ref(), &self.copy_changes, width);
         [resources, deployment]

@@ -46,15 +46,16 @@
         name = "dotfiles-user-tools";
         paths = toolset.packages;
       };
-      dotfilesRevision = self.rev or self.dirtyRev or "unknown";
-      mkDotfilesPackage = revision: pkgs.rustPlatform.buildRustPackage {
+      dotfilesSource = builtins.path { path = ./cli; name = "dotfiles-cli-source"; };
+      dotfilesRevision = "source-${builtins.substring 0 32 (builtins.unsafeDiscardStringContext (builtins.baseNameOf dotfilesSource))}";
+      dotfilesPackage = pkgs.rustPlatform.buildRustPackage {
         pname = "dotfiles";
-        version = revision;
-        src = ./cli;
+        version = dotfilesRevision;
+        src = dotfilesSource;
         cargoLock.lockFile = ./cli/Cargo.lock;
-        env.DOTFILES_BUILD_REVISION = revision;
+        nativeCheckInputs = [ pkgs.git ];
+        env.DOTFILES_BUILD_REVISION = dotfilesRevision;
       };
-      dotfilesPackage = mkDotfilesPackage dotfilesRevision;
       primaryUser = let user = builtins.getEnv "DARWIN_PRIMARY_USER"; in if user == "" then "fixture" else user;
       defaultConfiguration = (import ./nix/configuration.nix {
         inherit (nixpkgs) lib;
@@ -68,10 +69,12 @@
         configuration ? defaultConfiguration,
         primaryUser,
         privateSource ? null,
+        resourceSource ? self.outPath,
+        systemInputs ? null,
       }:
         let
           inventory = darwinSystem.pkgs.writeText "dotfiles-inventory.json" (builtins.toJSON (import ./nix/inventory.nix {
-            inherit configuration inputs privateSource;
+            inherit configuration inputs privateSource resourceSource;
             host = darwinSystem;
             publicSource = self.outPath;
           }));
@@ -84,10 +87,10 @@
               ({ pkgs, ... }: {
                 system.systemBuilderCommands = ''
                   ln -s ${inventory} "$out/dotfiles-inventory.json"
+                '' + pkgs.lib.optionalString (systemInputs != null) ''
+                  ln -s ${pkgs.writeText "dotfiles-system-inputs" systemInputs} "$out/dotfiles-system-inputs"
                 '';
-                environment.systemPackages = [
-                  (mkDotfilesPackage (if configurationRevision == null then dotfilesRevision else configurationRevision))
-                ];
+                environment.systemPackages = [ dotfilesPackage ];
                 assertions = [ {
                   assertion = toString pkgs.path == nixpkgs.outPath;
                   message = "private modules must use the public nixpkgs package set";
@@ -119,11 +122,13 @@
         dotfilesDirectory,
         primaryUser,
         privateFlake ? null,
+        resourceSource ? self.outPath,
+        systemInputs ? null,
       }:
         assert nixpkgs.lib.assertMsg (privateFlake == null || privateFlake ? darwinModules.default)
           "private.path must export darwinModules.default";
         mkDarwinSystem {
-          inherit configuration configurationRevision dotfilesDirectory primaryUser;
+          inherit configuration configurationRevision dotfilesDirectory primaryUser resourceSource systemInputs;
           privateSource = if privateFlake == null then null else privateFlake.outPath or null;
           modules = nixpkgs.lib.optional (privateFlake != null) privateFlake.darwinModules.default;
         };

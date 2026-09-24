@@ -21,7 +21,7 @@ fn git_revision() -> Option<String> {
     if git_root.canonicalize().ok()? != root.canonicalize().ok()? {
         return None;
     }
-    for path in git(root, &["ls-files", "-z"])?.split('\0') {
+    for path in git(root, &["ls-files", "-z", "--", "cli"])?.split('\0') {
         if !path.is_empty() {
             println!("cargo::rerun-if-changed={}", root.join(path).display());
         }
@@ -33,8 +33,11 @@ fn git_revision() -> Option<String> {
             println!("cargo::rerun-if-changed={}", path.display());
         }
     }
-    let revision = git(root, &["rev-parse", "HEAD"])?;
-    let status = git(root, &["status", "--porcelain", "--untracked-files=no"])?;
+    let revision = git(root, &["log", "-1", "--format=%H", "--", "cli"])?;
+    let status = git(
+        root,
+        &["status", "--porcelain", "--untracked-files=no", "--", "cli"],
+    )?;
     Some(if status.is_empty() {
         revision
     } else {
