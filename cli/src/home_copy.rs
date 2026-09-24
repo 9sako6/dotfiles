@@ -221,6 +221,10 @@ fn validate_relative_path(value: &str) -> Result<()> {
 }
 
 fn sync_entry(source: &Path, destination: &Path) -> Result<()> {
+    let after = fingerprint(source, true)?.context("copy source disappeared")?;
+    if fingerprint(destination, false)?.as_ref() == Some(&after) {
+        return Ok(());
+    }
     let metadata = fs::symlink_metadata(source)
         .with_context(|| format!("failed to inspect {}", source.display()))?;
     if metadata.file_type().is_symlink() {
@@ -241,10 +245,11 @@ fn sync_file(source: &Path, destination: &Path) -> Result<()> {
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create parent {}", parent.display()))?;
     }
-    if fs::symlink_metadata(destination).is_ok() {
-        remove_entry(destination)?;
-    }
-    fs::copy(source, destination).with_context(|| {
+    let parent = destination
+        .parent()
+        .context("copy destination has no parent")?;
+    let temporary = tempfile::NamedTempFile::new_in(parent)?;
+    fs::copy(source, temporary.path()).with_context(|| {
         format!(
             "failed to copy {} to {}",
             source.display(),
@@ -252,8 +257,17 @@ fn sync_file(source: &Path, destination: &Path) -> Result<()> {
         )
     })?;
     let mode = fs::metadata(source)?.permissions().mode() | 0o200;
-    fs::set_permissions(destination, fs::Permissions::from_mode(mode))
+    fs::set_permissions(temporary.path(), fs::Permissions::from_mode(mode))
         .with_context(|| format!("failed to set copy permissions: {}", destination.display()))?;
+    match fs::symlink_metadata(destination) {
+        Ok(metadata) if metadata.is_dir() => fs::remove_dir_all(destination)?,
+        Ok(_) => (),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+        Err(error) => return Err(error).context("cannot inspect copy destination"),
+    }
+    temporary
+        .persist(destination)
+        .with_context(|| format!("failed to replace {}", destination.display()))?;
     Ok(())
 }
 

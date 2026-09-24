@@ -264,6 +264,7 @@ dependencies = [
  "clap",
  "console",
  "fs2",
+ "libc",
  "predicates",
  "serde",
  "serde_json",

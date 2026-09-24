@@ -258,85 +258,9 @@ install_system_apply_built_system() (
   desired_target="$8"
   shift 8
 
-  nix_env_bin="${nix_bin%/nix}/nix-env"
-  rebuild_bin="${system_path}/sw/bin/darwin-rebuild"
-
-  [ -x "$nix_env_bin" ] || install_system_fail "built Lix has no nix-env"
-  [ -x "$rebuild_bin" ] || install_system_fail "built system has no darwin-rebuild"
-  [ -x /usr/bin/perl ] || install_system_fail 'system Perl is required for the apply lock'
-
-  # Keep one stable inode. The kernel releases its lock when the last inherited
-  # descriptor closes, including after an interrupted parent or failed activation.
-  lock_program='
-    use strict;
-    use warnings;
-    use Fcntl qw(:DEFAULT :flock F_SETFD O_NOFOLLOW);
-    use File::Basename qw(dirname);
-    use File::Path qw(make_path);
-    my $path = shift @ARGV;
-    make_path(dirname($path));
-    sysopen(my $lock, $path, O_RDWR | O_CREAT | O_NOFOLLOW, 0600)
-      or die "system: cannot open system apply lock: $!\n";
-    -f $lock or die "system: system apply lock is not a regular file\n";
-    flock($lock, LOCK_EX | LOCK_NB)
-      or die "system: system apply is already running (or lock unavailable): $!\n";
-    fcntl($lock, F_SETFD, 0)
-      or die "system: cannot retain system apply lock: $!\n";
-    exec { $ARGV[0] } @ARGV or die "system: cannot start activation: $!\n";
-  '
-  "$sudo_bin" "$env_bin" -u PERL5OPT -u PERL5LIB -u PERLLIB SUDO_USER="$primary_user" \
-    /usr/bin/perl -e "$lock_program" "${selection_path}.apply.lock" /bin/sh -eu -c '
-    nix_env_bin="$1"
-    rebuild_bin="$2"
-    system_path="$3"
-    selection_path="$4"
-    expected_target="$5"
-    desired_target="$6"
-
-    selection_dir="$(/usr/bin/dirname -- "$selection_path")"
-    trap "exit 1" HUP INT TERM
-
-    install_system_verify_record() {
-      if [ "$expected_target" = missing ]; then
-        if [ -e "$selection_path" ] || [ -L "$selection_path" ]; then
-          printf "system: system source selection changed during apply\n" >&2
-          exit 1
-        fi
-      else
-        if [ ! -L "$selection_path" ] ||
-          [ "$(/usr/bin/readlink -- "$selection_path")" != "$expected_target" ]
-        then
-          printf "system: system source selection changed during apply\n" >&2
-          exit 1
-        fi
-      fi
-
-    }
-    install_system_verify_record
-
-    "$nix_env_bin" -p /nix/var/nix/profiles/system --set "$system_path"
-    "$rebuild_bin" activate
-    shift 6
-    if [ "$#" -gt 0 ]; then
-      cli_bin="$1"
-      source="$2"
-      paths="$3"
-      home_directory="$4"
-      /usr/bin/sudo --user="$SUDO_USER" -- "$cli_bin" complete-apply "$source" "$paths" "$home_directory"
-    fi
-
-    install_system_verify_record
-    temporary_path="${selection_dir}/.flake.nix.$$"
-    /bin/ln -s -- "$desired_target" "$temporary_path" || {
-      printf "system: could not stage system source selection\n" >&2
-      exit 1
-    }
-    if ! /bin/mv -f -- "$temporary_path" "$selection_path"; then
-      /bin/rm -f -- "$temporary_path"
-      printf "system: could not persist system source selection\n" >&2
-      exit 1
-    fi
-  ' install-system-apply \
-    "$nix_env_bin" "$rebuild_bin" "$system_path" "$selection_path" \
-    "$expected_target" "$desired_target" "$@"
+  cli_bin="$1"
+  shift
+  "$sudo_bin" "$env_bin" SUDO_USER="$primary_user" \
+    "$cli_bin" apply-built "$nix_bin" "$primary_user" "$system_path" \
+    "$selection_path" "$expected_target" "$desired_target" "$@"
 )
