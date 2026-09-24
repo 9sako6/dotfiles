@@ -1,3 +1,4 @@
+mod activation;
 mod agents;
 mod home_copy;
 mod inventory;
@@ -27,7 +28,11 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     #[command(hide = true)]
+    ApplyBuilt(activation::Args),
+    #[command(hide = true)]
     CompleteApply {
+        #[arg(long)]
+        user: Option<String>,
         source: PathBuf,
         paths: PathBuf,
         home: PathBuf,
@@ -86,18 +91,27 @@ fn run() -> Result<ExitCode> {
     }
 
     if let Commands::CompleteApply {
+        user,
         source,
         paths,
         home,
     } = command
     {
+        if let Some(user) = user {
+            activation::become_user(&user)?;
+        }
         let paths: Vec<String> = serde_json::from_slice(&std::fs::read(paths)?)?;
         home_copy::plan(&source, &home, &paths)?.apply()?;
         return Ok(ExitCode::SUCCESS);
     }
+    if let Commands::ApplyBuilt(args) = command {
+        return activation::run(args);
+    }
     let dotfiles_dir = resolve_dotfiles_dir()?;
     match command {
-        Commands::CompleteApply { .. } | Commands::Version => unreachable!(),
+        Commands::ApplyBuilt(_) | Commands::CompleteApply { .. } | Commands::Version => {
+            unreachable!()
+        }
         Commands::Agents { operation } => agents::run(operation, &dotfiles_dir),
         Commands::Plan { options } => {
             system::run(system::Mode::Plan, &dotfiles_dir, options.show_trace)
