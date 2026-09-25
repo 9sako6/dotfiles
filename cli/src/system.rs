@@ -254,7 +254,8 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
     let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
     let identity = inputs::identity(&system_source, &inputs, &local, &home)?;
-    let copy_only = inputs::matches_generation(previous_generation.as_deref(), &identity)?;
+    let copy_only = previous.is_some()
+        && inputs::matches_generation(previous_generation.as_deref(), &identity)?;
     inputs.system_inputs = Some(identity);
     let host = if copy_only {
         None

@@ -129,6 +129,7 @@ esac
             &["resource".into()],
         );
         symlink(state.join("generation"), state.join("current-system")).unwrap();
+        symlink(root.join("flake.nix"), state.join("selection")).unwrap();
         Self {
             _temporary: temporary,
             root,
@@ -210,7 +211,10 @@ fn input_and_generation_changes_after_copy_preview_stop_before_activation() {
                     fs::remove_file(state.join("current-system"))?;
                     symlink(state.join("other-generation"), state.join("current-system"))?;
                 }
-                "selection" => symlink("/other/flake.nix", state.join("selection"))?,
+                "selection" => {
+                    fs::remove_file(state.join("selection"))?;
+                    symlink("/other/flake.nix", state.join("selection"))?;
+                }
                 name => fs::write(root.join(name), "changed after confirmation")?,
             }
             Ok(())
@@ -227,10 +231,12 @@ fn input_and_generation_changes_after_copy_preview_stop_before_activation() {
 
 #[test]
 fn cli_or_nix_changes_and_legacy_generations_require_system_evaluation() {
-    for changed in ["cli/src/main.rs", "nix/home.nix", "legacy"] {
+    for changed in ["cli/src/main.rs", "nix/home.nix", "legacy", "selection"] {
         let fixture = Fixture::new();
         if changed == "legacy" {
             fs::remove_file(fixture.state.join("generation/dotfiles-system-inputs")).unwrap();
+        } else if changed == "selection" {
+            fs::remove_file(fixture.state.join("selection")).unwrap();
         } else {
             write(&fixture.root.join(changed), "changed system input");
         }
@@ -303,7 +309,7 @@ esac
             .unwrap();
         let system_source = inputs::SystemSource::inspect(&source, &configuration.copy).unwrap();
         let inputs = Inputs {
-            directory: root,
+            directory: root.clone(),
             local_file: None,
             private_flake: None,
             public_flake: "unused".into(),
@@ -318,6 +324,8 @@ esac
             &inputs::identity(&system_source, &inputs, &None, &state.join("home")).unwrap(),
         );
         symlink(state.join("generation"), state.join("current-system")).unwrap();
+        symlink(root.join("flake.nix"), state.join("selection")).unwrap();
+        write(&state.join("selection.apply.lock"), "");
         return;
     }
     let runtime = Runtime {

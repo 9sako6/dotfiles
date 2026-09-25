@@ -95,6 +95,8 @@ while [ ! -e "$FIXTURE_ROOT/release" ]; do sleep 0.01; done
         let library = Path::new(env!("CARGO_MANIFEST_DIR")).join("../lib/install-system.sh");
         let user = Command::new("/usr/bin/id").arg("-un").output().unwrap();
         assert!(user.status.success());
+        let expected =
+            fs::read_link(self.path("etc/flake.nix")).unwrap_or_else(|_| PathBuf::from("missing"));
         Command::new("/bin/sh")
             .args([
                 "-eu",
@@ -109,7 +111,8 @@ while [ ! -e "$FIXTURE_ROOT/release" ]; do sleep 0.01; done
             .arg(String::from_utf8(user.stdout).unwrap().trim())
             .arg(self.path("system").canonicalize().unwrap())
             .arg(self.path("etc/flake.nix"))
-            .args(["missing", "/source/flake.nix"])
+            .arg(expected)
+            .arg("/source/flake.nix")
             .args([
                 self.path("legacy-dotfiles"),
                 self.path("source"),
@@ -152,6 +155,7 @@ impl Drop for Fixture {
             unsafe { libc::kill(-(child.id() as i32), libc::SIGKILL) };
             let _ = child.wait();
         }
+        let _ = fs::set_permissions(self.path("etc"), fs::Permissions::from_mode(0o755));
     }
 }
 
@@ -171,7 +175,10 @@ fn wait_for(mut ready: impl FnMut() -> bool) {
 fn backend_upgrades_an_incompatible_caller_and_preserves_copy_only_behavior() {
     for copy_only in [false, true] {
         let fixture = Fixture::new();
-        fixture.executable("sudo", "#!/bin/sh\nexec \"$@\"\n");
+        fixture.executable(
+            "sudo",
+            "#!/bin/sh\ntouch \"$FIXTURE_ROOT/privileged\"\nexec \"$@\"\n",
+        );
         fixture.executable(
             "legacy-dotfiles",
             "#!/bin/sh\nprintf \"error: unrecognized subcommand 'apply-built'\\n\" >&2\nexit 2\n",
@@ -188,6 +195,15 @@ fn backend_upgrades_an_incompatible_caller_and_preserves_copy_only_behavior() {
         let current = fixture.path("current-system");
         symlink(&generation, &current).unwrap();
         let options = if copy_only {
+            fixture.executable("sudo", "#!/bin/sh\nexit 99\n");
+            symlink("/source/flake.nix", fixture.path("etc/flake.nix")).unwrap();
+            fs::write(fixture.path("etc/flake.nix.apply.lock"), "").unwrap();
+            fs::set_permissions(
+                fixture.path("etc/flake.nix.apply.lock"),
+                fs::Permissions::from_mode(0o444),
+            )
+            .unwrap();
+            fs::set_permissions(fixture.path("etc"), fs::Permissions::from_mode(0o555)).unwrap();
             fs::remove_file(fixture.path("lix/bin/nix-env")).unwrap();
             fs::remove_file(fixture.path("system/sw/bin/darwin-rebuild")).unwrap();
             vec![
@@ -213,9 +229,11 @@ fn backend_upgrades_an_incompatible_caller_and_preserves_copy_only_behavior() {
             Path::new("/source/flake.nix")
         );
         if copy_only {
+            assert!(!fixture.path("privileged").exists());
             assert!(!fixture.path("order").exists());
             assert_eq!(current.canonicalize().unwrap(), generation);
         } else {
+            assert!(fixture.path("privileged").exists());
             assert_eq!(
                 fs::read_to_string(fixture.path("order")).unwrap(),
                 "profile\nactivation\n"
@@ -252,6 +270,7 @@ fn concurrent_activations_share_one_stable_lock_even_with_stale_contents() {
     let mut fixture = Fixture::new();
     let lock = fixture.path("etc/flake.nix.apply.lock");
     fs::write(&lock, "2147483647\n").unwrap();
+    fs::set_permissions(&lock, fs::Permissions::from_mode(0o600)).unwrap();
     let inode = fs::metadata(&lock).unwrap().ino();
     let contenders: Vec<_> = (0..4)
         .map(|_| fixture.start("missing", "/source/flake.nix"))
@@ -289,7 +308,9 @@ fn concurrent_activations_share_one_stable_lock_even_with_stale_contents() {
         Path::new("/source/flake.nix")
     );
     fixture.run("/source/flake.nix", "/next/flake.nix", 0);
-    assert_eq!(fs::metadata(lock).unwrap().ino(), inode);
+    let metadata = fs::metadata(lock).unwrap();
+    assert_eq!(metadata.ino(), inode);
+    assert_eq!(metadata.permissions().mode() & 0o777, 0o644);
 }
 
 #[test]
@@ -426,7 +447,7 @@ fn copy_only_keeps_the_system_generation_and_checks_it_under_the_shared_lock() {
     ];
     let contender = fixture.start("missing", "/full/flake.nix");
     wait_for(|| fixture.path("entries").exists());
-    let copy = fixture.start_with("missing", "/copy/flake.nix", &options);
+    let copy = fixture.start_with("missing", "/full/flake.nix", &options);
     assert!(!fixture.finish(copy).success());
     assert!(fixture
         .errors(copy)
@@ -438,7 +459,12 @@ fn copy_only_keeps_the_system_generation_and_checks_it_under_the_shared_lock() {
     fs::remove_file(fixture.path("order")).unwrap();
     fs::remove_file(fixture.path("lix/bin/nix-env")).unwrap();
     fs::remove_file(fixture.path("system/sw/bin/darwin-rebuild")).unwrap();
-    let copy = fixture.start_with("/full/flake.nix", "/copy/flake.nix", &options);
+    let record = fs::symlink_metadata(fixture.path("etc/flake.nix")).unwrap();
+    let lock = fixture.path("etc/flake.nix.apply.lock");
+    let lock_inode = fs::metadata(&lock).unwrap().ino();
+    fs::set_permissions(&lock, fs::Permissions::from_mode(0o444)).unwrap();
+    fs::set_permissions(fixture.path("etc"), fs::Permissions::from_mode(0o555)).unwrap();
+    let copy = fixture.start_with("/full/flake.nix", "/full/flake.nix", &options);
     assert!(fixture.finish(copy).success(), "{}", fixture.errors(copy));
     assert_eq!(
         fs::read_to_string(fixture.path("home/resource")).unwrap(),
@@ -448,13 +474,22 @@ fn copy_only_keeps_the_system_generation_and_checks_it_under_the_shared_lock() {
     assert!(!fixture.path("order").exists());
     assert_eq!(
         fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
-        Path::new("/copy/flake.nix")
+        Path::new("/full/flake.nix")
+    );
+    let after = fs::symlink_metadata(fixture.path("etc/flake.nix")).unwrap();
+    assert_eq!(after.ino(), record.ino());
+    assert_eq!(after.mtime(), record.mtime());
+    assert_eq!(after.mtime_nsec(), record.mtime_nsec());
+    assert_eq!(fs::metadata(&lock).unwrap().ino(), lock_inode);
+    assert_eq!(
+        fs::metadata(&lock).unwrap().permissions().mode() & 0o777,
+        0o444
     );
     fs::write(fixture.path("source/home/resource"), "must not copy").unwrap();
     fs::remove_file(&current).unwrap();
     fs::create_dir(fixture.path("other-system")).unwrap();
     symlink(fixture.path("other-system"), &current).unwrap();
-    let copy = fixture.start_with("/copy/flake.nix", "/wrong/flake.nix", &options);
+    let copy = fixture.start_with("/full/flake.nix", "/full/flake.nix", &options);
     assert!(!fixture.finish(copy).success());
     assert!(fixture.errors(copy).contains("active generation changed"));
     assert_eq!(
@@ -463,15 +498,65 @@ fn copy_only_keeps_the_system_generation_and_checks_it_under_the_shared_lock() {
     );
     assert_eq!(
         fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
-        Path::new("/copy/flake.nix")
+        Path::new("/full/flake.nix")
     );
     fs::remove_file(&current).unwrap();
     symlink(&generation, &current).unwrap();
     fs::remove_file(fixture.path("source/home/resource")).unwrap();
-    let copy = fixture.start_with("/copy/flake.nix", "/failed/flake.nix", &options);
+    let copy = fixture.start_with("/full/flake.nix", "/full/flake.nix", &options);
     assert!(!fixture.finish(copy).success());
     assert_eq!(
         fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
-        Path::new("/copy/flake.nix")
+        Path::new("/full/flake.nix")
     );
+}
+
+#[test]
+fn copy_only_requires_the_existing_shared_lock_and_an_unchanged_source_record() {
+    for state in ["missing-lock", "missing-record", "different-record"] {
+        let mut fixture = Fixture::new();
+        let generation = fixture.path("system").canonicalize().unwrap();
+        let current = fixture.path("current-system");
+        symlink(&generation, &current).unwrap();
+        fs::write(fixture.path("source/home/resource"), "must not copy").unwrap();
+        fs::write(fixture.path("paths.json"), r#"["resource"]"#).unwrap();
+        let expected = if state == "missing-record" {
+            "missing"
+        } else {
+            symlink("/source/flake.nix", fixture.path("etc/flake.nix")).unwrap();
+            "/source/flake.nix"
+        };
+        if state != "missing-lock" {
+            fs::write(fixture.path("etc/flake.nix.apply.lock"), "").unwrap();
+        }
+        let desired = if state == "different-record" {
+            "/other/flake.nix"
+        } else {
+            expected
+        };
+        let copy = fixture.start_with(
+            expected,
+            desired,
+            &[
+                "--copy-only",
+                "--current-generation",
+                current.to_str().unwrap(),
+            ],
+        );
+        assert!(!fixture.finish(copy).success());
+        assert!(fixture.errors(copy).contains("run a normal system apply"));
+        assert!(!fixture.path("home/resource").exists());
+        assert!(!fixture.path("order").exists());
+        if state == "missing-lock" {
+            assert!(!fixture.path("etc/flake.nix.apply.lock").exists());
+        }
+        if state == "missing-record" {
+            assert!(!fixture.path("etc/flake.nix").is_symlink());
+        } else {
+            assert_eq!(
+                fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+                Path::new(expected)
+            );
+        }
+    }
 }

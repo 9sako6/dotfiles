@@ -39,12 +39,17 @@ pub fn run(args: Args) -> Result<ExitCode> {
         .selection
         .parent()
         .context("source record has no parent")?;
-    fs::create_dir_all(directory)?;
+    if !args.copy_only {
+        fs::create_dir_all(directory)?;
+    }
     let mut lock_path = OsString::from(&args.selection);
     lock_path.push(".apply.lock");
-    let _lock = acquire_lock(Path::new(&lock_path))?;
+    let _lock = acquire_lock(Path::new(&lock_path), args.copy_only)?;
     verify_record(&args)?;
     verify_generation(&args)?;
+    if args.copy_only && (args.expected == Path::new("missing") || args.expected != args.desired) {
+        bail!("home copy requires an unchanged source record; run a normal system apply first");
+    }
 
     let mut commands = Vec::new();
     if !args.copy_only {
@@ -82,6 +87,9 @@ pub fn run(args: Args) -> Result<ExitCode> {
 
     verify_record(&args)?;
     verify_generation(&args)?;
+    if args.copy_only {
+        return Ok(ExitCode::SUCCESS);
+    }
     let staging = tempfile::Builder::new()
         .prefix(".dotfiles-record-")
         .tempdir_in(directory)?;
@@ -99,20 +107,27 @@ fn verify_generation(args: &Args) -> Result<()> {
     Ok(())
 }
 
-fn acquire_lock(path: &Path) -> Result<File> {
+fn acquire_lock(path: &Path, copy_only: bool) -> Result<File> {
     let file = OpenOptions::new()
         .read(true)
-        .write(true)
-        .create(true)
+        .write(!copy_only)
+        .create(!copy_only)
         .truncate(false)
-        .mode(0o600)
+        .mode(0o644)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path)
-        .context("cannot open system apply lock")?;
+        .context(if copy_only {
+            "cannot open system apply lock; run a normal system apply once to prepare password-free home copy"
+        } else {
+            "cannot open system apply lock"
+        })?;
     if !file.metadata()?.is_file() {
         bail!("system apply lock is not a regular file");
     }
     fs2::FileExt::try_lock_exclusive(&file).context("system apply is already running")?;
+    if !copy_only {
+        file.set_permissions(fs::Permissions::from_mode(0o644))?;
+    }
     let flags = unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETFD) };
     if flags < 0
         || unsafe { libc::fcntl(file.as_raw_fd(), libc::F_SETFD, flags & !libc::FD_CLOEXEC) } < 0
