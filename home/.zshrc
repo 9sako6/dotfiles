@@ -50,32 +50,19 @@ fi
   if [ -f "${ZINIT_HOME}/zinit.zsh" ]; then
     source "${ZINIT_HOME}/zinit.zsh"
 
-    zinit_light_verified() {
-      local repository="$1"
-      local plugin_dir="${ZINIT[PLUGINS_DIR]}/${repository//\//---}"
-      local config="${XDG_CONFIG_HOME:-${HOME}/.config}/mise/config.toml"
-
-      local revision
-      revision="$(command sed -n "/${repository//\//---}/s/.*ref = \"//p" "$config" 2>/dev/null | command sed -n '1s/".*//p')"
-      if [ -z "$revision" ]; then
-        print -u2 "zinit: refusing ${repository}; no pin for it in ${config}"
-        return 1
-      fi
-
-      local resolved_revision="$(command git -C "$plugin_dir" rev-parse HEAD 2>/dev/null)"
-      if [[ "$resolved_revision" != "$revision" || -n "$(command git -C "$plugin_dir" status --porcelain 2>/dev/null)" ]]; then
-        print -u2 "zinit: refusing ${repository} at ${resolved_revision:-unknown}; expected ${revision}"
-        return 1
-      fi
-
-      zinit ice nocompile
-      zinit light "$repository"
+    () {
+      local repository
+      local -a verified_plugins
+      verified_plugins=("${(@f)$(command dotfiles zinit verify --plugins-dir "${ZINIT[PLUGINS_DIR]}" \
+        momo-lab/zsh-abbrev-alias \
+        zsh-users/zsh-syntax-highlighting \
+        zsh-users/zsh-autosuggestions)}")
+      for repository in "${verified_plugins[@]}"; do
+        [[ -n "$repository" ]] || continue
+        zinit ice nocompile
+        zinit light "$repository"
+      done
     }
-
-    zinit_light_verified momo-lab/zsh-abbrev-alias
-    zinit_light_verified zsh-users/zsh-syntax-highlighting
-    zinit_light_verified zsh-users/zsh-autosuggestions
-    unfunction zinit_light_verified
   fi
 }
 

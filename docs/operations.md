@@ -109,6 +109,14 @@ git pull
 通常の設定ファイルや `.config`、`.zsh.d`、`mybin` は、稼働中のリポジトリへの直接のシンボリックリンクとし、編集内容を即座に反映させる。
 devcontainerから参照するエージェント用設定の実体配備は、CLIの[copy](../cli/README.md#copy)を参照してください。対象パスの制約、ディレクトリ配下の同期範囲、Home Managerとの重複検査、権限の扱いを説明しています。
 
+## Zinitプラグインの検証
+
+プラグイン読み込みには`dotfiles zinit verify`による検証が必要です。新CLI未導入時は検証不能として読み込みが拒否されるため、通常のapplyでCLIを更新してください。本コマンドはNixやdotfilesのチェックアウトを要求せず、外部コマンドはGitだけを使います。
+
+検証処理はRustのtomlクレートでmiseの`config.toml`を直接解析します。配備先のGit HEADが設定の40桁コミットと一致し、dirtyでないプラグインのみを正常と判定します。設定の構文エラーなど全体エラー時はstdoutへ出力されません。
+
+問題のあるプラグインはstderrへ診断を出力して拒否し、1件でも拒否があれば終了コード1を返します。その際も正常なプラグインはstdoutへ出力されるため、zshrcは1回の呼び出しで得られた検証済みプラグインのみを読み込みます。
+
 ## CLI のビルドキャッシュ
 
 `.github/workflows/cache-cli.yml` は、`master` への push または手動実行時に macOS arm64 上で Lix をセットアップし、`.#dotfiles` をビルド（Rustの回帰テストを含む）します。CLIのversionと`.#dotfiles.version`の一致を検証後、公開 CLI と実行時依存のみを [Cachix](https://docs.cachix.org/getting-started) へ [push](https://docs.cachix.org/pushing) します。Cachix 1.11.1 は root flake の `.#cachix` から取得し、`nix build` や `run` では `--no-update-lock-file` および `--no-write-lock-file` で固定ファイル更新を禁止しています。なお、本ワークフローのアップロード対象に private 構成を含むシステム世代や LLM モデルは含めません。
@@ -215,6 +223,7 @@ bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
 cargo fmt --check --manifest-path cli/Cargo.toml
 cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
 cargo test --locked --manifest-path cli/Cargo.toml
+cargo test --locked --manifest-path cli/Cargo.toml --test zinit -- --ignored
 cargo test --locked --manifest-path cli/Cargo.toml --test activation -- --ignored
 cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::fast_path_tests::nix_generation_contains_the_inputs_used_by_the_copy_fast_path -- --ignored --exact
 nix build --no-link .#checks.aarch64-darwin.composition .#checks.aarch64-darwin.configuration .#checks.aarch64-darwin.modelFetch

@@ -5,6 +5,7 @@ mod inventory;
 mod progress;
 mod settings;
 mod system;
+mod zinit;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -53,6 +54,11 @@ enum Commands {
     },
     #[command(about = "Show effective settings and managed resources")]
     Settings,
+    #[command(about = "Verify Zinit plugins against their configured pins")]
+    Zinit {
+        #[command(subcommand)]
+        operation: zinit::Operation,
+    },
     #[command(about = "Show the source identity used to build this CLI")]
     Version,
 }
@@ -107,11 +113,15 @@ fn run() -> Result<ExitCode> {
     if let Commands::ApplyBuilt(args) = command {
         return activation::run(args);
     }
+    if let Commands::Zinit { operation } = command {
+        return zinit::run(operation);
+    }
     let dotfiles_dir = resolve_dotfiles_dir()?;
     match command {
-        Commands::ApplyBuilt(_) | Commands::CompleteApply { .. } | Commands::Version => {
-            unreachable!()
-        }
+        Commands::ApplyBuilt(_)
+        | Commands::CompleteApply { .. }
+        | Commands::Version
+        | Commands::Zinit { .. } => unreachable!(),
         Commands::Agents { operation } => agents::run(operation, &dotfiles_dir),
         Commands::Plan { options } => {
             system::run(system::Mode::Plan, &dotfiles_dir, options.show_trace)
