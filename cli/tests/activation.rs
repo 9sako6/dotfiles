@@ -3,7 +3,7 @@ use std::fs::{self, File, OpenOptions};
 use std::os::unix::fs::{symlink, MetadataExt, PermissionsExt};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -91,6 +91,37 @@ while [ ! -e "$FIXTURE_ROOT/release" ]; do sleep 0.01; done
         fs::read_to_string(self.path(&format!("stderr-{index}"))).unwrap()
     }
 
+    fn apply_via_backend(&self, options: &[&str]) -> Output {
+        let library = Path::new(env!("CARGO_MANIFEST_DIR")).join("../lib/install-system.sh");
+        let user = Command::new("/usr/bin/id").arg("-un").output().unwrap();
+        assert!(user.status.success());
+        Command::new("/bin/sh")
+            .args([
+                "-eu",
+                "-c",
+                ". \"$1\"; shift; install_system_apply_built_system \"$@\"",
+                "activation-backend-test",
+            ])
+            .arg(library)
+            .arg(self.path("sudo"))
+            .arg("/usr/bin/env")
+            .arg(self.path("lix/bin/nix"))
+            .arg(String::from_utf8(user.stdout).unwrap().trim())
+            .arg(self.path("system").canonicalize().unwrap())
+            .arg(self.path("etc/flake.nix"))
+            .args(["missing", "/source/flake.nix"])
+            .args([
+                self.path("legacy-dotfiles"),
+                self.path("source"),
+                self.path("paths.json"),
+                self.path("home"),
+            ])
+            .args(options)
+            .env("FIXTURE_ROOT", self.root.path())
+            .output()
+            .unwrap()
+    }
+
     fn finish(&mut self, index: usize) -> ExitStatus {
         let mut status = None;
         wait_for(|| {
@@ -132,6 +163,87 @@ fn wait_for(mut ready: impl FnMut() -> bool) {
             "process did not reach the expected state"
         );
         thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[test]
+#[ignore = "requires the repository shell backend"]
+fn backend_upgrades_an_incompatible_caller_and_preserves_copy_only_behavior() {
+    for copy_only in [false, true] {
+        let fixture = Fixture::new();
+        fixture.executable("sudo", "#!/bin/sh\nexec \"$@\"\n");
+        fixture.executable(
+            "legacy-dotfiles",
+            "#!/bin/sh\nprintf \"error: unrecognized subcommand 'apply-built'\\n\" >&2\nexit 2\n",
+        );
+        symlink(
+            cargo_bin!("dotfiles"),
+            fixture.path("system/sw/bin/dotfiles"),
+        )
+        .unwrap();
+        fixture.release();
+        fs::write(fixture.path("paths.json"), "[\"managed\"]").unwrap();
+        fs::write(fixture.path("source/home/managed"), "frozen").unwrap();
+        let generation = fixture.path("system").canonicalize().unwrap();
+        let current = fixture.path("current-system");
+        symlink(&generation, &current).unwrap();
+        let options = if copy_only {
+            fs::remove_file(fixture.path("lix/bin/nix-env")).unwrap();
+            fs::remove_file(fixture.path("system/sw/bin/darwin-rebuild")).unwrap();
+            vec![
+                "--copy-only",
+                "--current-generation",
+                current.to_str().unwrap(),
+            ]
+        } else {
+            Vec::new()
+        };
+        let output = fixture.apply_via_backend(&options);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            fs::read_to_string(fixture.path("home/managed")).unwrap(),
+            "frozen"
+        );
+        assert_eq!(
+            fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+            Path::new("/source/flake.nix")
+        );
+        if copy_only {
+            assert!(!fixture.path("order").exists());
+            assert_eq!(current.canonicalize().unwrap(), generation);
+        } else {
+            assert_eq!(
+                fs::read_to_string(fixture.path("order")).unwrap(),
+                "profile\nactivation\n"
+            );
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires the repository shell backend"]
+fn backend_rejects_an_unavailable_generation_cli_before_privileged_changes() {
+    for missing in [false, true] {
+        let fixture = Fixture::new();
+        fixture.executable(
+            "sudo",
+            "#!/bin/sh\ntouch \"$FIXTURE_ROOT/privileged\"\nexit 99\n",
+        );
+        if !missing {
+            fs::write(fixture.path("system/sw/bin/dotfiles"), "not executable").unwrap();
+        }
+        let output = fixture.apply_via_backend(&[]);
+        assert!(!output.status.success());
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("built system has no dotfiles CLI")
+        );
+        assert!(!fixture.path("privileged").exists());
+        assert!(!fixture.path("order").exists());
+        assert!(!fixture.path("etc/flake.nix").is_symlink());
     }
 }
 

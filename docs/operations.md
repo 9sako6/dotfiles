@@ -90,6 +90,8 @@ planとapplyの実行中は、設定の準備、システムの評価、ビル�
 
 通常経路のplanおよびapplyでは宣言一覧を評価して差分を先行表示し、applyのyes確認後に必要なシステム評価とビルドを行い、処理前後に入力とアクティブ世代を再検証した上で同一の固定入力に基づく世代を反映する。宣言一覧が同一でも世代が異なる場合は評価時の出力パスを比較して差分を示し、旧世代とのinventory形式が異なる場合のみ従来のビルド付きネイティブ差分へフォールバックするため処理時間を要する。
 
+通常の反映ではビルド済みの更新先システム内にある`sw/bin/dotfiles`から`apply-built`を実行し、copy-onlyでは現在の世代内の同等CLIを使用します。これにより、呼び出し元の旧CLIが新しい内部コマンドに対応していない場合でもCLI自身を更新できます。なお、シェル接続の引数形式は既存CLIとの互換性維持のために保持しており、世代内CLIが欠落しているか実行不能な場合はsudoの実行前に失敗します。
+
 公開リポジトリの更新には通常のGit操作を使います。
 
 ```sh
@@ -211,6 +213,7 @@ bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
 cargo fmt --check --manifest-path cli/Cargo.toml
 cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
 cargo test --locked --manifest-path cli/Cargo.toml
+cargo test --locked --manifest-path cli/Cargo.toml --test activation -- --ignored
 cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::fast_path_tests::nix_generation_contains_the_inputs_used_by_the_copy_fast_path -- --ignored --exact
 nix build --no-link .#checks.aarch64-darwin.composition .#checks.aarch64-darwin.configuration .#checks.aarch64-darwin.modelFetch
 opencode_package="$(nix build --no-link --print-out-paths .#localllmClient)"

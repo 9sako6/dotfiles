@@ -256,10 +256,10 @@ install_system_apply_built_system() (
   selection_path="$6"
   expected_target="$7"
   desired_target="$8"
-  shift 8
+  shift 9
 
-  cli_bin="$1"
-  shift
+  cli_bin="$system_path/sw/bin/dotfiles"
+  [ -f "$cli_bin" ] && [ -x "$cli_bin" ] || install_system_fail 'built system has no dotfiles CLI'
   "$sudo_bin" "$env_bin" SUDO_USER="$primary_user" \
     "$cli_bin" apply-built "$nix_bin" "$primary_user" "$system_path" \
     "$selection_path" "$expected_target" "$desired_target" "$@"

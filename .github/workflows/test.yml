@@ -66,6 +66,7 @@ jobs:
             cargo fmt --check --manifest-path cli/Cargo.toml
             cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
             cargo test --locked --manifest-path cli/Cargo.toml
+            cargo test --locked --manifest-path cli/Cargo.toml --test activation -- --ignored
             cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::fast_path_tests::nix_generation_contains_the_inputs_used_by_the_copy_fast_path -- --ignored --exact
             nix build --no-link .#checks.aarch64-darwin.composition .#checks.aarch64-darwin.configuration
             opencode_package="$(nix build --no-link --print-out-paths .#localllmClient)"
