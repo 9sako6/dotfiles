@@ -202,11 +202,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1786941356,
-        "narHash": "sha256-ORfheK6lTXwVCI+c/X4+kjqWxj371ek2ZdrRAUaF2Ro=",
+        "lastModified": 1790486023,
+        "narHash": "sha256-Ot5Q3WhKWT273H/WbobZuT3usCmHzSLL3GvkJs866lw=",
         "owner": "9sako6",
         "repo": "zundamonotify",
-        "rev": "77e7e93c584de9dd9f777149e0a1ed1e468a0cf1",
+        "rev": "958406ce90b61c002f50c48dcd2142cc8a555c17",
         "type": "github"
       },
       "original": {
