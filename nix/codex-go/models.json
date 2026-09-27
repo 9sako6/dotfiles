@@ -1,0 +1,40 @@
+{
+  "models": [
+    {
+      "slug": "deepseek-v4.1-flash",
+      "display_name": "DeepSeek V4.1 Flash (Go)",
+      "description": "DeepSeek through OpenCode Go",
+      "default_reasoning_level": "none",
+      "supported_reasoning_levels": [
+        {
+          "effort": "none",
+          "description": "Thinking disabled"
+        },
+        {
+          "effort": "high",
+          "description": "Thinking enabled"
+        }
+      ],
+      "shell_type": "unified_exec",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 1,
+      "supports_reasoning_summaries": false,
+      "support_verbosity": false,
+      "apply_patch_tool_type": null,
+      "web_search_tool_type": "text",
+      "truncation_policy": {
+        "mode": "tokens",
+        "limit": 10000
+      },
+      "context_window": 128000,
+      "effective_context_window_percent": 95,
+      "input_modalities": [
+        "text"
+      ],
+      "supports_search_tool": false,
+      "experimental_supported_tools": [],
+      "base_instructions": "You are a coding agent. Follow the user and applicable AGENTS.md instructions. Inspect the relevant files before editing. Use tools to perform requested work and verify it. Preserve unrelated changes. Never expose credentials. Report completed work and any unverified behavior accurately."
+    }
+  ]
+}

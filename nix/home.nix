@@ -52,7 +52,21 @@ in
   '';
 
   home.stateVersion = "26.05";
-  home.packages = toolset.packages ++ lib.optional configuration.localllm.enabled (toolset.localllm configuration.localllm);
+  home.packages = toolset.packages
+    ++ lib.optional configuration.codex_go.enabled toolset.codexGo
+    ++ lib.optional configuration.localllm.enabled (toolset.localllm configuration.localllm);
+
+  launchd.agents.codex-go = lib.mkIf configuration.codex_go.enabled {
+    enable = true;
+    config = {
+      ProgramArguments = [ "${toolset.codexGo}/bin/codex-go-proxy" ];
+      RunAtLoad = true;
+      KeepAlive.SuccessfulExit = false;
+      ThrottleInterval = 30;
+      StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/codex-go.log";
+      StandardOutPath = "${config.home.homeDirectory}/Library/Logs/codex-go.log";
+    };
+  };
 
   assertions = [ {
     assertion = !configuration.localllm.enabled || (
@@ -74,5 +88,23 @@ in
     "Library/Application Support/Anki2/addons21/anki-connect".source = ankiConnectAddon;
     "apm.lock.yaml" = liveLink "apm.lock.yaml";
     "apm.yml" = liveLink "apm.yml";
-  } // liveFiles);
+  } // liveFiles // lib.optionalAttrs configuration.codex_go.enabled {
+    ".codex/opencode-go.config.toml".source = (pkgs.formats.toml { }).generate "opencode-go.config.toml" {
+      model = "deepseek-v4.1-flash";
+      model_auto_compact_token_limit = 100000;
+      model_catalog_json = "${toolset.codexGo}/share/codex-go/models.json";
+      model_provider = "opencode-go";
+      model_reasoning_effort = "none";
+      model_reasoning_summary = "none";
+      model_verbosity = "low";
+      service_tier = "default";
+      web_search = "disabled";
+      model_providers.opencode-go = {
+        name = "OpenCode Go (LiteLLM)";
+        base_url = "http://127.0.0.1:4010/v1";
+        wire_api = "responses";
+        auth.command = "${toolset.codexGo}/bin/codex-go-auth";
+      };
+    };
+  });
 }

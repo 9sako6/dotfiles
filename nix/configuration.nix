@@ -3,6 +3,12 @@ let
   inherit (lib) mkOption types;
   schema = {
     options = {
+      codex_go = mkOption {
+        default = { };
+        type = types.submodule {
+          options.enabled = mkOption { type = types.bool; default = false; };
+        };
+      };
       copy = mkOption { type = types.listOf types.str; default = [ ]; };
       localllm = mkOption {
         default = { };

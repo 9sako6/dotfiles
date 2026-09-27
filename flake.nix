@@ -141,6 +141,7 @@
     {
       packages.${system} = {
         cachix = toolset.cachix;
+        codexGo = toolset.codexGo;
         default = dotfilesPackage;
         dotfiles = dotfilesPackage;
         localllm = toolset.localllm (defaultConfiguration.localllm // {

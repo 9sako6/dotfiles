@@ -63,7 +63,7 @@ let
       QueueDirectories = null;
       StartOnMount = null;
       Sockets = null;
-    } job.serviceConfig);
+    } (job.serviceConfig or job.config));
   };
   services = scope: jobs:
     lib.mapAttrsToList (service scope) (lib.filterAttrs (_: job: job.enable or true) jobs);
