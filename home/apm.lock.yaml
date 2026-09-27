@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-09-27T02:33:56.088318+00:00'
+generated_at: '2026-09-27T02:37:01.101448+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
@@ -255,42 +255,6 @@ dependencies:
     .claude/skills/grill-me/SKILL.md: sha256:74147eb6010a65957efef2b9e0f0b3ff935c1def7fc117697151b1d0f3610556
   content_hash: sha256:784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea
 deployments:
-- kind: project-relative
-  target: agents
-  value: .agents/skills/jp/references/fallback.md
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
-- kind: project-relative
-  target: agents
-  value: .agents/skills/rails-mysql-explain
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: null
-- kind: project-relative
-  target: agents
-  value: .agents/skills/rails-mysql-explain/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
-- kind: project-relative
-  target: agents
-  value: .agents/skills/rails-mysql-explain/references/explain-guide.md
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
 - kind: project-relative
   target: claude
   value: .claude/rules/global.md
@@ -1211,13 +1175,9 @@ local_deployed_files:
 - .agents/skills/design-it/SKILL.md
 - .agents/skills/jp
 - .agents/skills/jp/SKILL.md
-- .agents/skills/jp/references/fallback.md
 - .agents/skills/jp/references/writing-rules.md
 - .agents/skills/model-it
 - .agents/skills/model-it/SKILL.md
-- .agents/skills/rails-mysql-explain
-- .agents/skills/rails-mysql-explain/SKILL.md
-- .agents/skills/rails-mysql-explain/references/explain-guide.md
 - .agents/skills/resolve-it
 - .agents/skills/resolve-it/SKILL.md
 - .claude/rules/global.md
@@ -1248,11 +1208,8 @@ local_deployed_file_hashes:
   .agents/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
   .agents/skills/design-it/SKILL.md: sha256:6cc6cdc04ae827a0d13a6ee5acb8a755336fa3af3fbbd3df15f5bd44bd9dabcc
   .agents/skills/jp/SKILL.md: sha256:d3fe98ef3cb9ce91dd487cb3209c3c1976bef4c7c0b44b34f7628fa0f9da8b59
-  .agents/skills/jp/references/fallback.md: sha256:ac4b38c040d1c47d87e1de9cd76283e254296b1828d56ea009450b154c94d2a6
   .agents/skills/jp/references/writing-rules.md: sha256:7fded38b12883e6778ab57db6526b83d3f692d8e8c7d6acc36ae45f1edc8b901
   .agents/skills/model-it/SKILL.md: sha256:af557817b18fcfa86f55e0a0c1ec892aa22e0c48e9c9ef926cc9001657de66de
-  .agents/skills/rails-mysql-explain/SKILL.md: sha256:eebef44060a0a5e62a31152189f66652bbb0c37bea213e2e6c2fcb7bcf0694af
-  .agents/skills/rails-mysql-explain/references/explain-guide.md: sha256:b22c01f2259eb9bec46538452301bd0a1fff59035be1557226691d84f6812ff2
   .agents/skills/resolve-it/SKILL.md: sha256:d29def3739738c2c82f032bf842371885992846b61b275bd354beaa897f0c5b8
   .claude/rules/global.md: sha256:be3adfb3852ebc9489f6db37492918c5191296906b058b7a68669b8d32d8e6c4
   .claude/skills/anki/SKILL.md: sha256:426d709f3c9505f6823d58a1dd137cf2455217f3b4762a37fba9566164b516ab
