@@ -63,13 +63,6 @@ let
   });
   expectedCodexVersion = "0.155.1";
 
-  codexGoPackage = import ./codex-go/package.nix {
-    codex = codexPackage;
-    litellm = pkgs.litellm;
-    inherit pkgs;
-  };
-  expectedLitellmVersion = "1.89.0";
-
   fdPackage = pkgs.fd.overrideAttrs (final: previous: {
     version = "10.5.0";
     src = pkgs.fetchFromGitHub {
@@ -186,8 +179,6 @@ assert pkgs.lib.assertMsg (cachixPackage.version == expectedCachixVersion)
   "Cachix version drifted: expected ${expectedCachixVersion}, got ${cachixPackage.version}";
 assert pkgs.lib.assertMsg (codexPackage.version == expectedCodexVersion)
   "Codex version drifted: expected ${expectedCodexVersion}, got ${codexPackage.version}";
-assert pkgs.lib.assertMsg (codexGoPackage.version == expectedLitellmVersion)
-  "LiteLLM version drifted: expected ${expectedLitellmVersion}, got ${codexGoPackage.version}";
 assert pkgs.lib.assertMsg (fdPackage.version == expectedFdVersion)
   "fd version drifted: expected ${expectedFdVersion}, got ${fdPackage.version}";
 assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
@@ -217,7 +208,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 {
   ankiConnect = ankiConnectPackage;
   cachix = cachixPackage;
-  codexGo = codexGoPackage;
   localllmClient = import ./localllm/client.nix { inherit pkgs; };
   localllmGoalPlugin = import ./localllm/goal-plugin.nix { inherit pkgs; };
   localllmRuntime = (import ./localllm/runtime.nix { inherit inputs pkgs; }).environment;

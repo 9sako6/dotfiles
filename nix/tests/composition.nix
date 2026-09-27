@@ -26,23 +26,8 @@ let
     primaryUser = "cache-fixture";
     privateFlake.darwinModules.default.homebrew.casks = [ "fixture-cask" ];
   };
-  codexGoHost = self.lib.mkHost {
-    configuration = composed.config.dotfiles.configuration // { codex_go.enabled = true; };
-    dotfilesDirectory = "/fixture";
-    primaryUser = "fixture";
-  };
-  codexGoInventory = import ../inventory.nix {
-    inherit (self) inputs;
-    configuration = codexGoHost.config.dotfiles.configuration;
-    host = codexGoHost;
-    publicSource = self.outPath;
-  };
   rejects = module: !(builtins.tryEval (builtins.deepSeq (make module).system.drvPath true)).success;
   results = {
-    codexGoDisabled = !(composed.config.home-manager.users.fixture.launchd.agents ? codex-go);
-    codexGoBuildable = (builtins.tryEval codexGoHost.system.drvPath).success;
-    codexGoService = builtins.any (service: service.name == "codex-go" && service.config.RunAtLoad)
-      codexGoInventory.services;
     cliRevision = (lib.findFirst (package: (package.pname or "") == "dotfiles") null
       composed.config.environment.systemPackages).DOTFILES_BUILD_REVISION
       == self.packages.${pkgs.stdenv.hostPlatform.system}.dotfiles.version;

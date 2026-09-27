@@ -41,7 +41,6 @@ class SettingsTests(unittest.TestCase):
         (self.root / "home").mkdir(exist_ok=True)
         (self.root / "home/apm.yml").write_text("dependencies:\n  apm: []\n")
         self.git("init", "--quiet")
-        self.git("config", "gc.auto", "0")
         self.git("add", ".")
         self.git(
             "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
@@ -232,7 +231,6 @@ sys.exit(result.returncode)
 
     def test_absent_local_file_includes_every_default(self):
         self.assertEqual(self.rows(self.settings()), {
-            "codex_go.enabled": (False, None),
             "copy": ([], "dotfiles.toml"),
             "localllm.default_model": (None, None),
             "localllm.enabled": (False, None),

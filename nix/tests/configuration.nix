@@ -23,9 +23,6 @@ let
     models = []
   '').config;
   results = {
-    codexGoDefault = !(parse "copy = []" null).config.codex_go.enabled;
-    codexGoEnable = (parse "copy = []" "[codex_go]\nenabled = true").config.codex_go.enabled;
-    codexGoDisable = !(parse "[codex_go]\nenabled = true" "[codex_go]\nenabled = false").config.codex_go.enabled;
     defaults = (parse "copy = []" null).config.localllm == { enabled = false; models = [ ]; default_model = null; };
     enable = valid "copy = []" enabled;
     falseValue = (parse enabled "[localllm]\nenabled = false").config.localllm.enabled == false;
@@ -37,7 +34,6 @@ let
       [ "[private]\npath = '../private'" null ]
       [ "copy = []" "[private]\npath = 2" ]
       [ "copy = []" "[_module]\nargs = {}" ]
-      [ "copy = []" "[codex_go]\nenabled = 'true'" ]
       [ "copy = []" "[localllm._module]\nargs = {}" ]
       [ "copy = []" "unknown = 'secret-do-not-print'" ]
       [ "copy = []" "[localllm]\nenabld = true" ]

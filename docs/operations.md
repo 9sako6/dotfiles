@@ -201,36 +201,6 @@ Nix管理のユーザーツールに `FFmpeg 8.1.2` を追加し、`ffmpeg` お�
   - 推論サーバーは `sandbox-exec` により外向き通信を遮断し、ローカル接続専用の構成を維持します。`OpenCode` 本体および起動される子コマンドはネットワーク接続が可能で、`webfetch` および `websearch` を許可しています。今回のランチャーにより `OPENCODE_ENABLE_EXA=1` が設定され、APIキー不要の[組み込みExa検索](https://opencode.ai/docs/tools/#websearch)が自動的に有効になります。推論はローカルで実行しますが、検索語やアクセス先URL、ツール経由で送信する内容は外部へ送信されます。完全な通信遮断状態ではありません。
   - 自動テストでは、ローカルサーバー不在時における適切な失敗、クラウド推論への自動切り替えが発生しないこと、ユーザーPATH上のコマンド実行とHOME環境の引き継ぎ、Web取得および検索ツールの利用可能性、推論サーバーの外向き通信遮断を検証します。なお、CI上では巨大モデルの展開やGPUによる推論実行は行いません。
 
-## CodexでOpenCode Goを使う
-
-OpenCodeで `/connect` を実行し、OpenCode GoのAPIキーを登録しておく。DeepSeek V4.1 Flashは、GoワークスペースのPrivacy設定がGlobalであることを要求する。処理地域を制限している場合は、その設定を変更するかを先に判断する。契約枠を超えてZen残高を使わない運用では、Goの「Use balance」を無効にする。
-
-`dotfiles.local.toml` に次を追加し、`dotfiles plan` と `dotfiles apply` で反映する。
-
-```toml
-[codex_go]
-enabled = true
-```
-
-有効にすると、ログイン時にユーザーのLaunchAgentがLiteLLMを起動する。`codex-go` は `codex --profile opencode-go` と同じプロファイルでCLIを起動する。OpenCodeのAPIキーがない場合、プロキシは起動を拒否する。キーはOpenCodeの認証ファイルから読み、起動後にキーを変更した場合はLaunchAgentを再起動する。
-
-Codexアプリでは、ユーザー設定の `config.toml` に、配備された `opencode-go.config.toml` の設定を反映して新しいチャットを開始する。CLIの `--profile` 選択だけではアプリの接続先は変わらない。既存の設定全体は上書きせず、モデル、プロバイダー、モデルカタログと関連する推論設定を変更する。通常のOpenAI接続に戻すときは、変更前に保存したこれらの設定値を復元する。
-
-初期構成は `deepseek-v4.1-flash` のテキスト入力を対象とし、コンテキストは128,000トークン、自動圧縮の開始は100,000トークンに設定する。推論は初期状態で無効。Codex専用の自由形式 `apply_patch` と組み込みWeb検索は使用せず、ファイル編集はコマンド実行で行う。Responses APIとChat Completions APIの変換を使うため、OpenAIモデル向けの全機能の互換性を保証する構成ではない。
-
-起動ログはmacOSのユーザーログに `codex-go.log` として記録する。認証情報やプロンプトを含む詳細デバッグログは有効にしない。
-
-プロキシの認証、ストリーミング、ツール結果の往復、会話ヘッダーの転送は、外部APIを呼ばずに次で検証できる。
-
-```sh
-codex_go_package="$(nix build --no-link --print-out-paths .#codexGo)"
-DOTFILES_TEST_CODEX_GO="$codex_go_package" python3 -m unittest discover -s nix/codex-go -p 'test_*.py'
-```
-
-実モデルの検証は、小さな使い捨てディレクトリでファイル作成、読み取り、会話の再開を試す。APIキー、契約枠、Privacy設定に依存するため、模擬サーバーのテスト成功と実モデルの成功は区別する。
-
-参照: [Goの利用条件とAPI](https://opencode.ai/docs/go/)、[LiteLLMのCodexアプリ接続](https://docs.litellm.ai/docs/proxy/client_setup/codex_chatgpt_desktop)、[Codexのカスタムプロバイダー設定](https://learn.chatgpt.com/docs/config-file/config-advanced#custom-model-providers)。
-
 ## 性能変更の検証
 
 1. **ボトルネックの特定**：Issue等に記録された準備、差分、評価、ビルド、反映の各段階の所要時間から遅い工程を特定する。利用者報告の実測値、コードに基づく推論、未確認事項を明確に区別して扱う。

@@ -69,14 +69,6 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - 反映結果を記録するシステム側のシンボリックリンクは、反映結果の記録としてのみ更新され、選択状態を操作するためのスイッチとしては使用しない。
 - 反映が失敗した場合、結果記録シンボリックリンクは直前の正常世代を指したまま保持されるが、システム、ホーム、Homebrew が部分的に変更された状態になる可能性がある。ロールバックは `sudo darwin-rebuild switch --rollback` または `mise run system:rollback` で行い、ホームの実体ファイルは過去のコミット済みチェックアウトから明示的に復元する。検証が完了するまで古い固定ファイルやキャッシュは保持する。
 
-### Codex と OpenCode Go
-
-- `codex_go.enabled` で、LiteLLMを介してCodexからOpenCode GoのDeepSeekを使う構成を有効化する。既定は無効で、マシンごとの選択は `dotfiles.local.toml` に置く。
-- パッケージは `nix/packages.nix` と `nix/codex-go/`、配備とユーザーのLaunchAgentは `nix/home.nix` が所有する。LiteLLMは `flake.lock` のnixpkgsとバージョンアサーションで固定する。
-- 認証の正本はOpenCodeが管理する認証ファイルとし、`opencode-go` のAPIキーだけを起動時に読み込む。キーをNix store、共有設定、ローカルTOMLへ複製しない。
-- プロキシは `127.0.0.1:4010` で待ち受け、認証を必須とする。接続先はGo専用APIに固定し、Codexの会話ヘッダーを転送する。
-- Home Managerが `opencode-go` プロファイルを配備する。Codexアプリが更新する基本設定は引き続きローカル管理とし、共有ファイルで置き換えない。
-
 ### ローカル LLM と OpenCode
 
 - Apple Silicon向けローカル推論モデル `qwen3.8-27b-4bit`、`qwen3.8-9b-distill-4bit` の提供
