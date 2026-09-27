@@ -30,10 +30,6 @@ run = [
 ]
 description = "Reconcile Herdr integrations"
 
-[tasks."mybin:build"]
-run = "./bin/build-tada.sh"
-description = "Build reproducible mybin assets"
-
 [tasks.plan]
 run = "DOTFILES_DIR=\"$PWD\" cargo run --locked --manifest-path cli/Cargo.toml -- plan"
 description = "Build and show the macOS system and home plan"
