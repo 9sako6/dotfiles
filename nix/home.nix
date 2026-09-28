@@ -52,7 +52,7 @@ in
   '';
 
   home.stateVersion = "26.05";
-  home.packages = toolset.packages ++ lib.optional configuration.localllm.enabled (toolset.localllm configuration.localllm);
+  home.packages = toolset.packages ++ [ toolset.dotfiles ] ++ lib.optional configuration.localllm.enabled (toolset.localllm configuration.localllm);
 
   assertions = [ {
     assertion = !configuration.localllm.enabled || (

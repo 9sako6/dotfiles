@@ -46,16 +46,6 @@
         name = "dotfiles-user-tools";
         paths = toolset.packages;
       };
-      dotfilesSource = builtins.path { path = ./cli; name = "dotfiles-cli-source"; };
-      dotfilesRevision = "source-${builtins.substring 0 32 (builtins.unsafeDiscardStringContext (builtins.baseNameOf dotfilesSource))}";
-      dotfilesPackage = pkgs.rustPlatform.buildRustPackage {
-        pname = "dotfiles";
-        version = dotfilesRevision;
-        src = dotfilesSource;
-        cargoLock.lockFile = ./cli/Cargo.lock;
-        nativeCheckInputs = [ pkgs.git ];
-        env.DOTFILES_BUILD_REVISION = dotfilesRevision;
-      };
       primaryUser = let user = builtins.getEnv "DARWIN_PRIMARY_USER"; in if user == "" then "fixture" else user;
       defaultConfiguration = (import ./nix/configuration.nix {
         inherit (nixpkgs) lib;
@@ -90,7 +80,7 @@
                 '' + pkgs.lib.optionalString (systemInputs != null) ''
                   ln -s ${pkgs.writeText "dotfiles-system-inputs" systemInputs} "$out/dotfiles-system-inputs"
                 '';
-                environment.systemPackages = [ dotfilesPackage ];
+                environment.systemPackages = [ toolset.dotfiles ];
                 assertions = [ {
                   assertion = toString pkgs.path == nixpkgs.outPath;
                   message = "private modules must use the public nixpkgs package set";
@@ -141,8 +131,8 @@
     {
       packages.${system} = {
         cachix = toolset.cachix;
-        default = dotfilesPackage;
-        dotfiles = dotfilesPackage;
+        default = toolset.dotfiles;
+        dotfiles = toolset.dotfiles;
         localllm = toolset.localllm (defaultConfiguration.localllm // {
           default_model = "qwen3.8-9b-distill-4bit";
           enabled = true;
