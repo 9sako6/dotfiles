@@ -1,6 +1,20 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["~/.codex/AGENTS.md"],
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "permission": "allow",
+  "instructions": [
+    "~/.codex/AGENTS.md"
+  ],
+  "agent": {
+    "build": {
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "variant": "high"
+    },
+    "plan": {
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "variant": "high"
+    }
+  },
   "provider": {
     "meta": {
       "npm": "@ai-sdk/openai",
