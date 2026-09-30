@@ -1,12 +1,12 @@
 lockfile_version: '1'
-generated_at: '2026-09-27T02:37:01.101448+00:00'
+generated_at: '2026-09-30T00:35:39.422469+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
   name: minus
   host: github.com
-  resolved_commit: 57ea40323b813642d5ae6b3dd69834b5311cfccd
-  resolved_ref: 57ea40323b813642d5ae6b3dd69834b5311cfccd
+  resolved_commit: 9e163b7bc656bfd30cc1a79c97c488f26a7e0e36
+  resolved_ref: 9e163b7bc656bfd30cc1a79c97c488f26a7e0e36
   version: unknown
   virtual_path: skills/minus
   is_virtual: true
@@ -17,9 +17,9 @@ dependencies:
   - .claude/skills/minus
   - .claude/skills/minus/SKILL.md
   deployed_file_hashes:
-    .agents/skills/minus/SKILL.md: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
-    .claude/skills/minus/SKILL.md: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
-  content_hash: sha256:b8b3e28b6408b8820bc64bf74b4444320e21a373acc10200225f175373281fed
+    .agents/skills/minus/SKILL.md: sha256:02fb7d02f3da99b87cf7cad07ac7d3557df520edf01628e73dfc8e33d9e4d98c
+    .claude/skills/minus/SKILL.md: sha256:02fb7d02f3da99b87cf7cad07ac7d3557df520edf01628e73dfc8e33d9e4d98c
+  content_hash: sha256:a4ca853e271507620e95c3a232d08c1ac4d469be694aa66f54b39ede0dfc9d80
 - repo_url: _local/anki
   name: anki
   version: 0.0.0
@@ -429,7 +429,7 @@ deployments:
   owners:
   - 9sako6/-/skills/minus
   active_owner: 9sako6/-/skills/minus
-  content_hash: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
+  content_hash: sha256:02fb7d02f3da99b87cf7cad07ac7d3557df520edf01628e73dfc8e33d9e4d98c
 - kind: project-relative
   target: claude
   value: .claude/skills/model-it
@@ -878,7 +878,7 @@ deployments:
   owners:
   - 9sako6/-/skills/minus
   active_owner: 9sako6/-/skills/minus
-  content_hash: sha256:20956b26feb8e68c6e6873810f62c08e56e69a762f4447c1943dd8ab2d006e81
+  content_hash: sha256:02fb7d02f3da99b87cf7cad07ac7d3557df520edf01628e73dfc8e33d9e4d98c
 - kind: project-relative
   target: codex
   value: .agents/skills/model-it
