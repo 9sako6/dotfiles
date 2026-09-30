@@ -17,6 +17,7 @@ dependencies:
     - ./.apm/skills/model-it
     - ./.apm/skills/resolve-it
     - 9sako6/-/skills/minus#9e163b7bc656bfd30cc1a79c97c488f26a7e0e36
+    - cloudflare/security-audit-skill/skills/security-audit#c1c8a8c1471069fb0e188eeaff69b8e8db6564a8
     - coji/natural-japanese/skills/natural-japanese#9a78a42964096da509b8f3e011f0085a5f080151
     - mattpocock/skills/skills/productivity/grill-me#b8be62ffacb0118fa3eaa29a0923c87c8c11985c
 scripts: {}
