@@ -212,6 +212,8 @@ nix build --no-link --offline .#checks.aarch64-darwin.modelFetch
 
 設定ファイルやソースコードの文面そのものを直接検査するテストは作成しない。
 
+`git undo` の実 Git を使う回帰テストは `tests/git-undo.test.ts` に置き、上記の `bun test` で実行する。個別に確認する場合は `bun test ./tests/git-undo.test.ts` を実行する。
+
 ## 変更前後の基本手順
 
 1. 上の手順で管理区分を確定
