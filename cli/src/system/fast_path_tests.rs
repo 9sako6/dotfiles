@@ -160,6 +160,7 @@ esac
 
     fn runtime(&self, confirm: impl FnOnce() -> Result<()> + 'static) -> Runtime {
         Runtime {
+            launchctl: self.state.join("launchctl-never-called"),
             mise: self.state.join("mise"),
             home: self.state.join("home"),
             selection: self.state.join("selection"),
@@ -603,6 +604,7 @@ esac
         return;
     }
     let runtime = Runtime {
+        launchctl: state.join("launchctl-never-called"),
         mise: "mise".into(),
         home: state.join("home"),
         selection: state.join("selection"),
@@ -667,6 +669,151 @@ fn nix_generation_contains_the_inputs_used_by_the_copy_fast_path() {
     assert!(Path::new(inventory["source"].as_str().unwrap())
         .join("home/apm.yml")
         .is_file());
+}
+
+fn services_fixture() -> Fixture {
+    let fixture = Fixture::new();
+    write(
+        &fixture.root.join("user-services.toml"),
+        "[[agents]]\nlabel = 'com.example.fixture'\nargv = ['~/resource']\nrun_at_load = true\n",
+    );
+    assert!(Command::new("git")
+        .arg("-C")
+        .arg(&fixture.root)
+        .args(["add", "user-services.toml"])
+        .status()
+        .unwrap()
+        .success());
+    fs::create_dir(fixture.state.join("loaded")).unwrap();
+    executable(
+        &fixture.state.join("launchctl"),
+        include_str!("../../tests/fixtures/launchctl.sh"),
+    );
+    write(
+        &fixture.state.join("uid"),
+        &unsafe { libc::geteuid() }.to_string(),
+    );
+    write(
+        &fixture.state.join("prerequisite"),
+        fixture.state.join("home/resource").to_str().unwrap(),
+    );
+    marker(
+        &fixture.root,
+        &fixture.state.join("home"),
+        &fixture.state.join("generation"),
+        &["resource".into()],
+    );
+    fixture
+}
+
+fn services_runtime(fixture: &Fixture, confirm: impl FnOnce() -> Result<()> + 'static) -> Runtime {
+    let mut runtime = fixture.runtime(confirm);
+    runtime.launchctl = fixture.state.join("launchctl");
+    runtime
+}
+
+#[test]
+fn unified_service_plan_confirm_home_dependency_and_noop() {
+    let fixture = services_fixture();
+    run_with(
+        Mode::Plan,
+        &fixture.root,
+        false,
+        services_runtime(&fixture, || panic!("plan cannot confirm")),
+    )
+    .unwrap();
+    assert!(!fixture.state.join("home/resource").exists());
+    assert!(!fixture
+        .state
+        .join("home/Library/LaunchAgents/com.example.fixture.plist")
+        .exists());
+    assert!(run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        services_runtime(&fixture, || bail!("cancelled"))
+    )
+    .is_err());
+    assert!(!fixture.state.join("home/resource").exists());
+    let count = Rc::new(Cell::new(0));
+    let observed = count.clone();
+    run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        services_runtime(&fixture, move || {
+            observed.set(observed.get() + 1);
+            Ok(())
+        }),
+    )
+    .unwrap();
+    assert_eq!(count.get(), 1);
+    assert!(fixture.state.join("loaded/com.example.fixture").exists());
+    assert!(fixture.state.join("home/resource").exists());
+    assert!(!fixture.state.join("activation").exists());
+    run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        services_runtime(&fixture, || panic!("converged apply cannot confirm")),
+    )
+    .unwrap();
+    let calls = fs::read_to_string(fixture.state.join("calls")).unwrap();
+    assert_eq!(
+        calls
+            .lines()
+            .filter(|line| line.starts_with("bootstrap "))
+            .count(),
+        1
+    );
+    assert!(!calls.contains("bootout"));
+}
+
+#[test]
+fn unified_failed_service_bootstrap_retains_home_then_retries_only_service() {
+    let fixture = services_fixture();
+    write(&fixture.state.join("fail-bootstrap"), "");
+    let result = run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        services_runtime(&fixture, || Ok(())),
+    );
+    assert!(result.is_err());
+    let home = fixture.state.join("home/resource");
+    let inode = fs::metadata(&home).unwrap().ino();
+    assert!(fixture
+        .state
+        .join("home/.local/state/dotfiles/user-services.json")
+        .exists());
+    assert!(!fixture.state.join("loaded/com.example.fixture").exists());
+    fs::remove_file(fixture.state.join("fail-bootstrap")).unwrap();
+    run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        services_runtime(&fixture, || Ok(())),
+    )
+    .unwrap();
+    assert_eq!(fs::metadata(&home).unwrap().ino(), inode);
+    assert!(fixture.state.join("loaded/com.example.fixture").exists());
+    assert!(!fixture.state.join("activation").exists());
+}
+
+#[test]
+fn mixed_activation_validation_requires_expected_generation_and_source() {
+    let fixture = Fixture::new();
+    let private = Fixture::new();
+    let inputs = fixture.inputs(&private);
+    let generation = fixture.state.join("generation").canonicalize().unwrap();
+    let record = fixture.root.join("flake.nix");
+    inputs.verify_activated(&record, &generation).unwrap();
+    assert!(inputs
+        .verify_activated(&record, &fixture.state.join("other-generation"))
+        .is_err());
+    assert!(inputs
+        .verify_activated(&fixture.root.join("other-flake.nix"), &generation)
+        .is_err());
 }
 
 fn tools_fixture() -> Fixture {

@@ -118,14 +118,20 @@ Homebrewのformulaとcaskは `nix/homebrew-packages.nix` に集約する。普�
 
 `install.sh` は各種バージョン管理ツールの導入前に実行される。そのため、自身が属するコミットの SHA をスクリプト内に既定値として埋め込まず、実行時に `origin/master` の最新コミットを取得する。なお、既存のローカルチェックアウトに変更がある場合、別ブランチにいる場合、または `origin/master` から分岐したコミットが存在する場合は自動更新を行わない。
 
-### Public user LaunchAgent の宣言と preview
+### Public user LaunchAgent の宣言と反映
 
-`user-services.toml` は public user LaunchAgent の唯一の宣言元で、Rust CLI が同じ公開 snapshot から読み、plist と追加・変更・削除の差分を生成する。system input へは含めない。現段階は preview のみで、差分がある `apply` は確認や tools/home/system の変更前に停止する。launchctl による反映と成功記録の書き込みは後続の reconciliation backend が担う。
+`user-services.toml` は public user LaunchAgent の唯一の宣言元で、Rust CLI が同じ公開 snapshot から読み、plist と追加・変更・削除の差分を生成する。system input へは含めない。Rust CLI は確認済み Plan の plist、所有記録、launchd の登録状態を再検証して反映する。サービスの前提となる tools と home を先に配備し、system 変更を伴う場合は従来の activation と home 配備が成功してからサービスを反映する。反映前後には更新先の system generation と source record も検証する。
 
 `[[agents]]` の必須項目は `label` と `argv`。任意項目は `run_at_load`、`keep_alive`（既定 false）、正の `start_interval`、`start_calendar_interval`（minute/hour/day/weekday/month）、`working_directory`。interval と calendar は同時指定できない。未知のキー、大文字小文字のみ異なるものを含む重複 label、空 argv、制御文字、不正な schedule/path は拒否する。raw shell hook や任意の plist key は受け付けない。これは実行ファイルの sandbox ではない。
 
 `argv[0]` は絶対パスまたは `~/` で始まる安定した実行入口を明記する。mise tool は [mise shims](https://mise.jdx.dev/dev-tools/shims.html) を使い、標準構成なら `~/.local/share/mise/shims/node` 等を指定する。`MISE_SHIMS_DIR` / `shims_dir` / data directory を変更した環境では、利用者がその構成に対応した実際の shim path を指定する。CLI は bare command から shim path を推測しない。mise install の版固定パス、Nix store の実行パス、shell interpreter と env の直接指定は拒否する。`~/` 展開は実行入口と working directory のみで、他の argv 要素に shell 展開は行わない。shim は作業ディレクトリに対応した mise 設定を選ぶので、必要に応じて working directory を指定する。
 
 前回成功結果は `$XDG_STATE_HOME/dotfiles/user-services.json`（既定 `~/.local/state/dotfiles/user-services.json`）の version 1、home、agents（label → plist SHA-256）の記録として読む。宣言や起動指示は記録しない。差分は宣言 label と記録済み label のみに限定し、LaunchAgents を走査して所有を推測しない。記録がない既存 plist、記録と内容が異なる plist、配備先や記録の symlink、破損記録は競合として停止する。HOME、公開 snapshot root、明示した XDG_STATE_HOME 自体の OS alias は許容し、その配下の symlink は拒否する。記録を失った場合、既存 agent を自動採用・削除せず手動で所有を確認する。欠損した managed plist は再作成差分となる。
+
+launchctl の対象は実行ユーザーの `gui/<euid>` に限定する。`print gui/<euid>/<label>` の登録元が canonical HOME 配下の対象 plist と一致し、種別が LaunchAgent と確認できる場合だけ登録済みとして扱う。以前の plist 所有記録もある場合に限って `bootout gui/<euid>/<label>` を実行する。登録がないと判断するには、status 113、対象 label と uid が一致する既知の missing-service 診断、GUI domain の `print` 成功をすべて要求する。その他のエラーや未知の出力形式は停止条件となる。PID、起動回数、実行中か待機中かは差分に含めない。
+
+plist と所有記録は同じディレクトリ内の一時ファイルから rename する。plist の配備結果を label ごとに記録してから bootstrap するため、起動失敗後もそのファイルの所有を追跡できる。記録は起動成功やプロセスの健全性を保証しない。記録の更新に失敗したときは、CLI が書いた bytes とまだ一致する plist だけを元に戻し、bootstrap は行わない。削除後の記録更新に失敗した場合は旧記録を残し、次回 apply で削除結果を記録する。launchctl が失敗を返した場合は、部分的に反映されていても停止し、次の Plan で登録状態を読み直す。
+
+共通ユーザー apply ロックを launchctl の子プロセスにも継承する。ただし、このロックに従わない別のツールや利用者との排他は保証しない。ファイル確認、rename、launchctl 呼び出しを一つのトランザクションにはできず、直前検証後の競合や、同じ path を使うジョブの外部での差し替えを完全には判別できない。プロセス終了や電源断が plist 書き込みと記録更新の間に起きると、所有記録のない plist が残る場合がある。その場合は自動採用せず停止する。
 
 private agent、system daemon、現在の Nix-backed zundamonotify は対象外とし、既存の構成・所有を変更しない。

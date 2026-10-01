@@ -273,7 +273,7 @@ Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、通常のホ
 
 GitHub-hosted な macOS runner では、Home Manager のユーザー反映とシステム派生のビルドを個別に検証し、nix-darwin のシステム反映は実施しない。Nix ストアのパスは GitHub Actions のバイナリキャッシュを活用してワークフロー間で再利用する。新規 Mac への反映検証は、Homebrew の入っていない VM または実機で確認する。
 
-## Public user service の preview
+## Public user service の反映
 
 `user-services.toml` は現在空のままであり、既存サービスの移行は行っていない。宣言の形式例は次のとおり。shell snippet ではなく argv を記述する。
 
@@ -289,9 +289,19 @@ hour = 9
 minute = 0
 ```
 
-`dotfiles plan` は user services の追加（+）、変更（~）、削除（-）を表示する。plist、成功記録、launchd の状態は変更しない。reconciliation backend 導入前の `dotfiles apply` は service 差分がある場合、他の backend を反映せずエラーで停止する。差分がない場合の既存動作は維持する。環境変数と stdout/stderr の宣言は、具体的な要件が出るまで追加しない。
+`dotfiles plan` は user services の追加（+）、reload（~）、削除（-）を表示する。plist、所有記録、launchd の状態は変更しない。`dotfiles apply` は他の変更とまとめて一度確認し、tools と home の配備後に対象ユーザーの LaunchAgent を反映する。system 変更がある場合は、その activation と home 配備の成功後に進む。plist が同一でも job が登録されていなければ bootstrap する。登録済みで plist も同一なら変更しない。
 
-Linux でも隔離 fixture で宣言検証、plist、所有境界、差分と apply 拒否を検証できる。
+途中失敗した場合は、エラーを解消して `plan` / `apply` をやり直す。正常に配備した plist の所有記録は残る。bootstrap が失敗した場合は、job が未登録かどうかを次の Plan で確認して再試行する。bootout が失敗した場合は plist を書き換えずに停止する。読み取った登録元が別 path の場合や、plist が利用者によって変更されている場合は bootout しない。記録を失った既存 plist も自動では採用しないため、管理元を確認してから利用者が競合を解消する。
+
+service backend 自体は Nix と sudo を呼ばない。ただし、公開コマンドの共通 snapshot と設定評価にはまだ Nix が必要である。[#184](https://github.com/9sako6/dotfiles/issues/184) と [#186](https://github.com/9sako6/dotfiles/issues/186) の移行前には、service 変更だけの公開 apply が完全に Nix 不要になる受け入れ条件を満たさない。この条件を含む [#181](https://github.com/9sako6/dotfiles/issues/181) は未完了として扱う。環境変数と stdout/stderr の宣言は、具体的な要件が出るまで追加しない。
+
+### launchctl の互換性と検証範囲
+
+Apple の [Launch Daemons and Agents ガイド](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html) と、版を固定した [launchd-842.92.1 の launchctl man source](https://github.com/apple-oss-distributions/launchd/blob/launchd-842.92.1/man/launchctl.1) で、ユーザー agent と system daemon の管理境界を確認した。後者は旧 load/unload 世代の資料であり、現行 bootstrap/bootout や print の形式を保証する資料ではない。
+
+現行の Apple `launchctl(1)` は print の出力を安定した API として扱わないよう明記している。CLI は既知の header、トップレベルの path/type、missing-service 診断だけを認識し、形式が異なる環境では変更前に停止する。fixture はこの限定的な契約と失敗処理を検証するもので、実機 macOS での動作確認の代わりにはならない。OS 更新で失敗する場合は、対象 macOS の `man launchctl` と実際の読み取り専用出力を確認してから parser と fixture を更新する。
+
+Linux の隔離した実行ファイル fixture で、追加、reload、削除、no-op、途中失敗と再試行、所有境界、入力再検証、子プロセスへのロック継承を検証できる。テストは実機の launchctl や system 設定を変更しない。
 
 ```sh
 cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::user_services

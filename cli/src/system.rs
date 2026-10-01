@@ -164,6 +164,7 @@ impl Snapshot {
 }
 
 struct Runtime {
+    launchctl: PathBuf,
     mise: PathBuf,
     home: PathBuf,
     selection: PathBuf,
@@ -202,6 +203,20 @@ impl PlanInputs {
         }
         Ok(())
     }
+
+    fn verify_activated(&self, source_record: &Path, generation: &Path) -> Result<()> {
+        self.public.verify()?;
+        if let Some(private) = &self.private {
+            private.verify()?;
+        }
+        verify_local(&self.local_path, &self.local)?;
+        if selected_target(&self.selection)?.as_deref() != Some(source_record)
+            || current_generation(&self.current_generation)?.as_deref() != Some(generation)
+        {
+            bail!("activated generation or source record changed; user services were not reconciled. Run plan/apply again");
+        }
+        Ok(())
+    }
 }
 
 struct Plan {
@@ -232,6 +247,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         root,
         show_trace,
         Runtime {
+            launchctl: "/bin/launchctl".into(),
             mise: "mise".into(),
             home: PathBuf::from(env::var_os("HOME").context("HOME is not set")?),
             selection: "/etc/nix-darwin/flake.nix".into(),
@@ -324,7 +340,8 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let previous_generation = &snapshot.previous_generation;
     let workspace = &snapshot.workspace;
     let tools = tools::Plan::capture(&public.source, &home, &runtime.mise)?;
-    let user_services = user_services::Plan::capture(&public.source, &home)?;
+    let user_services =
+        user_services::Plan::capture(&public.source, &home, &runtime.launchctl, _lock.as_ref())?;
     let copy_plan = home_copy::plan_live(&public.source, root, &home, &configuration.copy)?;
     let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
     let identity = inputs::identity(&system_source, &inputs, local, &home)?;
@@ -456,6 +473,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         home: copy_plan,
         system: preview,
     };
+    plan.user_services.verify(_lock.as_ref())?;
     if let Review::Finished = plan.review(mode, runtime.confirm)? {
         if matches!(mode, Mode::Apply) {
             plan.inputs.verify()?;
@@ -468,6 +486,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         return Ok(ExitCode::SUCCESS);
     }
     plan.inputs.verify()?;
+    plan.user_services.verify(_lock.as_ref())?;
     let result = plan
         .tools
         .apply(_lock.as_ref().context("apply lock is unavailable")?);
@@ -484,6 +503,14 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
             .verify()
             .context("home files may be partially changed; run plan/apply again")?;
         result.context("home deployment failed; some home files may be partially changed. Run plan/apply again")?;
+        plan.inputs.verify()?;
+        let result = plan
+            .user_services
+            .apply(_lock.as_ref().context("apply lock is unavailable")?);
+        plan.inputs
+            .verify()
+            .context("user services may be partially changed")?;
+        result?;
         return Ok(ExitCode::SUCCESS);
     }
     let workspace = &plan.inputs.workspace;
@@ -507,6 +534,11 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     plan.inputs.verify()?;
     let paths = workspace.path().join("copy.json");
     fs::write(&paths, serde_json::to_vec(&configuration.copy)?)?;
+    let activated_generation = plan
+        .user_services
+        .has_changes()
+        .then(|| system.canonicalize())
+        .transpose()?;
     let mut activation = Command::new(&backend);
     activation
         .arg("activate")
@@ -538,6 +570,19 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
             );
         }
         bail!("activation/home deployment failed; the previous source record is retained. The system may be partially changed. Run: sudo darwin-rebuild switch --rollback. See docs/operations.md for profile and Homebrew recovery");
+    }
+    // System activation deploys home prerequisites first. Validate the new
+    // generation, not the obsolete pre-activation pointer, around services.
+    if let Some(generation) = activated_generation {
+        plan.inputs
+            .verify_activated(&root.join("flake.nix"), &generation)?;
+        let result = plan
+            .user_services
+            .apply(_lock.as_ref().context("apply lock is unavailable")?);
+        plan.inputs
+            .verify_activated(&root.join("flake.nix"), &generation)
+            .context("user services may be partially changed")?;
+        result?;
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -758,9 +803,6 @@ fn review_plan_with(
     drop(output);
     if matches!(mode, Mode::Plan) {
         return Ok(Review::Finished);
-    }
-    if let Some(services) = user_services {
-        services.ensure_applicable()?;
     }
     confirm()?;
     Ok(Review::Apply)

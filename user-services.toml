@@ -1,3 +1,3 @@
-# Public user LaunchAgents only. This stage supports read-only planning.
+# Public user LaunchAgents only; Rust plans and reconciles these declarations.
 # Existing Nix-backed agents remain owned by Nix until their migration.
 agents = []
