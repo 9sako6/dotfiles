@@ -26,9 +26,6 @@ let
   });
   expectedAntigravityCliVersion = "1.2.2";
 
-  awscliPackage = pkgs.awscli2;
-  expectedAwscliVersion = "2.35.11";
-
   bunPackage = pkgs.bun;
   expectedBunVersion = "1.3.13";
 
@@ -182,8 +179,6 @@ assert pkgs.lib.assertMsg (ankiPackage.version == expectedAnkiVersion)
   "Anki version drifted: expected ${expectedAnkiVersion}, got ${ankiPackage.version}";
 assert pkgs.lib.assertMsg (antigravityCliPackage.version == expectedAntigravityCliVersion)
   "Antigravity CLI version drifted: expected ${expectedAntigravityCliVersion}, got ${antigravityCliPackage.version}";
-assert pkgs.lib.assertMsg (awscliPackage.version == expectedAwscliVersion)
-  "AWS CLI version drifted: expected ${expectedAwscliVersion}, got ${awscliPackage.version}";
 assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
 assert pkgs.lib.assertMsg (cachixPackage.version == expectedCachixVersion)
@@ -230,9 +225,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
     ankiPackage
 
     antigravityCliPackage
-
-    # AWS CLI 2.35.11
-    awscliPackage
 
     # Bun 1.3.13
     bunPackage
