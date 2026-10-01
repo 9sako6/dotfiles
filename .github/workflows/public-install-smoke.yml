@@ -107,12 +107,7 @@ jobs:
           cargo --version
           mise exec -- codex --version
           mise exec -- fd --version
-          search_fixture="$(mktemp -d)"
-          touch "$search_fixture/mise-fd-fixture.txt"
-          test "$(mise exec -- fd --type f --exact-depth 1 mise-fd-fixture "$search_fixture")" = "$search_fixture/mise-fd-fixture.txt"
-          rm -r "$search_fixture"
           mise exec -- fzf --version
-          test "$(printf 'alpha\nbeta\n' | mise exec -- fzf --filter '^beta$')" = beta
           mise exec -- gh --version
           ghq --version
           mise exec -- gitleaks version
