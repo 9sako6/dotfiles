@@ -113,7 +113,8 @@ jobs:
           mise exec -- go version
           mise exec -- herdr --version
           mise exec -- pnpm --version
-          quint --version
+          mise exec -- quint --version
           mise exec -- rg --version
           mise exec -- rustc --version
+          mise exec -- terminal-browser --version
           mise exec -- zoxide --version
