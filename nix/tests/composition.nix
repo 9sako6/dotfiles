@@ -44,7 +44,7 @@ let
     copiedFilesExcluded = !(composed.config.home-manager.users.fixture.home.file ? ".gitconfig");
     additionalCopiedFileExcluded = !(copyConfigured.config.home-manager.users.fixture.home.file ? ".zshenv");
     publicLiveFileExcluded = !(composed.config.home-manager.users.fixture.home.file ? ".zshenv");
-    privateHomeTargetListed = builtins.elem "fixture-owned" (builtins.fromJSON composed.inventory.text).homeManagerTargets;
+    privateHomeTargetListed = builtins.elem "fixture-owned" (builtins.fromJSON (builtins.unsafeDiscardStringContext composed.inventory.text)).homeManagerTargets;
     privateHomeFilePreserved = composed.config.home-manager.users.fixture.home.file."fixture-owned".enable;
     copyConflict = rejects { home-manager.users.fixture.home.file.".claude/skills/foreign".text = "fixture"; };
     copyTargetConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".gitconfig"; text = "fixture"; }; };
