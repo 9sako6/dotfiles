@@ -1,6 +1,6 @@
 use super::*;
 use std::cell::Cell;
-use std::os::unix::fs::symlink;
+use std::os::unix::fs::{symlink, MetadataExt};
 use std::rc::Rc;
 
 fn write(path: &Path, contents: &str) {
@@ -198,6 +198,10 @@ fn cancelled_apply_does_not_install_dependencies_or_change_managed_state() {
         assert_eq!(fingerprint(&fixture.root).unwrap(), before);
         assert!(!fixture.state.join("activation").exists());
         assert!(!fixture.state.join("home/resource").exists());
+        assert!(!fixture
+            .state
+            .join("home/.local/state/dotfiles/home.json")
+            .exists());
         assert_eq!(
             fs::read_link(fixture.state.join("selection")).unwrap(),
             fixture.root.join("flake.nix")
@@ -360,12 +364,30 @@ fn resource_apply_and_no_change_reapply_skip_system_evaluation() {
     .unwrap()
     .apply()
     .unwrap();
+    let home_state = fixture.state.join("home/.local/state/dotfiles/home.json");
+    fs::remove_file(&home_state).unwrap();
+    let resource = fixture.state.join("home/resource");
+    let before = fs::metadata(&resource).unwrap();
+    let runtime = fixture.runtime(|| panic!("unchanged plan must not ask for confirmation"));
+    assert_eq!(
+        run_with(Mode::Plan, &fixture.root, false, runtime).unwrap(),
+        ExitCode::SUCCESS
+    );
+    assert!(!home_state.exists());
     let runtime = fixture.runtime(|| panic!("unchanged apply must not ask for confirmation"));
     assert_eq!(
         run_with(Mode::Apply, &fixture.root, false, runtime).unwrap(),
         ExitCode::SUCCESS
     );
     assert!(!fixture.state.join("activation").exists());
+    let recorded: serde_json::Value =
+        serde_json::from_slice(&fs::read(&home_state).unwrap()).unwrap();
+    assert!(recorded["copies"].get("resource").is_some());
+    let after = fs::metadata(&resource).unwrap();
+    assert_eq!(
+        (before.ino(), before.mtime(), before.mtime_nsec()),
+        (after.ino(), after.mtime(), after.mtime_nsec())
+    );
     write(&fixture.root.join("home/resource"), "changed resource");
     let runtime = fixture.runtime(|| panic!("plan must not ask for confirmation"));
     assert_eq!(

@@ -146,18 +146,20 @@ pub(super) fn deployment(
     width: Option<usize>,
 ) -> String {
     let mut rows = Vec::new();
-    let mut add = |name: String, before: Option<String>, after: String| {
+    let mut add = |name: String, before: Option<String>, after: Option<String>| {
         if let Some(before) = before {
             let mut row = Row::new(name.clone(), vec![name.clone(), before]);
             row.change = '-';
             rows.push(row);
         }
-        let mut row = Row::new(name.clone(), vec![name, after]);
-        row.change = '+';
-        rows.push(row);
+        if let Some(after) = after {
+            let mut row = Row::new(name.clone(), vec![name, after]);
+            row.change = '+';
+            rows.push(row);
+        }
     };
     if let Some((before, after)) = generation {
-        add("system".into(), Some(before.clone()), after.clone());
+        add("system".into(), Some(before.clone()), Some(after.clone()));
     }
     for copy in copies {
         add(
@@ -165,7 +167,9 @@ pub(super) fn deployment(
             copy.before
                 .as_ref()
                 .map(|hash| format!("sha256:{}", &hash[..12])),
-            format!("sha256:{}", &copy.after[..12]),
+            copy.after
+                .as_ref()
+                .map(|hash| format!("sha256:{}", &hash[..12])),
         );
     }
     if rows.is_empty() {

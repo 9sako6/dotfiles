@@ -445,6 +445,10 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         system: preview,
     };
     if let Review::Finished = plan.review(mode, runtime.confirm)? {
+        if matches!(mode, Mode::Apply) {
+            plan.inputs.verify()?;
+            plan.home.record_current()?;
+        }
         return Ok(ExitCode::SUCCESS);
     }
     plan.inputs.verify()?;

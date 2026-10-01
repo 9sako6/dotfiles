@@ -12,6 +12,7 @@ fn complete_apply(source: &Path, paths: &Path, home: &Path) {
     cargo_bin_cmd!()
         .arg("complete-apply")
         .args([source, paths, home])
+        .env("XDG_STATE_HOME", home.parent().unwrap().join("state"))
         .assert()
         .success();
 }

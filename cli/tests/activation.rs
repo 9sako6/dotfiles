@@ -77,6 +77,7 @@ while [ ! -e "$FIXTURE_ROOT/release" ]; do sleep 0.01; done
                 self.path("home"),
             ])
             .env("FIXTURE_ROOT", self.root.path())
+            .env("XDG_STATE_HOME", self.path("state"))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(File::create(self.path(&format!("stderr-{index}"))).unwrap())
@@ -121,6 +122,7 @@ while [ ! -e "$FIXTURE_ROOT/release" ]; do sleep 0.01; done
             ])
             .args(options)
             .env("FIXTURE_ROOT", self.root.path())
+            .env("XDG_STATE_HOME", self.path("state"))
             .output()
             .unwrap()
     }
@@ -177,7 +179,7 @@ fn backend_upgrades_an_incompatible_caller_and_preserves_copy_only_behavior() {
         let fixture = Fixture::new();
         fixture.executable(
             "sudo",
-            "#!/bin/sh\ntouch \"$FIXTURE_ROOT/privileged\"\nexec \"$@\"\n",
+            "#!/bin/sh\ntouch \"$FIXTURE_ROOT/privileged\"\nunset XDG_STATE_HOME\nexec \"$@\"\n",
         );
         fixture.executable(
             "legacy-dotfiles",
@@ -228,6 +230,10 @@ fn backend_upgrades_an_incompatible_caller_and_preserves_copy_only_behavior() {
             fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
             Path::new("/source/flake.nix")
         );
+        assert!(fixture.path("state/dotfiles/home.json").is_file());
+        assert!(!fixture
+            .path("home/.local/state/dotfiles/home.json")
+            .exists());
         if copy_only {
             assert!(!fixture.path("privileged").exists());
             assert!(!fixture.path("order").exists());
@@ -414,6 +420,10 @@ fn home_copy_follows_activation_and_failure_does_not_commit_the_record() {
         fs::read_to_string(fixture.path("home/managed")).unwrap(),
         "frozen"
     );
+    assert!(fixture.path("state/dotfiles/home.json").is_file());
+    assert!(!fixture
+        .path("home/.local/state/dotfiles/home.json")
+        .exists());
     assert_eq!(
         fs::metadata(fixture.path("home/managed")).unwrap().uid(),
         unsafe { libc::geteuid() }

@@ -6,10 +6,12 @@ use std::path::{Component, Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use sha2::{Digest, Sha256};
 
+mod state;
+
 pub struct CopyChange {
     pub path: String,
     pub before: Option<String>,
-    pub after: String,
+    pub after: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -27,8 +29,22 @@ struct CopyEntry {
 
 impl CopyPlan {
     pub fn changes(&self) -> Result<Vec<CopyChange>> {
+        self.inspect(&state::State::load(&self.home)?)
+    }
+
+    fn inspect(&self, state: &state::State) -> Result<Vec<CopyChange>> {
         let mut changes = Vec::new();
+        for (relative, previous) in self.retired(state) {
+            if self.owned_fingerprint(relative)?.as_ref() == Some(previous) {
+                changes.push(CopyChange {
+                    path: relative.clone(),
+                    before: Some(previous.clone()),
+                    after: None,
+                });
+            }
+        }
         for entry in &self.entries {
+            state.validate_destination(&entry.destination)?;
             validate_unowned_parents(&self.home, &entry.relative)?;
             let after = fingerprint(&entry.source, true)?.context("copy source disappeared")?;
             let before = fingerprint(&entry.destination, false)?;
@@ -36,17 +52,76 @@ impl CopyPlan {
                 changes.push(CopyChange {
                     path: entry.relative.display().to_string(),
                     before,
-                    after,
+                    after: Some(after),
                 });
             }
         }
         Ok(changes)
     }
 
+    fn retired<'a>(&self, state: &'a state::State) -> Vec<(&'a String, &'a String)> {
+        state
+            .copies()
+            .iter()
+            .filter(|(relative, _)| {
+                !self
+                    .entries
+                    .iter()
+                    .any(|entry| entry.relative == Path::new(relative))
+            })
+            .collect()
+    }
+
+    fn owned_fingerprint(&self, relative: &str) -> Result<Option<String>> {
+        validate_unowned_parents(&self.home, Path::new(relative))?;
+        fingerprint(&self.home.join(relative), false)
+    }
+
+    pub fn record_current(&self) -> Result<()> {
+        let mut state = state::State::load(&self.home)?;
+        if !self.inspect(&state)?.is_empty() {
+            bail!("home copy changed after preview; run plan/apply again");
+        }
+        let retired: Vec<_> = self
+            .retired(&state)
+            .into_iter()
+            .map(|(relative, _)| relative.clone())
+            .collect();
+        for relative in retired {
+            state.forget(&relative)?;
+        }
+        for entry in &self.entries {
+            self.record_result(&mut state, entry)?;
+        }
+        Ok(())
+    }
+
+    fn record_result(&self, state: &mut state::State, entry: &CopyEntry) -> Result<()> {
+        validate_unowned_parents(&self.home, &entry.relative)?;
+        let after = fingerprint(&entry.source, true)?.context("copy source disappeared")?;
+        if fingerprint(&entry.destination, false)?.as_ref() != Some(&after) {
+            bail!(
+                "copy result changed before recording: {}",
+                entry.relative.display()
+            );
+        }
+        state.record(&entry.relative, after)
+    }
+
     pub fn apply(&self) -> Result<()> {
-        // Validate every destination and source before changing the first entry.
-        // Only declared entries are owned; their ancestors must never be replaced.
-        self.changes()?;
+        let mut state = state::State::load(&self.home)?;
+        self.inspect(&state)?;
+        let retired: Vec<_> = self
+            .retired(&state)
+            .into_iter()
+            .map(|(relative, previous)| (relative.clone(), previous.clone()))
+            .collect();
+        for (relative, previous) in retired {
+            if self.owned_fingerprint(&relative)?.as_ref() == Some(&previous) {
+                remove_entry(&self.home.join(&relative))?;
+            }
+            state.forget(&relative)?;
+        }
         for entry in &self.entries {
             validate_unowned_parents(&self.home, &entry.relative)?;
             sync_entry(&entry.source, &entry.destination).with_context(|| {
@@ -56,6 +131,7 @@ impl CopyPlan {
                     entry.destination.display()
                 )
             })?;
+            self.record_result(&mut state, entry)?;
         }
         Ok(())
     }
@@ -211,6 +287,12 @@ fn validate_relative_path(value: &str) -> Result<()> {
     let path = Path::new(value);
     if path.is_absolute() {
         bail!("dotfiles.toml: copy entry must be relative: {value}");
+    }
+    if value
+        .split('/')
+        .any(|part| part.is_empty() || part == "." || part == "..")
+    {
+        bail!("dotfiles.toml: invalid copy entry: {value}");
     }
     for component in path.components() {
         if !matches!(component, Component::Normal(_)) {
@@ -400,10 +482,56 @@ mod tests {
             }
             let changes = plan.changes().unwrap();
             assert_eq!(changes.len(), 1, "{change}");
-            assert_ne!(changes[0].before.as_ref(), Some(&changes[0].after));
+            assert_ne!(changes[0].before, changes[0].after);
             plan.apply().unwrap();
             assert!(plan.changes().unwrap().is_empty(), "{change}");
         }
+    }
+
+    #[test]
+    fn removal_preview_does_not_change_files_or_recorded_results() {
+        let temp = tempfile::tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        let home = temp.path().join("home");
+        fs::create_dir_all(repo.join("home")).unwrap();
+        fs::write(repo.join("home/managed"), "owned").unwrap();
+        plan(&repo, &home, &["managed".into()])
+            .unwrap()
+            .apply()
+            .unwrap();
+        let state = home.join(".local/state/dotfiles/home.json");
+        let recorded = fs::read(&state).unwrap();
+        let plan = plan(&repo, &home, &[]).unwrap();
+        let changes = plan.changes().unwrap();
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].path, "managed");
+        assert!(changes[0].before.is_some());
+        assert!(changes[0].after.is_none());
+        assert_eq!(fs::read_to_string(home.join("managed")).unwrap(), "owned");
+        assert_eq!(fs::read(&state).unwrap(), recorded);
+        plan.apply().unwrap();
+        assert!(!home.join("managed").exists());
+        assert!(plan.changes().unwrap().is_empty());
+    }
+
+    #[test]
+    fn metadata_recovery_rejects_home_changes_after_an_unchanged_preview() {
+        let temp = tempfile::tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        let home = temp.path().join("home");
+        fs::create_dir_all(repo.join("home")).unwrap();
+        fs::create_dir_all(&home).unwrap();
+        fs::write(repo.join("home/managed"), "owned").unwrap();
+        fs::copy(repo.join("home/managed"), home.join("managed")).unwrap();
+        let plan = plan(&repo, &home, &["managed".into()]).unwrap();
+        assert!(plan.changes().unwrap().is_empty());
+        fs::write(home.join("managed"), "changed after preview").unwrap();
+        assert!(plan.record_current().is_err());
+        assert_eq!(
+            fs::read_to_string(home.join("managed")).unwrap(),
+            "changed after preview"
+        );
+        assert!(!home.join(".local/state/dotfiles/home.json").exists());
     }
 
     #[test]

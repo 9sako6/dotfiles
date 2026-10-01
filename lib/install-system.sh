@@ -262,7 +262,7 @@ install_system_apply_built_system() (
   [ -f "$cli_bin" ] && [ -x "$cli_bin" ] || install_system_fail 'built system has no dotfiles CLI'
   copy_only=false
   [ "${4:-}" != --copy-only ] || copy_only=true
-  set -- "$env_bin" SUDO_USER="$primary_user" \
+  set -- "$env_bin" SUDO_USER="$primary_user" XDG_STATE_HOME="${XDG_STATE_HOME:-}" \
     "$cli_bin" apply-built "$nix_bin" "$primary_user" "$system_path" \
     "$selection_path" "$expected_target" "$desired_target" "$@"
   if "$copy_only"; then
