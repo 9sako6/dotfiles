@@ -324,6 +324,7 @@ fn home_and_system_changes_share_one_review() {
     .unwrap();
     let system = crate::inventory::Preview::from_inventory(None, inventory).unwrap();
     let mut plan = Plan {
+        user_services: user_services::Plan::default(),
         tools: tools::Plan::capture(
             &inputs.public.source,
             &fixture.state.join("home"),

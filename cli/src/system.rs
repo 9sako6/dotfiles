@@ -2,6 +2,7 @@
 mod fast_path_tests;
 mod inputs;
 mod tools;
+mod user_services;
 
 use std::env;
 use std::fs::{self, File, OpenOptions};
@@ -204,6 +205,7 @@ impl PlanInputs {
 }
 
 struct Plan {
+    user_services: user_services::Plan,
     tools: tools::Plan,
     inputs: PlanInputs,
     home: home_copy::CopyPlan,
@@ -214,7 +216,13 @@ impl Plan {
     fn review(&mut self, mode: Mode, confirm: impl FnOnce() -> Result<()>) -> Result<Review> {
         self.inputs.verify()?;
         self.system.copy_changes = self.home.changes()?;
-        review_plan_with(mode, &self.system, Some(&self.tools), confirm)
+        review_plan_with(
+            mode,
+            &self.system,
+            Some(&self.tools),
+            Some(&self.user_services),
+            confirm,
+        )
     }
 }
 
@@ -316,6 +324,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let previous_generation = &snapshot.previous_generation;
     let workspace = &snapshot.workspace;
     let tools = tools::Plan::capture(&public.source, &home, &runtime.mise)?;
+    let user_services = user_services::Plan::capture(&public.source, &home)?;
     let copy_plan = home_copy::plan_live(&public.source, root, &home, &configuration.copy)?;
     let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
     let identity = inputs::identity(&system_source, &inputs, local, &home)?;
@@ -441,6 +450,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     }
     drop(progress);
     let mut plan = Plan {
+        user_services,
         tools,
         inputs: snapshot,
         home: copy_plan,
@@ -712,7 +722,7 @@ fn evaluate_configuration<T: serde::de::DeserializeOwned>(
 
 #[cfg(test)]
 fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review> {
-    review_plan_with(mode, &preview, None, || {
+    review_plan_with(mode, &preview, None, None, || {
         confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())
     })
 }
@@ -721,15 +731,22 @@ fn review_plan_with(
     mode: Mode,
     preview: &crate::inventory::Preview,
     tools: Option<&tools::Plan>,
+    user_services: Option<&user_services::Plan>,
     confirm: impl FnOnce() -> Result<()>,
 ) -> Result<Review> {
-    if !preview.has_changes() && !tools.is_some_and(tools::Plan::has_changes) {
+    if !preview.has_changes()
+        && !tools.is_some_and(tools::Plan::has_changes)
+        && !user_services.is_some_and(user_services::Plan::has_changes)
+    {
         return Ok(Review::Finished);
     }
     let width = crate::terminal_width();
     let text = [
         tools.map(|tools| tools.render(width)).unwrap_or_default(),
         preview.render(width),
+        user_services
+            .map(user_services::Plan::render)
+            .unwrap_or_default(),
     ]
     .into_iter()
     .filter(|text| !text.is_empty())
@@ -741,6 +758,9 @@ fn review_plan_with(
     drop(output);
     if matches!(mode, Mode::Plan) {
         return Ok(Review::Finished);
+    }
+    if let Some(services) = user_services {
+        services.ensure_applicable()?;
     }
     confirm()?;
     Ok(Review::Apply)

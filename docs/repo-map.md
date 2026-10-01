@@ -117,3 +117,15 @@ Nix でユーザー常設ツールを管理する際は、`flake.lock` による
 Homebrewのformulaとcaskは `nix/homebrew-packages.nix` に集約する。普通のCLIの管理方式は[パッケージと環境の原則](#パッケージと環境の原則)に従う。miseで管理できない配布形式や実行時の制約がある場合は、その根拠を確認して管理境界を決める。
 
 `install.sh` は各種バージョン管理ツールの導入前に実行される。そのため、自身が属するコミットの SHA をスクリプト内に既定値として埋め込まず、実行時に `origin/master` の最新コミットを取得する。なお、既存のローカルチェックアウトに変更がある場合、別ブランチにいる場合、または `origin/master` から分岐したコミットが存在する場合は自動更新を行わない。
+
+### Public user LaunchAgent の宣言と preview
+
+`user-services.toml` は public user LaunchAgent の唯一の宣言元で、Rust CLI が同じ公開 snapshot から読み、plist と追加・変更・削除の差分を生成する。system input へは含めない。現段階は preview のみで、差分がある `apply` は確認や tools/home/system の変更前に停止する。launchctl による反映と成功記録の書き込みは後続の reconciliation backend が担う。
+
+`[[agents]]` の必須項目は `label` と `argv`。任意項目は `run_at_load`、`keep_alive`（既定 false）、正の `start_interval`、`start_calendar_interval`（minute/hour/day/weekday/month）、`working_directory`。interval と calendar は同時指定できない。未知のキー、大文字小文字のみ異なるものを含む重複 label、空 argv、制御文字、不正な schedule/path は拒否する。raw shell hook や任意の plist key は受け付けない。これは実行ファイルの sandbox ではない。
+
+`argv[0]` は絶対パスまたは `~/` で始まる安定した実行入口を明記する。mise tool は [mise shims](https://mise.jdx.dev/dev-tools/shims.html) を使い、標準構成なら `~/.local/share/mise/shims/node` 等を指定する。`MISE_SHIMS_DIR` / `shims_dir` / data directory を変更した環境では、利用者がその構成に対応した実際の shim path を指定する。CLI は bare command から shim path を推測しない。mise install の版固定パス、Nix store の実行パス、shell interpreter と env の直接指定は拒否する。`~/` 展開は実行入口と working directory のみで、他の argv 要素に shell 展開は行わない。shim は作業ディレクトリに対応した mise 設定を選ぶので、必要に応じて working directory を指定する。
+
+前回成功結果は `$XDG_STATE_HOME/dotfiles/user-services.json`（既定 `~/.local/state/dotfiles/user-services.json`）の version 1、home、agents（label → plist SHA-256）の記録として読む。宣言や起動指示は記録しない。差分は宣言 label と記録済み label のみに限定し、LaunchAgents を走査して所有を推測しない。記録がない既存 plist、記録と内容が異なる plist、配備先や記録の symlink、破損記録は競合として停止する。HOME、公開 snapshot root、明示した XDG_STATE_HOME 自体の OS alias は許容し、その配下の symlink は拒否する。記録を失った場合、既存 agent を自動採用・削除せず手動で所有を確認する。欠損した managed plist は再作成差分となる。
+
+private agent、system daemon、現在の Nix-backed zundamonotify は対象外とし、既存の構成・所有を変更しない。

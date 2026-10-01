@@ -272,3 +272,27 @@ cargo test --locked --manifest-path cli/Cargo.toml --test public_home_apply -- -
 Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、通常のホームディレクトリ設定は Home Manager、devcontainer から参照可能な copy 対象は Rust CLI がそれぞれ管理する。
 
 GitHub-hosted な macOS runner では、Home Manager のユーザー反映とシステム派生のビルドを個別に検証し、nix-darwin のシステム反映は実施しない。Nix ストアのパスは GitHub Actions のバイナリキャッシュを活用してワークフロー間で再利用する。新規 Mac への反映検証は、Homebrew の入っていない VM または実機で確認する。
+
+## Public user service の preview
+
+`user-services.toml` は現在空のままであり、既存サービスの移行は行っていない。宣言の形式例は次のとおり。shell snippet ではなく argv を記述する。
+
+```toml
+[[agents]]
+label = "com.example.daily-check"
+argv = ["~/.local/share/mise/shims/node", "/absolute/path/to/check.js"]
+working_directory = "~/jobs"
+run_at_load = false
+
+[agents.start_calendar_interval]
+hour = 9
+minute = 0
+```
+
+`dotfiles plan` は user services の追加（+）、変更（~）、削除（-）を表示する。plist、成功記録、launchd の状態は変更しない。reconciliation backend 導入前の `dotfiles apply` は service 差分がある場合、他の backend を反映せずエラーで停止する。差分がない場合の既存動作は維持する。環境変数と stdout/stderr の宣言は、具体的な要件が出るまで追加しない。
+
+Linux でも隔離 fixture で宣言検証、plist、所有境界、差分と apply 拒否を検証できる。
+
+```sh
+cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::user_services
+```
