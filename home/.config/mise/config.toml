@@ -1,4 +1,5 @@
 [tools]
+antigravity-cli = "1.2.2"
 atuin = "18.18.1"
 awscli = "2.35.11"
 # Bitwarden CLI (bw)
@@ -32,6 +33,9 @@ rust = { version = "1.97.1", components = ["rustfmt", "clippy"] }
 uv = "0.12.1"
 xcodegen = "2.46.0"
 zoxide = "0.10.0"
+
+[env]
+AGY_CLI_DISABLE_AUTO_UPDATE = "true"
 
 [settings]
 activate_aggressive = true

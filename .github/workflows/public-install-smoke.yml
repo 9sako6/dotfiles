@@ -99,6 +99,7 @@ jobs:
           export PATH="$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH"
           test "$(mise exec -- sh -c 'command -v fd')" = "$(mise which fd)"
           test "$(mise exec -- sh -c 'command -v fzf')" = "$(mise which fzf)"
+          mise exec -- agy --version
           mise exec -- atuin --version
           mise exec -- bun --version
           mise exec -- cargo --version

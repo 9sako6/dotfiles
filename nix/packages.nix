@@ -7,25 +7,6 @@ let
   ankiPackage = pkgs.anki-bin;
   expectedAnkiVersion = "26.05";
 
-  antigravityCliPackage = (import pkgs.path {
-    inherit (pkgs.stdenv.hostPlatform) system;
-    config.allowUnfreePredicate = package: pkgs.lib.getName package == "antigravity-cli";
-  }).antigravity-cli.overrideAttrs (previous: {
-    version = "1.2.2";
-    src = pkgs.fetchurl {
-      url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.2.2-6061403484848128/darwin-arm/cli_mac_arm64.tar.gz";
-      hash = "sha512-ijte3qUeEHp0QTzqXu0cWwLe3pRbohx2JbfIb0d8LIrEI1gd4O2E/y+Xw79oGMH8JMqEz5p2wvsCpQ6J2KDSmg==";
-    };
-    nativeBuildInputs = (previous.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
-    postFixup = (previous.postFixup or "") + ''
-      wrapProgram "$out/bin/agy" --set AGY_CLI_DISABLE_AUTO_UPDATE true
-    '';
-    meta = previous.meta // {
-      platforms = [ "aarch64-darwin" ];
-    };
-  });
-  expectedAntigravityCliVersion = "1.2.2";
-
   bunPackage = pkgs.bun;
   expectedBunVersion = "1.3.13";
 
@@ -87,8 +68,6 @@ assert pkgs.lib.assertMsg (ankiConnectPackage.version == expectedAnkiConnectVers
   "AnkiConnect version drifted: expected ${expectedAnkiConnectVersion}, got ${ankiConnectPackage.version}";
 assert pkgs.lib.assertMsg (ankiPackage.version == expectedAnkiVersion)
   "Anki version drifted: expected ${expectedAnkiVersion}, got ${ankiPackage.version}";
-assert pkgs.lib.assertMsg (antigravityCliPackage.version == expectedAntigravityCliVersion)
-  "Antigravity CLI version drifted: expected ${expectedAntigravityCliVersion}, got ${antigravityCliPackage.version}";
 assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
 assert pkgs.lib.assertMsg (cachixPackage.version == expectedCachixVersion)
@@ -130,8 +109,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
   packages = [
     # Anki 26.05
     ankiPackage
-
-    antigravityCliPackage
 
     ffmpegPackage
 
