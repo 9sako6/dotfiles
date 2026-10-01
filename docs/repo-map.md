@@ -5,7 +5,7 @@
 ファイルは次の 6 区分で管理する。共有可能な設定と非公開にすべき情報を同一リポジトリに混在させず、かつ単一の構成ルートから安全に組み立てるための境界である。
 
 - `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
-- `home-managed user tools` — `nix/home.nix` と `nix/packages.nix` にユーザー単位の宣言を置く。共有設定ファイルの実体は `home/` に置く。root flake からシステム世代と一緒に反映し、devcontainer から実ファイルとして見える必要があるものだけ `dotfiles.toml` の `copy` で配備する。
+- `home-managed user tools` — 普通のCLIは `home/.config/mise/config.toml` に宣言し、miseへ段階的に移行する。未移行のツールとNix固有artifactは `nix/packages.nix` に残す。共有設定ファイルの実体は `home/` に置き、現在のHome Manager配備を維持する。devcontainerから実ファイルとして見える必要があるものだけ `dotfiles.toml` の `copy` で配備する。
 - `system configuration` — 公開ルートの `flake.nix` / `flake.lock` と `nix/system.nix` に Mac 全体の設定を置く。nix-darwin で反映し、Homebrew 本体と cask もここで管理する。公開 `flake.nix` が唯一の構成ルートである。
 - `private system configuration` — 公開できない追加設定。独立した別 root flake は設けず、ローカル設定 `dotfiles.local.toml` の `private.path` 経由で公開 root flake の評価時に結合する。
 - `local-only` — マシン固有の設定。repo にコミットせず、Git 管理外の `dotfiles.local.toml` や各マシンのローカルファイルに置く。機密情報は含めず、必要に応じて個別にバックアップする。
@@ -17,7 +17,8 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 - repo の実行だけに必要 → `repo runtime`
 - ユーザー単位の home 配置 → `nix/home.nix`
-- ユーザー単位で常設するパッケージ → `nix/packages.nix`
+- ユーザー単位で常設する普通のCLI → `home/.config/mise/config.toml`
+- Nix固有artifactや未移行のユーザーパッケージ → `nix/packages.nix`
 - ユーザーへ配る共有設定ファイルの実体 → `home/`
 - Mac 全体へ反映したい公開設定 → `system configuration` (`flake.nix` / `nix/system.nix`)
 - Mac 全体へ反映したい非公開設定 → `private system configuration` (`dotfiles.local.toml` の `private.path` で指定)
@@ -83,8 +84,8 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 ### パッケージと環境の原則
 
-- Nix で合理的に管理できる CLI やツールチェーンは `nix/packages.nix` に定義を集約する。`home/.config/mise/config.toml` の `[tools]` は、Nix へ移行中の既存ツールおよび Nix で合理的に管理できない明示的な例外のみに限定する。新しいツールは追加せず、既存ツールのバージョンや配布元を変更する際は、同一の変更で Nix へ移行可能かをあらかじめ判断する。mise は残る例外の管理と補助タスクの実行を受け持つ。
-- ログインユーザーが常用するツールは、`environment.systemPackages` ではなく `nix/packages.nix` で定義し、Home Manager の `home.packages` を介して利用する。
+- 普通のCLIやツールチェーンは、バージョンを固定して `home/.config/mise/config.toml` の `[tools]` へ段階的に移す。移行時はmise backendの公式配布元と実行動作を確認し、同じツールのNix宣言を除く。GUI、system service、platform依存、Nix固有artifactは別の管理境界として扱う。
+- 未移行のユーザーツールは `nix/packages.nix` とHome Managerの `home.packages` に残す。CIやbootstrapが使うNix toolsetの依存も、各ツールを移行する前に確認する。private moduleの既存interfaceとHome Managerの利用方式は維持する。
 - 編集内容を即座に反映させたい通常の設定ファイルは、稼働中のリポジトリへの直接のシンボリックリンクとする。
 - devcontainer から参照するエージェント用設定は、Nix ストアやホスト固有の絶対パスシンボリックリンクにしてはならない。`dotfiles.toml` の `copy` に列挙したファイルまたはディレクトリのみを、実ファイルとして `$HOME` 配下に配備する。列挙されたディレクトリ配下は dotfiles が所有し、同期時にはコピー元に存在しない子要素を削除するが、親ディレクトリや同階層にある他のランタイムファイルには影響を与えない。
 - `copy`宣言されたパスと一致または親子関係にある公開構成のHome Managerリンクのみを自動除外する。その他の有効な`home.file.target`が`copy`対象と重複した場合は、別名キー経由の`target`指定も含めてNix評価時に拒否する。
@@ -113,6 +114,6 @@ Python および MLX 関連の依存関係は `nix/localllm/pyproject.toml` お�
 
 Nix でユーザー常設ツールを管理する際は、`flake.lock` による取得元リビジョンの固定にとどまらず、`nix/packages.nix` 内で期待するバージョンを明示してアサーションを行う。利用可能な場合は `go_1_26` や `rustPackages_1_97` などのバージョン付き属性を選択し、コメントにも完全なバージョン番号を記載する。nixpkgs の更新によって実際のバージョンが変わった場合は、期待バージョンを意図的に更新するまで評価を失敗させる。
 
-Homebrew の formula および cask は `nix/homebrew-packages.nix` に集約する。ユーザー単位で常設する CLI ツールは Nix による管理を原則とし、Nix で合理的に管理できないものに限って mise、Homebrew、公式インストーラーなど、各ツールに適した自然な導入手段を例外として用いる。mise の `[tools]` は段階的に縮小すべき移行対象であり、例外として残す場合はその理由を設定やコメントから判別できる状態にする。
+Homebrewのformulaとcaskは `nix/homebrew-packages.nix` に集約する。普通のCLIの管理方式は[パッケージと環境の原則](#パッケージと環境の原則)に従う。miseで管理できない配布形式や実行時の制約がある場合は、その根拠を確認して管理境界を決める。
 
 `install.sh` は各種バージョン管理ツールの導入前に実行される。そのため、自身が属するコミットの SHA をスクリプト内に既定値として埋め込まず、実行時に `origin/master` の最新コミットを取得する。なお、既存のローカルチェックアウトに変更がある場合、別ブランチにいる場合、または `origin/master` から分岐したコミットが存在する場合は自動更新を行わない。

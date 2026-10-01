@@ -18,15 +18,14 @@
 
 ## ユーザー常設ツール
 
-ユーザーとして常に使える状態にしたい CLI や toolchain は、原則 `packages.nix` で管理する。
-現在は Bun、Git、Go、Quint、Rust toolchain をここで管理する。
+普通のCLIやtoolchainは[パッケージと環境の原則](../docs/repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。`packages.nix` はNix固有artifactと未移行のツールを管理する。現在はBun、Git、Go、Quint、Rust toolchainがここに残っている。
 
 `packages.nix` は Home Manager 専用 module ではなく、共有 toolset を返す。`home.nix` はその package list を `home.packages` に適用し、root flake は同じ list を `.#userTools` として公開する。CI もこの `.#userTools` を使うため、ユーザー環境と CI に別々のバージョン定義を持たない。
 
 Nix package は `flake.lock` だけにバージョン管理を委ねず、期待バージョンを `packages.nix` に明示して assertion する。
 versioned attribute がある場合はそれを使い、コメントにも完全なバージョンを残す。
 
-Nix で合理的に管理できないものだけ例外とし、Homebrew、mise、公式 installer など自然な方法を選ぶ。例外理由は設定やコメントに残す。現時点では root `.mise.toml` に tool 例外はなく、`[tools]` を持たない。
+miseへ移したツールは `home/.config/mise/config.toml` に宣言する。root `.mise.toml` はrepo runtimeのタスクを管理し、`[tools]` を持たない。
 
 ## Homebrew
 

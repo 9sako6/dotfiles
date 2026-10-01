@@ -79,6 +79,7 @@ jobs:
             [[ -n $ZSH_HIGHLIGHT_VERSION ]] || exit 1
             [[ -n $functions[_zsh_autosuggest_start] ]] || exit 1
             whence -w abbrev-alias | grep -q function || exit 1
+            [[ "$(command -v fd)" == "$(mise which fd)" ]] || exit 1
             print zinit-plugins-ok
           '
           "$HOME/.local/bin/mise" bootstrap repos status --missing
@@ -95,14 +96,15 @@ jobs:
       - name: Verify home-managed daily-use tools
         run: |
           export PATH="$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH"
-          for tool in fd fzf ghq pnpm rg; do
+          for tool in fzf ghq pnpm rg; do
             test "$(command -v "$tool")" = "$HOME/.nix-profile/bin/$tool"
           done
+          test "$(mise exec -- sh -c 'command -v fd')" = "$(mise which fd)"
           mise exec -- atuin --version
           bun --version
           cargo --version
           mise exec -- codex --version
-          fd --version
+          mise exec -- fd --version
           fzf --version
           mise exec -- gh --version
           ghq --version
