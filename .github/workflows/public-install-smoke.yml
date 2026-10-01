@@ -97,13 +97,10 @@ jobs:
       - name: Verify home-managed daily-use tools
         run: |
           export PATH="$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH"
-          for tool in pnpm; do
-            test "$(command -v "$tool")" = "$HOME/.nix-profile/bin/$tool"
-          done
           test "$(mise exec -- sh -c 'command -v fd')" = "$(mise which fd)"
           test "$(mise exec -- sh -c 'command -v fzf')" = "$(mise which fzf)"
           mise exec -- atuin --version
-          bun --version
+          mise exec -- bun --version
           cargo --version
           mise exec -- codex --version
           mise exec -- fd --version
@@ -114,7 +111,7 @@ jobs:
           git --version
           go version
           herdr --version
-          pnpm --version
+          mise exec -- pnpm --version
           quint --version
           mise exec -- rg --version
           rustc --version
