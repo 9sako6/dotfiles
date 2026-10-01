@@ -5,7 +5,7 @@ use diff::ResourceDiff;
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -169,17 +169,7 @@ impl Preview {
             || !self.copy_changes.is_empty()
     }
 
-    pub fn show(&self) -> Result<()> {
-        let text = self.render(crate::terminal_width());
-        if !text.is_empty() {
-            let mut output = io::stdout().lock();
-            writeln!(output, "{text}")?;
-            output.flush()?;
-        }
-        Ok(())
-    }
-
-    fn render(&self, width: Option<usize>) -> String {
+    pub(crate) fn render(&self, width: Option<usize>) -> String {
         let resources = if let Some(notice) = self.notice {
             format!("{notice}\n\n{}", self.native).trim_end().into()
         } else {

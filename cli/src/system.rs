@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod fast_path_tests;
 mod inputs;
+mod tools;
 
 use std::env;
 use std::fs::{self, File, OpenOptions};
@@ -202,6 +203,7 @@ impl PlanInputs {
 }
 
 struct Plan {
+    tools: Option<tools::Plan>,
     inputs: PlanInputs,
     home: home_copy::CopyPlan,
     system: crate::inventory::Preview,
@@ -211,7 +213,7 @@ impl Plan {
     fn review(&mut self, mode: Mode, confirm: impl FnOnce() -> Result<()>) -> Result<Review> {
         self.inputs.verify()?;
         self.system.copy_changes = self.home.changes()?;
-        review_plan_with(mode, &self.system, confirm)
+        review_plan_with(mode, &self.system, self.tools.as_ref(), confirm)
     }
 }
 
@@ -311,6 +313,11 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let previous = &snapshot.previous;
     let previous_generation = &snapshot.previous_generation;
     let workspace = &snapshot.workspace;
+    let tools = if matches!(mode, Mode::Plan) {
+        Some(tools::Plan::capture(&public.source, &home)?)
+    } else {
+        None
+    };
     let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
     let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
     let identity = inputs::identity(&system_source, &inputs, local, &home)?;
@@ -440,6 +447,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     }
     drop(progress);
     let mut plan = Plan {
+        tools,
         inputs: snapshot,
         home: copy_plan,
         system: preview,
@@ -697,7 +705,7 @@ fn evaluate_configuration<T: serde::de::DeserializeOwned>(
 
 #[cfg(test)]
 fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review> {
-    review_plan_with(mode, &preview, || {
+    review_plan_with(mode, &preview, None, || {
         confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())
     })
 }
@@ -705,12 +713,25 @@ fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review>
 fn review_plan_with(
     mode: Mode,
     preview: &crate::inventory::Preview,
+    tools: Option<&tools::Plan>,
     confirm: impl FnOnce() -> Result<()>,
 ) -> Result<Review> {
-    if !preview.has_changes() {
+    if !preview.has_changes() && !tools.is_some_and(tools::Plan::has_changes) {
         return Ok(Review::Finished);
     }
-    preview.show()?;
+    let width = crate::terminal_width();
+    let text = [
+        tools.map(|tools| tools.render(width)).unwrap_or_default(),
+        preview.render(width),
+    ]
+    .into_iter()
+    .filter(|text| !text.is_empty())
+    .collect::<Vec<_>>()
+    .join("\n\n");
+    let mut output = io::stdout().lock();
+    writeln!(output, "{text}")?;
+    output.flush()?;
+    drop(output);
     if matches!(mode, Mode::Plan) {
         return Ok(Review::Finished);
     }

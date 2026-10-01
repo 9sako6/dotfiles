@@ -66,6 +66,8 @@ impl Fixture {
         ] {
             write(&root.join(name), "initial");
         }
+        write(&root.join("home/.config/mise/config.toml"), "[tools]\n");
+        write(&root.join("home/.config/mise/mise.lock"), "");
         write(&root.join("home/apm.yml"), "dependencies:\n  apm: []\n");
         let source = state.join("frozen");
         let metadata = serde_json::json!({"path": source, "locked": {"narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}});
@@ -320,6 +322,7 @@ fn home_and_system_changes_share_one_review() {
     .unwrap();
     let system = crate::inventory::Preview::from_inventory(None, inventory).unwrap();
     let mut plan = Plan {
+        tools: None,
         inputs,
         home,
         system,
