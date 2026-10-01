@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
-use std::fs;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -92,11 +92,7 @@ pub(super) struct Plan {
 }
 
 impl Plan {
-    pub(super) fn capture(source: &Path, home: &Path) -> Result<Self> {
-        Self::capture_with(source, home, Path::new("mise"))
-    }
-
-    fn capture_with(source: &Path, home: &Path, mise: &Path) -> Result<Self> {
+    pub(super) fn capture(source: &Path, home: &Path, mise: &Path) -> Result<Self> {
         let workspace = tempfile::Builder::new()
             .prefix("dotfiles-tools-")
             .tempdir_in(env::temp_dir().canonicalize()?)?;
@@ -138,6 +134,7 @@ impl Plan {
             .env("MISE_CEILING_PATHS", self.workspace.path())
             .env("MISE_COLOR", "false")
             .env("MISE_GLOBAL_CONFIG_ROOT", &self.home)
+            .env("MISE_STATE_DIR", self.workspace.path().join("state"))
             .env(
                 "MISE_CONFIG_FILE",
                 self.workspace.path().join("config.toml"),
@@ -234,6 +231,43 @@ impl Plan {
                 status,
             })
         }).collect()
+    }
+
+    pub(super) fn apply(&mut self, lock: &File) -> Result<()> {
+        self.verify()?;
+        if !self.has_changes() {
+            return Ok(());
+        }
+        let pending = self
+            .tools
+            .iter()
+            .filter(|tool| matches!(tool.status, Status::Missing | Status::VersionChange))
+            .map(|tool| tool.name.clone())
+            .collect::<BTreeSet<_>>();
+        let mut command = self.command();
+        command.args(["install", "--locked"]);
+        super::retain_apply_lock(&mut command, lock);
+        let status = command.status();
+        self.verify().context("tools may be partially installed")?;
+        self.tools = self.inspect().context("cannot verify tools after installation; some tools may be installed. Run plan/apply again")?;
+        if !status.context("cannot start mise install")?.success() || self.has_changes() {
+            let completed = self
+                .tools
+                .iter()
+                .filter(|tool| pending.contains(&tool.name) && tool.status == Status::Installed)
+                .map(|tool| tool.name.as_str())
+                .collect::<Vec<_>>();
+            let remaining = self
+                .tools
+                .iter()
+                .filter(|tool| matches!(tool.status, Status::Missing | Status::VersionChange))
+                .map(|tool| tool.name.as_str())
+                .collect::<Vec<_>>();
+            bail!("tools install did not complete; installed in this attempt: {}; still missing: {}. Some tools may have changed. Run plan/apply again",
+                if completed.is_empty() { "none".into() } else { completed.join(", ") },
+                if remaining.is_empty() { "none".into() } else { remaining.join(", ") });
+        }
+        Ok(())
     }
 
     pub(super) fn has_changes(&self) -> bool {
@@ -333,7 +367,7 @@ sed "s|CONFIG|$MISE_GLOBAL_CONFIG_FILE|g" '{}'
         }
 
         fn capture(&self) -> Result<Plan> {
-            Plan::capture_with(&self.source, &self.home, &self.mise)
+            Plan::capture(&self.source, &self.home, &self.mise)
         }
     }
 
@@ -439,10 +473,88 @@ disable_tools = ["a-disabled"]
     }
 
     #[test]
+    fn install_lock_fixture() {
+        let Some(root) = env::var_os("DOTFILES_TEST_TOOLS_LOCK_ROOT").map(PathBuf::from) else {
+            return;
+        };
+        let lock = super::super::acquire_lock(&root.join("apply.lock")).unwrap();
+        let mut plan =
+            Plan::capture(&root.join("source"), &root.join("home"), &root.join("mise")).unwrap();
+        plan.apply(&lock).unwrap();
+    }
+
+    #[test]
+    fn installer_retains_the_common_lock_after_its_owner_is_killed() {
+        use std::io::{BufRead, BufReader, Read};
+        use std::process::Stdio;
+        use std::time::{Duration, Instant};
+
+        let fixture = Fixture::new(
+            "[tools]\nnode = '1.0.0'\n",
+            r#"{"node":[{"version":"1.0.0","requested_version":"1.0.0","installed":false,"source":{"path":"CONFIG"}}]}"#,
+        );
+        let root = fixture._temporary.path();
+        fs::write(
+            &fixture.mise,
+            format!(
+                r#"#!/bin/sh
+set -eu
+case "$*" in
+  'ls --json --locked') sed "s|CONFIG|$MISE_GLOBAL_CONFIG_FILE|g" '{}/output.json' ;;
+  'install --locked') printf 'installer-ready\n'; while [ ! -e '{}/release' ]; do sleep 0.02; done ;;
+  *) exit 77 ;;
+esac
+"#,
+                root.display(), root.display()
+            ),
+        )
+        .unwrap();
+        let mut owner = Command::new(env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "system::tools::tests::install_lock_fixture",
+                "--nocapture",
+            ])
+            .env("DOTFILES_TEST_TOOLS_LOCK_ROOT", root)
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut output = BufReader::new(owner.stdout.take().unwrap());
+        loop {
+            let mut line = String::new();
+            assert!(
+                output.read_line(&mut line).unwrap() > 0,
+                "installer did not start"
+            );
+            if line.trim() == "installer-ready" {
+                break;
+            }
+        }
+        owner.kill().unwrap();
+        owner.wait().unwrap();
+        let path = root.join("apply.lock");
+        let excluded = super::super::acquire_lock(&path).is_err();
+        fs::write(root.join("release"), "").unwrap();
+        output.read_to_end(&mut Vec::new()).unwrap();
+        assert!(excluded);
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            if super::super::acquire_lock(&path).is_ok() {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "finished installer retained the lock"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    #[test]
     #[ignore = "requires the pinned mise executable"]
     fn real_mise_uses_only_frozen_global_inputs_and_rejects_stale_lock() {
         let mise = env::var_os("DOTFILES_TEST_MISE").expect("DOTFILES_TEST_MISE is required");
-        let fixture = Fixture::new("[tools]\nnode = '23.0.0'\nripgrep = '14.0.0'\n[settings]\ndisable_tools = ['ripgrep']\n", "");
+        let fixture = Fixture::new("[tools]\nnode = '23.0.0'\nripgrep = '14.0.0'\n[env]\nAGY_CLI_DISABLE_AUTO_UPDATE = 'true'\n[settings]\nactivate_aggressive = true\nauto_install = false\ndisable_tools = ['ripgrep']\n[settings.github]\ncredential_command = 'false'\n", "");
         let config = fixture.source.join("home/.config/mise/config.toml");
         let lock = fixture.source.join("home/.config/mise/mise.lock");
         fs::write(
@@ -461,13 +573,14 @@ disable_tools = ["a-disabled"]
         fs::write(&wrapper, format!("#!/bin/sh\nexport MISE_DATA_DIR=\"$HOME/.local/share/mise\"\nexport MISE_CACHE_DIR=\"$HOME/.cache/mise\"\nexport XDG_CONFIG_HOME=\"$HOME/.config\"\nexec '{}' \"$@\"\n", Path::new(&mise).display())).unwrap();
         fs::set_permissions(&wrapper, fs::Permissions::from_mode(0o755)).unwrap();
         let before = fs::read(&lock).unwrap();
-        let plan = Plan::capture_with(&fixture.source, &fixture.home, &wrapper).unwrap();
+        let plan = Plan::capture(&fixture.source, &fixture.home, &wrapper).unwrap();
         assert_eq!(plan.tools.len(), 2);
         assert_eq!(plan.tools[0].status, Status::VersionChange);
         assert_eq!(plan.tools[1].status, Status::Disabled);
+        assert!(!fixture.home.join(".local/state/mise").exists());
         assert_eq!(fs::read(&lock).unwrap(), before);
         fs::write(&config, "[tools]\nnode = '24.0.0'\n").unwrap();
-        assert!(Plan::capture_with(&fixture.source, &fixture.home, &wrapper)
+        assert!(Plan::capture(&fixture.source, &fixture.home, &wrapper)
             .err()
             .unwrap()
             .to_string()

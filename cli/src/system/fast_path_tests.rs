@@ -159,6 +159,7 @@ esac
 
     fn runtime(&self, confirm: impl FnOnce() -> Result<()> + 'static) -> Runtime {
         Runtime {
+            mise: self.state.join("mise"),
             home: self.state.join("home"),
             selection: self.state.join("selection"),
             current_generation: self.state.join("current-system"),
@@ -322,7 +323,12 @@ fn home_and_system_changes_share_one_review() {
     .unwrap();
     let system = crate::inventory::Preview::from_inventory(None, inventory).unwrap();
     let mut plan = Plan {
-        tools: None,
+        tools: tools::Plan::capture(
+            &inputs.public.source,
+            &fixture.state.join("home"),
+            &fixture.state.join("mise"),
+        )
+        .unwrap(),
         inputs,
         home,
         system,
@@ -539,6 +545,7 @@ esac
         return;
     }
     let runtime = Runtime {
+        mise: "mise".into(),
         home: state.join("home"),
         selection: state.join("selection"),
         current_generation: state.join("current-system"),
@@ -602,4 +609,181 @@ fn nix_generation_contains_the_inputs_used_by_the_copy_fast_path() {
     assert!(Path::new(inventory["source"].as_str().unwrap())
         .join("home/apm.yml")
         .is_file());
+}
+
+fn tools_fixture() -> Fixture {
+    let fixture = Fixture::new();
+    write(
+        &fixture.root.join("home/.config/mise/config.toml"),
+        "[tools]\nalpha = '1.0.0'\nawscli = '1.0.0'\nbeta = '2.0.0'\n[env]\nAGY_CLI_DISABLE_AUTO_UPDATE = 'true'\n[settings]\nauto_install = false\ndisable_tools = ['awscli']\n",
+    );
+    executable(
+        &fixture.state.join("mise"),
+        &format!(
+            r#"#!/bin/sh
+set -eu
+[ "$MISE_DISABLE_TOOLS" = awscli ]
+[ "$MISE_STATE_DIR" = "$PWD/state" ]
+case "$*" in
+  'ls --json --locked')
+    alpha=false; beta=false
+    [ ! -f "$HOME/alpha-installed" ] || alpha=true
+    [ ! -f "$HOME/beta-installed" ] || beta=true
+    printf '{{"alpha":[{{"version":"1.0.0","requested_version":"1.0.0","installed":%s,"source":{{"path":"%s"}}}}],"beta":[{{"version":"2.0.0","requested_version":"2.0.0","installed":%s,"source":{{"path":"%s"}}}}]}}\n' "$alpha" "$MISE_GLOBAL_CONFIG_FILE" "$beta" "$MISE_GLOBAL_CONFIG_FILE"
+    ;;
+  'install --locked')
+    printf install >> '{state}/installs'
+    [ ! -e '{state}/nonconverging' ] || exit 0
+    : > "$HOME/alpha-installed"
+    if [ -e '{state}/change-input' ]; then
+      printf '\n' >> '{root}/home/.config/mise/config.toml'
+    fi
+    if [ -e '{state}/rewrite-lock' ]; then
+      printf '\n' >> "$PWD/mise.lock"
+    fi
+    [ ! -e '{state}/partial-failure' ] || exit 19
+    : > "$HOME/beta-installed"
+    ;;
+  *) exit 77 ;;
+esac
+"#,
+            state = fixture.state.display(),
+            root = fixture.root.display(),
+        ),
+    );
+    marker(
+        &fixture.root,
+        &fixture.state.join("home"),
+        &fixture.state.join("generation"),
+        &["resource".into()],
+    );
+    fixture
+}
+
+#[test]
+fn tools_plan_and_apply_share_one_review_and_reapply_converges() {
+    let fixture = tools_fixture();
+    let before = fingerprint(&fixture.root).unwrap();
+    run_with(
+        Mode::Plan,
+        &fixture.root,
+        false,
+        fixture.runtime(|| panic!("plan cannot confirm")),
+    )
+    .unwrap();
+    assert!(!fixture.state.join("installs").exists());
+    let confirmed = Rc::new(Cell::new(0));
+    let count = confirmed.clone();
+    let state = fixture.state.clone();
+    run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        fixture.runtime(move || {
+            assert!(!state.join("installs").exists());
+            count.set(count.get() + 1);
+            Ok(())
+        }),
+    )
+    .unwrap();
+    assert_eq!(confirmed.get(), 1);
+    assert!(fixture.state.join("home/alpha-installed").exists());
+    assert!(fixture.state.join("home/beta-installed").exists());
+    assert!(fixture.state.join("activation").exists());
+    fs::remove_file(fixture.state.join("activation")).unwrap();
+    write(&fixture.state.join("home/resource"), "initial");
+    run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        fixture.runtime(|| panic!("no changes cannot confirm")),
+    )
+    .unwrap();
+    assert_eq!(
+        fs::read_to_string(fixture.state.join("installs")).unwrap(),
+        "install"
+    );
+    assert!(!fixture.state.join("activation").exists());
+    assert_eq!(fingerprint(&fixture.root).unwrap(), before);
+}
+
+#[test]
+fn partial_tools_failure_keeps_progress_and_stops_activation_until_retry() {
+    let fixture = tools_fixture();
+    let before = fingerprint(&fixture.root).unwrap();
+    write(&fixture.state.join("home/resource"), "initial");
+    write(&fixture.state.join("partial-failure"), "");
+    let error = run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        fixture.runtime(|| Ok(())),
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("installed in this attempt: alpha; still missing: beta"),
+        "{error:#}"
+    );
+    assert!(!fixture.state.join("activation").exists());
+    assert!(!fixture
+        .state
+        .join("home/.local/state/dotfiles/home.json")
+        .exists());
+    fs::remove_file(fixture.state.join("partial-failure")).unwrap();
+    run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        fixture.runtime(|| Ok(())),
+    )
+    .unwrap();
+    assert!(fixture.state.join("home/beta-installed").exists());
+    assert!(!fixture.state.join("activation").exists());
+    assert_eq!(fingerprint(&fixture.root).unwrap(), before);
+    assert_eq!(
+        fs::read_link(fixture.state.join("selection")).unwrap(),
+        fixture.root.join("flake.nix")
+    );
+}
+
+#[test]
+fn changed_inputs_changed_lock_and_nonconverging_tools_stop_before_activation() {
+    let fixture = tools_fixture();
+    let config = fixture.root.join("home/.config/mise/config.toml");
+    let error = run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        fixture.runtime(move || {
+            write(&config, "changed after confirmation");
+            Ok(())
+        }),
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("inputs changed"));
+    assert!(!fixture.state.join("installs").exists());
+    for (marker, message) in [
+        ("change-input", "inputs changed"),
+        ("rewrite-lock", "frozen config or lock"),
+        ("nonconverging", "still missing: alpha, beta"),
+    ] {
+        let fixture = tools_fixture();
+        write(&fixture.state.join(marker), "");
+        let error = run_with(
+            Mode::Apply,
+            &fixture.root,
+            false,
+            fixture.runtime(|| Ok(())),
+        )
+        .unwrap_err();
+        assert!(format!("{error:#}").contains(message), "{error:#}");
+        assert!(!fixture.state.join("activation").exists());
+        assert!(!fixture.state.join("home/resource").exists());
+        assert!(!fixture
+            .state
+            .join("home/.local/state/dotfiles/home.json")
+            .exists());
+    }
 }

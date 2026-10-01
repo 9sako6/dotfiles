@@ -163,6 +163,7 @@ impl Snapshot {
 }
 
 struct Runtime {
+    mise: PathBuf,
     home: PathBuf,
     selection: PathBuf,
     current_generation: PathBuf,
@@ -203,7 +204,7 @@ impl PlanInputs {
 }
 
 struct Plan {
-    tools: Option<tools::Plan>,
+    tools: tools::Plan,
     inputs: PlanInputs,
     home: home_copy::CopyPlan,
     system: crate::inventory::Preview,
@@ -213,7 +214,7 @@ impl Plan {
     fn review(&mut self, mode: Mode, confirm: impl FnOnce() -> Result<()>) -> Result<Review> {
         self.inputs.verify()?;
         self.system.copy_changes = self.home.changes()?;
-        review_plan_with(mode, &self.system, self.tools.as_ref(), confirm)
+        review_plan_with(mode, &self.system, Some(&self.tools), confirm)
     }
 }
 
@@ -223,6 +224,7 @@ pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
         root,
         show_trace,
         Runtime {
+            mise: "mise".into(),
             home: PathBuf::from(env::var_os("HOME").context("HOME is not set")?),
             selection: "/etc/nix-darwin/flake.nix".into(),
             current_generation: "/run/current-system".into(),
@@ -313,11 +315,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let previous = &snapshot.previous;
     let previous_generation = &snapshot.previous_generation;
     let workspace = &snapshot.workspace;
-    let tools = if matches!(mode, Mode::Plan) {
-        Some(tools::Plan::capture(&public.source, &home)?)
-    } else {
-        None
-    };
+    let tools = tools::Plan::capture(&public.source, &home, &runtime.mise)?;
     let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
     let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
     let identity = inputs::identity(&system_source, &inputs, local, &home)?;
@@ -460,6 +458,17 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         return Ok(ExitCode::SUCCESS);
     }
     plan.inputs.verify()?;
+    let result = plan
+        .tools
+        .apply(_lock.as_ref().context("apply lock is unavailable")?);
+    plan.inputs
+        .verify()
+        .context("tools may be partially installed")?;
+    result?;
+    if !plan.system.has_changes() {
+        plan.home.record_current()?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let workspace = &plan.inputs.workspace;
     let system = match system {
         Some(system) => system,
