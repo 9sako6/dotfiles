@@ -56,22 +56,9 @@ jobs:
               --extra-experimental-features "nix-command flakes" \
               run .#dotfiles -- plan
 
-      - name: Activate Home Manager user environment
+      - name: Deploy public rootless home and fixed tools
         run: |
           nix_bin=/nix/var/nix/profiles/default/bin/nix
-          primary_user="$(id -un)"
-          activation_package="$(
-            DARWIN_PRIMARY_USER="$primary_user" \
-            DOTFILES_DIR="$GITHUB_WORKSPACE" \
-            "$nix_bin" \
-              --extra-experimental-features "nix-command flakes" \
-              build \
-              --impure \
-              --no-link \
-              --print-out-paths \
-              "git+file://$GITHUB_WORKSPACE#darwinConfigurations.current.config.home-manager.users.$primary_user.home.activationPackage"
-          )"
-          HOME_MANAGER_BACKUP_EXT=pre-home-manager "$activation_package/activate"
           source="$(
             DOTFILES_DIR="$GITHUB_WORKSPACE" "$nix_bin" eval --raw --impure \
               --no-update-lock-file --no-write-lock-file \
@@ -81,6 +68,9 @@ jobs:
             .#darwinConfigurations.current.config.dotfiles.configuration.copy > "$RUNNER_TEMP/home-copy.json"
           "$HOME/.local/bin/dotfiles" complete-apply --directory "$GITHUB_WORKSPACE" \
             "$source" "$RUNNER_TEMP/home-copy.json" "$HOME"
+          "$HOME/.local/bin/mise" trust "$GITHUB_WORKSPACE/home/.config/mise/config.toml"
+          MISE_CONFIG_FILE="$GITHUB_WORKSPACE/home/.config/mise/config.toml" \
+            "$HOME/.local/bin/mise" install --locked
           cd "$HOME"
           "$HOME/.local/bin/mise" bootstrap --yes --verbose
 

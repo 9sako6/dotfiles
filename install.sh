@@ -46,16 +46,15 @@ main() {
   "$MISE_BIN" trust "$DOTFILES_DIR/home/.config/mise/config.toml"
   MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" "$MISE_BIN" install --locked rust
   . "$DOTFILES_DIR/lib/install-system.sh"
-  NIX_BIN="$(install_system_ensure_lix "$DOTFILES_DIR/bin/install-lix.sh")"
+  install_system_ensure_lix "$DOTFILES_DIR/bin/install-lix.sh" >/dev/null
 
   cd "$DOTFILES_DIR"
-  DOTFILES_DIR="$DOTFILES_DIR" "$NIX_BIN" \
-    --extra-experimental-features "nix-command flakes" \
-    shell "path:$DOTFILES_DIR#ciTools" --command \
+  DOTFILES_DIR="$DOTFILES_DIR" \
+    MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" \
+    "$MISE_BIN" exec -- \
     cargo run --locked --manifest-path "$DOTFILES_DIR/cli/Cargo.toml" -- apply
 
   "$MISE_BIN" trust
-  "$MISE_BIN" install
 
   cd "$HOME"
   "$MISE_BIN" bootstrap --yes --verbose

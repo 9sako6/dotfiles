@@ -20,9 +20,8 @@ async function makeExecutable(filePath: string, content: string) {
   await chmod(filePath, 0o755);
 }
 
-function nixApplyLog(dotfilesDir: string): string {
-  return "nix <--extra-experimental-features> <nix-command flakes> <shell> " +
-    `<path:${dotfilesDir}#ciTools> <--command> <cargo> <run> <--locked> <--manifest-path> ` +
+function rootlessApplyLog(dotfilesDir: string): string {
+  return "mise <exec> <--> <cargo> <run> <--locked> <--manifest-path> " +
     `<${dotfilesDir}/cli/Cargo.toml> <--> <apply>\n`;
 }
 
@@ -74,6 +73,10 @@ fi
 if [ "\${1:-}" = install ] && [ "\${2:-}" = --locked ] && [ "\${3:-}" = rust ]; then
   [ "\${MISE_CONFIG_FILE:-}" = "$DOTFILES_DIR/home/.config/mise/config.toml" ] || exit 1
   : > "$HOME/rust-ready"
+fi
+if [ "\${1:-}" = exec ]; then
+  [ -e "$HOME/rust-ready" ] || exit 1
+  [ "\${MISE_CONFIG_FILE:-}" = "$DOTFILES_DIR/home/.config/mise/config.toml" ] || exit 1
 fi
 `,
   );
@@ -170,7 +173,7 @@ async function runGit(args: string[], cwd: string) {
 }
 
 describe("公開bootstrap", () => {
-  test("miseのRustを準備してからLixのtoolsetからapplyする", async () => {
+  test("miseの固定Rustからrootless CLIを起動してapplyする", async () => {
     await withTempDir("bootstrap-nix-apply", async (tempDir) => {
       const { env, logPath } = await prepareBootstrapEnvironment(tempDir);
 
@@ -180,8 +183,8 @@ describe("公開bootstrap", () => {
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\n" +
           `mise <trust> <${env.DOTFILES_DIR}/home/.config/mise/config.toml>\nmise <install> <--locked> <rust>\n` +
-          nixApplyLog(env.DOTFILES_DIR!) +
-          "mise <trust>\nmise <install>\nmise <bootstrap> <--yes> <--verbose>\n",
+          rootlessApplyLog(env.DOTFILES_DIR!) +
+          "mise <trust>\nmise <bootstrap> <--yes> <--verbose>\n",
       );
     });
   });
@@ -264,11 +267,11 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
         ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
         tempDir,
       )).toBe("origin/master");
-      expect(await readFile(logPath, "utf8")).toContain(nixApplyLog(dotfilesDir));
+      expect(await readFile(logPath, "utf8")).toContain(rootlessApplyLog(dotfilesDir));
     });
   });
 
-  for (const failureStage of ["install-mise", "nix", "trust", "install", "bootstrap"] as const) {
+  for (const failureStage of ["install-mise", "exec", "trust", "install", "bootstrap"] as const) {
     test(`${failureStage}の失敗後も再実行でmasterへ収束する`, async () => {
       await withTempDir(`bootstrap-retry-${failureStage}`, async (tempDir) => {
         const { env } = await prepareBootstrapEnvironment(tempDir);
