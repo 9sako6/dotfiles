@@ -17,6 +17,32 @@ let
       text = "fixture";
     };
   };
+  enabledConfiguration = composed.config.dotfiles.configuration // {
+    localllm = {
+      enabled = true;
+      models = [ "qwen3.8-9b-distill-4bit" ];
+      default_model = "qwen3.8-9b-distill-4bit";
+    };
+  };
+  artifactHost = configuration: module: self.lib.mkHost {
+    inherit configuration;
+    dotfilesDirectory = "/fixture";
+    primaryUser = "fixture";
+    privateFlake.darwinModules.default = module;
+  };
+  enabledHost = artifactHost enabledConfiguration { };
+  rejectsArtifactFile = target: !(builtins.tryEval (builtins.deepSeq
+    (artifactHost enabledConfiguration {
+      home-manager.users.fixture.home.file.fixture = { inherit target; text = "fixture"; };
+    }).system.drvPath true)).success;
+  privatePackage = pkgs.writeShellScriptBin "private-fixture" "exit 0";
+  privatePackageHost = artifactHost enabledConfiguration {
+    home-manager.users.fixture.home.packages = [ privatePackage ];
+  };
+  copiedArtifactHost = artifactHost (enabledConfiguration // {
+    copy = [ ".local/bin/localllm" "Library/Application Support/Anki2/addons21/anki-connect" ];
+  }) { };
+  inventory = builtins.fromJSON (builtins.unsafeDiscardStringContext composed.inventory.text);
   copyConfigured = self.lib.mkHost {
     configuration = composed.config.dotfiles.configuration // {
       copy = lib.sort builtins.lessThan (composed.config.dotfiles.configuration.copy ++ [ ".zshenv" ]);
@@ -40,6 +66,32 @@ let
     buildable = (builtins.tryEval composed.system.drvPath).success;
     service = composed.config.launchd.user.agents.fixture.serviceConfig.RunAtLoad;
     tap = builtins.any (tap: tap.name == "fixture/tap") composed.config.homebrew.taps;
+    artifactsAbsentFromPublicHome =
+      !(enabledHost.config.home-manager.users.fixture.home.file ? "Library/Application Support/Anki2/addons21/anki-connect")
+      && !(builtins.elem (self.lib.mkArtifacts { configuration = enabledConfiguration; }).selected.localllm.package
+        enabledHost.config.home-manager.users.fixture.home.packages);
+    remainingPublicPackagesPreserved = builtins.all (package:
+      builtins.elem package enabledHost.config.home-manager.users.fixture.home.packages
+    ) [ pkgs.anki-bin pkgs.ffmpeg pkgs.nightlight ];
+    nightShiftPreserved = enabledHost.config.home-manager.users.fixture.home.activation ? configureNightShift;
+    privatePackagePreserved = builtins.elem privatePackage privatePackageHost.config.home-manager.users.fixture.home.packages;
+    artifactFileConflict = rejectsArtifactFile "Library/Application Support/Anki2/addons21/anki-connect";
+    artifactFileParentConflict = rejectsArtifactFile "Library/Application Support/Anki2/addons21";
+    artifactFileChildConflict = rejectsArtifactFile "Library/Application Support/Anki2/addons21/anki-connect/config.json";
+    artifactExecutableConflict = rejectsArtifactFile ".local/bin/localllm";
+    artifactAbsoluteTargetConflict = rejectsArtifactFile "/Users/fixture/.local/bin/localllm";
+    disabledPrivateFilePreserved = (builtins.tryEval (artifactHost enabledConfiguration {
+      home-manager.users.fixture.home.file.fixture = {
+        target = ".local/bin/localllm";
+        enable = false;
+        text = "fixture";
+      };
+    }).system.drvPath).success;
+    copiedArtifactBuildable = (builtins.tryEval copiedArtifactHost.system.drvPath).success;
+    exactHomeManagerPackageProfile = inventory.homeManagerPackageProfile
+      == toString composed.config.home-manager.users.fixture.home.path;
+    exactHomeManagerPackageProfileDrv = inventory.homeManagerPackageProfileDrv
+      == composed.config.home-manager.users.fixture.home.path.drvPath;
     configurationConflict = rejects { dotfiles.configuration = lib.mkForce { }; };
     copiedFilesExcluded = !(composed.config.home-manager.users.fixture.home.file ? ".gitconfig");
     additionalCopiedFileExcluded = !(copyConfigured.config.home-manager.users.fixture.home.file ? ".zshenv");

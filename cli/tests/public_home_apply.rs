@@ -199,8 +199,15 @@ case "$1 $2" in
   'build --offline') : ;;
   'build --dry-run') cat "$FIXTURE/builds.json" ;;
   'eval --impure')
-    [ "$DOTFILES_INPUT_OPERATION" = configuration ] || exit 98
-    cat "$FIXTURE/configuration.json" ;;
+    case "$DOTFILES_INPUT_OPERATION" in
+      configuration) cat "$FIXTURE/configuration.json" ;;
+      artifacts)
+        # Artifact evaluation must use the full frozen source before projection.
+        grep -F "\"publicSource\":\"$FIXTURE/frozen\"" "$DOTFILES_INPUT_MANIFEST" >/dev/null
+        printf 'evaluated frozen artifacts\n' >> "$FIXTURE/commands"
+        cat "$FIXTURE/artifacts.json" ;;
+      *) exit 98 ;;
+    esac ;;
   'eval --raw') cat "$FIXTURE/inventory.json" ;;
   *) echo forbidden-nix-build >&2; exit 99 ;;
 esac
@@ -289,6 +296,18 @@ esac
             write(&self.path(name), inventory.to_string());
         }
         write(&self.path("configuration.json"), serde_json::json!({"errors": [], "config": {"copy": self.copy, "private": {"path": null}}}).to_string());
+        // Store paths are schema-valid declarations only. With no desired
+        // artifacts the production parser must neither realize nor deploy them.
+        write(
+            &self.path("artifacts.json"),
+            serde_json::json!({
+                "manifestData": {"schemaVersion": 1, "artifacts": []},
+                "manifest": "/nix/store/11111111111111111111111111111111-manifest.drv",
+                "output": "/nix/store/22222222222222222222222222222222-empty",
+                "root": "/nix/store/00000000000000000000000000000000-empty.drv"
+            })
+            .to_string(),
+        );
         write(&self.path("metadata.json"), serde_json::json!({"path": self.path("frozen"), "locked": {"narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}}).to_string());
         write(
             &self.path("builds.json"),
@@ -367,6 +386,16 @@ esac
         let commands = fs::read_to_string(self.path("commands")).unwrap();
         assert!(!commands.contains("activate"), "{commands}");
         assert!(!commands.contains("forbidden"), "{commands}");
+        assert!(
+            commands.contains("evaluated frozen artifacts"),
+            "{commands}"
+        );
+        assert!(!self
+            .path("home/.local/state/dotfiles/artifacts.json")
+            .exists());
+        assert!(!self
+            .path("home/.local/state/dotfiles/artifact-roots")
+            .exists());
         assert!(!self.path("generation/sw/bin/dotfiles").exists());
         assert!(!self.path("etc/nix-darwin/flake.nix.apply.lock").exists());
         assert_eq!(

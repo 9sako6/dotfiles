@@ -3,7 +3,10 @@
 { configuration, pkgs, toolset }:
 let
   lib = pkgs.lib;
-  selected = {
+  overlapsCopy = path: builtins.any (owned:
+    path == owned || lib.hasPrefix (owned + "/") path || lib.hasPrefix (path + "/") owned
+  ) configuration.copy;
+  candidates = {
     anki-connect = {
       kind = "anki-addon";
       package = toolset.ankiConnect;
@@ -15,9 +18,13 @@ let
       kind = "executable";
       package = toolset.localllm configuration.localllm;
       relativePath = "bin/localllm";
+      homeTarget = ".local/bin/localllm";
       model = configuration.localllm.default_model;
     };
   };
+  # Copy is the established owner when its target overlaps an artifact. Filter
+  # before forcing package values, so excluded artifacts need not be built.
+  selected = lib.filterAttrs (_: artifact: !(overlapsCopy artifact.homeTarget)) candidates;
   entries = lib.mapAttrsToList (id: artifact:
     (builtins.removeAttrs artifact [ "package" ]) // {
       inherit id;

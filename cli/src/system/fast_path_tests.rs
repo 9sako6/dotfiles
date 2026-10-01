@@ -89,8 +89,11 @@ case "$1" in
     printf '%s\n' '{metadata}'
     ;;
   eval)
-    [ "$DOTFILES_INPUT_OPERATION" = configuration ] || exit 77
-    printf '%s\n' '{{"errors":[],"config":{{"copy":["resource"],"private":{{"path":null}}}}}}'
+    case "$DOTFILES_INPUT_OPERATION" in
+      configuration) printf '%s\n' '{{"errors":[],"config":{{"copy":["resource"],"private":{{"path":null}}}}}}' ;;
+      artifacts) printf '%s\n' '{{"manifestData":{{"schemaVersion":1,"artifacts":[]}},"manifest":"/nix/store/00000000000000000000000000000000-fixture-manifest.drv","root":"/nix/store/00000000000000000000000000000000-fixture-root.drv","output":"/nix/store/00000000000000000000000000000000-fixture-root"}}' ;;
+      *) exit 77 ;;
+    esac
     ;;
   build)
     [ "$2" = --offline ] || exit 77
@@ -325,6 +328,7 @@ fn home_and_system_changes_share_one_review() {
     .unwrap();
     let system = crate::inventory::Preview::from_inventory(None, inventory).unwrap();
     let mut plan = Plan {
+        artifacts: artifacts::Plan::empty_for_test(&fixture.state.join("home")),
         user_services: user_services::Plan::default(),
         tools: tools::Plan::capture(
             &inputs.public.source,

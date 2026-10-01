@@ -135,3 +135,12 @@ plist と所有記録は同じディレクトリ内の一時ファイルから r
 共通ユーザー apply ロックを launchctl の子プロセスにも継承する。ただし、このロックに従わない別のツールや利用者との排他は保証しない。ファイル確認、rename、launchctl 呼び出しを一つのトランザクションにはできず、直前検証後の競合や、同じ path を使うジョブの外部での差し替えを完全には判別できない。プロセス終了や電源断が plist 書き込みと記録更新の間に起きると、所有記録のない plist が残る場合がある。その場合は自動採用せず停止する。
 
 private agent、system daemon、現在の Nix-backed zundamonotify は対象外とし、既存の構成・所有を変更しない。
+
+
+### Nix artifact の所有と GC root
+
+`nix/artifacts.nix` を AnkiConnect と有効時の localllm の選択元とし、固定・検証済み設定から manifest と package 参照を生成する。通常の CLI、GUI、private module はこの backend に取り込まない。Rust CLI は同じ公開 snapshot の artifact Plan を確認後に realization し、永続 Nix root を登録してから link を配備する。配備先は AnkiConnect の従来 target と `~/.local/bin/localllm`。public Home Manager はこの二つを所有せず、private framework、Night Shift、Anki GUI とその他の未移行資源は保持する。
+
+copy 優先、desired private HM target の非重複、実際の HM package profile の executable 検査を維持する。旧 HM 配置の採用は有効な宣言と選択ソースの一致を必要とする。artifact の前回結果と copy 引継ぎの観測 receipt は専用記録に置き、宣言や起動指示の第二正本にしない。親プロセスが captured Plan を扱い、世代内 CLI に再計画させない。
+
+登録 root は `$XDG_STATE_HOME/dotfiles/artifact-roots/`、結果は `dotfiles/artifacts.json`。旧 root を保持し、この段階では自動 GC や root pruning を行わない。rootless realization/deployment の実装と、artifact-only 変更が Darwin activation を省略できる system identity 境界の完成は区別する。後者と legacy native-preview の確認前 build は、それぞれ #184 と #185 の残課題である。

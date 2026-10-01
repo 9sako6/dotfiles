@@ -269,7 +269,7 @@ cargo test --locked --manifest-path cli/Cargo.toml --test public_home_apply -- -
 
 `repo runtime` の変更に対する反映コマンドはない。
 
-Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、通常のホームディレクトリ設定は Home Manager、devcontainer から参照可能な copy 対象は Rust CLI がそれぞれ管理する。
+Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、public home の live symlink / copy と選択 artifact は Rust CLI、private 構成と未移行の public resource は Home Manager が管理する。
 
 GitHub-hosted な macOS runner では、Home Manager のユーザー反映とシステム派生のビルドを個別に検証し、nix-darwin のシステム反映は実施しない。Nix ストアのパスは GitHub Actions のバイナリキャッシュを活用してワークフロー間で再利用する。新規 Mac への反映検証は、Homebrew の入っていない VM または実機で確認する。
 
@@ -307,13 +307,21 @@ Linux の隔離した実行ファイル fixture で、追加、reload、削除�
 cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::user_services
 ```
 
-## Nix artifact constructor（#182 の準備）
+## Nix artifact の反映
 
 公開 flake の `lib.mkArtifacts { configuration = ...; }` は、既存の TOML 検証・マージ結果から AnkiConnect と有効時だけの localllm を選び、Darwin host や private module を評価せずに `root` と `manifest` を返す。`nix/host-input.nix` の `artifacts` operation は、既存の固定入力 manifest からこの constructor を呼ぶ。出力にはビルド前の予定 store path、derivation path、配備契約の `manifestData` を含む。モデルはマージ済み設定を使い、開発用 `.#localllm` の強制 9B 選択は使わない。`.#artifacts` は公開設定のみの確認用出力で、ローカル設定を自動探索しない。
 
 生成される JSON は既存 package object の store path と、AnkiConnect の相対ソース・home 配置先、localllm の起動ファイル・選択モデルを記録する。Nix の文字列 context を保持し、root には JSON と選択された package への symlink を置く。localllm のモデル、runtime、OpenCode、goal plugin は既存 launcher の推移的な参照で保持し、無効時には constructor の依存閉包へ入れない。普通の CLI と Anki GUI はこの root に束ねない。
 
-この段階では Home Manager が引き続き同じ配置を所有する。Rust CLI の artifact-only plan/apply、所有確認付き配備、永続 GC root の登録・切替は未実装で、#182 は未完了。通常の apply の activation を省略できるとは扱わない。後続実装では固定入力を一時 GC root で保持し、確認・ビルド・入力再検証の後に、選択 artifact の root を永続 GC root へ登録する。配備中は旧 root も保持し、配置・起動契約と所有記録の更新が成功するまで解放しない。store 内に root の出力があるだけでは GC root 登録にはならない。既存 Home Manager 配置からの引継ぎには、正確に同じ生成済み artifact ソースであることの確認が必要で、任意の private 配置は引き継がない。
+Rust CLI は公開 snapshot と固定したローカル設定から同じ Plan を作り、artifact の追加・変更・削除を他の差分と一緒に表示する。新しい artifact root の realization と専用の Home Manager profile 検査用 build は確認後に行う。予定 derivation/output、生成 manifest、package の参照先が確認済みの値と一致することを検証し、`nix build --out-link` で `$XDG_STATE_HOME/dotfiles/artifact-roots/`（既定 `~/.local/state/dotfiles/artifact-roots/`）に永続 root を登録してから配備する。単なる store への symlink を GC root 登録の代わりにはしない。旧 root は保持し、自動 pruning や GC は行わない。
+
+localllm の入口は `~/.local/bin/localllm`、AnkiConnect は従来の `~/Library/Application Support/Anki2/addons21/anki-connect`。この二つの public 配置を Home Manager から外し、Rust が所有確認付きで配備する。copy と重なる対象は copy が優先する。private Home Manager の有効な file target との重複を事前に拒否し、localllm を配る場合は確認済みの Home Manager package profile を検査して競合する実行ファイルも拒否する。旧 HM link の初回採用は、有効な宣言と参照先が今回選んだ artifact ソースへ正確につながる場合だけ認める。別版の旧配置や通常ディレクトリを見た目で採用しない。移行と artifact の版変更を同時に行って競合する場合は、同じソースを選んだ移行を先に行う。
+
+成功した link の参照先は `$XDG_STATE_HOME/dotfiles/artifacts.json` に記録し、live home 用の記録と混ぜない。copy からの引継ぎでは、前回管理していた内容と残るディレクトリの観測結果を検証する。必要な directory receipt は変更前に記録し、途中停止後は同じ directory object と管理外ファイルがないことを確認して、空ディレクトリだけを削除する。改変された配置、別の HM 所有、symlink 化された親、破損した記録では停止する。部分成功は記録を残し、原因を解消して再 apply する。localllm の無効化でも利用者のデータ、モデル利用履歴、Anki の profile/media は削除しない。
+
+system 変更がなければ home 配備後、system 変更があれば activation/home と更新後の世代・source record の検証後に、親プロセスが同じ artifact Plan を配備する。user services はその後に反映する。artifact-only 更新で system activation が不要になる最終条件は、まだ [#184](https://github.com/9sako6/dotfiles/issues/184) の system identity 分離に依存するため、[#182](https://github.com/9sako6/dotfiles/issues/182) は未完了として扱う。
+
+旧 inventory との比較で使う既存の native-preview fallback は、確認前に Darwin system とその Home Manager 依存を build する場合がある。専用 artifact backend の確認順序だけで、全経路の build が確認後になったとは扱わない。この経路の整理は [#185](https://github.com/9sako6/dotfiles/issues/185) に残る。
 
 Anki GUI は `nix/packages.nix` の `anki-bin` 26.05 と Home Manager が引き続き所有する。AnkiConnect はその addon として別分類にする。GUI を mise へ移さず、Homebrew cask への二重登録や zap も行わない。GUI の将来の所有移行は別途検証する。
 

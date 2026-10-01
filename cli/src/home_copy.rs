@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Component, Path, PathBuf};
@@ -22,6 +22,8 @@ pub struct CopyPlan {
     home: PathBuf,
     entries: Vec<CopyEntry>,
     live: Option<live::Plan>,
+    artifact_handoffs: BTreeMap<PathBuf, PathBuf>,
+    artifact_retirements: BTreeMap<PathBuf, String>,
 }
 
 #[derive(Debug, Clone)]
@@ -32,11 +34,34 @@ struct CopyEntry {
 }
 
 impl CopyPlan {
+    pub(crate) fn with_artifact_retirements(
+        mut self,
+        targets: impl Iterator<Item = PathBuf>,
+    ) -> Result<Self> {
+        let copy: Vec<_> = self
+            .entries
+            .iter()
+            .map(|e| e.relative.to_string_lossy().into_owned())
+            .collect();
+        for target in targets {
+            if let Some(proof) = retiring_copy_fingerprint(&self.home, &target, &copy)? {
+                self.artifact_retirements.insert(target, proof);
+            } else {
+                bail!("copy-to-artifact retirement ownership is unverified");
+            }
+        }
+        Ok(self)
+    }
     pub fn changes(&self) -> Result<Vec<CopyChange>> {
         self.inspect(&state::State::load(&self.home)?)
     }
 
     fn inspect(&self, state: &state::State) -> Result<Vec<CopyChange>> {
+        for (target, expected) in &self.artifact_retirements {
+            if fingerprint(&self.home.join(target), false)?.as_ref() != Some(expected) {
+                bail!("copy-to-artifact handoff changed after preview");
+            }
+        }
         let mut changes = Vec::new();
         for (relative, previous) in self.retired(state) {
             if self.owned_fingerprint(relative)?.as_ref() == Some(previous) {
@@ -47,12 +72,16 @@ impl CopyPlan {
                 });
             }
         }
-        let retiring_links = self
+        let mut retiring_links = self
             .live
             .as_ref()
             .map(|live| live.removable_links(&self.home, state))
             .transpose()?
             .unwrap_or_default();
+        retiring_links.extend(verify_artifact_handoffs(
+            &self.home,
+            &self.artifact_handoffs,
+        )?);
         for entry in &self.entries {
             state.validate_destination(&entry.destination)?;
             live::validate_parents(&self.home, &entry.relative, &retiring_links)?;
@@ -139,12 +168,15 @@ impl CopyPlan {
             .into_iter()
             .map(|(relative, previous)| (relative.clone(), previous.clone()))
             .collect();
-        let pruning = self
+        let mut pruning = self
             .live
             .as_ref()
             .map(|live| live.prunable_directories(&self.home, &state, self))
             .transpose()?
             .unwrap_or_default();
+        for target in self.artifact_retirements.keys() {
+            collect_artifact_pruning(&self.home.join(target), &mut pruning, &self.home)?;
+        }
         for (relative, previous) in &retired {
             if self.owned_fingerprint(relative)?.as_ref() == Some(previous) {
                 remove_entry(&self.home.join(relative))?;
@@ -215,7 +247,7 @@ fn validate_unowned_parents(home: &Path, relative: &Path) -> Result<()> {
     Ok(())
 }
 
-fn fingerprint(path: &Path, source: bool) -> Result<Option<String>> {
+pub(crate) fn fingerprint(path: &Path, source: bool) -> Result<Option<String>> {
     let metadata = match fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -253,7 +285,7 @@ fn fingerprint(path: &Path, source: bool) -> Result<Option<String>> {
 }
 
 pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan> {
-    plan_with_live(repo_root, home, paths, None)
+    plan_with_live(repo_root, home, paths, None, BTreeMap::new())
 }
 
 fn plan_with_live(
@@ -261,13 +293,15 @@ fn plan_with_live(
     home: &Path,
     paths: &[String],
     live: Option<live::Plan>,
+    artifact_handoffs: BTreeMap<PathBuf, PathBuf>,
 ) -> Result<CopyPlan> {
     validate_paths(paths)?;
-    let retiring_links = live
+    let mut retiring_links = live
         .as_ref()
         .map(|live| live.removable_links(home, &state::State::load(home)?))
         .transpose()?
         .unwrap_or_default();
+    retiring_links.extend(verify_artifact_handoffs(home, &artifact_handoffs)?);
     let source_root = repo_root.join("home");
 
     let mut entries = Vec::with_capacity(paths.len());
@@ -305,6 +339,8 @@ fn plan_with_live(
         home: home.to_path_buf(),
         entries,
         live,
+        artifact_handoffs,
+        artifact_retirements: BTreeMap::new(),
     })
 }
 
@@ -319,7 +355,115 @@ pub fn plan_live(
         home,
         paths,
         Some(live::Plan::new(repo_root, directory, paths)?),
+        BTreeMap::new(),
     )
+}
+
+// A captured artifact Plan supplies exact retiring links, never arbitrary parents.
+// Every preview verifies their current source; apply uses strict parents after
+// the artifact Plan has retired them under the same common lock.
+pub(crate) fn plan_live_with_artifact_handoffs(
+    repo_root: &Path,
+    directory: &Path,
+    home: &Path,
+    paths: &[String],
+    handoffs: BTreeMap<PathBuf, PathBuf>,
+) -> Result<CopyPlan> {
+    plan_with_live(
+        repo_root,
+        home,
+        paths,
+        Some(live::Plan::new(repo_root, directory, paths)?),
+        handoffs,
+    )
+}
+fn verify_artifact_handoffs(
+    home: &Path,
+    handoffs: &BTreeMap<PathBuf, PathBuf>,
+) -> Result<Vec<PathBuf>> {
+    let mut paths = Vec::new();
+    for (path, source) in handoffs {
+        validate_relative_path(path.to_str().context("invalid artifact handoff")?)?;
+        validate_unowned_parents(home, path)?;
+        match fs::symlink_metadata(home.join(path)) {
+            Ok(m) if m.file_type().is_symlink() && fs::read_link(home.join(path))? == *source => {
+                paths.push(path.clone())
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+            _ => bail!("artifact-to-copy handoff changed after preview"),
+        }
+    }
+    Ok(paths)
+}
+pub(crate) fn retiring_copy_fingerprint(
+    home: &Path,
+    target: &Path,
+    copy: &[String],
+) -> Result<Option<String>> {
+    if copy
+        .iter()
+        .any(|p| target.starts_with(p) || Path::new(p).starts_with(target))
+    {
+        return Ok(None);
+    }
+    if fingerprint(&home.join(target), false)?.is_none() {
+        return Ok(None);
+    }
+    let state = state::State::load(home)?;
+    let retired: Vec<_> = state
+        .copies()
+        .iter()
+        .filter(|(p, _)| !copy.iter().any(|c| c == *p))
+        .collect();
+    if !retired
+        .iter()
+        .any(|(p, _)| target.starts_with(p) || Path::new(p).starts_with(target))
+    {
+        return Ok(None);
+    }
+    for (path, recorded) in &retired {
+        if target.starts_with(path) || Path::new(path).starts_with(target) {
+            validate_unowned_parents(home, Path::new(path))?;
+            if fingerprint(&home.join(path), false)?.is_some_and(|current| &current != *recorded) {
+                bail!("retiring copy was modified; artifact deployment refused");
+            }
+        }
+    }
+    fn covered(home: &Path, path: &Path, retired: &[(&String, &String)]) -> Result<bool> {
+        if retired.iter().any(|(p, _)| path.starts_with(p)) {
+            return Ok(true);
+        }
+        if !retired.iter().any(|(p, _)| Path::new(p).starts_with(path)) {
+            return Ok(false);
+        }
+        let metadata = fs::symlink_metadata(home.join(path))?;
+        if !metadata.is_dir() {
+            return Ok(false);
+        }
+        for entry in read_entries(&home.join(path))? {
+            if !covered(home, &path.join(entry.file_name()), retired)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+    validate_unowned_parents(home, target)?;
+    if !covered(home, target, &retired)? {
+        bail!("unmanaged content blocks copy-to-artifact handoff");
+    }
+    fingerprint(&home.join(target), false)
+}
+fn collect_artifact_pruning(path: &Path, paths: &mut Vec<PathBuf>, home: &Path) -> Result<()> {
+    if fs::symlink_metadata(path).is_ok_and(|m| m.is_dir()) {
+        for entry in read_entries(path)? {
+            collect_artifact_pruning(&entry.path(), paths, home)?;
+        }
+        let relative = path.strip_prefix(home)?.to_owned();
+        if !paths.contains(&relative) {
+            paths.push(relative);
+        }
+    }
+    Ok(())
 }
 
 fn validate_paths(paths: &[String]) -> Result<()> {

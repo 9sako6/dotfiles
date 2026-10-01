@@ -98,6 +98,9 @@ in {
   tools = map (path: { inherit path; deploy = "copy"; }) (builtins.filter agentPath configuration.copy)
     ++ lib.mapAttrsToList (_: file: { path = file.target; deploy = "symlink"; })
       (lib.filterAttrs (_: file: file.enable && agentPath file.target) home.home.file);
+  # Exact frozen profile for pre-activation executable ownership inspection.
+  homeManagerPackageProfile = toString home.home.path;
+  homeManagerPackageProfileDrv = home.home.path.drvPath;
   homeManagerTargets = map (file: file.target)
     (builtins.filter (file: file.enable) (builtins.attrValues home.home.file));
   localllm = builtins.intersectAttrs { enabled = null; default_model = null; } configuration.localllm;

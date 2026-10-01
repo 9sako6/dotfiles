@@ -40,6 +40,13 @@ let
     packages = throw "artifacts evaluated ordinary CLI/GUI packages";
   });
   on = make (enabled "qwen3.8-27b-4bit") fixtureToolset;
+  copied = paths: make ((enabled "qwen3.8-27b-4bit") // { copy = paths; }) fixtureToolset;
+  allCopied = make ((enabled "qwen3.8-27b-4bit") // {
+    copy = [ ".local/bin" "Library/Application Support/Anki2" ];
+  }) {
+    ankiConnect = throw "copy-owned addon was evaluated";
+    localllm = throw "copy-owned launcher was evaluated";
+  };
   # Re-run the public outputs with unusable system module inputs. The artifact
   # constructor must not force them, even when private configuration is present.
   independent = (import ../../flake.nix).outputs (self.inputs // {
@@ -62,6 +69,14 @@ let
     homeAddonUnchanged = off.homeFiles."Library/Application Support/Anki2/addons21/anki-connect".source
       == "${addon}/share/anki/addons/anki-connect";
     homePackagesSelected = on.homePackages == [ on.selected.localllm.package ];
+    launcherTarget = on.selected.localllm.homeTarget == ".local/bin/localllm";
+    copyExactWins = !((copied [ ".local/bin/localllm" ]).selected ? localllm);
+    copyParentWins = !((copied [ ".local/bin" ]).selected ? localllm);
+    copyChildWins = !((copied [ "Library/Application Support/Anki2/addons21/anki-connect/config.json" ]).selected ? anki-connect);
+    copySiblingDoesNotOverlap = (copied [ ".local/bin/localllm-other" ]).selected ? localllm;
+    copyExcludedArtifactsStayLazy = allCopied.selected == { }
+      && allCopied.manifestData.artifacts == [ ]
+      && builtins.stringLength allCopied.root.drvPath > 0;
     manifestKeepsAddonReference = hasReference addon on.manifest.text;
     manifestKeepsLauncherReference = hasReference on.selected.localllm.package on.manifest.text;
     mergedModelSelected = (builtins.elemAt on.manifestData.artifacts 1).model == "qwen3.8-27b-4bit";
@@ -77,12 +92,17 @@ assert lib.assertMsg (builtins.all (value: value) (builtins.attrValues results))
   "artifact constructor contract test failed";
 # Only tiny fixture packages are built. Real LLM packages above are evaluated,
 # never interpolated into build inputs, so no model/runtime build is requested.
-pkgs.runCommand "artifact-constructor-check" { } ''
+pkgs.runCommand "artifact-constructor-check" {
+  # Expose only the tiny fixture for the registered-root integration test.
+  passthru.fixtureRoot = on.root;
+} ''
   test "$(readlink ${on.root}/artifacts/anki-connect)" = ${addon}
   test "$(readlink ${on.root}/artifacts/localllm)" = ${on.selected.localllm.package}
   test "$(readlink ${on.root}/manifest.json)" = ${on.manifest}
   test -f ${on.root}/artifacts/anki-connect/share/anki/addons/anki-connect/__init__.py
   test "$(${on.root}/artifacts/localllm/bin/localllm)" = qwen3.8-27b-4bit
   test ! -e ${off.root}/artifacts/localllm
+  test ! -e ${allCopied.root}/artifacts/localllm
+  test ! -e ${allCopied.root}/artifacts/anki-connect
   printf '%s\n' ${lib.escapeShellArg (builtins.toJSON results)} > "$out"
 ''

@@ -23,6 +23,10 @@ pub struct Inventory {
     tools: Vec<Tool>,
     #[serde(default, rename = "homeManagerTargets")]
     home_manager_targets: Vec<PathBuf>,
+    #[serde(default, rename = "homeManagerPackageProfile")]
+    home_manager_package_profile: Option<PathBuf>,
+    #[serde(default, rename = "homeManagerPackageProfileDrv")]
+    home_manager_package_profile_drv: Option<PathBuf>,
     localllm: LocalLlm,
     #[serde(rename = "timeZone")]
     time_zone: String,
@@ -83,6 +87,8 @@ pub struct Preview {
     generation: Option<(String, String)>,
     pub copy_changes: Vec<crate::home_copy::CopyChange>,
     pub native: String,
+    home_manager_targets: Vec<PathBuf>,
+    home_manager_package_profile: Option<(PathBuf, PathBuf)>,
 }
 
 impl Preview {
@@ -93,7 +99,43 @@ impl Preview {
             generation: None,
             copy_changes: Vec::new(),
             native: String::new(),
+            home_manager_targets: Vec::new(),
+            home_manager_package_profile: None,
         }
+    }
+
+    pub fn copy_only_with_ownership(current: Option<&Path>) -> Result<Self> {
+        let mut preview = Self::copy_only();
+        if let Some(inventory) = current.map(read_generation).transpose()?.flatten() {
+            preview.home_manager_targets = inventory.home_manager_targets;
+            preview.home_manager_package_profile = inventory
+                .home_manager_package_profile
+                .zip(inventory.home_manager_package_profile_drv);
+        }
+        Ok(preview)
+    }
+
+    pub fn validate_artifact_ownership<'a>(
+        &self,
+        targets: impl Iterator<Item = &'a PathBuf>,
+    ) -> Result<()> {
+        let targets: Vec<_> = targets.collect();
+        for target in &self.home_manager_targets {
+            let normalized = normalized_home_target(target)?;
+            if targets
+                .iter()
+                .any(|owned| owned.starts_with(&normalized) || normalized.starts_with(owned))
+            {
+                bail!("desired Home Manager targets conflict with public artifact paths");
+            }
+        }
+        Ok(())
+    }
+
+    pub fn artifact_package_profile(&self) -> Option<(&Path, &Path)> {
+        self.home_manager_package_profile
+            .as_ref()
+            .map(|(output, drv)| (output.as_path(), drv.as_path()))
     }
 
     pub fn load(current: Option<&Path>, desired: &Path) -> Result<Self> {
@@ -125,6 +167,10 @@ impl Preview {
         };
         Ok(Self {
             resources: Some(ResourceDiff::between(previous.as_ref(), &next)),
+            home_manager_targets: next.home_manager_targets,
+            home_manager_package_profile: next
+                .home_manager_package_profile
+                .zip(next.home_manager_package_profile_drv),
             notice,
             generation: None,
             copy_changes: Vec::new(),
@@ -229,19 +275,24 @@ fn read_generation(generation: &Path) -> Result<Option<Inventory>> {
     Ok(Some(inventory))
 }
 
+fn normalized_home_target(target: &Path) -> Result<PathBuf> {
+    let mut normalized = PathBuf::new();
+    for component in target.components() {
+        match component {
+            Component::Normal(part) => normalized.push(part),
+            Component::CurDir => (),
+            Component::ParentDir if normalized.pop() => (),
+            _ => bail!("desired Home Manager target is outside the home directory"),
+        }
+    }
+    Ok(normalized)
+}
+
 impl Inventory {
     fn validate_live_ownership(&self) -> Result<()> {
         let live = crate::home_copy::live_paths(&self.source)?;
         for target in &self.home_manager_targets {
-            let mut normalized = PathBuf::new();
-            for component in target.components() {
-                match component {
-                    Component::Normal(part) => normalized.push(part),
-                    Component::CurDir => (),
-                    Component::ParentDir if normalized.pop() => (),
-                    _ => bail!("desired Home Manager target is outside the home directory"),
-                }
-            }
+            let normalized = normalized_home_target(target)?;
             if live
                 .iter()
                 .any(|path| path.starts_with(&normalized) || normalized.starts_with(path))
@@ -721,6 +772,49 @@ mod tests {
             assert!(!output.contains("07:00"));
             assert!(!output.contains("latest"));
             assert!(!output.contains("packages"));
+        }
+    }
+}
+
+#[cfg(test)]
+mod artifact_ownership_tests {
+    use super::*;
+
+    #[test]
+    fn desired_home_manager_ownership_rejects_all_artifact_overlaps() {
+        let artifact = PathBuf::from(".local/bin/localllm");
+        for target in [
+            ".local",
+            ".local/bin/localllm",
+            ".local/bin/localllm/child",
+            ".local/bin/other/../localllm",
+        ] {
+            let mut preview = Preview::copy_only();
+            preview.home_manager_targets.push(PathBuf::from(target));
+            assert!(
+                preview
+                    .validate_artifact_ownership(std::iter::once(&artifact))
+                    .is_err(),
+                "{target}"
+            );
+        }
+        let mut preview = Preview::copy_only();
+        preview
+            .home_manager_targets
+            .push(PathBuf::from(".local/bin/unrelated"));
+        assert!(preview
+            .validate_artifact_ownership(std::iter::once(&artifact))
+            .is_ok());
+    }
+
+    #[test]
+    fn artifact_ownership_rejects_home_manager_paths_outside_home() {
+        for target in ["../outside", "/absolute", "a/../../outside"] {
+            let mut preview = Preview::copy_only();
+            preview.home_manager_targets.push(PathBuf::from(target));
+            assert!(preview
+                .validate_artifact_ownership(std::iter::empty())
+                .is_err());
         }
     }
 }
