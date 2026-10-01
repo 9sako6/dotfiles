@@ -33,11 +33,9 @@ class SettingsTests(unittest.TestCase):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(REPOSITORY / name, destination)
         (self.root / "dotfiles.toml").write_text("copy = []\n")
-        (self.root / "nix/inventory.nix").write_text('''{ configuration, publicSource, ... }: {
-          source = publicSource;
-          packages = []; system = []; services = []; tools = [];
-          localllm = configuration.localllm; timeZone = "UTC";
-        }''')
+        # Settings reads public declarations and the active generation only.
+        # An unusable desired Nix inventory must never be evaluated here.
+        (self.root / "nix/inventory.nix").write_text('throw "settings evaluated Nix"')
         (self.root / "home").mkdir(exist_ok=True)
         (self.root / "home/apm.yml").write_text("dependencies:\n  apm: []\n")
         self.git("init", "--quiet")
@@ -88,25 +86,21 @@ class SettingsTests(unittest.TestCase):
         return rows
 
     def package_fixture(self):
-        (self.root / "nix/inventory.nix").write_text('''{ configuration, publicSource, ... }: {
-          source = publicSource;
-          packages = [
-            { name = "fixture-package"; manager = "mise"; declared = "1.0.0";
-              lookup = { kind = "mise"; tool = "fixture-package"; }; }
-            { name = "unavailable"; manager = "Homebrew (nix-darwin)";
-              declared = "—"; lookup = null; }
-          ];
-          system = []; services = []; tools = [];
-          localllm = configuration.localllm; timeZone = "UTC";
-        }''')
+        (self.root / "home/.config/mise/config.toml").write_text(
+            '[tools]\ndisabled-tool = "2.0.0"\nfixture-package = "1.0.0"\n'
+            '[settings]\ndisable_tools = ["disabled-tool"]\n'
+        )
         commands = self.root / "commands"
         commands.mkdir()
-        mise = commands / "mise"
-        mise.write_text('''#!/bin/sh
-printf invoked > "$DOTFILES_DIR/lookup-started"
+        guard = '''#!/bin/sh
+printf '%s\\n' "$0 $*" >> "$DOTFILES_DIR/lookup-started"
 exit 1
-''')
-        mise.chmod(0o755)
+'''
+        for name in ["launchctl", "mise", "nightlight", "nix", "sudo"]:
+            executable = commands / name
+            executable.write_text(guard)
+            executable.chmod(0o755)
+        (self.root / "bin/system-backend.sh").write_text(guard)
         return {"PATH": f"{commands}:{os.environ['PATH']}"}
 
     def terminal_settings(self, width, color, environment=None,
@@ -180,9 +174,10 @@ sys.exit(result.returncode)
         environment = self.package_fixture()
         result = self.settings({**environment, "CLICOLOR_FORCE": "1", "FORCE_COLOR": "1"})
         self.rows(result)
-        self.assertIn("current", result.stdout)
+        self.assertIn("declared", result.stdout)
         self.assertIn("1.0.0", result.stdout)
-        self.assertIn("Homebrew (nix-darwin)", result.stdout)
+        self.assertIn("disabled-tool", result.stdout)
+        self.assertIn("disabled", result.stdout)
         self.assertNotIn("latest", result.stdout)
         self.assertNotIn("checking", result.stdout)
         self.assertNotIn("\x1b", result.stdout)
@@ -194,10 +189,10 @@ sys.exit(result.returncode)
         for options in [{}, {"stdin_terminal": False}, {"term": "dumb"}]:
             with self.subTest(options=options):
                 output = self.terminal_settings(80, color=False, environment=environment, **options)
-                self.assertIn("current", output)
+                self.assertIn("declared", output)
                 self.assertIn("fixture-package", output)
                 self.assertIn("1.0.0", output)
-                self.assertIn("Homebrew (nix-darwin)", output)
+                self.assertIn("disabled-tool", output)
                 self.assertIn("default model", output)
                 self.assertNotIn("\x1b", output)
                 self.assertFalse((self.root / "lookup-started").exists())
@@ -238,31 +233,32 @@ sys.exit(result.returncode)
             "private.path": (None, None),
         })
 
-    def test_real_inventory_reports_system_packages_and_management_policies(self):
-        (self.root / "nix/inventory.nix").write_text((REPOSITORY / "nix/inventory.nix").read_text())
-        result = self.settings()
+    def test_current_declarations_are_separate_from_active_system_records(self):
+        environment = self.package_fixture()
+        before = self.git("status", "--porcelain").stdout
+        lock = (self.root / "flake.lock").read_bytes()
+        result = self.settings(environment)
         self.assertEqual(result.returncode, 0, result.stderr)
-        sections = result.stdout.split("\nsystem\n", 1)
-        self.assertEqual(len(sections), 2)
-        packages = sections[0].split("\npackages\n", 1)[1]
-        for name in ["anki-bin", "lix", "zundamonotify"]:
-            rows = [line.split() for line in packages.splitlines() if line.split()[:1] == [name]]
-            self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0][1], "Nix")
-            self.assertTrue(rows[0][2])
-        system = sections[1].split("\nservices\n", 1)[0]
-        for group, fields in {
-            "homebrew.global": {"autoUpdate": ["false"]},
-            "homebrew.onActivation": {"autoUpdate": ["false"], "cleanup": ["uninstall"], "upgrade": ["false"]},
-            "nix-homebrew": {"mutableTaps": ["false"]},
-            "nix.gc": {"automatic": ["true"], "options": ["--delete-older-than", "2d"]},
-        }.items():
-            section = system.split(group + "\n", 1)[1].split("\n\n", 1)[0]
-            self.assertNotIn("—", section)
-            for name, value in fields.items():
-                self.assertTrue(any(line.split()[:len(value) + 1] == [name, *value] for line in section.splitlines()))
+        packages = result.stdout.split("\npackages\n", 1)[1].split("\n\nhome (", 1)[0]
+        rows = [line.split() for line in packages.splitlines()]
+        self.assertEqual(rows[0], ["name", "manager", "declared", "status"])
+        self.assertIn(["fixture-package", "mise", "1.0.0", "declared"], rows)
+        self.assertIn(["disabled-tool", "mise", "2.0.0", "disabled"], rows)
+        self.assertEqual(len(rows), 3)
+        self.assertIn("home (current public declarations)", result.stdout)
+        self.assertIn("user services (launchd; current public declarations)", result.stdout)
+        self.assertIn("user settings (current public declarations)", result.stdout)
+        self.assertIn("no artifact evaluation was performed", result.stdout)
+        self.assertIn("system/private (nix-darwin; active generation only)", result.stdout)
+        # Active packages/services and private argv redaction are exercised in
+        # the isolated Linux settings CLI fixture; Nix policy declarations remain
+        # covered by test_inventory.py.
+        # Do not replace or assume the CI runner's real /run/current-system here.
         self.assertNotIn("latest", result.stdout)
         self.assertNotIn("\x1b", result.stdout)
+        self.assertFalse((self.root / "lookup-started").exists())
+        self.assertEqual(self.git("status", "--porcelain").stdout, before)
+        self.assertEqual((self.root / "flake.lock").read_bytes(), lock)
 
     def test_missing_private_checkout_fails_without_partial_output(self):
         (self.root / "dotfiles.toml").write_text(
@@ -277,7 +273,7 @@ sys.exit(result.returncode)
         lock = (self.root / "flake.lock").read_bytes()
         result = self.settings()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("private.path: checkout does not exist", result.stderr)
+        self.assertIn("checkout does not exist", result.stderr)
         self.assertEqual(result.stdout, "")
         self.assertEqual(self.git("status", "--porcelain").stdout, before)
         self.assertEqual((self.root / "flake.lock").read_bytes(), lock)

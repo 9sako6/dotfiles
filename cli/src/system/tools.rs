@@ -82,6 +82,34 @@ struct Tool {
     status: Status,
 }
 
+/// Current declarations only; this does not invoke mise or inspect installs.
+pub(super) fn declared_inventory(source: &Path) -> Result<Vec<serde_json::Value>> {
+    let bytes = super::snapshot::read_regular(
+        source,
+        Path::new("home/.config/mise/config.toml"),
+        "global mise configuration",
+    )?;
+    super::snapshot::read_regular(
+        source,
+        Path::new("home/.config/mise/mise.lock"),
+        "global mise lock",
+    )?;
+    let configuration: Configuration = toml::from_str(
+        std::str::from_utf8(&bytes).context("invalid global mise configuration encoding")?,
+    )
+    .map_err(|_| anyhow::anyhow!("cannot parse global mise configuration"))?;
+    Ok(configuration
+        .tools
+        .iter()
+        .map(|(name, request)| {
+            serde_json::json!({
+                "name": name, "manager": "mise", "declared": request.versions().join(", "),
+                "disabled": configuration.settings.disable_tools.contains(name)
+            })
+        })
+        .collect())
+}
+
 pub(super) struct Plan {
     configuration: Configuration,
     files: [(PathBuf, Vec<u8>); 2],
@@ -101,8 +129,11 @@ impl Plan {
             (PathBuf::from("mise.lock"), Vec::new()),
         ];
         for (name, bytes) in &mut files {
-            *bytes = fs::read(source.join("home/.config/mise").join(&name))
-                .with_context(|| format!("cannot read global mise {}", name.display()))?;
+            *bytes = super::snapshot::read_regular(
+                source,
+                &Path::new("home/.config/mise").join(&name),
+                &format!("global mise {}", name.display()),
+            )?;
             fs::write(workspace.path().join(name), &bytes)?;
         }
         let configuration: Configuration = toml::from_str(std::str::from_utf8(&files[0].1)?)
@@ -585,5 +616,39 @@ esac
             .unwrap()
             .to_string()
             .contains("did not resolve"));
+    }
+}
+
+#[cfg(test)]
+mod declaration_tests {
+    use super::*;
+    use std::os::unix::fs::symlink;
+
+    #[test]
+    fn parser_inputs_reject_external_symlinks_before_invoking_mise() {
+        let outside = tempfile::tempdir().unwrap();
+        let secret = outside.path().join("secret");
+        fs::write(&secret, "secret-do-not-print").unwrap();
+        for name in ["config.toml", "mise.lock"] {
+            let source = tempfile::tempdir().unwrap();
+            let home = tempfile::tempdir().unwrap();
+            let directory = source.path().join("home/.config/mise");
+            fs::create_dir_all(&directory).unwrap();
+            fs::write(directory.join("config.toml"), "[tools]\n").unwrap();
+            fs::write(directory.join("mise.lock"), "").unwrap();
+            fs::remove_file(directory.join(name)).unwrap();
+            symlink(&secret, directory.join(name)).unwrap();
+            let inventory_error = declared_inventory(source.path()).unwrap_err();
+            let plan_error =
+                Plan::capture(source.path(), home.path(), Path::new("/never-invoke-mise"))
+                    .err()
+                    .unwrap();
+            for error in [inventory_error, plan_error] {
+                assert!(!format!("{error:#}").contains("secret-do-not-print"));
+                assert!(format!("{error:#}").contains("regular file"));
+            }
+            assert_eq!(fs::read_to_string(&secret).unwrap(), "secret-do-not-print");
+            assert_eq!(fs::read_dir(home.path()).unwrap().count(), 0);
+        }
     }
 }

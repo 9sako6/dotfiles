@@ -42,6 +42,51 @@ struct Calendar {
     month: Option<u8>,
 }
 
+/// Reuse the same schema and semantic validation as reconciliation without
+/// observing launchd, expanding user state, or exposing command arguments.
+pub(super) fn declared_inventory(source: &Path) -> Result<Vec<serde_json::Value>> {
+    let bytes = read_regular(&source.join("user-services.toml"), source)?;
+    let declarations: Declarations = bytes
+        .as_deref()
+        .map(|bytes| -> Result<Declarations> {
+            let text = std::str::from_utf8(bytes).context("invalid user-services.toml encoding")?;
+            toml::from_str(text).map_err(|_| anyhow::anyhow!("invalid user-services.toml schema"))
+        })
+        .transpose()?
+        .unwrap_or_default();
+    let mut labels = BTreeSet::new();
+    let mut rows = Vec::new();
+    for agent in declarations.agents {
+        // plist validates only declaration syntax/semantics. The placeholder is
+        // never read, written, printed, or used to resolve a real user's home.
+        agent.plist(Path::new("/dotfiles-inspection-home"))?;
+        if !labels.insert(agent.label.to_ascii_lowercase()) {
+            bail!("duplicate public LaunchAgent label");
+        }
+        let mut config =
+            serde_json::json!({"RunAtLoad": agent.run_at_load, "KeepAlive": agent.keep_alive});
+        if let Some(interval) = agent.start_interval {
+            config["StartInterval"] = interval.into();
+        }
+        if let Some(calendar) = agent.start_calendar_interval {
+            let fields: serde_json::Map<String, serde_json::Value> = [
+                ("Minute", calendar.minute),
+                ("Hour", calendar.hour),
+                ("Day", calendar.day),
+                ("Weekday", calendar.weekday),
+                ("Month", calendar.month),
+            ]
+            .into_iter()
+            .filter_map(|(key, value)| value.map(|value| (key.into(), value.into())))
+            .collect();
+            config["StartCalendarInterval"] = fields.into();
+        }
+        rows.push(serde_json::json!({"name":agent.label, "scope":"user", "manager":"launchd", "config":config}));
+    }
+    rows.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+    Ok(rows)
+}
+
 // Results only: no desired declarations or execution instructions live here.
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
