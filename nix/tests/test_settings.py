@@ -50,7 +50,7 @@ class SettingsTests(unittest.TestCase):
 
     def git(self, *arguments):
         return subprocess.run(
-            ["git", "-C", str(self.root), *arguments],
+            ["git", "-c", "maintenance.auto=false", "-C", str(self.root), *arguments],
             env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"},
             check=True, capture_output=True, text=True,
         )
