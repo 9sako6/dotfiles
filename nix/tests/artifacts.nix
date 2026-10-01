@@ -53,7 +53,7 @@ let
   actual = model: independent.lib.mkArtifacts { configuration = enabled model; };
   samePackage = model: (actual model).selected.localllm.package.drvPath
     == (toolset.localllm (enabled model).localllm).drvPath;
-  hasReference = package: text: builtins.hasAttr package.drvPath (builtins.getContext text);
+  hasReference = package: text: builtins.hasAttr (builtins.unsafeDiscardStringContext package.drvPath) (builtins.getContext text);
   results = {
     disabledHasOnlyAddon = builtins.attrNames off.selected == [ "anki-connect" ]
       && off.homePackages == [ ] && builtins.length off.manifestData.artifacts == 1;
