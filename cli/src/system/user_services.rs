@@ -745,6 +745,7 @@ mod tests {
     const DECLARATION: &str = "[[agents]]\nlabel = 'com.example.check'\nargv = ['~/.local/share/mise/shims/node', 'hello<&\".js']\nrun_at_load = true\nstart_interval = 60\n";
 
     struct Fixture {
+        apply_lock: std::cell::OnceCell<File>,
         _root: tempfile::TempDir,
         source: PathBuf,
         home: PathBuf,
@@ -761,6 +762,7 @@ mod tests {
             fs::create_dir_all(home.join("Library/LaunchAgents")).unwrap();
             fixture_launchctl(&source, &home);
             Self {
+                apply_lock: std::cell::OnceCell::new(),
                 _root: root,
                 source,
                 home,
@@ -966,8 +968,14 @@ mod tests {
     }
 
     fn apply(f: &Fixture) -> Result<()> {
-        let lock = super::super::acquire_lock(&f._root.path().join("apply.lock"))?;
-        f.plan()?.apply(&lock)
+        // Lifecycle tests exercise one backend under one shared lock. Keeping
+        // its guard avoids racing unrelated test forks which can briefly hold
+        // a copied descriptor before exec closes it. Dedicated tests below
+        // still prove lock inheritance and release across process boundaries.
+        let lock = f.apply_lock.get_or_init(|| {
+            super::super::acquire_lock(&f._root.path().join("apply.lock")).unwrap()
+        });
+        f.plan()?.apply(lock)
     }
 
     fn mutations(f: &Fixture) -> Vec<String> {

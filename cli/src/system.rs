@@ -1181,6 +1181,30 @@ mod tests {
         assert!(read_local(&file).is_err());
     }
 
+    // Parallel test processes can briefly inherit unrelated descriptors between
+    // fork and exec. After our last holder exits, require bounded eventual
+    // release rather than assuming no other test is in that window.
+    fn lock_after_release(path: &Path) -> File {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            match acquire_lock(path) {
+                Ok(file) => return file,
+                Err(error)
+                    if error
+                        .downcast_ref::<io::Error>()
+                        .is_some_and(|error| error.kind() == io::ErrorKind::WouldBlock) =>
+                {
+                    assert!(
+                        std::time::Instant::now() < deadline,
+                        "lock did not release: {error}"
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+                Err(error) => panic!("cannot reacquire test lock: {error}"),
+            }
+        }
+    }
+
     #[test]
     fn lock_excludes_another_apply_and_releases_on_drop() {
         let temp = tempfile::tempdir().unwrap();
@@ -1188,7 +1212,7 @@ mod tests {
         let first = acquire_lock(&path).unwrap();
         assert!(acquire_lock(&path).is_err());
         drop(first);
-        assert!(acquire_lock(&path).is_ok());
+        drop(lock_after_release(&path));
     }
 
     #[test]
@@ -1201,10 +1225,10 @@ mod tests {
         drop(first);
         assert!(acquire_lock(&path).is_err());
         drop(duplicate);
-        let second = acquire_lock(&path).unwrap();
+        let second = lock_after_release(&path);
         assert!(acquire_lock(&path).is_err());
         drop(second);
-        assert!(acquire_lock(&path).is_ok());
+        drop(lock_after_release(&path));
     }
 
     #[test]
@@ -1223,7 +1247,7 @@ mod tests {
         drop(child.stdin.take());
         child.wait().unwrap();
         assert!(excluded);
-        assert!(acquire_lock(&path).is_ok());
+        drop(lock_after_release(&path));
     }
 
     #[test]
