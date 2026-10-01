@@ -345,12 +345,16 @@ fn home_and_system_changes_share_one_review() {
     ));
     assert_eq!(confirmations, 1);
     assert_eq!(plan.system.copy_changes.len(), 1);
+    assert!(plan.system.has_system_changes());
     assert!(!fixture.state.join("home/resource").exists());
 }
 
 #[test]
 fn resource_apply_and_no_change_reapply_skip_system_evaluation() {
     let fixture = Fixture::new();
+    let selection_before = fs::symlink_metadata(fixture.state.join("selection")).unwrap();
+    assert!(!fixture.state.join("generation/sw/bin/dotfiles").exists());
+    assert!(!fixture.state.join("selection.apply.lock").exists());
     let confirmed = Rc::new(Cell::new(false));
     let observed = confirmed.clone();
     let runtime = fixture.runtime(move || {
@@ -362,19 +366,14 @@ fn resource_apply_and_no_change_reapply_skip_system_evaluation() {
         ExitCode::SUCCESS
     );
     assert!(confirmed.get());
-    let activation = fs::read_to_string(fixture.state.join("activation")).unwrap();
-    assert!(activation.lines().any(|line| line == "--copy-only"));
-    assert!(activation.contains(fixture.state.join("generation").to_str().unwrap()));
-    fs::remove_file(fixture.state.join("activation")).unwrap();
-    home_copy::plan_live(
-        &fixture.root,
-        &fixture.root,
-        &fixture.state.join("home"),
-        &["resource".into()],
-    )
-    .unwrap()
-    .apply()
-    .unwrap();
+    let selection_after = fs::symlink_metadata(fixture.state.join("selection")).unwrap();
+    assert_eq!(selection_before.ino(), selection_after.ino());
+    assert!(!fixture.state.join("selection.apply.lock").exists());
+    assert!(!fixture.state.join("activation").exists());
+    assert_eq!(
+        fs::read_to_string(fixture.state.join("home/resource")).unwrap(),
+        "initial"
+    );
     let home_state = fixture.state.join("home/.local/state/dotfiles/home.json");
     fs::remove_file(&home_state).unwrap();
     let resource = fixture.state.join("home/resource");
@@ -443,20 +442,12 @@ fn live_link_changes_use_the_rootless_path_without_system_builds() {
     )
     .unwrap();
     assert_eq!(confirmed.get(), 1);
-    let activation = fs::read_to_string(fixture.state.join("activation")).unwrap();
-    assert!(activation.lines().any(|line| line == "--copy-only"));
-    assert!(activation.contains(fixture.state.join("generation").to_str().unwrap()));
+    assert!(!fixture.state.join("activation").exists());
     assert!(!fixture.state.join("installs").exists());
-    home_copy::plan_live(
-        &fixture.state.join("frozen"),
-        &fixture.root,
-        &fixture.state.join("home"),
-        &["resource".into()],
-    )
-    .unwrap()
-    .apply()
-    .unwrap();
-    fs::remove_file(fixture.state.join("activation")).unwrap();
+    assert_eq!(
+        fs::read_link(fixture.state.join("home/.config/new/config")).unwrap(),
+        fixture.root.join("home/.config/new/config")
+    );
     write(
         &fixture.root.join("home/.config/new/config"),
         "immediate edit",
@@ -755,17 +746,11 @@ fn tools_plan_and_apply_share_one_review_and_reapply_converges() {
     assert_eq!(confirmed.get(), 1);
     assert!(fixture.state.join("home/alpha-installed").exists());
     assert!(fixture.state.join("home/beta-installed").exists());
-    assert!(fixture.state.join("activation").exists());
-    fs::remove_file(fixture.state.join("activation")).unwrap();
-    home_copy::plan_live(
-        &fixture.root,
-        &fixture.root,
-        &fixture.state.join("home"),
-        &["resource".into()],
-    )
-    .unwrap()
-    .apply()
-    .unwrap();
+    assert!(!fixture.state.join("activation").exists());
+    assert_eq!(
+        fs::read_to_string(fixture.state.join("home/resource")).unwrap(),
+        "initial"
+    );
     run_with(
         Mode::Apply,
         &fixture.root,

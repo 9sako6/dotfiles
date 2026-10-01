@@ -58,8 +58,8 @@ curl -fsSL https://dot.9sako6.com | sh
 ```
 
 公開リポジトリ直下の `flake.nix` が唯一の構成ルートである。
-Home Manager は nix-darwin のモジュールとして組み込まれているため、システムと通常のホーム設定は同一の `apply` で反映する。
-`dotfiles.toml` の `copy` 対象は、システム反映の成功後に Rust CLI が `$HOME` へ実体として配備する。
+public の live symlink と `dotfiles.toml` の `copy` 対象は Rust CLI が配備する。Home Manager は private 構成と未移行の public resource のため nix-darwin のモジュールとして残す。
+システム変更がない場合、確認済みの home Plan をログインユーザー権限で直接反映する。システム変更もある場合は、従来どおりシステム反映の成功後に home を配備する。
 
 Home Managerの配備先に既存ファイルがある場合は、`.pre-home-manager` 接尾辞を付与して退避される。
 `curl | sh` の実行時は、確認の入力のみを制御端末から読み取り、ダウンロード中のスクリプトを入力値として消費しない。
@@ -90,9 +90,9 @@ planとapplyの実行中は、設定の準備、システムの評価、ビル�
 
 通常経路のplanおよびapplyでは宣言一覧を評価して差分を先行表示し、applyのyes確認後に必要なシステム評価とビルドを行い、処理前後に入力とアクティブ世代を再検証した上で同一の固定入力に基づく世代を反映する。宣言一覧が同一でも世代が異なる場合は評価時の出力パスを比較して差分を示し、旧世代とのinventory形式が異なる場合のみ従来のビルド付きネイティブ差分へフォールバックするため処理時間を要する。
 
-通常の反映ではビルド済みの更新先システム内にある`sw/bin/dotfiles`から`apply-built`を実行し、copy-onlyでは現在の世代内の同等CLIを使用します。これにより、呼び出し元の旧CLIが新しい内部コマンドに対応していない場合でもCLI自身を更新できます。なお、シェル接続の引数形式は既存CLIとの互換性維持のために保持しており、世代内CLIが欠落しているか実行不能な場合はsudoの実行前に失敗します。
+システムの反映ではビルド済みの更新先システム内にある`sw/bin/dotfiles`から`apply-built`を実行します。home の変更だけなら、呼び出し元 CLI が確認済み Plan を直接反映します。これにより、呼び出し元の旧CLIが新しい内部コマンドに対応していない場合でもCLI自身を更新できます。なお、シェル接続の引数形式は既存CLIとの互換性維持のために保持しており、世代内CLIが欠落しているか実行不能な場合はsudoの実行前に失敗します。
 
-copy対象ファイルの変更のみを反映するcopy-onlyでは、sudoを呼び出さないためパスワード入力が不要です。システム構成やCLIの更新を伴う通常applyでは、引き続きsudoを使用します。本変更の初回導入時は、CLIのシステム更新と共通ロックの準備のために通常applyの実行が一度必要となり、パスワード入力が求められる場合があります。
+home の変更だけを反映する場合は、共通のユーザー apply ロック内で Rust CLI が直接配備します。sudo、システム側の反映用ロック、世代内 CLI の起動は不要です。入力と現在の世代は反映前後に再検証します。現段階では snapshot と設定検証に Nix を使い、システム構成や CLI の更新を伴う通常 apply は引き続き Nix と sudo を使用します。
 
 公開リポジトリの更新には通常のGit操作を使います。
 
@@ -102,7 +102,7 @@ git pull
 
 その他の補助タスクは `mise tasks` で一覧できる。mise 本体の状態確認には `mise ls --missing` や `mise prune --tools` などの標準コマンドを使用する。
 
-普通のCLIは[パッケージと環境の原則](repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。移行済みのCLIはmiseの `[tools]` にバージョンを宣言し、通常のインストールは `mise install --locked` で行い、commit済みのglobal lockを使う。現在の `dotfiles apply` はmiseのツールインストールを実行しないため、Nix配備の削除とmiseインストールは別の操作になる。初回bootstrapでは既存の `install.sh` がmiseインストールを行う。
+普通のCLIは[パッケージと環境の原則](repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。移行済みのCLIはmiseの `[tools]` にバージョンを宣言し、通常のインストールは `mise install --locked` で行い、commit済みのglobal lockを使う。`dotfiles apply` は確認済みの tools Plan を `mise install --locked` で反映し、設定と lock の不変および導入後の収束を検証する。初回bootstrapでは既存の `install.sh` がmiseインストールを行う。
 
 `home/.config/mise/mise.lock` はDarwin arm64向けの固定入力で、通常反映では書き換えない。バージョン更新は開発操作として `mise upgrade --bump <tool>` を行い、macOSで `mise lock --global --platform macos-arm64` を実行して設定とlockを一緒にcommitする。npmやRustなどartifact URLを記録しないbackendはmise標準のversion固定に従う。
 
@@ -112,10 +112,10 @@ AWS CLI は特定の環境との相性による起動遅延を避けるため、
 
 公開構成の flake ルートはリポジトリ直下の `flake.nix` および `flake.lock` である。Nix で宣言するシステムやホーム設定は `nix/`、共有設定ファイルの実体は `home/` に配置する。
 
-通常の設定ファイルや `.config`、`.zsh.d`、`mybin` は、稼働中のリポジトリへの直接のシンボリックリンクとし、編集内容を即座に反映させる。
+通常の設定ファイルや `.config`、`.zsh.d`、`mybin` の各ファイルは、Rust CLI が稼働中のリポジトリへの直接のシンボリックリンクとして配備する。ディレクトリ自体をリンクにせず、管理外の兄弟ファイルを保持する。編集内容は即座に反映され、配備対象の追加・削除は次の apply で反映する。copy と重なる対象は copy を優先する。旧 Home Manager リンクは有効な宣言と参照先を確認できた場合だけ移行し、private の配備対象との重複は拒否する。
 devcontainerから参照するエージェント用設定の実体配備は、CLIの[copy](../cli/README.md#copy)を参照してください。対象パスの制約、ディレクトリ配下の同期範囲、Home Managerとの重複検査、権限の扱いを説明しています。
 
-public copyの成功結果は `$XDG_STATE_HOME/dotfiles/home.json`（未指定時は `$HOME/.local/state/dotfiles/home.json`）へリソース単位で記録する。宣言から外れた対象は、前回成功時の内容・種別・権限と一致する場合だけ削除し、利用者が変更したものやHome Managerが置き換えたリンクは残す。途中失敗しても完了した対象の記録は残り、再applyで続けられる。記録がなくなった場合は現在の宣言から成功結果を再構築し、過去の所有範囲を推測して削除しない。記録が壊れている場合や対応しない形式の場合は、copyや削除をせずに停止する。
+public copy と live symlink の成功結果は `$XDG_STATE_HOME/dotfiles/home.json`（未指定時は `$HOME/.local/state/dotfiles/home.json`）へリソース単位で記録する。宣言から外れた対象は、前回成功時の内容・種別・権限と一致する場合だけ削除し、利用者が変更したものやHome Managerが置き換えたリンクは残す。途中失敗しても完了した対象の記録は残り、再applyで続けられる。記録がなくなった場合は現在の宣言から成功結果を再構築し、過去の所有範囲を推測して削除しない。記録が壊れている場合や対応しない形式の場合は、copyや削除をせずに停止する。
 
 ## Zinitプラグインの検証
 
@@ -247,6 +247,12 @@ nix build --no-link --offline .#checks.aarch64-darwin.modelFetch
 - 依存固定ファイルの更新は開発時のみ明示的に行い、以下のコマンドを使用する。
   - `uv lock --project nix/localllm`
   - `nix flake lock`
+
+Linux の非 root 環境で bubblewrap の user/mount namespace とオフライン Cargo ビルドが利用できる場合、公開 `plan` / `apply` の home 配備を次で検証できる。テスト専用の `/etc` と `/run` を子プロセス内に用意し、ホスト側は読み取り専用にする。macOS の実機検証を代替するものではない。
+
+```sh
+cargo test --locked --manifest-path cli/Cargo.toml --test public_home_apply -- --ignored
+```
 
 設定ファイルやソースコードの文面そのものを直接検査するテストは作成しない。
 

@@ -5,7 +5,7 @@
 ファイルは次の 6 区分で管理する。共有可能な設定と非公開にすべき情報を同一リポジトリに混在させず、かつ単一の構成ルートから安全に組み立てるための境界である。
 
 - `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
-- `home-managed user tools` — 普通のCLIは `home/.config/mise/config.toml` に宣言し、miseへ段階的に移行する。未移行のツールとNix固有artifactは `nix/packages.nix` に残す。共有設定ファイルの実体は `home/` に置き、現在のHome Manager配備を維持する。devcontainerから実ファイルとして見える必要があるものだけ `dotfiles.toml` の `copy` で配備する。
+- `home-managed user tools` — 普通のCLIは `home/.config/mise/config.toml` に宣言し、miseへ段階的に移行する。未移行のツールとNix固有artifactは `nix/packages.nix` に残す。共有設定ファイルの実体は `home/` に置き、public live symlink と copy は Rust CLI が配備する。devcontainerから実ファイルとして見える必要があるものだけ `dotfiles.toml` の `copy` で配備する。
 - `system configuration` — 公開ルートの `flake.nix` / `flake.lock` と `nix/system.nix` に Mac 全体の設定を置く。nix-darwin で反映し、Homebrew 本体と cask もここで管理する。公開 `flake.nix` が唯一の構成ルートである。
 - `private system configuration` — 公開できない追加設定。独立した別 root flake は設けず、ローカル設定 `dotfiles.local.toml` の `private.path` 経由で公開 root flake の評価時に結合する。
 - `local-only` — マシン固有の設定。repo にコミットせず、Git 管理外の `dotfiles.local.toml` や各マシンのローカルファイルに置く。機密情報は含めず、必要に応じて個別にバックアップする。
@@ -16,7 +16,7 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 ### 置き場所の判断
 
 - repo の実行だけに必要 → `repo runtime`
-- ユーザー単位の home 配置 → `nix/home.nix`
+- public live symlink / copy の home 配置 → Rust CLI。未移行の public resource と private Home Manager 構成は Nix に残す
 - ユーザー単位で常設する普通のCLI → `home/.config/mise/config.toml`
 - Nix固有artifactや未移行のユーザーパッケージ → `nix/packages.nix`
 - ユーザーへ配る共有設定ファイルの実体 → `home/`
@@ -59,8 +59,8 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - `plan` および `apply` の実行中に、自動的な `git clone`、`git pull`、または依存固定ファイルの更新は一切行わない。
 - ローカル設定による非純粋性は、明示的かつ一時的なマニフェストとして検証済み Nix エントリへ渡す箇所に限定し、公開 CI 環境は完全に純粋に保つ。
 - Rust CLIは公開Gitスナップショット全体を固定した上で、Nixの既存TOMLスキーマを用いてcopyやprivateの整合性を検証します。システム評価の入力には、Rustが切り出した公開ソースを渡します。対象にはrootの.mise.toml、cli/、dotfiles.toml、flake.lock、flake.nix、home/、nix/を含めます。home/配下のうちcopyの所有対象や、home/.apm/、home/apm.yml、home/apm.lock.yamlは除外します。これらの除外ファイルは公開システム構成から直接参照できない設計境界として扱います。構成に必要なデータはnix/配下などに配置し、private flakeは全体を固定して扱います。inventoryの表示処理は完全な公開ソースを参照します。
-- システム世代の管理では、Nixがdotfiles-system-inputsという不変のハッシュ記録を生成します。判定キーにはシステム用ソースの内容、ファイル名、ファイル種別、実行権限に加え、非公開flakeの固定参照、ローカルTOML、checkout位置、ユーザー名、配備先パスが含まれます。リポジトリ全体のコミット進行自体はキーに含まれません。また、独立した可変キャッシュや第二の配置正本を独自に保持せず、世代記録の一致をもって判断します。通常の適用順序はNix反映、copy、記録更新ですが、短縮経路でも入力記録、世代、選択の再検証と共通rootロックによる排他制御を維持し、copyの前後にactive generationを検証します。
-- copy-onlyでは、既存のソース記録が同一の参照先であることを前後に検証して保持し、再作成しません。通常applyが共通ロックを0644で用意し、copy-onlyはそのロックを読み取りで開いて排他取得するため、ログインユーザー権限で処理できます。
+- システム世代の管理では、Nixがdotfiles-system-inputsという不変のハッシュ記録を生成します。判定キーにはシステム用ソースの内容、ファイル名、ファイル種別、実行権限に加え、非公開flakeの固定参照、ローカルTOML、checkout位置、ユーザー名、配備先パスが含まれます。リポジトリ全体のコミット進行自体はキーに含まれません。また、独立した可変キャッシュや第二の配置正本を独自に保持せず、世代記録の一致をもって判断します。通常の適用順序はNix反映、copy、記録更新ですが、短縮経路でも入力記録、世代、選択の再検証とユーザー apply ロックによる排他制御を維持し、home 配備の前後にactive generationを検証します。
+- home の変更だけなら、共通のユーザー apply ロック内で確認済み home Plan を直接反映する。入力、ソース記録とアクティブ世代を前後に検証して保持し、システム側の反映用ロックや世代内 CLI は使わない。snapshot と設定検証の Nix 依存は、system identity の分離が完了するまで残る。
 - 入力内容に変更がない場合はNix標準の評価キャッシュを再利用し、入力変更時やキャッシュ削除時のみ再評価を行う設計とし、lockファイルの更新は行わない。
 - 実行時に入力ハッシュが一致した場合、Nix全体のinventory評価やシステム評価、build、nix-env、darwin-rebuild、Homebrew反映を省略します。処理はcopy対象の実体差分確認と表示に進み、対話的な承認後に配置処理を実施します。差分がない場合はそのまま終了します。初回適用時や旧世代の記録が存在しない場合、あるいはCLI、Nixコード、private flake、ローカル設定に変更がある場合は、通常システム評価と反映処理を実行します。settingsなどの管理項目も通常の一覧表示を維持します。
 - 通常経路のplanは固定した公開・非公開ソースと設定入力を一時GCルートで保持し、宣言inventoryから差分とcopy配備計画を作成する。通常は世代のビルドを行わず、宣言一覧が同一であれば予定出力パスで比較し、旧形式の世代に対してのみ既存のネイティブ差分へフォールバックする。稼働中のシステムやホーム配置は変更しない。
@@ -90,7 +90,7 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - devcontainer から参照するエージェント用設定は、Nix ストアやホスト固有の絶対パスシンボリックリンクにしてはならない。`dotfiles.toml` の `copy` に列挙したファイルまたはディレクトリのみを、実ファイルとして `$HOME` 配下に配備する。列挙されたディレクトリ配下は dotfiles が所有し、同期時にはコピー元に存在しない子要素を削除するが、親ディレクトリや同階層にある他のランタイムファイルには影響を与えない。
 - `copy`宣言されたパスと一致または親子関係にある公開構成のHome Managerリンクのみを自動除外する。その他の有効な`home.file.target`が`copy`対象と重複した場合は、別名キー経由の`target`指定も含めてNix評価時に拒否する。
 - copy処理の設計：プレビュー処理と同一のfingerprint（内容およびファイルモード）比較により、未変更ファイルとサブディレクトリへの書き込みを省いてinodeとmtimeを保持する。変更対象のファイルは同一ディレクトリの一時ファイルへ内容とモードを設定したのち、rename操作によって置換する。
-- 標準機能で要件を満たせるホームディレクトリへの配備は Home Manager に任せる。`dotfiles.toml` によるファイルコピーは devcontainer の環境境界を越えるための限定的な例外措置である。public copyの前回成功結果は `$XDG_STATE_HOME/dotfiles/home.json`（未指定時は `$HOME/.local/state/dotfiles/home.json`）に記録する。これは前回の所有確認にだけ使い、desired stateの正本は引き続きrepoの宣言とする。
+- public live symlink と copy は Rust CLI が所有し、private Home Manager 構成と未移行の public resource は従来の Nix 構成を維持する。`dotfiles.toml` によるファイルコピーは devcontainer の環境境界を越えるための限定的な例外措置である。public copyの前回成功結果は `$XDG_STATE_HOME/dotfiles/home.json`（未指定時は `$HOME/.local/state/dotfiles/home.json`）に記録する。これは前回の所有確認にだけ使い、desired stateの正本は引き続きrepoの宣言とする。
 - CI 上で同一の CLI やツールチェーンを必要とする場合も、個別にバージョン定義を持たず、root flake が公開する共通の Nix ツールセットを利用する。GitHub Actions ではバイナリキャッシュを活用し、同一ストアパスの再取得や再ビルドを防ぐ。
 - セットアップ処理の妥当性は E2E テストで検証する。シェルの実行順序や全体の導線の検証を、内部実装手順を固定化するユニットテストで代替してはならない。
 

@@ -163,13 +163,16 @@ impl Preview {
     }
 
     pub fn has_changes(&self) -> bool {
+        self.has_system_changes() || !self.copy_changes.is_empty()
+    }
+
+    pub fn has_system_changes(&self) -> bool {
         self.notice.is_some()
             || self
                 .resources
                 .as_ref()
                 .is_some_and(|resources| !resources.is_empty())
             || self.generation.is_some()
-            || !self.copy_changes.is_empty()
     }
 
     pub(crate) fn render(&self, width: Option<usize>) -> String {
@@ -361,6 +364,21 @@ mod tests {
             "localllm": {"enabled": false, "default_model": null}
         })).unwrap()).unwrap();
         generation
+    }
+
+    #[test]
+    fn home_changes_do_not_require_system_activation() {
+        let mut preview = Preview::copy_only();
+        assert!(!preview.has_changes());
+        preview.copy_changes.push(crate::home_copy::CopyChange {
+            path: "resource".into(),
+            before: None,
+            after: Some("sha256:fixture".into()),
+        });
+        assert!(preview.has_changes());
+        assert!(!preview.has_system_changes());
+        preview.generation = Some(("before".into(), "after".into()));
+        assert!(preview.has_system_changes());
     }
 
     #[test]

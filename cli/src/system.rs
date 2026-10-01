@@ -403,11 +403,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         crate::inventory::Preview::copy_only()
     };
     let mut derivations = None;
-    let mut system = if copy_only {
-        previous_generation.clone()
-    } else {
-        None
-    };
+    let mut system = None;
     if preview.needs_native() || preview.needs_generation_comparison() {
         let [system_drv, brewfile_drv] = host_derivations(
             &nix,
@@ -453,7 +449,11 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     if let Review::Finished = plan.review(mode, runtime.confirm)? {
         if matches!(mode, Mode::Apply) {
             plan.inputs.verify()?;
-            plan.home.record_current()?;
+            let result = plan.home.record_current();
+            plan.inputs
+                .verify()
+                .context("home state may have been recorded; run plan/apply again")?;
+            result?;
         }
         return Ok(ExitCode::SUCCESS);
     }
@@ -465,8 +465,15 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         .verify()
         .context("tools may be partially installed")?;
     result?;
-    if !plan.system.has_changes() {
-        plan.home.record_current()?;
+    if !plan.system.has_system_changes() {
+        // The reviewed home plan owns its frozen source and success journal. A
+        // generation's CLI is neither needed nor allowed to re-plan this work.
+        plan.inputs.verify()?;
+        let result = plan.home.apply();
+        plan.inputs
+            .verify()
+            .context("home files may be partially changed; run plan/apply again")?;
+        result.context("home deployment failed; some home files may be partially changed. Run plan/apply again")?;
         return Ok(ExitCode::SUCCESS);
     }
     let workspace = &plan.inputs.workspace;
@@ -507,21 +514,12 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         .arg(&plan.inputs.public.source)
         .arg(&paths)
         .arg(&home);
-    if copy_only {
-        activation
-            .arg("--copy-only")
-            .arg("--current-generation")
-            .arg(&plan.inputs.current_generation);
-    }
     retain_apply_lock(
         &mut activation,
         _lock.as_ref().context("apply lock is unavailable")?,
     );
     let status = activation.status()?;
     if !status.success() {
-        if copy_only {
-            bail!("home deployment failed; the source record is retained. Some home files may be partially changed. Run plan/apply again");
-        }
         if let Some(previous) = &plan.inputs.previous_generation {
             eprintln!("Restore the previous profile: sudo nix-env -p /nix/var/nix/profiles/system --set {}", previous.display());
             eprintln!(
