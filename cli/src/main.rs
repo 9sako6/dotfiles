@@ -1,5 +1,6 @@
 mod activation;
 mod agents;
+mod cli_build;
 mod home_copy;
 mod inventory;
 mod progress;
@@ -28,6 +29,8 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    #[command(hide = true)]
+    InstallCli,
     #[command(hide = true)]
     ApplyBuilt(activation::Args),
     #[command(hide = true)]
@@ -130,6 +133,11 @@ fn run() -> Result<ExitCode> {
             system::run(system::Mode::Apply, &dotfiles_dir, options.show_trace)
         }
         Commands::Settings => settings::run(&dotfiles_dir),
+        Commands::InstallCli => {
+            let home = PathBuf::from(env::var_os("HOME").context("HOME is not set")?);
+            cli_build::install(&dotfiles_dir, &home)?;
+            Ok(ExitCode::SUCCESS)
+        }
     }
 }
 
