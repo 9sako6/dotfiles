@@ -56,16 +56,15 @@ jobs:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
 
-      - name: Verify locked mise tools and Git behavior
+      - name: Verify mise-managed Git behavior
         env:
           MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
           MISE_AUTO_INSTALL: "false"
         run: |
           ./bin/install-mise.sh
-          "$HOME/.local/bin/mise" lock --global --platform macos-arm64
           before="$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
-          "$HOME/.local/bin/mise" install --locked
+          "$HOME/.local/bin/mise" install --locked conda:git
           test "$before" = "$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
           export DOTFILES_TEST_GIT="$("$HOME/.local/bin/mise" which git)"
           "$DOTFILES_TEST_GIT" ls-remote https://github.com/9sako6/dotfiles.git refs/heads/master
@@ -75,16 +74,6 @@ jobs:
             export PATH="$(dirname "$DOTFILES_TEST_GIT"):$PATH"
             bun test tests/shell-config.test.ts -t "pre-commit|git undo"
           '
-
-      - name: Export generated Darwin mise lock
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: darwin-mise-lock
-          path: home/.config/mise/mise.lock
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 1
 
       - name: Run repository tests with Nix-managed tools
         run: |

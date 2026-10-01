@@ -102,7 +102,9 @@ git pull
 
 その他の補助タスクは `mise tasks` で一覧できる。mise 本体の状態確認には `mise ls --missing` や `mise prune --tools` などの標準コマンドを使用する。
 
-普通のCLIは[パッケージと環境の原則](repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。移行済みのCLIはmiseの `[tools]` にバージョンを宣言し、インストールは `mise install` で行う。現在の `dotfiles apply` はmiseのツールインストールを実行しないため、Nix配備の削除とmiseインストールは別の操作になる。初回bootstrapでは既存の `install.sh` がmiseインストールを行う。
+普通のCLIは[パッケージと環境の原則](repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。移行済みのCLIはmiseの `[tools]` にバージョンを宣言し、通常のインストールは `mise install --locked` で行い、commit済みのglobal lockを使う。現在の `dotfiles apply` はmiseのツールインストールを実行しないため、Nix配備の削除とmiseインストールは別の操作になる。初回bootstrapでは既存の `install.sh` がmiseインストールを行う。
+
+`home/.config/mise/mise.lock` はDarwin arm64向けの固定入力で、通常反映では書き換えない。バージョン更新は開発操作として `mise upgrade --bump <tool>` を行い、macOSで `mise lock --global --platform macos-arm64` を実行して設定とlockを一緒にcommitする。npmやRustなどartifact URLを記録しないbackendはmise標準のversion固定に従う。
 
 Gitの通常シェル向け配備はmiseの `conda:git` で固定する。初回cloneにはmise導入前から利用できるmacOSのGitが必要で、CLIの入力snapshotはPATH上のGitを使う。CIとNixでのCLIビルドには既存のNix Gitを残し、miseの配備と混ぜない。
 
