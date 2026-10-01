@@ -66,23 +66,41 @@ impl Fixture {
         ] {
             write(&root.join(name), "initial");
         }
-        let metadata = serde_json::json!({"path": root, "locked": {"narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}});
+        write(&root.join("home/apm.yml"), "dependencies:\n  apm: []\n");
+        let source = state.join("frozen");
+        let metadata = serde_json::json!({"path": source, "locked": {"narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}});
         let nix = state.join("nix");
         executable(
             &nix,
             &format!(
                 r#"#!/bin/sh
+set -eu
 shift 2
 case "$1" in
-  flake) printf '%s\n' '{metadata}' ;;
+  flake)
+    mkdir -p '{source}'
+    git -C '{root}' ls-files | while IFS= read -r name; do
+      mkdir -p '{source}'/"$(dirname "$name")"
+      cp -P '{root}'/"$name" '{source}'/"$name"
+    done
+    printf '%s\n' '{metadata}'
+    ;;
   eval)
     [ "$DOTFILES_INPUT_OPERATION" = configuration ] || exit 77
     printf '%s\n' '{{"errors":[],"config":{{"copy":["resource"],"private":{{"path":null}}}}}}'
     ;;
-  build) [ "$2" = --offline ] || exit 77 ;;
+  build)
+    [ "$2" = --offline ] || exit 77
+    if [ -e '{state}/change-during-preview' ]; then
+      printf changed > '{root}/home/resource'
+    fi
+    ;;
   *) exit 77 ;;
 esac
-"#
+"#,
+                source = source.display(),
+                root = root.display(),
+                state = state.display(),
             ),
         );
         executable(
@@ -90,7 +108,7 @@ esac
             &format!(
                 r#"#!/bin/sh
 case "$1" in
-  ensure-nix|require-nix) printf '%s\n' '{}' ;;
+  require-nix) printf '%s\n' '{}' ;;
   activate) printf '%s\n' "$@" > '{}' ;;
   *) exit 77 ;;
 esac
@@ -147,6 +165,173 @@ esac
             confirm: Box::new(confirm),
         }
     }
+
+    fn inputs(&self, private: &Fixture) -> PlanInputs {
+        let local_path = self.root.join("dotfiles.local.toml");
+        let local = read_local(&local_path).unwrap();
+        let workspace = tempfile::tempdir().unwrap();
+        freeze_local(workspace.path(), &local).unwrap();
+        PlanInputs {
+            public: Snapshot::capture(&self.state.join("nix"), &self.root, false).unwrap(),
+            private: Some(
+                Snapshot::capture(&private.state.join("nix"), &private.root, true).unwrap(),
+            ),
+            local_path,
+            local,
+            selection: self.state.join("selection"),
+            previous: Some(self.root.join("flake.nix")),
+            current_generation: self.state.join("current-system"),
+            previous_generation: Some(self.state.join("generation")),
+            workspace,
+        }
+    }
+}
+
+#[test]
+fn cancelled_apply_does_not_install_dependencies_or_change_managed_state() {
+    for answer in ["no\n", ""] {
+        let fixture = Fixture::new();
+        let before = fingerprint(&fixture.root).unwrap();
+        let runtime =
+            fixture.runtime(move || confirm_apply(&mut answer.as_bytes(), &mut Vec::new()));
+        assert!(run_with(Mode::Apply, &fixture.root, false, runtime).is_err());
+        assert_eq!(fingerprint(&fixture.root).unwrap(), before);
+        assert!(!fixture.state.join("activation").exists());
+        assert!(!fixture.state.join("home/resource").exists());
+        assert_eq!(
+            fs::read_link(fixture.state.join("selection")).unwrap(),
+            fixture.root.join("flake.nix")
+        );
+        assert!(acquire_lock(&fixture.state.join("user-apply.lock")).is_ok());
+    }
+}
+
+#[test]
+fn plan_does_not_take_an_apply_lock_or_modify_managed_state() {
+    let fixture = Fixture::new();
+    let before = fingerprint(&fixture.root).unwrap();
+    let runtime = fixture.runtime(|| panic!("plan must not confirm"));
+    run_with(Mode::Plan, &fixture.root, false, runtime).unwrap();
+    assert_eq!(fingerprint(&fixture.root).unwrap(), before);
+    assert!(!fixture.state.join("user-apply.lock").exists());
+    assert!(!fixture.state.join("activation").exists());
+    assert!(!fixture.state.join("home/resource").exists());
+}
+
+#[test]
+fn concurrent_apply_is_rejected_before_snapshotting_or_confirmation() {
+    let fixture = Fixture::new();
+    let lock = acquire_lock(&fixture.state.join("user-apply.lock")).unwrap();
+    let runtime = fixture.runtime(|| panic!("contending apply must not confirm"));
+    let error = run_with(Mode::Apply, &fixture.root, false, runtime).unwrap_err();
+    assert!(error.to_string().contains("already running"));
+    assert!(!fixture.state.join("frozen").exists());
+    assert!(!fixture.state.join("activation").exists());
+    drop(lock);
+}
+
+#[test]
+fn shared_snapshot_freezes_and_verifies_public_private_and_local_inputs() {
+    for changed in ["public", "private", "local"] {
+        let fixture = Fixture::new();
+        let private = Fixture::new();
+        let local = "[private]\npath = 'fixture'\n";
+        write(&fixture.root.join("dotfiles.local.toml"), local);
+        let inputs = fixture.inputs(&private);
+        inputs.verify().unwrap();
+        match changed {
+            "public" => write(&fixture.root.join("home/resource"), "new public contents"),
+            "private" => write(&private.root.join("home/resource"), "new private contents"),
+            "local" => write(&fixture.root.join("dotfiles.local.toml"), ""),
+            _ => unreachable!(),
+        }
+        assert!(inputs.verify().is_err(), "{changed}");
+        assert_eq!(
+            fs::read_to_string(inputs.public.source.join("home/resource")).unwrap(),
+            "initial"
+        );
+        assert_eq!(
+            fs::read_to_string(
+                inputs
+                    .private
+                    .as_ref()
+                    .unwrap()
+                    .source
+                    .join("home/resource")
+            )
+            .unwrap(),
+            "initial"
+        );
+        assert_eq!(
+            fs::read_to_string(inputs.workspace.path().join("dotfiles.local.toml")).unwrap(),
+            local
+        );
+    }
+}
+
+#[test]
+fn private_snapshot_rejects_an_uncommitted_lock_file() {
+    let fixture = Fixture::new();
+    write(&fixture.root.join("flake.lock"), "changed lock");
+    let error = Snapshot::capture(&fixture.state.join("nix"), &fixture.root, true)
+        .err()
+        .unwrap();
+    assert!(error
+        .to_string()
+        .contains("must be committed and unchanged"));
+    assert!(!fixture.state.join("frozen").exists());
+}
+
+#[test]
+fn inputs_changed_during_preparation_are_rejected_before_showing_a_plan() {
+    for mode in [Mode::Plan, Mode::Apply] {
+        let fixture = Fixture::new();
+        write(&fixture.state.join("change-during-preview"), "");
+        let runtime = fixture.runtime(|| panic!("stale plan must not confirm"));
+        let error = run_with(mode, &fixture.root, false, runtime).unwrap_err();
+        assert!(error.to_string().contains("inputs changed"));
+        assert!(!fixture.state.join("activation").exists());
+        assert!(!fixture.state.join("home/resource").exists());
+    }
+}
+
+#[test]
+fn home_and_system_changes_share_one_review() {
+    let fixture = Fixture::new();
+    let private = Fixture::new();
+    let inputs = fixture.inputs(&private);
+    let home = home_copy::plan(
+        &inputs.public.source,
+        &fixture.state.join("home"),
+        &["resource".into()],
+    )
+    .unwrap();
+    let inventory = serde_json::from_value(serde_json::json!({
+        "source": inputs.public.source,
+        "packages": [],
+        "system": [{"key": "fixture", "group": "system", "name": "fixture", "value": true}],
+        "services": [], "tools": [], "timeZone": "UTC",
+        "localllm": {"enabled": false, "default_model": null}
+    }))
+    .unwrap();
+    let system = crate::inventory::Preview::from_inventory(None, inventory).unwrap();
+    let mut plan = Plan {
+        inputs,
+        home,
+        system,
+    };
+    let mut confirmations = 0;
+    assert!(matches!(
+        plan.review(Mode::Apply, || {
+            confirmations += 1;
+            Ok(())
+        })
+        .unwrap(),
+        Review::Apply
+    ));
+    assert_eq!(confirmations, 1);
+    assert_eq!(plan.system.copy_changes.len(), 1);
+    assert!(!fixture.state.join("home/resource").exists());
 }
 
 #[test]
@@ -295,7 +480,7 @@ esac
             &state.join("generation/dotfiles-inventory.json"),
             &serde_json::to_string(&inventory).unwrap(),
         );
-        let nix = resolve_nix(&root, false).unwrap();
+        let nix = resolve_nix(&root).unwrap();
         let manifest = state.join("configuration.json");
         write(
             &manifest,
@@ -351,7 +536,7 @@ esac
 #[ignore = "requires the repository checkout and real Lix"]
 fn nix_generation_contains_the_inputs_used_by_the_copy_fast_path() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-    let nix = resolve_nix(root, false).unwrap();
+    let nix = resolve_nix(root).unwrap();
     let expression = r#"
       let
         public = builtins.getFlake ("git+file://" + builtins.getEnv "DOTFILES_TEST_REPOSITORY");

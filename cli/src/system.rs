@@ -5,7 +5,9 @@ mod inputs;
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
+use std::os::fd::AsRawFd;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -168,6 +170,51 @@ struct Runtime {
     confirm: Box<dyn FnOnce() -> Result<()>>,
 }
 
+struct PlanInputs {
+    public: Snapshot,
+    private: Option<Snapshot>,
+    local_path: PathBuf,
+    local: Option<Vec<u8>>,
+    selection: PathBuf,
+    previous: Option<PathBuf>,
+    current_generation: PathBuf,
+    previous_generation: Option<PathBuf>,
+    workspace: tempfile::TempDir,
+}
+
+impl PlanInputs {
+    fn verify(&self) -> Result<()> {
+        self.public.verify()?;
+        if let Some(private) = &self.private {
+            private.verify()?;
+        }
+        verify_local(&self.local_path, &self.local)?;
+        if selected_target(&self.selection)? != self.previous {
+            bail!("source record changed after preview; nothing was activated");
+        }
+        if current_generation(&self.current_generation)? != self.previous_generation {
+            bail!(
+                "active generation changed after preview; nothing was activated. Run plan/apply again"
+            );
+        }
+        Ok(())
+    }
+}
+
+struct Plan {
+    inputs: PlanInputs,
+    home: home_copy::CopyPlan,
+    system: crate::inventory::Preview,
+}
+
+impl Plan {
+    fn review(&mut self, mode: Mode, confirm: impl FnOnce() -> Result<()>) -> Result<Review> {
+        self.inputs.verify()?;
+        self.system.copy_changes = self.home.changes()?;
+        review_plan_with(mode, &self.system, confirm)
+    }
+}
+
 pub fn run(mode: Mode, root: &Path, show_trace: bool) -> Result<ExitCode> {
     run_with(
         mode,
@@ -197,6 +244,11 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     if unsafe { libc::geteuid() } == 0 {
         bail!("run system commands as the login user");
     }
+    let _lock = if matches!(mode, Mode::Apply) {
+        Some(acquire_lock(&runtime.lock)?)
+    } else {
+        None
+    };
     let home = runtime.home;
     let selection = runtime.selection.as_path();
     let previous = selected_target(selection)?;
@@ -204,13 +256,8 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let previous_generation = current_generation(&runtime.current_generation)?;
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
-    let _lock = if matches!(mode, Mode::Apply) {
-        Some(acquire_lock(&runtime.lock)?)
-    } else {
-        None
-    };
     let backend = root.join("bin/system-backend.sh");
-    let nix = resolve_nix(root, matches!(mode, Mode::Apply))?;
+    let nix = resolve_nix(root)?;
     let workspace = tempfile::Builder::new()
         .prefix("dotfiles-input-")
         .tempdir()?;
@@ -246,14 +293,27 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     if let Some(private) = &private {
         inputs.private_flake = Some(private.reference.clone());
     }
-    public.verify()?;
-    if let Some(private) = &private {
-        private.verify()?;
-    }
-    verify_local(&local_path, &local)?;
+    let snapshot = PlanInputs {
+        public,
+        private,
+        local_path,
+        local,
+        selection: runtime.selection,
+        previous,
+        current_generation: runtime.current_generation,
+        previous_generation,
+        workspace,
+    };
+    snapshot.verify()?;
+    let public = &snapshot.public;
+    let private = &snapshot.private;
+    let local = &snapshot.local;
+    let previous = &snapshot.previous;
+    let previous_generation = &snapshot.previous_generation;
+    let workspace = &snapshot.workspace;
     let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
     let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
-    let identity = inputs::identity(&system_source, &inputs, &local, &home)?;
+    let identity = inputs::identity(&system_source, &inputs, local, &home)?;
     let copy_only = previous.is_some()
         && inputs::matches_generation(previous_generation.as_deref(), &identity)?;
     inputs.system_inputs = Some(identity);
@@ -314,7 +374,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     if let Some(host) = &host {
         retain.arg(host).arg(&inputs.public_source);
     }
-    if let Some(private) = &private {
+    if let Some(private) = private {
         retain.arg(&private.source);
     }
     capture(&mut retain, "cannot retain frozen inputs")?;
@@ -378,28 +438,17 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         }
         derivations = Some([system_drv, brewfile_drv]);
     }
-    preview.copy_changes = copy_plan.changes()?;
     drop(progress);
-    if let Review::Finished = review_plan_with(mode, preview, runtime.confirm)? {
+    let mut plan = Plan {
+        inputs: snapshot,
+        home: copy_plan,
+        system: preview,
+    };
+    if let Review::Finished = plan.review(mode, runtime.confirm)? {
         return Ok(ExitCode::SUCCESS);
     }
-    let verify = || -> Result<()> {
-        public.verify()?;
-        if let Some(private) = &private {
-            private.verify()?;
-        }
-        verify_local(&local_path, &local)?;
-        if selected_target(selection)? != previous {
-            bail!("source record changed after preview; nothing was activated");
-        }
-        if current_generation(&runtime.current_generation)? != previous_generation {
-            bail!(
-                "active generation changed after preview; nothing was activated. Run plan/apply again"
-            );
-        }
-        Ok(())
-    };
-    verify()?;
+    plan.inputs.verify()?;
+    let workspace = &plan.inputs.workspace;
     let system = match system {
         Some(system) => system,
         None => {
@@ -417,7 +466,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
             build(&nix, &system_drv, &workspace.path().join("system"))?
         }
     };
-    verify()?;
+    plan.inputs.verify()?;
     let paths = workspace.path().join("copy.json");
     fs::write(&paths, serde_json::to_vec(&configuration.copy)?)?;
     let mut activation = Command::new(&backend);
@@ -426,24 +475,33 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         .arg(&nix)
         .arg(&user)
         .arg(&system)
-        .arg(previous.as_deref().unwrap_or_else(|| Path::new("missing")))
+        .arg(
+            plan.inputs
+                .previous
+                .as_deref()
+                .unwrap_or_else(|| Path::new("missing")),
+        )
         .arg(root.join("flake.nix"))
         .arg(&runtime.executable)
-        .arg(&public.source)
+        .arg(&plan.inputs.public.source)
         .arg(&paths)
         .arg(&home);
     if copy_only {
         activation
             .arg("--copy-only")
             .arg("--current-generation")
-            .arg(&runtime.current_generation);
+            .arg(&plan.inputs.current_generation);
     }
+    retain_apply_lock(
+        &mut activation,
+        _lock.as_ref().context("apply lock is unavailable")?,
+    );
     let status = activation.status()?;
     if !status.success() {
         if copy_only {
             bail!("home copy failed; the source record is retained. Some home files may be partially changed. Run plan/apply again");
         }
-        if let Some(previous) = previous_generation {
+        if let Some(previous) = &plan.inputs.previous_generation {
             eprintln!("Restore the previous profile: sudo nix-env -p /nix/var/nix/profiles/system --set {}", previous.display());
             eprintln!(
                 "Reactivate it: sudo {}/sw/bin/darwin-rebuild activate",
@@ -482,7 +540,7 @@ struct Inspection {
 }
 
 pub fn load_settings(root: &Path) -> Result<(Vec<Setting>, InventoryInputs)> {
-    let nix = resolve_nix(root, false)?;
+    let nix = resolve_nix(root)?;
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
     let workspace = tempfile::Builder::new()
@@ -595,14 +653,10 @@ impl InventoryInputs {
     }
 }
 
-fn resolve_nix(root: &Path, install: bool) -> Result<PathBuf> {
+fn resolve_nix(root: &Path) -> Result<PathBuf> {
     Ok(PathBuf::from(
         String::from_utf8(capture(
-            Command::new(root.join("bin/system-backend.sh")).arg(if install {
-                "ensure-nix"
-            } else {
-                "require-nix"
-            }),
+            Command::new(root.join("bin/system-backend.sh")).arg("require-nix"),
             "Lix is unavailable; install it with bin/install-lix.sh",
         )?)?
         .trim(),
@@ -639,14 +693,14 @@ fn evaluate_configuration<T: serde::de::DeserializeOwned>(
 
 #[cfg(test)]
 fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review> {
-    review_plan_with(mode, preview, || {
+    review_plan_with(mode, &preview, || {
         confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())
     })
 }
 
 fn review_plan_with(
     mode: Mode,
-    preview: crate::inventory::Preview,
+    preview: &crate::inventory::Preview,
     confirm: impl FnOnce() -> Result<()>,
 ) -> Result<Review> {
     if !preview.has_changes() {
@@ -860,26 +914,33 @@ fn validate_record(root: &Path, previous: Option<&Path>) -> Result<()> {
     Ok(())
 }
 
-struct ApplyLock {
-    file: File,
-}
-
-impl Drop for ApplyLock {
-    fn drop(&mut self) {
-        let _ = fs2::FileExt::unlock(&self.file);
-    }
-}
-
-fn acquire_lock(path: &Path) -> Result<ApplyLock> {
+fn acquire_lock(path: &Path) -> Result<File> {
     let file = OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
         .truncate(false)
         .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path)?;
-    fs2::FileExt::try_lock_exclusive(&file).context("system apply is already running")?;
-    Ok(ApplyLock { file })
+    if !file.metadata()?.is_file() {
+        bail!("apply lock is not a regular file");
+    }
+    fs2::FileExt::try_lock_exclusive(&file).context("dotfiles apply is already running")?;
+    Ok(file)
+}
+
+fn retain_apply_lock(command: &mut Command, lock: &File) {
+    let descriptor = lock.as_raw_fd();
+    unsafe {
+        command.pre_exec(move || {
+            let flags = libc::fcntl(descriptor, libc::F_GETFD);
+            if flags < 0 || libc::fcntl(descriptor, libc::F_SETFD, flags & !libc::FD_CLOEXEC) < 0 {
+                return Err(io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
 }
 
 #[cfg(test)]
@@ -1037,17 +1098,49 @@ mod tests {
     }
 
     #[test]
-    fn lock_releases_on_drop_while_a_duplicated_descriptor_remains_open() {
+    fn lock_is_retained_until_the_last_descriptor_closes() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("apply.lock");
         let first = acquire_lock(&path).unwrap();
-        let duplicate = first.file.try_clone().unwrap();
+        let duplicate = first.try_clone().unwrap();
         assert!(acquire_lock(&path).is_err());
         drop(first);
-        let second = acquire_lock(&path).unwrap();
+        assert!(acquire_lock(&path).is_err());
         drop(duplicate);
+        let second = acquire_lock(&path).unwrap();
         assert!(acquire_lock(&path).is_err());
         drop(second);
         assert!(acquire_lock(&path).is_ok());
+    }
+
+    #[test]
+    fn running_backends_retain_the_common_lock_after_the_owner_closes_it() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("apply.lock");
+        let lock = acquire_lock(&path).unwrap();
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", "read answer"])
+            .stdin(std::process::Stdio::piped());
+        retain_apply_lock(&mut command, &lock);
+        let mut child = command.spawn().unwrap();
+        drop(lock);
+        let excluded = acquire_lock(&path).is_err();
+        drop(child.stdin.take());
+        child.wait().unwrap();
+        assert!(excluded);
+        assert!(acquire_lock(&path).is_ok());
+    }
+
+    #[test]
+    fn unsafe_common_lock_paths_are_rejected_without_modifying_the_target() {
+        let temp = tempfile::tempdir().unwrap();
+        let target = temp.path().join("target");
+        fs::write(&target, "untouched").unwrap();
+        let link = temp.path().join("link");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert!(acquire_lock(&link).is_err());
+        assert_eq!(fs::read_to_string(&target).unwrap(), "untouched");
+        assert!(acquire_lock(temp.path()).is_err());
     }
 }
