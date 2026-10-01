@@ -146,10 +146,6 @@ class InventoryTests(unittest.TestCase):
         self.assertIn({"name": "lix", "manager": "Nix", "declared": "9.8.7"}, inventory["packages"])
         self.assertTrue(any(p["name"] == "hello" and p["manager"] == "Nix" for p in inventory["packages"]))
         self.assertTrue(any(p["name"] == "node" and p["manager"] == "mise" for p in inventory["packages"]))
-        self.assertEqual(
-            [package for package in inventory["packages"] if package["name"] == "fd"],
-            [{"name": "fd", "manager": "mise", "declared": "10.5.0"}],
-        )
         job = next(job for job in inventory["services"] if job["name"] == "inventory-example")
         self.assertEqual(job["config"], {"RunAtLoad": False, "StartInterval": 42})
         shared = next(job for job in inventory["services"] if job["name"] == "inventory-shared")

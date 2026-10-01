@@ -102,9 +102,9 @@ git pull
 
 その他の補助タスクは `mise tasks` で一覧できる。mise 本体の状態確認には `mise ls --missing` や `mise prune --tools` などの標準コマンドを使用する。
 
-普通のCLIは[パッケージと環境の原則](repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。fd 10.5.0はmiseの `[tools]` に宣言し、インストールは `mise install fd` で行う。現在の `dotfiles apply` はmiseのツールインストールを実行しないため、Nix配備の削除とmiseインストールは別の操作になる。初回bootstrapでは既存の `install.sh` がmiseインストールを行う。
+普通のCLIは[パッケージと環境の原則](repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。移行済みのCLIはmiseの `[tools]` にバージョンを宣言し、インストールは `mise install` で行う。現在の `dotfiles apply` はmiseのツールインストールを実行しないため、Nix配備の削除とmiseインストールは別の操作になる。初回bootstrapでは既存の `install.sh` がmiseインストールを行う。
 
-AWS CLI は Nix 版の起動が遅いとの報告を受け、mise の `[tools]` にバージョンを宣言する。`disable_tools = ["awscli"]` はこの定義を無視するため、通常の mise インストールと PATH への追加は行われない。実行時には別途インストールした AWS CLI が PATH 上に必要であり、Nix 版の削除を反映する前にその存在を確認する。
+AWS CLI は特定の環境との相性による起動遅延を避けるため、mise の `[tools]` にバージョンを宣言する。`disable_tools = ["awscli"]` はこの定義を無視するため、通常の mise インストールと PATH への追加は行われない。実行時には別途インストールした AWS CLI が PATH 上に必要であり、Nix 版の削除を反映する前にその存在を確認する。
 
 公開構成の flake ルートはリポジトリ直下の `flake.nix` および `flake.lock` である。Nix で宣言するシステムやホーム設定は `nix/`、共有設定ファイルの実体は `home/` に配置する。
 
