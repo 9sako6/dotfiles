@@ -72,23 +72,23 @@ path = "/missing/private"
         evaluated = subprocess.run(
             [*NIX, "eval", "--json", *FIXED,
              ".#checks.aarch64-darwin.artifacts.fixtureRoot", "--apply",
-             "root: { inherit (root) drvPath outPath; }"],
+             "root: { derivation = root.drvPath; output = root.outPath; }"],
             cwd=REPOSITORY, capture_output=True, text=True, check=True, timeout=180,
         )
         frozen = json.loads(evaluated.stdout)
-        output = Path(frozen["outPath"])
+        output = Path(frozen["output"])
         with tempfile.TemporaryDirectory(prefix="dotfiles-artifact-root-test-") as temporary:
             # macOS /var -> /private/var aliases must not obscure the registered
             # root's identity. Never rename the link after Nix registers it.
             root = Path(temporary).resolve() / "artifact-root"
             built = subprocess.run(
                 [*NIX, "build", "--json", *FIXED, "--out-link", str(root),
-                 frozen["drvPath"] + "^out"],
+                 frozen["derivation"] + "^out"],
                 cwd=REPOSITORY, capture_output=True, text=True, check=True, timeout=300,
             )
             realized = json.loads(built.stdout)
             self.assertEqual(len(realized), 1)
-            self.assertEqual(realized[0]["drvPath"], frozen["drvPath"])
+            self.assertEqual(realized[0]["drvPath"], frozen["derivation"])
             self.assertEqual(realized[0]["outputs"]["out"], str(output))
             self.assertTrue(root.is_symlink())
             self.assertEqual(root.resolve(), output)
