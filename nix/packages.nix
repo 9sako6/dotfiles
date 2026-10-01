@@ -112,9 +112,6 @@ let
   quintPackage = pkgs.quint;
   expectedQuintVersion = "0.32.0";
 
-  ripgrepPackage = pkgs.ripgrep;
-  expectedRipgrepVersion = "15.2.0";
-
   rustToolchain = pkgs.rustPackages_1_97;
   expectedRustVersion = "1.97.1";
 
@@ -169,8 +166,6 @@ assert pkgs.lib.assertMsg (pnpmPackage.version == expectedPnpmVersion)
   "pnpm version drifted: expected ${expectedPnpmVersion}, got ${pnpmPackage.version}";
 assert pkgs.lib.assertMsg (quintPackage.version == expectedQuintVersion)
   "Quint version drifted: expected ${expectedQuintVersion}, got ${quintPackage.version}";
-assert pkgs.lib.assertMsg (ripgrepPackage.version == expectedRipgrepVersion)
-  "ripgrep version drifted: expected ${expectedRipgrepVersion}, got ${ripgrepPackage.version}";
 assert pkgs.lib.assertMsg (rustToolchain.rustc.version == expectedRustVersion)
   "Rust version drifted: expected ${expectedRustVersion}, got ${rustToolchain.rustc.version}";
 assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBrowserVersion)
@@ -213,8 +208,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     # Quint 0.32.0
     quintPackage
-
-    ripgrepPackage
 
     # Rust 1.97.1
     rustToolchain.rustc
