@@ -247,7 +247,6 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
         DOTFILES_DIR: dotfilesDir,
         DOTFILES_REPO_URL: sourceDir,
         HOME: homeDir,
-        PATH: "/usr/bin:/bin",
       });
 
       expect(result.exitCode).toBe(0);
