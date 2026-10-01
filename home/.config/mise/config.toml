@@ -24,6 +24,7 @@ zoxide = "0.10.0"
 
 [settings]
 activate_aggressive = true
+disable_tools = ["awscli"]
 
 [settings.github]
 credential_command = 'gh_path="$(mise which gh)"; exec "$gh_path" auth token'
