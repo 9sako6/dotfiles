@@ -18,7 +18,7 @@
 
 ## ユーザー常設ツール
 
-普通のCLIやtoolchainは[パッケージと環境の原則](../docs/repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。`packages.nix` はNix固有artifactと未移行のツールを管理する。現在はGit、Go、Quint、Rust toolchainがここに残っている。
+普通のCLIやtoolchainは[パッケージと環境の原則](../docs/repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。`packages.nix` はNix固有artifactと未移行のツールを管理する。現在はGit、Quint、Rust toolchainがここに残っている。
 
 `packages.nix` は Home Manager 専用 module ではなく、共有 toolset を返す。`home.nix` はユーザー向けの `packages` を `home.packages` に適用する。CI と初回 bootstrap が必要とする Bun・Rust・Git は `ciPackages` として分離し、root flake の `.#ciTools` から提供する。これにより、普通の CLI をユーザー配備から外しても CI と bootstrap のビルド経路を保つ。
 

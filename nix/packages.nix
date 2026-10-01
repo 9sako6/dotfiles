@@ -77,9 +77,6 @@ let
   gitPackage = pkgs.git;
   expectedGitVersion = "2.55.0";
 
-  goPackage = pkgs.go_1_26;
-  expectedGoVersion = "1.26.5";
-
   herdrPackage = pkgs.stdenvNoCC.mkDerivation {
     pname = "herdr";
     version = "0.8.2";
@@ -153,8 +150,6 @@ assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
   "FFmpeg version drifted: expected ${expectedFfmpegVersion}, got ${ffmpegPackage.version}";
 assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
   "Git version drifted: expected ${expectedGitVersion}, got ${gitPackage.version}";
-assert pkgs.lib.assertMsg (goPackage.version == expectedGoVersion)
-  "Go version drifted: expected ${expectedGoVersion}, got ${goPackage.version}";
 assert pkgs.lib.assertMsg (herdrPackage.version == expectedHerdrVersion)
   "Herdr version drifted: expected ${expectedHerdrVersion}, got ${herdrPackage.version}";
 assert pkgs.lib.assertMsg (nightlightPackage.version == expectedNightlightVersion)
@@ -199,9 +194,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     # Git 2.55.0
     gitPackage
-
-    # Go 1.26.5
-    goPackage
 
     # Herdr 0.8.2
     herdrPackage
