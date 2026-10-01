@@ -47,12 +47,12 @@ enum Commands {
         #[command(subcommand)]
         operation: agents::Operation,
     },
-    /// Build and show the macOS system and home plan without changing state
+    /// Show the rootless and system plan without deploying changes
     Plan {
         #[command(flatten)]
         options: SystemArgs,
     },
-    /// Build, show and apply the macOS system and home configuration
+    /// Review and apply rootless changes, then build and activate system changes
     Apply {
         #[command(flatten)]
         options: SystemArgs,

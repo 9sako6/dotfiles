@@ -57,12 +57,9 @@ flowchart TD
 curl -fsSL https://dot.9sako6.com | sh
 ```
 
-公開リポジトリ直下の `flake.nix` が唯一の構成ルートである。
-public の live symlink と `dotfiles.toml` の `copy` 対象は Rust CLI が配備する。Home Manager は private 構成と未移行の public resource のため nix-darwin のモジュールとして残す。
-システム変更がない場合、確認済みの home Plan をログインユーザー権限で直接反映する。システム変更もある場合は、従来どおりシステム反映の成功後に home を配備する。
+`install.sh` はorigin/masterへ安全に収束したcheckoutでmiseと固定Rustを用意し、mise経由でCLIを起動する。CLIは `~/.local/bin/dotfiles` へatomicに更新してから通常のapplyを行う。初回system構成にはLixが必要だが、CLIのビルドにNixのCI toolsetは使わない。applyは固定global mise lockでtoolsを導入するため、最後に別の未固定installを重ねない。
 
-Home Managerの配備先に既存ファイルがある場合は、`.pre-home-manager` 接尾辞を付与して退避される。
-`curl | sh` の実行時は、確認の入力のみを制御端末から読み取り、ダウンロード中のスクリプトを入力値として消費しない。
+既存のdirty checkout、別branch、origin/masterにないcommitは自動更新しない。途中失敗後は原因を解消して同じbootstrapを再実行する。Home Managerがbackupを必要とするprivate構成では従来の `.pre-home-manager` を使う。
 
 ## 日常コマンド
 
@@ -70,29 +67,15 @@ Piの導入は見送り、APMの管理対象は`home/apm.yml`の`targets`のみ�
 
 システムの確認・反映、設定の一覧、エージェント管理のコマンドは[CLIのUsage](../cli/README.md#usage)を参照してください。個別の説明は[settings](../cli/README.md#settings)と[agents](../cli/README.md#agents)にあります。
 
-`dotfiles settings`
+`dotfiles settings` は現在のpublic宣言と、最後に反映したsystem/privateの記録を分けて表示する。toolsはmise、homeはsymlink/copy、public user servicesはlaunchdと表示する。active generationがなければsystem記録は未取得と表示し、Nix評価で補わない。settingsはmise、launchctl、Nixを起動せず、配置や状態を書き換えない。
 
-dotfiles settingsの既存一覧の下にpackages、system、services、agentsを追加しました。稼働状態の照合やシステム構築・反映、lock更新は行わず、宣言構成から一覧JSONをNix storeへ生成します。入力が同一ならNix標準の評価・ビルドキャッシュを再利用します。
+`dotfiles plan` / `dotfiles apply` は同じsnapshotとPlannerを使う。差分があれば一度だけ表示し、applyはyesを一度確認する。no-opは確認せず終了する。public home、tools、artifact、Night Shift、user servicesを反映してから、必要な場合だけsystemをbuildする。build完了後に入力を再検証し、最後のactivation直前だけsudoを使う。system generation内のdotfilesには依存しない。
 
-settingsは端末実行とパイプ処理のいずれにおいても全画面表示やスクロール操作を行わず、全一覧の取得と整形が完了してから標準出力にまとめて一度だけ出力して終了します。packagesはname、manager、currentの3列で構成され、currentには宣言バージョン（固定のないHomebrewは—）を表示し、最新バージョンの照会と列は廃止された。
+CLIだけを更新した場合はmiseの固定Rustでrootlessにbuildし、新binaryへre-execしてからPlanを作る。system identityが同じなら、CLI/home/tools/serviceだけの変更でNixやsudoを起動しない。移行初回は新形式のidentityを持つsystem generationが必要なため、通常のsystem applyが一度発生する。
 
-packagesにはHome Managerとenvironment.systemPackagesの宣言バージョン（Lix、zundamonotify、dotfiles CLIを含む）を表示する。名前・管理方式・版が一致する重複をまとめ、バージョン情報のない補助ラッパーを除外する。systemには、Nixのガベージコレクション自動実行や削除条件の引数、Homebrewの自動更新・パッケージ更新・宣言外パッケージ削除方針の有効値を表示する。旧範囲の世代との比較では、既存のネイティブ差分へフォールバックして架空の追加扱いを避ける。
+artifactの評価結果やGC rootを失った場合は、固定入力からrootless Nixで再構築する。これはsystem activationの理由にはしない。private moduleの既存interfaceを保つため、private選択時はマージ済み設定全体の変更をsystem-affectingとして扱う。
 
-リソース宣言の差分はsettingsと同様の表形式で表示され、追加は緑の`+`、削除は赤の`-`で示されます。copyリソースは変更が生じる対象のみハッシュ値とともにdeployment表へ表示します。宣言一覧が同一でもシステム世代が異なる場合は前後のrevision（またはビルド識別子）を出力し、CLI自身の更新なども確認できます。過去世代と比較できない場合は、従来のNixやHomebrewの差分を併記します。Night Shiftや音声入力ショートカットの設定は、`nix/macos-settings.nix`の共通宣言を反映し、一覧からも参照されます。
-
-変更がない場合、planとapplyは差分表示や確認を行わずに正常終了する。変更がある場合は差分を標準出力に一度だけ出力し、applyのみ表示後にyesの確認を行う。
-
-planとapplyの実行中は、設定の準備、システムの評価、ビルド、差分の確認という各処理の開始と終了時の所要時間に加え、同じ処理が続く間は10秒ごとに経過秒数が標準エラー出力に表示されます（完了割合の表示ではありません）。進捗通知に外部コマンドの非公開の診断情報は含まれず、経過秒数の追加表示によって処理が継続中であることを確認できます。差分一覧は標準出力に一括表示され、applyのyes確認に進む前に進捗通知は停止します。
-
-実行時に入力ハッシュが一致した場合、Nix全体のinventory評価やシステム評価、build、nix-env、darwin-rebuild、Homebrew反映を省略します。処理はcopy対象の実体差分確認と表示に進み、対話的な承認後に配置処理を実施します。差分がない場合はそのまま終了します。初回適用時や旧世代の記録が存在しない場合、あるいはCLI、Nixコード、private flake、ローカル設定に変更がある場合は、通常システム評価と反映処理を実行します。settingsなどの管理項目も通常の一覧表示を維持します。
-
-短縮経路を利用するには、更新後のRust CLIから通常applyを一度実行し、世代に入力記録を作成する必要があります。更新前CLIで新しいCLIを反映した段階では入力記録がないため、更新後CLIで再度通常applyを実行してください。
-
-通常経路のplanおよびapplyでは宣言一覧を評価して差分を先行表示し、applyのyes確認後に必要なシステム評価とビルドを行い、処理前後に入力とアクティブ世代を再検証した上で同一の固定入力に基づく世代を反映する。宣言一覧が同一でも世代が異なる場合は評価時の出力パスを比較して差分を示し、旧世代とのinventory形式が異なる場合のみ従来のビルド付きネイティブ差分へフォールバックするため処理時間を要する。
-
-システムの反映ではビルド済みの更新先システム内にある`sw/bin/dotfiles`から`apply-built`を実行します。home の変更だけなら、呼び出し元 CLI が確認済み Plan を直接反映します。これにより、呼び出し元の旧CLIが新しい内部コマンドに対応していない場合でもCLI自身を更新できます。なお、シェル接続の引数形式は既存CLIとの互換性維持のために保持しており、世代内CLIが欠落しているか実行不能な場合はsudoの実行前に失敗します。
-
-home の変更だけを反映する場合は、共通のユーザー apply ロック内で Rust CLI が直接配備します。sudo、システム側の反映用ロック、世代内 CLI の起動は不要です。入力と現在の世代は反映前後に再検証します。現段階では snapshot と設定検証に Nix を使い、システム構成や CLI の更新を伴う通常 apply は引き続き Nix と sudo を使用します。
+実行中は各工程の開始・終了と、長い工程では10秒ごとの経過時間をstderrに表示する。確認後にsource、private lock、active generationなどが変わった場合は停止する。rootless反映が済んだ後にbuildやactivationが失敗した場合も、済んだ結果は保持し、再applyで続ける。
 
 公開リポジトリの更新には通常のGit操作を使います。
 
@@ -102,7 +85,7 @@ git pull
 
 その他の補助タスクは `mise tasks` で一覧できる。mise 本体の状態確認には `mise ls --missing` や `mise prune --tools` などの標準コマンドを使用する。
 
-普通のCLIは[パッケージと環境の原則](repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。移行済みのCLIはmiseの `[tools]` にバージョンを宣言し、通常のインストールは `mise install --locked` で行い、commit済みのglobal lockを使う。`dotfiles apply` は確認済みの tools Plan を `mise install --locked` で反映し、設定と lock の不変および導入後の収束を検証する。初回bootstrapでは既存の `install.sh` がmiseインストールを行う。
+普通のCLIは[パッケージと環境の原則](repo-map.md#パッケージと環境の原則)に従い、miseで管理する。普通のCLIはmiseの `[tools]` にバージョンを宣言し、通常のインストールは `mise install --locked` で行い、commit済みのglobal lockを使う。`dotfiles apply` は確認済みの tools Plan を `mise install --locked` で反映し、設定と lock の不変および導入後の収束を検証する。初回bootstrapでは既存の `install.sh` がmiseインストールを行う。
 
 `home/.config/mise/mise.lock` はDarwin arm64向けの固定入力で、通常反映では書き換えない。バージョン更新は開発操作として `mise upgrade --bump <tool>` を行い、macOSで `mise lock --global --platform macos-arm64` を実行して設定とlockを一緒にcommitする。npmやRustなどartifact URLを記録しないbackendはmise標準のversion固定に従う。
 
@@ -269,9 +252,9 @@ cargo test --locked --manifest-path cli/Cargo.toml --test public_home_apply -- -
 
 `repo runtime` の変更に対する反映コマンドはない。
 
-Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、public home の live symlink / copy と選択 artifact は Rust CLI、private 構成と未移行の public resource は Home Manager が管理する。
+Homebrew 本体は nix-homebrew、formula と cask は nix-darwin、public home の live symlink / copy と選択 artifact は Rust CLI、private Home Manager構成は従来の方式を維持する。Anki GUI 26.05はsystem側のNix packageが所有する。
 
-GitHub-hosted な macOS runner では、Home Manager のユーザー反映とシステム派生のビルドを個別に検証し、nix-darwin のシステム反映は実施しない。Nix ストアのパスは GitHub Actions のバイナリキャッシュを活用してワークフロー間で再利用する。新規 Mac への反映検証は、Homebrew の入っていない VM または実機で確認する。
+GitHub-hosted な macOS runner では、public rootless homeの配置・固定mise toolsとシステム派生を個別に検証し、nix-darwin のシステム反映は実施しない。Nix ストアのパスは GitHub Actions のバイナリキャッシュを活用してワークフロー間で再利用する。新規 Mac への反映検証は、Homebrew の入っていない VM または実機で確認する。
 
 ## Public user service の反映
 
@@ -289,11 +272,11 @@ hour = 9
 minute = 0
 ```
 
-`dotfiles plan` は user services の追加（+）、reload（~）、削除（-）を表示する。plist、所有記録、launchd の状態は変更しない。`dotfiles apply` は他の変更とまとめて一度確認し、tools と home の配備後に対象ユーザーの LaunchAgent を反映する。system 変更がある場合は、その activation と home 配備の成功後に進む。plist が同一でも job が登録されていなければ bootstrap する。登録済みで plist も同一なら変更しない。
+`dotfiles plan` は user services の追加（+）、reload（~）、削除（-）を表示する。plist、所有記録、launchd の状態は変更しない。`dotfiles apply` は他の変更とまとめて一度確認し、tools と home の配備後に対象ユーザーの LaunchAgent を反映する。system変更がある場合も、rootless反映の後でsystemをbuild/activateする。plist が同一でも job が登録されていなければ bootstrap する。登録済みで plist も同一なら変更しない。
 
 途中失敗した場合は、エラーを解消して `plan` / `apply` をやり直す。正常に配備した plist の所有記録は残る。bootstrap が失敗した場合は、job が未登録かどうかを次の Plan で確認して再試行する。bootout が失敗した場合は plist を書き換えずに停止する。読み取った登録元が別 path の場合や、plist が利用者によって変更されている場合は bootout しない。記録を失った既存 plist も自動では採用しないため、管理元を確認してから利用者が競合を解消する。
 
-service backend 自体は Nix と sudo を呼ばない。ただし、公開コマンドの共通 snapshot と設定評価にはまだ Nix が必要である。[#184](https://github.com/9sako6/dotfiles/issues/184) と [#186](https://github.com/9sako6/dotfiles/issues/186) の移行前には、service 変更だけの公開 apply が完全に Nix 不要になる受け入れ条件を満たさない。この条件を含む [#181](https://github.com/9sako6/dotfiles/issues/181) は未完了として扱う。環境変数と stdout/stderr の宣言は、具体的な要件が出るまで追加しない。
+service-only変更では、共通snapshotと設定検証もRustが担当する。system identityとartifact cacheが有効ならNixもsudoも起動しない。環境変数とstdout/stderrの宣言は、具体的な要件が出るまで追加しない。
 
 ### launchctl の互換性と検証範囲
 
@@ -309,20 +292,26 @@ cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::user_s
 
 ## Nix artifact の反映
 
-公開 flake の `lib.mkArtifacts { configuration = ...; }` は、既存の TOML 検証・マージ結果から AnkiConnect と有効時だけの localllm を選び、Darwin host や private module を評価せずに `root` と `manifest` を返す。`nix/host-input.nix` の `artifacts` operation は、既存の固定入力 manifest からこの constructor を呼ぶ。出力にはビルド前の予定 store path、derivation path、配備契約の `manifestData` を含む。モデルはマージ済み設定を使い、開発用 `.#localllm` の強制 9B 選択は使わない。`.#artifacts` は公開設定のみの確認用出力で、ローカル設定を自動探索しない。
+公開 flake の `lib.mkArtifacts { configuration = ...; }` は、既存の TOML 検証・マージ結果から AnkiConnect、FFmpeg、Nightlightと有効時だけのlocalllmを選び、Darwin host や private module を評価せずに `root` と `manifest` を返す。`nix/host-input.nix` の `artifacts` operation は、既存の固定入力 manifest からこの constructor を呼ぶ。出力にはビルド前の予定 store path、derivation path、配備契約の `manifestData` を含む。モデルはマージ済み設定を使い、開発用 `.#localllm` の強制 9B 選択は使わない。`.#artifacts` は公開設定のみの確認用出力で、ローカル設定を自動探索しない。
 
 生成される JSON は既存 package object の store path と、AnkiConnect の相対ソース・home 配置先、localllm の起動ファイル・選択モデルを記録する。Nix の文字列 context を保持し、root には JSON と選択された package への symlink を置く。localllm のモデル、runtime、OpenCode、goal plugin は既存 launcher の推移的な参照で保持し、無効時には constructor の依存閉包へ入れない。普通の CLI と Anki GUI はこの root に束ねない。
 
 Rust CLI は公開 snapshot と固定したローカル設定から同じ Plan を作り、artifact の追加・変更・削除を他の差分と一緒に表示する。新しい artifact root の realization と専用の Home Manager profile 検査用 build は確認後に行う。予定 derivation/output、生成 manifest、package の参照先が確認済みの値と一致することを検証し、`nix build --out-link` で `$XDG_STATE_HOME/dotfiles/artifact-roots/`（既定 `~/.local/state/dotfiles/artifact-roots/`）に永続 root を登録してから配備する。単なる store への symlink を GC root 登録の代わりにはしない。旧 root は保持し、自動 pruning や GC は行わない。
 
-localllm の入口は `~/.local/bin/localllm`、AnkiConnect は従来の `~/Library/Application Support/Anki2/addons21/anki-connect`。この二つの public 配置を Home Manager から外し、Rust が所有確認付きで配備する。copy と重なる対象は copy が優先する。private Home Manager の有効な file target との重複を事前に拒否し、localllm を配る場合は確認済みの Home Manager package profile を検査して競合する実行ファイルも拒否する。旧 HM link の初回採用は、有効な宣言と参照先が今回選んだ artifact ソースへ正確につながる場合だけ認める。別版の旧配置や通常ディレクトリを見た目で採用しない。移行と artifact の版変更を同時に行って競合する場合は、同じソースを選んだ移行を先に行う。
+localllm の入口は `~/.local/bin/localllm`、AnkiConnect は従来の `~/Library/Application Support/Anki2/addons21/anki-connect`。この二つの public 配置を Home Manager から外し、Rust が所有確認付きで配備する。copy と重なる対象は copy が優先する。private Home Manager の有効な file target との重複を事前に拒否し、実行ファイルを配る場合は確認済みのHome Manager package profileを検査して競合する実行ファイルも拒否する。旧 HM link の初回採用は、有効な宣言と参照先が今回選んだ artifact ソースへ正確につながる場合だけ認める。別版の旧配置や通常ディレクトリを見た目で採用しない。移行と artifact の版変更を同時に行って競合する場合は、同じソースを選んだ移行を先に行う。
 
 成功した link の参照先は `$XDG_STATE_HOME/dotfiles/artifacts.json` に記録し、live home 用の記録と混ぜない。copy からの引継ぎでは、前回管理していた内容と残るディレクトリの観測結果を検証する。必要な directory receipt は変更前に記録し、途中停止後は同じ directory object と管理外ファイルがないことを確認して、空ディレクトリだけを削除する。改変された配置、別の HM 所有、symlink 化された親、破損した記録では停止する。部分成功は記録を残し、原因を解消して再 apply する。localllm の無効化でも利用者のデータ、モデル利用履歴、Anki の profile/media は削除しない。
 
-system 変更がなければ home 配備後、system 変更があれば activation/home と更新後の世代・source record の検証後に、親プロセスが同じ artifact Plan を配備する。user services はその後に反映する。artifact-only 更新で system activation が不要になる最終条件は、まだ [#184](https://github.com/9sako6/dotfiles/issues/184) の system identity 分離に依存するため、[#182](https://github.com/9sako6/dotfiles/issues/182) は未完了として扱う。
+artifactのrealizationは確認後、homeの所有引継ぎより前に行う。home、tools、artifact、user settings、user servicesを反映した後でsystem build/activationへ進む。artifact-only更新はsystem identityを変えず、sudoやnix-darwin activationを呼ばない。古いinventoryでも確認前のsystem buildは行わない。
 
-旧 inventory との比較で使う既存の native-preview fallback は、確認前に Darwin system とその Home Manager 依存を build する場合がある。専用 artifact backend の確認順序だけで、全経路の build が確認後になったとは扱わない。この経路の整理は [#185](https://github.com/9sako6/dotfiles/issues/185) に残る。
+評価cacheはcopyの有無と独立した完全なcandidate manifestを保持する。copy所有を外したとき、過去に隠れていたartifactも復元できる。全対象がcopyされている場合も、確認後に共通rootを登録してからcacheを保存する。localllmが有効なら、copyで配置が抑制されていてもrootにモデルを含む。新rootのrealizationで数GBの取得があり得る場合はPlanに表示する。不要ならlocalllm自体を無効にする。cacheが同一ならinode/mtimeを保ち、planはcacheを書かない。
 
-Anki GUI は `nix/packages.nix` の `anki-bin` 26.05 と Home Manager が引き続き所有する。AnkiConnect はその addon として別分類にする。GUI を mise へ移さず、Homebrew cask への二重登録や zap も行わない。GUI の将来の所有移行は別途検証する。
+Anki GUIは `flake.nix` のsystem packageとして26.05を維持する。Homebrew caskへの二重登録、zap、Anki profile/mediaの変更は行わない。
 
 `nix build --no-link --no-update-lock-file --no-write-lock-file .#checks.aarch64-darwin.artifacts` は小さな代替 package の root だけをビルドする。実際の両モデルは derivation の比較のみで、数 GB のモデルや MLX runtime はビルドしない。`python3 -m unittest discover -s nix/tests -p 'test_artifacts.py'` は固定入力入口、無効時の derivation graph、設定の拒否を評価のみで検証する。
+
+## Public user settings
+
+`user-settings.toml` の `[night_shift]` にstart/end（24時間表記）とtemperature（0〜100）を宣言する。既存値は22:00〜07:00、80。Rustは固定Nightlight 1.0.0のreadbackを12/24時間表示のどちらでも解釈し、異なる値だけを書いて再読込する。manual on/offを切り替えるコマンドは呼ばない。helper未導入時は現在値をunknownとしてPlanに示し、承認後のartifact導入後に読む。
+
+設定を宣言から削除してもOS値を初期化しない。source/helper/値が確認後に変われば停止する。部分成功後の再applyは実際の値を読み直して収束する。Linux fixtureで呼出しとreadbackを検証しており、実Macの私有APIやlaunchctl互換性は実機受け入れと区別する。

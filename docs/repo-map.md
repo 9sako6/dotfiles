@@ -5,9 +5,9 @@
 ファイルは次の 6 区分で管理する。共有可能な設定と非公開にすべき情報を同一リポジトリに混在させず、かつ単一の構成ルートから安全に組み立てるための境界である。
 
 - `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
-- `home-managed user tools` — 普通のCLIは `home/.config/mise/config.toml` に宣言し、miseへ段階的に移行する。未移行のツールとNix固有artifactは `nix/packages.nix` に残す。共有設定ファイルの実体は `home/` に置き、public live symlink と copy は Rust CLI が配備する。devcontainerから実ファイルとして見える必要があるものだけ `dotfiles.toml` の `copy` で配備する。
+- `home-managed user tools` — 普通のCLIは `home/.config/mise/config.toml` に宣言し、miseで固定する。FFmpeg、Nightlight、AnkiConnect、localllmはNix固有artifactとしてRustがrootlessに配備する。共有設定ファイルの実体は `home/` に置き、public live symlink と copy は Rust CLI が配備する。devcontainerから実ファイルとして見える必要があるものだけ `dotfiles.toml` の `copy` で配備する。
 - `system configuration` — 公開ルートの `flake.nix` / `flake.lock` と `nix/system.nix` に Mac 全体の設定を置く。nix-darwin で反映し、Homebrew 本体と cask もここで管理する。公開 `flake.nix` が唯一の構成ルートである。
-- `private system configuration` — 公開できない追加設定。独立した別 root flake は設けず、ローカル設定 `dotfiles.local.toml` の `private.path` 経由で公開 root flake の評価時に結合する。
+- `private system configuration` — 公開できない追加設定。private側は独立したGit checkout / flakeを維持し、ローカル設定 `dotfiles.local.toml` の `private.path` 経由で公開 root flake の評価時に結合する。
 - `local-only` — マシン固有の設定。repo にコミットせず、Git 管理外の `dotfiles.local.toml` や各マシンのローカルファイルに置く。機密情報は含めず、必要に応じて個別にバックアップする。
 - `secrets` — 認証情報や鍵などの機密。repo、`home/`、および `dotfiles.local.toml` のいずれにも入れない（最終判断はユーザーが行う）。
 
@@ -16,9 +16,9 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 ### 置き場所の判断
 
 - repo の実行だけに必要 → `repo runtime`
-- public live symlink / copy の home 配置 → Rust CLI。未移行の public resource と private Home Manager 構成は Nix に残す
+- public live symlink / copy の home 配置 → Rust CLI。private Home Manager 構成は従来どおり Nix に残す
 - ユーザー単位で常設する普通のCLI → `home/.config/mise/config.toml`
-- Nix固有artifactや未移行のユーザーパッケージ → `nix/packages.nix`
+- Nix固有artifact → `nix/packages.nix`
 - ユーザーへ配る共有設定ファイルの実体 → `home/`
 - Mac 全体へ反映したい公開設定 → `system configuration` (`flake.nix` / `nix/system.nix`)
 - Mac 全体へ反映したい非公開設定 → `private system configuration` (`dotfiles.local.toml` の `private.path` で指定)
@@ -38,9 +38,9 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 利用者向けの設定項目、既定値、記述例はCLIの[設定ファイル](../cli/README.md#設定ファイル)を参照してください。
 
-- 公開リポジトリ直下の `flake.nix` が唯一の構成ルートである。すべての構成は公開rootを起点に評価される。
+- 公開リポジトリ直下の `flake.nix` が唯一の構成ルートである。system構成だけを公開rootから評価する。日常のpublic home/tools/services/settingsはRust/miseが扱う。
 - 構成設定は、リポジトリ共有の `dotfiles.toml` と、Git 管理外の `dotfiles.local.toml` の 2 つで管理する。
-- 設定ファイルの構文解析は Nix の組み込み関数 [builtins.fromTOML](https://nix.dev/manual/nix/2.35/language/builtins.html#builtins-fromTOML) が行い、型検査や設定検証は Nix モジュールのスキーマが担当する。CLI は TOML 構文解析エラー時の出力を抑制して設定値の漏洩を防ぐ。スキーマ定義違反、型不一致、未知のキーが検出された場合も評価を停止する。
+- 通常コマンドはRustのTOMLパーサーで設定を検証する。Nixへ進む場合は既存の設定スキーマでも検証し、両者の受理・拒否とマージ結果を同じ入力例で照合する。モデルカタログは `nix/localllm/catalog.json` を共通入力にする。エラーに設定値を含めない。
 - 設定テーブルのマージは、「既定値 < 公開共有 (`dotfiles.toml`) < ローカル (`dotfiles.local.toml`)」の順序で再帰的に行われる。
 - 配列およびスカラー値はマージされず、`false` や空配列 `[]` を含め、上位の設定で完全に置換される。
 - `copy` セクションは共有の `dotfiles.toml` でのみ定義可能とし、ローカルファイルでの指定は拒否される。指定するパスは相対パス表記であり、重複がなく、アルファベット順に整列され、かつ相互に包含関係を持たないものでなければならない。
@@ -53,19 +53,19 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 - `bin/` は直接実行するリポジトリの入口を配置し、`lib/` は各入口が利用する内部実装を受け持つ。
 - **Rust CLI**：新規のdotfiles固有の状態判断、排他、反映制御、記録更新とそのテストを所有する。shellは初回導入と薄い外部プロセス接続、Nixは構成宣言に絞る。既存実装の一括移行は不要であり、変更対象の範囲から順次寄せる。依存関係は標準ライブラリおよび既存のRust依存を優先し、必要なクレートは根拠を示して追加できる。OS標準や既存導入済み、新規Cargo依存を回避できることのみを理由にPerl、Python、Bunなどの別環境へ新規実装を分散させない。
-- `install.sh` は新しい Mac をセットアップする唯一の入口とし、repo tools、system + Home Manager、user tools と repositories の順序で実行を制御する。
+- `install.sh` は新しい Mac をセットアップする唯一の入口とし、miseの固定Rust、rootless CLI、通常apply、repositoriesの順序で実行を制御する。
 - `dotfiles` CLI は日常的な system の plan / apply に使う。リポジトリのテスト実行制御は CLI に持たせず、CI では各テストコマンドを直接実行する。
 - `dotfiles` CLI は、追跡対象の未コミット変更のスナップショットとローカル設定入力を記録してビルドを行う。チェックアウト全体を無条件に参照する `path:.` は使用せず、ローカルファイルを Git に強制追加することもない。
 - `plan` および `apply` の実行中に、自動的な `git clone`、`git pull`、または依存固定ファイルの更新は一切行わない。
 - ローカル設定による非純粋性は、明示的かつ一時的なマニフェストとして検証済み Nix エントリへ渡す箇所に限定し、公開 CI 環境は完全に純粋に保つ。
-- Rust CLIは公開Gitスナップショット全体を固定した上で、Nixの既存TOMLスキーマを用いてcopyやprivateの整合性を検証します。システム評価の入力には、Rustが切り出した公開ソースを渡します。対象にはrootの.mise.toml、cli/、dotfiles.toml、flake.lock、flake.nix、home/、nix/を含めます。home/配下のうちcopyの所有対象や、home/.apm/、home/apm.yml、home/apm.lock.yamlは除外します。これらの除外ファイルは公開システム構成から直接参照できない設計境界として扱います。構成に必要なデータはnix/配下などに配置し、private flakeは全体を固定して扱います。inventoryの表示処理は完全な公開ソースを参照します。
-- システム世代の管理では、Nixがdotfiles-system-inputsという不変のハッシュ記録を生成します。判定キーにはシステム用ソースの内容、ファイル名、ファイル種別、実行権限に加え、非公開flakeの固定参照、ローカルTOML、checkout位置、ユーザー名、配備先パスが含まれます。リポジトリ全体のコミット進行自体はキーに含まれません。また、独立した可変キャッシュや第二の配置正本を独自に保持せず、世代記録の一致をもって判断します。通常の適用順序はNix反映、copy、記録更新ですが、短縮経路でも入力記録、世代、選択の再検証とユーザー apply ロックによる排他制御を維持し、home 配備の前後にactive generationを検証します。
-- home の変更だけなら、共通のユーザー apply ロック内で確認済み home Plan を直接反映する。入力、ソース記録とアクティブ世代を前後に検証して保持し、システム側の反映用ロックや世代内 CLI は使わない。snapshot と設定検証の Nix 依存は、system identity の分離が完了するまで残る。
-- 入力内容に変更がない場合はNix標準の評価キャッシュを再利用し、入力変更時やキャッシュ削除時のみ再評価を行う設計とし、lockファイルの更新は行わない。
-- 実行時に入力ハッシュが一致した場合、Nix全体のinventory評価やシステム評価、build、nix-env、darwin-rebuild、Homebrew反映を省略します。処理はcopy対象の実体差分確認と表示に進み、対話的な承認後に配置処理を実施します。差分がない場合はそのまま終了します。初回適用時や旧世代の記録が存在しない場合、あるいはCLI、Nixコード、private flake、ローカル設定に変更がある場合は、通常システム評価と反映処理を実行します。settingsなどの管理項目も通常の一覧表示を維持します。
-- 通常経路のplanは固定した公開・非公開ソースと設定入力を一時GCルートで保持し、宣言inventoryから差分とcopy配備計画を作成する。通常は世代のビルドを行わず、宣言一覧が同一であれば予定出力パスで比較し、旧形式の世代に対してのみ既存のネイティブ差分へフォールバックする。稼働中のシステムやホーム配置は変更しない。
-- 通常経路のapplyは排他ロックを取得し、差分へのyes確認後に固定入力から世代をビルドする。ビルドの前後に構成入力とアクティブ世代を検証して変化があれば反映せず中断し、変化がなければその世代を反映する。確認以前にビルド済みのフォールバック生成物は再利用する。
-- 通常経路の反映順序は、Nix ネイティブ反映 -> 固定された home copy の実体配備 -> ソース記録シンボリックリンクの更新、の順序を厳密に実行する。
+- RustがGit追跡ファイルの内容・mode・symlinkを一時領域へ固定し、前後の変更を検査する。未追跡ファイルは含めない。privateの `flake.lock` はコミット済みかつ未変更でなければならない。コピーした固定ソース自体も確認後に再検証する。
+- system入力は `flake.nix`、`flake.lock` と `nix/` 内のsystemに必要な10ファイルに限定する。対象一覧は `cli/src/system/inputs.rs` が所有する。CLI、home、mise、user-services、user-settings、artifact実装はこの入力に含めない。制限したソースだけでprivate Home Managerを含むhostを評価できることをcomposition testで検証する。
+- `dotfiles-system-inputs` をactive generationから読み、Nixを起動する前にsystem変更を判定する。キーはsystemソース、privateの追跡内容、checkout位置、ユーザー、HOME。privateがある場合は、private moduleが参照し得るマージ済み設定全体も含める。この場合のcopy/localllm宣言変更は保守的にsystem変更として扱う。単なるコミット進行、CLIやhomeの内容変更はキーに含めない。
+- artifactはsystemと別に、固定recipeと設定のidentity、manifest、登録済みGC rootを照合する。成功した評価結果は `artifact-evaluation.json` に保存するが、homeの所有証明には使わない。欠損・破損・root消失時は再評価し、通常のhome/tools/service変更で評価を繰り返さない。
+- 一つのPlanを一度表示し、applyだけが一度yesを確認する。確認後はartifactの必要なrealization、home、tools、artifact配置、user settings、user servicesの順に進む。system変更があるときだけ、その後にsystemをbuildし、入力を再確認してactivation直前にsudoを使う。system activationはrootless CLIの内部操作で行い、世代内CLIやhomeの再計画に依存しない。
+- planは配置、ツール導入、service操作、設定変更、成功記録の更新をしない。古いinventoryから移行するときもsystemを事前buildせず、予定世代と宣言差分を表示する。Nixが必要なcold pathでは固定inputの取得・store登録・評価が発生する。
+- system identityとartifactの固定結果が有効なら、no-op、tool-only、home-only、service-only、CLI-onlyでNixプロセスを起動しない。artifact cacheの再構築ではrootless Nixを使うが、systemが同じならnix-darwinとsudoは呼ばない。
+- public Home Manager userは定義しない。Home Manager moduleとprivate用sharedModuleは残し、private側が定義するhome.file、packages、launchd、stateVersionを維持する。public rootless対象とprivate所有の衝突は変更前に拒否する。privateからpublic homeの実体をsystem入力として読む方式は、以前からのprojected sourceの境界外である。
 - 排他ロックには安定した共通ファイルを用い、親プロセス終了後も継承したファイルディスクリプタを保持する子の反映プロセスが生存している間はロックを維持する。ソース記録の更新は反映成功時のみ行う。
 - 反映結果を記録するシステム側のシンボリックリンクは、反映結果の記録としてのみ更新され、選択状態を操作するためのスイッチとしては使用しない。
 - 反映が失敗した場合、結果記録シンボリックリンクは直前の正常世代を指したまま保持されるが、システム、ホーム、Homebrew が部分的に変更された状態になる可能性がある。ロールバックは `sudo darwin-rebuild switch --rollback` または `mise run system:rollback` で行い、ホームの実体ファイルは過去のコミット済みチェックアウトから明示的に復元する。検証が完了するまで古い固定ファイルやキャッシュは保持する。
@@ -84,13 +84,13 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 ### パッケージと環境の原則
 
-- 普通のCLIやツールチェーンは、バージョンを固定して `home/.config/mise/config.toml` の `[tools]` へ段階的に移す。移行時はmise backendの公式配布元と実行動作を確認し、同じツールのNix宣言を除く。GUI、system service、platform依存、Nix固有artifactは別の管理境界として扱う。
-- 未移行のユーザーツールは `nix/packages.nix` とHome Managerの `home.packages` に残す。CIやbootstrapが使うNix toolsetの依存も、各ツールを移行する前に確認する。private moduleの既存interfaceとHome Managerの利用方式は維持する。
+- 普通のCLIやツールチェーンは、バージョンを固定して `home/.config/mise/config.toml` の `[tools]` で管理する。移行時はmise backendの公式配布元と実行動作を確認し、同じツールのNix宣言を除く。GUI、system service、platform依存、Nix固有artifactは別の管理境界として扱う。
+- FFmpegは候補backendで既存codec/protocolの機能差があったため、固定済みNix artifactとして残す。NightlightはmacOS専用helper、AnkiConnectとlocalllmはNix固有artifactとして扱う。Anki GUI 26.05はsystem側のNix packageで維持する。CIやbootstrapが使うNix toolsetの依存も、各ツールを移行する前に確認する。private moduleの既存interfaceとHome Managerの利用方式は維持する。
 - 編集内容を即座に反映させたい通常の設定ファイルは、稼働中のリポジトリへの直接のシンボリックリンクとする。
 - devcontainer から参照するエージェント用設定は、Nix ストアやホスト固有の絶対パスシンボリックリンクにしてはならない。`dotfiles.toml` の `copy` に列挙したファイルまたはディレクトリのみを、実ファイルとして `$HOME` 配下に配備する。列挙されたディレクトリ配下は dotfiles が所有し、同期時にはコピー元に存在しない子要素を削除するが、親ディレクトリや同階層にある他のランタイムファイルには影響を与えない。
 - `copy`宣言されたパスと一致または親子関係にある公開構成のHome Managerリンクのみを自動除外する。その他の有効な`home.file.target`が`copy`対象と重複した場合は、別名キー経由の`target`指定も含めてNix評価時に拒否する。
 - copy処理の設計：プレビュー処理と同一のfingerprint（内容およびファイルモード）比較により、未変更ファイルとサブディレクトリへの書き込みを省いてinodeとmtimeを保持する。変更対象のファイルは同一ディレクトリの一時ファイルへ内容とモードを設定したのち、rename操作によって置換する。
-- public live symlink と copy は Rust CLI が所有し、private Home Manager 構成と未移行の public resource は従来の Nix 構成を維持する。`dotfiles.toml` によるファイルコピーは devcontainer の環境境界を越えるための限定的な例外措置である。public copyの前回成功結果は `$XDG_STATE_HOME/dotfiles/home.json`（未指定時は `$HOME/.local/state/dotfiles/home.json`）に記録する。これは前回の所有確認にだけ使い、desired stateの正本は引き続きrepoの宣言とする。
+- public live symlink と copy は Rust CLI が所有し、private Home Manager構成は従来のNix合成を維持する。`dotfiles.toml` によるファイルコピーは devcontainer の環境境界を越えるための限定的な例外措置である。public copyの前回成功結果は `$XDG_STATE_HOME/dotfiles/home.json`（未指定時は `$HOME/.local/state/dotfiles/home.json`）に記録する。これは前回の所有確認にだけ使い、desired stateの正本は引き続きrepoの宣言とする。
 - CI 上で同一の CLI やツールチェーンを必要とする場合も、個別にバージョン定義を持たず、root flake が公開する共通の Nix ツールセットを利用する。GitHub Actions ではバイナリキャッシュを活用し、同一ストアパスの再取得や再ビルドを防ぐ。
 - セットアップ処理の妥当性は E2E テストで検証する。シェルの実行順序や全体の導線の検証を、内部実装手順を固定化するユニットテストで代替してはならない。
 
@@ -120,7 +120,7 @@ Homebrewのformulaとcaskは `nix/homebrew-packages.nix` に集約する。普�
 
 ### Public user LaunchAgent の宣言と反映
 
-`user-services.toml` は public user LaunchAgent の唯一の宣言元で、Rust CLI が同じ公開 snapshot から読み、plist と追加・変更・削除の差分を生成する。system input へは含めない。Rust CLI は確認済み Plan の plist、所有記録、launchd の登録状態を再検証して反映する。サービスの前提となる tools と home を先に配備し、system 変更を伴う場合は従来の activation と home 配備が成功してからサービスを反映する。反映前後には更新先の system generation と source record も検証する。
+`user-services.toml` は public user LaunchAgent の唯一の宣言元で、Rust CLI が同じ公開 snapshot から読み、plist と追加・変更・削除の差分を生成する。system input へは含めない。Rust CLI は確認済み Plan の plist、所有記録、launchd の登録状態を再検証して反映する。サービスの前提となる tools と home を先に配備し、system変更を伴う場合もservice反映後にsystem build/activationへ進む。各rootless工程の前後で入力と現在の世代を確認し、activation成功後は更新先の世代とsource recordを検証する。
 
 `[[agents]]` の必須項目は `label` と `argv`。任意項目は `run_at_load`、`keep_alive`（既定 false）、正の `start_interval`、`start_calendar_interval`（minute/hour/day/weekday/month）、`working_directory`。interval と calendar は同時指定できない。未知のキー、大文字小文字のみ異なるものを含む重複 label、空 argv、制御文字、不正な schedule/path は拒否する。raw shell hook や任意の plist key は受け付けない。これは実行ファイルの sandbox ではない。
 
@@ -139,8 +139,8 @@ private agent、system daemon、現在の Nix-backed zundamonotify は対象外�
 
 ### Nix artifact の所有と GC root
 
-`nix/artifacts.nix` を AnkiConnect と有効時の localllm の選択元とし、固定・検証済み設定から manifest と package 参照を生成する。通常の CLI、GUI、private module はこの backend に取り込まない。Rust CLI は同じ公開 snapshot の artifact Plan を確認後に realization し、永続 Nix root を登録してから link を配備する。配備先は AnkiConnect の従来 target と `~/.local/bin/localllm`。public Home Manager はこの二つを所有せず、private framework、Night Shift、Anki GUI とその他の未移行資源は保持する。
+`nix/artifacts.nix` をAnkiConnect、FFmpeg、Nightlight、有効時のlocalllmの選択元とし、固定・検証済み設定から manifest と package 参照を生成する。通常の CLI、GUI、private module はこの backend に取り込まない。Rust CLI は同じ公開 snapshot の artifact Plan を確認後に realization し、永続 Nix root を登録してから link を配備する。配備先は AnkiConnect の従来 target と `~/.local/bin/localllm`。public Home Manager userは定義しない。private frameworkを残し、Night ShiftはRust、Anki GUIはsystem側Nixが所有する。
 
 copy 優先、desired private HM target の非重複、実際の HM package profile の executable 検査を維持する。旧 HM 配置の採用は有効な宣言と選択ソースの一致を必要とする。artifact の前回結果と copy 引継ぎの観測 receipt は専用記録に置き、宣言や起動指示の第二正本にしない。親プロセスが captured Plan を扱い、世代内 CLI に再計画させない。
 
-登録 root は `$XDG_STATE_HOME/dotfiles/artifact-roots/`、結果は `dotfiles/artifacts.json`。旧 root を保持し、この段階では自動 GC や root pruning を行わない。rootless realization/deployment の実装と、artifact-only 変更が Darwin activation を省略できる system identity 境界の完成は区別する。後者と legacy native-preview の確認前 build は、それぞれ #184 と #185 の残課題である。
+登録 root は `$XDG_STATE_HOME/dotfiles/artifact-roots/`、結果は `dotfiles/artifacts.json`。旧 root を保持し、この段階では自動 GC や root pruning を行わない。artifact-only変更はsystem identityから除外し、Darwin activationを呼ばない。旧inventoryでも確認前のsystem buildはしない。

@@ -1,6 +1,6 @@
 # dotfiles CLI
 
-macOSのシステム設定とHome Managerの反映、エージェント用リソースの管理に使うRust製CLIです。公開リポジトリの`flake.nix`を構成ルートとして実行します。導入は[初回セットアップ](../docs/operations.md#初回セットアップ)を参照してください。
+public home/tools/user servicesとmacOSのシステム設定、エージェント用リソースの管理に使うRust製CLIです。公開リポジトリの`flake.nix`を構成ルートとして実行します。導入は[初回セットアップ](../docs/operations.md#初回セットアップ)を参照してください。
 
 ## Usage
 
@@ -11,9 +11,9 @@ dotfiles [COMMAND]
 | コマンド | 用途 |
 | --- | --- |
 | [agents](#agents) | エージェント設定とスキルの生成・依存管理 |
-| [apply](#apply) | システムとホーム設定をビルドし、確認後に反映 |
+| [apply](#apply) | 差分を確認し、rootless反映後に必要なsystemだけbuild/activate |
 | [help](#help) | ヘルプを表示 |
-| [plan](#plan) | システムとホーム設定をビルドし、差分・配備計画を表示 |
+| [plan](#plan) | 固定入力から差分・配備計画を表示（artifact/systemのbuildはしない） |
 | [settings](#settings) | 現在の設定値と設定元を一覧表示 |
 | [version](#version) | ビルド元のコミットを表示 |
 
@@ -45,9 +45,9 @@ dotfiles plan
 dotfiles plan --show-trace
 ```
 
-システム構成とBrewfileをビルドし、システムのパッケージ差分、Homebrewの不足パッケージと削除候補、ホームへのコピー対象を表示します。システム、Homebrew、ホームファイルへの反映は行いませんが、依存の取得やNixストアへの書き込みは発生します。
+tools、home、user services/settings、artifact、systemの差分を表示する。managed home、tools、service、成功記録は変更しない。system identityとartifact cacheが有効ならNixを起動しない。初回やartifact cache再構築、system変更ではLixで固定inputの取得と評価を行うが、artifact/system realizationはapplyの承認後に限る。
 
-実行には導入済みのLixが必要です。`sudo`を付けず、ログインユーザーとして実行してください。
+`sudo`を付けずログインユーザーとして実行する。CLI sourceが変わっていればrootless self-refresh/re-execがPlan作成に先行する。
 
 `--show-trace`はNixの評価エラーとトレースを端末に表示するオプションです。原因調査には`plan --show-trace`を使います。非公開設定が含まれる場合があるため、その端末内で確認し、診断出力をファイル保存・アップロードしたり、公開Issueへそのまま貼り付けたりしないでください。
 
@@ -58,11 +58,11 @@ dotfiles apply
 dotfiles apply --show-trace
 ```
 
-この実行でビルドした構成をプレビューし、`Apply this system plan? Type yes:`の確認に`yes`を入力すると、そのビルド済み世代を反映します。別途実行した`plan`の結果を引き継ぐ操作ではありません。
+この実行のPlanをプレビューし、`Apply this system plan? Type yes:`にyesを入力すると反映します。artifactの必要なrealization、home、tools、artifact配置、user settings/servicesの順に進み、system変更がある場合だけ最後にbuildしてactivationします。別途実行した`plan`の結果を引き継ぐ操作ではありません。
 
 `yes`以外の入力では中止し、終了コード`1`を返します。確認を省略する`--yes`オプションはありません。別の`apply`が実行中の場合や、確認後に入力の変更が見つかった場合も反映を中止します。
 
-ログインユーザーとして実行します。Lixが未導入なら導入処理が走り、必要な処理で内部から`sudo`を呼び出します。`--show-trace`の挙動と診断出力の扱いは[plan](#plan)と同じです。
+ログインユーザーとして実行します。Lixが必要な経路で未導入ならbootstrapを案内して停止します。sudoはsystem build後、activation直前だけ呼び出します。`--show-trace`の挙動と診断出力の扱いは[plan](#plan)と同じです。
 
 反映途中で失敗すると、システム、ホーム、Homebrewに部分的な変更が残る場合があります。[ロールバック](../docs/operations.md#ロールバック)の手順で復旧し、検証が済むまで以前の固定ファイルやキャッシュを保持してください。反映順序と整合性の設計は[設計文書](../docs/repo-map.md#cli-と評価反映の整合性)を参照してください。
 
@@ -72,14 +72,14 @@ dotfiles apply --show-trace
 dotfiles settings
 ```
 
-現在の`dotfiles.toml`と`dotfiles.local.toml`を評価し、既定値を含むすべての設定を表示します。表示対象は現在のファイルから得られる設定であり、最後に反映した世代の設定ではありません。
+現在の`dotfiles.toml`と`dotfiles.local.toml`を評価し、既定値を含むすべての設定を表示します。public欄は現在の宣言です。system/private欄はactive generationに記録された最終反映値として明示し、現在の希望値と混同しません。
 
 - 列は`Key`・`Value`・`Source`です。既定値を使う項目の`Source`は空欄になります。
 - `null`、`false`、空配列も表示します。配列は要素数や端末幅にかかわらず常に複数行で表示します。
 - 端末では見出しを表示し、パイプ出力では見出しを省きます。
 - キー指定や絞り込み、JSON出力などのオプションはありません。
 
-導入済みのLix、公開リポジトリのGitスナップショット、検証を通る設定が必要です。システムやモデルのビルド、`private.path`のチェックアウト読み込みは行いません。表示処理は[src/settings.rs](src/settings.rs)、評価処理は[src/system.rs](src/system.rs)にあります。
+Gitと検証を通る設定が必要です。Nix、mise、launchctlは起動せず、モデルやsystemをbuildしません。private選択時はGit入力と固定lockだけを検査します。表示処理は[src/settings.rs](src/settings.rs)、評価処理は[src/system.rs](src/system.rs)にあります。
 
 ## agents
 
@@ -169,7 +169,7 @@ TOMLには`null`を直接記述できません。既定値の`null`を使う場�
 - 空文字、絶対パス、`.`や`..`、空のパス要素、末尾の`/`は拒否されます。
 - コピー元は実在する必要があり、シンボリックリンクを含められません。
 - ディレクトリを指定するとその配下全体を管理し、コピー元にない子要素を反映時に削除します。指定したディレクトリの兄弟要素は保持します。
-- 重複する公開構成のHome Managerリンクは自動除外します。その上で、有効な`home.file.target`がコピー対象と一致または親子関係にある場合はNix評価で拒否します。
+- public live/artifactと重なる場合はcopyを優先します。private Home Managerの有効targetと重なる場合は変更前に拒否します。
 - コピー先には所有者の書き込みビットを加え、実行権限を保ちます。`0444`は`0644`、`0555`は`0755`になります。
 
 共有設定での記述例です。配列全体が設定値になるため、追加時は既存の必要な項目も残してください。
@@ -198,7 +198,7 @@ path = "../private-dotfiles"
 
 ### localllm
 
-モデルIDは[カタログ](../nix/localllm/catalog.nix)で定義します。現在の既知のIDは`qwen3.8-27b-4bit`です。`models`は無効時も既知のIDだけを重複なくアルファベット順に並べる必要があります。
+モデルIDは[カタログ](../nix/localllm/catalog.nix)で定義します。既知のIDは`qwen3.8-27b-4bit`と`qwen3.8-9b-distill-4bit`です。`models`は無効時も既知のIDだけを重複なくアルファベット順に並べる必要があります。
 
 `enabled = true`にする場合は、`models`にちょうど1モデルを指定し、`default_model`にそのIDを指定します。共有設定では無効を維持し、利用するマシンの`dotfiles.local.toml`で有効にします。
 
@@ -211,4 +211,4 @@ models = [
 ]
 ```
 
-有効時の初回ビルドには約16 GBのモデルデータ取得を伴います。`plan`もビルドするため取得が発生し得ます。無効な構成にはLLM固有の依存を含めませんが、取得済みのデータは無効化だけでは削除されず、不要になったストアパスは後続のGCで回収されます。ランチャーの使い方と動作環境は[ローカルLLMとOpenCode](../docs/operations.md#ローカル-llm-と-opencode-localllm)を参照してください。
+有効時の初回ビルドには約16 GBのモデルデータ取得を伴います。`plan`はモデルをbuildしません。取得は表示したPlanへの承認後です。無効な構成にはLLM固有の依存を含めませんが、取得済みのデータは無効化だけでは削除されず、不要になったストアパスは後続のGCで回収されます。ランチャーの使い方と動作環境は[ローカルLLMとOpenCode](../docs/operations.md#ローカル-llm-と-opencode-localllm)を参照してください。
