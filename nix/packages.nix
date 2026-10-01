@@ -71,22 +71,6 @@ let
     env.DOTFILES_BUILD_REVISION = dotfilesRevision;
   };
 
-  fdPackage = pkgs.fd.overrideAttrs (final: previous: {
-    version = "10.5.0";
-    src = pkgs.fetchFromGitHub {
-      owner = "sharkdp";
-      repo = "fd";
-      rev = "v${final.version}";
-      hash = "sha256-X3yrZUBieMO5bauUu2mskfvicLRdQcjbXouFTpz+0eQ=";
-    };
-    cargoHash = "sha256-5ijtWSsHn7ii8+1njwyvyj387FQkMQALKbixkr/nSkk=";
-    cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
-      inherit (final) pname src version;
-      hash = final.cargoHash;
-    };
-  });
-  expectedFdVersion = "10.5.0";
-
   ffmpegPackage = pkgs.ffmpeg;
   expectedFfmpegVersion = "8.1.2";
 
@@ -185,8 +169,6 @@ assert pkgs.lib.assertMsg (cachixPackage.version == expectedCachixVersion)
   "Cachix version drifted: expected ${expectedCachixVersion}, got ${cachixPackage.version}";
 assert pkgs.lib.assertMsg (codexPackage.version == expectedCodexVersion)
   "Codex version drifted: expected ${expectedCodexVersion}, got ${codexPackage.version}";
-assert pkgs.lib.assertMsg (fdPackage.version == expectedFdVersion)
-  "fd version drifted: expected ${expectedFdVersion}, got ${fdPackage.version}";
 assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
   "FFmpeg version drifted: expected ${expectedFfmpegVersion}, got ${ffmpegPackage.version}";
 assert pkgs.lib.assertMsg (fzfPackage.version == expectedFzfVersion)
@@ -230,8 +212,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
     bunPackage
 
     codexPackage
-
-    fdPackage
 
     ffmpegPackage
 
