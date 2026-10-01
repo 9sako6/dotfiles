@@ -56,6 +56,23 @@ jobs:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
 
+      - name: Verify mise-managed Git behavior
+        env:
+          MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_AUTO_INSTALL: "false"
+        run: |
+          ./bin/install-mise.sh
+          "$HOME/.local/bin/mise" install conda:git
+          export DOTFILES_TEST_GIT="$("$HOME/.local/bin/mise" which git)"
+          "$DOTFILES_TEST_GIT" ls-remote https://github.com/9sako6/dotfiles.git refs/heads/master
+          nix shell .#ciTools --command /bin/bash -c '
+            set -eu
+            bun install --frozen-lockfile
+            export PATH="$(dirname "$DOTFILES_TEST_GIT"):$PATH"
+            bun test tests/shell-config.test.ts -t "pre-commit|git undo"
+          '
+
       - name: Run repository tests with Nix-managed tools
         run: |
           nix shell .#ciTools --command /bin/bash -c '

@@ -109,7 +109,7 @@ jobs:
           mise exec -- gh --version
           mise exec -- ghq --version
           mise exec -- gitleaks version
-          git --version
+          mise exec -- git --version
           mise exec -- go version
           mise exec -- herdr --version
           mise exec -- pnpm --version

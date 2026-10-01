@@ -112,9 +112,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     ffmpegPackage
 
-    # Git 2.55.0
-    gitPackage
-
     # Nightlight 1.0.0
     nightlightPackage
 
