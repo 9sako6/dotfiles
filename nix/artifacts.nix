@@ -3,15 +3,36 @@
 { configuration, pkgs, toolset }:
 let
   lib = pkgs.lib;
-  overlapsCopy = path: builtins.any (owned:
-    path == owned || lib.hasPrefix (owned + "/") path || lib.hasPrefix (path + "/") owned
-  ) configuration.copy;
   candidates = {
     anki-connect = {
       kind = "anki-addon";
       package = toolset.ankiConnect;
       relativePath = "share/anki/addons/anki-connect";
       homeTarget = "Library/Application Support/Anki2/addons21/anki-connect";
+    };
+    ffmpeg = {
+      kind = "executable";
+      package = lib.getBin toolset.ffmpeg;
+      relativePath = "bin/ffmpeg";
+      homeTarget = ".local/bin/ffmpeg";
+    };
+    ffplay = {
+      kind = "executable";
+      package = lib.getBin toolset.ffmpeg;
+      relativePath = "bin/ffplay";
+      homeTarget = ".local/bin/ffplay";
+    };
+    ffprobe = {
+      kind = "executable";
+      package = lib.getBin toolset.ffmpeg;
+      relativePath = "bin/ffprobe";
+      homeTarget = ".local/bin/ffprobe";
+    };
+    nightlight = {
+      kind = "executable";
+      package = lib.getBin toolset.nightlight;
+      relativePath = "bin/nightlight";
+      homeTarget = ".local/bin/nightlight";
     };
   } // lib.optionalAttrs configuration.localllm.enabled {
     localllm = {
@@ -22,9 +43,10 @@ let
       model = configuration.localllm.default_model;
     };
   };
-  # Copy is the established owner when its target overlaps an artifact. Filter
-  # before forcing package values, so excluded artifacts need not be built.
-  selected = lib.filterAttrs (_: artifact: !(overlapsCopy artifact.homeTarget)) candidates;
+  # Keep the complete declaration independent of copy ownership. Rust suppresses
+  # overlapping targets in the captured Plan; a copy-only edit can then reuse
+  # the same frozen artifact manifest, including when copy ownership is removed.
+  selected = candidates;
   entries = lib.mapAttrsToList (id: artifact:
     (builtins.removeAttrs artifact [ "package" ]) // {
       inherit id;
@@ -51,6 +73,6 @@ in
     name = artifact.homeTarget;
     value.source = "${artifact.package}/${artifact.relativePath}";
   }) (lib.filterAttrs (_: artifact: artifact ? homeTarget) selected));
-  homePackages = map (artifact: artifact.package)
-    (builtins.attrValues (lib.filterAttrs (_: artifact: artifact.kind == "executable") selected));
+  homePackages = lib.unique (map (artifact: artifact.package)
+    (builtins.attrValues (lib.filterAttrs (_: artifact: artifact.kind == "executable") selected)));
 }

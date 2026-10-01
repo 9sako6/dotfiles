@@ -3,25 +3,14 @@ let
   inherit (host.pkgs) lib;
   cfg = host.config;
   user = cfg.system.primaryUser;
-  home = cfg.home-manager.users.${user};
-  toolset = import ./packages.nix { pkgs = host.pkgs; inherit inputs; };
+  home = cfg.home-manager.users.${user} or null;
+  homeFiles = if home == null then { } else home.home.file;
+  homePackages = if home == null then [ ] else home.home.packages;
   nixPackage = package: {
     name = lib.getName package;
     declared = lib.getVersion package;
     manager = "Nix";
   };
-  miseFile = path:
-    let
-      config = builtins.fromTOML (builtins.readFile (resourceSource + "/${path}"));
-      version = value:
-        if builtins.isString value then value
-        else if builtins.isList value then lib.concatMapStringsSep ", " version value
-        else value.version or "unspecified";
-    in lib.mapAttrsToList (name: value: {
-      inherit name;
-      declared = version value;
-      manager = "mise";
-    }) (config.tools or { });
   brewPackage = entry: {
     name = entry.name;
     manager = "Homebrew (nix-darwin)";
@@ -63,20 +52,19 @@ let
       QueueDirectories = null;
       StartOnMount = null;
       Sockets = null;
-    } job.serviceConfig);
+    } (job.serviceConfig or job.config));
   };
   services = scope: jobs:
     lib.mapAttrsToList (service scope) (lib.filterAttrs (_: job: job.enable or true) jobs);
   agentPath = path: lib.any (prefix: lib.hasPrefix prefix path)
     [ ".agents/" ".claude/" ".codex/" ".config/opencode/" ];
 in {
-  schemaVersion = 3;
-  source = resourceSource;
-  packages = map nixPackage (builtins.filter (p: lib.getName p != "localllm" && lib.getVersion p != "")
-    (home.home.packages ++ cfg.environment.systemPackages))
-    ++ [ (nixPackage toolset.ankiConnect) ]
-    ++ miseFile "home/.config/mise/config.toml"
-    ++ miseFile ".mise.toml"
+  schemaVersion = 4;
+  # A generation retains only its system projection. Public user resources are
+  # inventoried by Rust from the full frozen snapshot, outside this derivation.
+  source = publicSource;
+  packages = map nixPackage (builtins.filter (p: lib.getVersion p != "")
+    (homePackages ++ cfg.environment.systemPackages))
     ++ map brewPackage (cfg.homebrew.brews ++ cfg.homebrew.casks);
   system = settings [ "system" "defaults" ] host.options.system.defaults cfg.system.defaults
     ++ settings [ "system" "keyboard" ] host.options.system.keyboard cfg.system.keyboard
@@ -93,15 +81,13 @@ in {
   services = services "system" cfg.launchd.daemons
     ++ services "all users" cfg.launchd.agents
     ++ services "user" cfg.launchd.user.agents
-    ++ services "user" home.launchd.agents;
+    ++ lib.optionals (home != null) (services "user" home.launchd.agents);
   timeZone = cfg.time.timeZone;
-  tools = map (path: { inherit path; deploy = "copy"; }) (builtins.filter agentPath configuration.copy)
-    ++ lib.mapAttrsToList (_: file: { path = file.target; deploy = "symlink"; })
-      (lib.filterAttrs (_: file: file.enable && agentPath file.target) home.home.file);
+  tools = lib.mapAttrsToList (_: file: { path = file.target; deploy = "symlink"; })
+    (lib.filterAttrs (_: file: file.enable && agentPath file.target) homeFiles);
   # Exact frozen profile for pre-activation executable ownership inspection.
-  homeManagerPackageProfile = toString home.home.path;
-  homeManagerPackageProfileDrv = home.home.path.drvPath;
+  homeManagerPackageProfile = if home == null then null else toString home.home.path;
+  homeManagerPackageProfileDrv = if home == null then null else home.home.path.drvPath;
   homeManagerTargets = map (file: file.target)
-    (builtins.filter (file: file.enable) (builtins.attrValues home.home.file));
-  localllm = builtins.intersectAttrs { enabled = null; default_model = null; } configuration.localllm;
+    (builtins.filter (file: file.enable) (builtins.attrValues homeFiles));
 }

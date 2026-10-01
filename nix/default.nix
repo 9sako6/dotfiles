@@ -26,7 +26,9 @@ in
       extraSpecialArgs = {
         inherit configuration dotfilesDirectory dotfilesSourceHome inputs;
       };
-      users.${primaryUser} = import ./home.nix;
+      # A private module may declare any user. Public configuration does not
+      # create a Home Manager user or own a user activation package.
+      sharedModules = [ ./home.nix ];
     };
   };
 }

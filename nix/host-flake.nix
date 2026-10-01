@@ -3,7 +3,9 @@
     let
       input = builtins.fromJSON (builtins.readFile ./inputs.json);
       public = builtins.getFlake input.publicFlake;
-      configuration = (import (public.outPath + "/nix/configuration.nix") {
+      # Rust passes the same validated, frozen configuration used by the Plan.
+      # The fallback preserves direct consumers of the previous host interface.
+      configuration = input.configuration or (import (public.outPath + "/nix/configuration.nix") {
         inherit (public.inputs.nixpkgs) lib;
         publicFile = public.outPath + "/dotfiles.toml";
         localFile = if input.localFile == null then null else ./. + "/${input.localFile}";

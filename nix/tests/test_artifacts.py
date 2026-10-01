@@ -46,9 +46,15 @@ path = "/missing/private"
         self.assertEqual(result.returncode, 0, result.stderr)
         output = json.loads(result.stdout)
         artifacts = {entry["id"]: entry for entry in output["manifestData"]["artifacts"]}
-        self.assertEqual(set(artifacts), {"anki-connect", "localllm"})
+        self.assertEqual(set(artifacts), {"anki-connect", "ffmpeg", "ffplay", "ffprobe", "localllm", "nightlight"})
         self.assertEqual(artifacts["localllm"]["model"], "qwen3.8-27b-4bit")
         self.assertEqual(artifacts["localllm"]["relativePath"], "bin/localllm")
+        for command in ["ffmpeg", "ffplay", "ffprobe", "nightlight"]:
+            self.assertEqual(artifacts[command]["kind"], "executable")
+            self.assertEqual(artifacts[command]["relativePath"], "bin/" + command)
+            self.assertEqual(artifacts[command]["homeTarget"], ".local/bin/" + command)
+        self.assertEqual(len({artifacts[name]["storePath"]
+                              for name in ["ffmpeg", "ffplay", "ffprobe"]}), 1)
         self.assertEqual(artifacts["anki-connect"]["homeTarget"],
                          "Library/Application Support/Anki2/addons21/anki-connect")
         for path in [output["manifest"], output["root"], output["output"],
@@ -101,7 +107,7 @@ path = "/missing/private"
             manifest_path = (output / "manifest.json").resolve()
             manifest = json.loads(manifest_path.read_text())
             self.assertEqual({item["id"] for item in manifest["artifacts"]},
-                             {"anki-connect", "localllm"})
+                             {"anki-connect", "ffmpeg", "ffplay", "ffprobe", "localllm", "nightlight"})
             packages = {item["storePath"] for item in manifest["artifacts"]}
             closure = set(query("--requisites", output))
             self.assertTrue({str(output), str(manifest_path), *packages} <= closure)

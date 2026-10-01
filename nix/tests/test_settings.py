@@ -245,7 +245,7 @@ sys.exit(result.returncode)
         sections = result.stdout.split("\nsystem\n", 1)
         self.assertEqual(len(sections), 2)
         packages = sections[0].split("\npackages\n", 1)[1]
-        for name in ["dotfiles", "lix", "zundamonotify"]:
+        for name in ["anki-bin", "lix", "zundamonotify"]:
             rows = [line.split() for line in packages.splitlines() if line.split()[:1] == [name]]
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0][1], "Nix")

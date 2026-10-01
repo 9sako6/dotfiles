@@ -1,107 +1,135 @@
 { self, lib, pkgs }:
 let
+  defaultConfiguration = self.darwinConfigurations.current.config.dotfiles.configuration;
   make = module: self.lib.mkHost {
     configurationRevision = "0123456789abcdef0123456789abcdef01234567-dirty";
     dotfilesDirectory = "/fixture";
     primaryUser = "fixture";
     privateFlake.darwinModules.default = module;
   };
+  privatePackage = pkgs.writeShellScriptBin "private-fixture" "exit 0";
   composed = make {
+    home-manager.users.fixture = { configuration, dotfilesDirectory, dotfilesSourceHome, inputs, ... }: {
+      assertions = [ {
+        assertion = configuration == defaultConfiguration
+          && dotfilesDirectory == "/fixture"
+          && dotfilesSourceHome == self.outPath + "/home"
+          && inputs.nixpkgs.outPath == self.inputs.nixpkgs.outPath;
+        message = "private Home Manager special arguments changed";
+      } ];
+      home.file."fixture-owned" = {
+        target = "/Users/fixture/fixture-owned";
+        text = "fixture";
+      };
+      home.packages = [ privatePackage ];
+      launchd.agents.private-fixture = {
+        enable = true;
+        config = {
+          ProgramArguments = [ "${privatePackage}/bin/private-fixture" ];
+          RunAtLoad = true;
+        };
+      };
+    };
+    homebrew.taps = [ "fixture/tap" ];
     launchd.user.agents.fixture.serviceConfig = {
       ProgramArguments = [ "/usr/bin/true" ];
       RunAtLoad = true;
     };
-    homebrew.taps = [ "fixture/tap" ];
-    home-manager.users.fixture.home.file."fixture-owned" = {
-      target = "/Users/fixture/fixture-owned";
-      text = "fixture";
-    };
   };
-  enabledConfiguration = composed.config.dotfiles.configuration // {
-    localllm = {
-      enabled = true;
-      models = [ "qwen3.8-9b-distill-4bit" ];
-      default_model = "qwen3.8-9b-distill-4bit";
-    };
-  };
-  artifactHost = configuration: module: self.lib.mkHost {
-    inherit configuration;
-    dotfilesDirectory = "/fixture";
-    primaryUser = "fixture";
-    privateFlake.darwinModules.default = module;
-  };
-  enabledHost = artifactHost enabledConfiguration { };
-  rejectsArtifactFile = target: !(builtins.tryEval (builtins.deepSeq
-    (artifactHost enabledConfiguration {
-      home-manager.users.fixture.home.file.fixture = { inherit target; text = "fixture"; };
-    }).system.drvPath true)).success;
-  privatePackage = pkgs.writeShellScriptBin "private-fixture" "exit 0";
-  privatePackageHost = artifactHost enabledConfiguration {
-    home-manager.users.fixture.home.packages = [ privatePackage ];
-  };
-  copiedArtifactHost = artifactHost (enabledConfiguration // {
-    copy = [ ".local/bin/localllm" "Library/Application Support/Anki2/addons21/anki-connect" ];
-  }) { };
   inventory = builtins.fromJSON (builtins.unsafeDiscardStringContext composed.inventory.text);
-  copyConfigured = self.lib.mkHost {
-    configuration = composed.config.dotfiles.configuration // {
-      copy = lib.sort builtins.lessThan (composed.config.dotfiles.configuration.copy ++ [ ".zshenv" ]);
+  publicHost = self.lib.mkHost { dotfilesDirectory = "/fixture"; primaryUser = "fixture"; };
+  publicInventory = builtins.fromJSON (builtins.unsafeDiscardStringContext publicHost.inventory.text);
+  otherMachine = self.lib.mkHost {
+    dotfilesDirectory = "/another-fixture";
+    primaryUser = "another-fixture";
+    privateFlake.darwinModules.default.home-manager.users.another-fixture.home = {
+      file."machine-owned".text = "another machine";
+      stateVersion = "24.05";
     };
+  };
+  # Match the Rust system projection: deliberately omit all public user files,
+  # CLI sources, artifact recipes, package recipes and model configuration.
+  systemFiles = [
+    "flake.lock"
+    "flake.nix"
+    "nix/default.nix"
+    "nix/home.nix"
+    "nix/homebrew-packages.nix"
+    "nix/homebrew-shellenv.zsh"
+    "nix/host-flake.nix"
+    "nix/inventory.nix"
+    "nix/macos-settings.nix"
+    "nix/system.nix"
+  ];
+  systemSource = builtins.path {
+    name = "dotfiles-system-fixture";
+    path = self.outPath;
+    filter = path: type:
+      let relative = lib.removePrefix (toString self.outPath + "/") (toString path);
+      in builtins.elem relative systemFiles
+        || (type == "directory" && (toString path == toString self.outPath || relative == "nix"));
+  };
+  projectedOutputs = (import (systemSource + "/flake.nix")).outputs (self.inputs // {
+    self = projectedOutputs // { outPath = systemSource; inputs = self.inputs; };
+  });
+  projectedHost = projectedOutputs.lib.mkHost {
+    configuration = defaultConfiguration;
     dotfilesDirectory = "/fixture";
     primaryUser = "fixture";
   };
-  cacheHost = self.lib.mkHost {
-    configurationRevision = self.rev or self.dirtyRev or "unknown";
-    dotfilesDirectory = "/cache-fixture";
-    primaryUser = "cache-fixture";
-    privateFlake.darwinModules.default.homebrew.casks = [ "fixture-cask" ];
-  };
+  projectedInventory = builtins.fromJSON (builtins.unsafeDiscardStringContext projectedHost.inventory.text);
   rejects = module: !(builtins.tryEval (builtins.deepSeq (make module).system.drvPath true)).success;
   results = {
-    cliRevision = (lib.findFirst (package: (package.pname or "") == "dotfiles") null
-      composed.config.environment.systemPackages).DOTFILES_BUILD_REVISION
-      == self.packages.${pkgs.stdenv.hostPlatform.system}.dotfiles.version;
-    cliCacheReuse = (lib.findFirst (package: (package.pname or "") == "dotfiles") null
-      cacheHost.config.environment.systemPackages).outPath == self.packages.${pkgs.stdenv.hostPlatform.system}.dotfiles.outPath;
+    ankiGuiPreserved = builtins.elem pkgs.anki-bin publicHost.config.environment.systemPackages
+      && pkgs.anki-bin.version == "26.05";
     buildable = (builtins.tryEval composed.system.drvPath).success;
-    service = composed.config.launchd.user.agents.fixture.serviceConfig.RunAtLoad;
-    tap = builtins.any (tap: tap.name == "fixture/tap") composed.config.homebrew.taps;
-    artifactsAbsentFromPublicHome =
-      !(enabledHost.config.home-manager.users.fixture.home.file ? "Library/Application Support/Anki2/addons21/anki-connect")
-      && !(builtins.elem (self.lib.mkArtifacts { configuration = enabledConfiguration; }).selected.localllm.package
-        enabledHost.config.home-manager.users.fixture.home.packages);
-    remainingPublicPackagesPreserved = builtins.all (package:
-      builtins.elem package enabledHost.config.home-manager.users.fixture.home.packages
-    ) [ pkgs.anki-bin pkgs.ffmpeg pkgs.nightlight ];
-    nightShiftPreserved = enabledHost.config.home-manager.users.fixture.home.activation ? configureNightShift;
-    privatePackagePreserved = builtins.elem privatePackage privatePackageHost.config.home-manager.users.fixture.home.packages;
-    artifactFileConflict = rejectsArtifactFile "Library/Application Support/Anki2/addons21/anki-connect";
-    artifactFileParentConflict = rejectsArtifactFile "Library/Application Support/Anki2/addons21";
-    artifactFileChildConflict = rejectsArtifactFile "Library/Application Support/Anki2/addons21/anki-connect/config.json";
-    artifactExecutableConflict = rejectsArtifactFile ".local/bin/localllm";
-    artifactAbsoluteTargetConflict = rejectsArtifactFile "/Users/fixture/.local/bin/localllm";
-    disabledPrivateFilePreserved = (builtins.tryEval (artifactHost enabledConfiguration {
-      home-manager.users.fixture.home.file.fixture = {
-        target = ".local/bin/localllm";
-        enable = false;
-        text = "fixture";
-      };
-    }).system.drvPath).success;
-    copiedArtifactBuildable = (builtins.tryEval copiedArtifactHost.system.drvPath).success;
+    configurationConflict = rejects { dotfiles.configuration = lib.mkForce { }; };
+    copyAbsoluteTargetConflict = rejects {
+      home-manager.users.fixture.home.file.alias = { target = "/Users/fixture/.gitconfig"; text = "fixture"; };
+    };
+    copyConflict = rejects { home-manager.users.fixture.home.file.".claude/skills/foreign".text = "fixture"; };
+    copyParentConflict = rejects {
+      home-manager.users.fixture.home.file.alias = { target = ".claude"; text = "fixture"; };
+    };
+    copyTargetConflict = rejects {
+      home-manager.users.fixture.home.file.alias = { target = ".gitconfig"; text = "fixture"; };
+    };
     exactHomeManagerPackageProfile = inventory.homeManagerPackageProfile
       == toString composed.config.home-manager.users.fixture.home.path;
     exactHomeManagerPackageProfileDrv = inventory.homeManagerPackageProfileDrv
       == composed.config.home-manager.users.fixture.home.path.drvPath;
-    configurationConflict = rejects { dotfiles.configuration = lib.mkForce { }; };
-    copiedFilesExcluded = !(composed.config.home-manager.users.fixture.home.file ? ".gitconfig");
-    additionalCopiedFileExcluded = !(copyConfigured.config.home-manager.users.fixture.home.file ? ".zshenv");
-    publicLiveFileExcluded = !(composed.config.home-manager.users.fixture.home.file ? ".zshenv");
-    privateHomeTargetListed = builtins.elem "fixture-owned" (builtins.fromJSON (builtins.unsafeDiscardStringContext composed.inventory.text)).homeManagerTargets;
+    forcedCopyConflict = rejects {
+      home-manager.users.fixture.home.file = lib.mkForce { ".gitconfig".text = "fixture"; };
+    };
+    noPublicHomeManagerUser = publicHost.config.home-manager.users == { };
+    noPublicHomeProfile = publicInventory.homeManagerPackageProfile == null
+      && publicInventory.homeManagerPackageProfileDrv == null
+      && publicInventory.homeManagerTargets == [ ];
+    noPublicUserPackagesInSystem = builtins.all (package:
+      !(builtins.elem (lib.getName package) [ "dotfiles" "ffmpeg" "localllm" "nightlight" ])
+    ) publicHost.config.environment.systemPackages;
+    noRootlessInventory = publicInventory.tools == [ ] && !(publicInventory ? localllm)
+      && builtins.all (package: package.manager != "mise") publicInventory.packages
+      && builtins.all (setting: !(lib.hasPrefix "nightShift." setting.key)) publicInventory.system;
+    otherMachinePreserved = (builtins.tryEval otherMachine.system.drvPath).success
+      && otherMachine.config.home-manager.users.another-fixture.home.stateVersion == "24.05"
+      && otherMachine.config.home-manager.users.another-fixture.home.file."machine-owned".enable;
     privateHomeFilePreserved = composed.config.home-manager.users.fixture.home.file."fixture-owned".enable;
-    copyConflict = rejects { home-manager.users.fixture.home.file.".claude/skills/foreign".text = "fixture"; };
-    copyTargetConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".gitconfig"; text = "fixture"; }; };
-    copyParentConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".claude"; text = "fixture"; }; };
-    forcedCopyConflict = rejects { home-manager.users.fixture.home.file = lib.mkForce { ".gitconfig".text = "fixture"; }; };
+    privateHomeStateVersionDefault = composed.config.home-manager.users.fixture.home.stateVersion == "26.05";
+    privateHomeTargetListed = builtins.elem "fixture-owned" inventory.homeManagerTargets;
+    privatePackagePreserved = builtins.elem privatePackage composed.config.home-manager.users.fixture.home.packages;
+    privateUserAgentPreserved = composed.config.home-manager.users.fixture.launchd.agents.private-fixture.config.RunAtLoad
+      && builtins.any (service: service.name == "private-fixture" && service.scope == "user") inventory.services;
+    projectedSourceBuildable = (builtins.tryEval projectedHost.system.drvPath).success;
+    projectedSourceHasNoRootlessInputs = builtins.all (path: !(builtins.pathExists (systemSource + "/${path}")))
+      [ ".mise.toml" "cli" "dotfiles.toml" "home" "nix/artifacts.nix" "nix/configuration.nix" "nix/localllm" "nix/packages.nix" ];
+    projectedSourceInventory = projectedInventory.source == toString systemSource
+      && projectedInventory.schemaVersion == 4;
+    publicActivationAbsent = !(composed.config.home-manager.users.fixture.home.activation ? configureNightShift);
+    publicHomeFilesAbsent = builtins.all (path: !(builtins.hasAttr path composed.config.home-manager.users.fixture.home.file))
+      [ ".gitconfig" ".zshenv" "Library/Application Support/Anki2/addons21/anki-connect" ];
+    service = composed.config.launchd.user.agents.fixture.serviceConfig.RunAtLoad;
+    tap = builtins.any (tap: tap.name == "fixture/tap") composed.config.homebrew.taps;
   };
 in
 assert lib.assertMsg (builtins.all (value: value) (builtins.attrValues results)) "private composition behavior test failed";

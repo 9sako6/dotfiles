@@ -83,8 +83,13 @@
                 '' + pkgs.lib.optionalString (systemInputs != null) ''
                   ln -s ${pkgs.writeText "dotfiles-system-inputs" systemInputs} "$out/dotfiles-system-inputs"
                 '';
-                environment.systemPackages = [ toolset.dotfiles ];
+                # GUI ownership remains at the system boundary; user tools and
+                # the CLI are deployed by the rootless backends.
+                environment.systemPackages = [ pkgs.anki-bin ];
                 assertions = [ {
+                  assertion = pkgs.anki-bin.version == "26.05";
+                  message = "Anki version drifted: expected 26.05, got ${pkgs.anki-bin.version}";
+                } {
                   assertion = toString pkgs.path == nixpkgs.outPath;
                   message = "private modules must use the public nixpkgs package set";
                 } ];

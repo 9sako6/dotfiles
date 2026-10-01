@@ -4,9 +4,6 @@ let
   ankiConnectPackage = pkgs.ankiAddons.anki-connect;
   expectedAnkiConnectVersion = "25.11.9.0";
 
-  ankiPackage = pkgs.anki-bin;
-  expectedAnkiVersion = "26.05";
-
   bunPackage = pkgs.bun;
   expectedBunVersion = "1.3.13";
 
@@ -36,12 +33,9 @@ let
   rustToolchain = pkgs.rustPackages_1_97;
   expectedRustVersion = "1.97.1";
 
-
 in
 assert pkgs.lib.assertMsg (ankiConnectPackage.version == expectedAnkiConnectVersion)
   "AnkiConnect version drifted: expected ${expectedAnkiConnectVersion}, got ${ankiConnectPackage.version}";
-assert pkgs.lib.assertMsg (ankiPackage.version == expectedAnkiVersion)
-  "Anki version drifted: expected ${expectedAnkiVersion}, got ${ankiPackage.version}";
 assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
 assert pkgs.lib.assertMsg (cachixPackage.version == expectedCachixVersion)
@@ -71,18 +65,10 @@ assert pkgs.lib.assertMsg (rustToolchain.rustc.version == expectedRustVersion)
     rustToolchain.clippy
   ];
   dotfiles = dotfilesPackage;
+  ffmpeg = ffmpegPackage;
+  localllm = configuration: import ./localllm/package.nix { inherit configuration inputs pkgs; };
   localllmClient = import ./localllm/client.nix { inherit pkgs; };
   localllmGoalPlugin = import ./localllm/goal-plugin.nix { inherit pkgs; };
   localllmRuntime = (import ./localllm/runtime.nix { inherit inputs pkgs; }).environment;
-  localllm = configuration: import ./localllm/package.nix { inherit configuration inputs pkgs; };
-
-  packages = [
-    # Anki 26.05
-    ankiPackage
-
-    ffmpegPackage
-
-    # Nightlight 1.0.0
-    nightlightPackage
-  ];
+  nightlight = nightlightPackage;
 }

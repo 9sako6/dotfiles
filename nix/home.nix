@@ -1,37 +1,21 @@
-{ config, configuration, inputs, lib, options, pkgs, dotfilesDirectory, dotfilesSourceHome, ... }:
+# Compatibility defaults only. A private module must explicitly declare its
+# Home Manager user; public files, packages and activation live outside HM.
+{ config, configuration, lib, options, ... }:
 
 let
-  artifacts = import ./artifacts.nix { inherit configuration pkgs toolset; };
-  toolset = import ./packages.nix { inherit inputs pkgs; };
-  overlapsCopy = path: builtins.any (owned:
-    path == owned || lib.hasPrefix (owned + "/") path || lib.hasPrefix (path + "/") owned
-  ) configuration.copy;
-  artifactTargets = map (artifact: artifact.homeTarget) (builtins.attrValues artifacts.selected);
-  overlapsArtifact = target:
+  overlapsCopy = target:
     let path = if target == config.home.homeDirectory then ""
       else lib.removePrefix (config.home.homeDirectory + "/") target;
     in builtins.any (owned:
       path == "" || path == owned || lib.hasPrefix (owned + "/") path || lib.hasPrefix (path + "/") owned
-    ) artifactTargets;
-  inherit (import ./macos-settings.nix) nightShift;
+    ) configuration.copy;
 in
 {
   _file = toString ./home.nix;
 
-  home.activation.configureNightShift = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    ${pkgs.nightlight}/bin/nightlight schedule ${nightShift.schedule.start} ${nightShift.schedule.end}
-    ${pkgs.nightlight}/bin/nightlight temp ${toString nightShift.temperature}
-  '';
-
-  home.stateVersion = "26.05";
-  home.packages = toolset.packages ++ [ toolset.dotfiles ];
+  home.stateVersion = lib.mkDefault "26.05";
 
   assertions = [ {
-    assertion = builtins.all (file:
-      !file.enable || !(overlapsArtifact file.target)
-    ) (builtins.attrValues config.home.file);
-    message = "home.file targets conflict with dotfiles artifact paths";
-  } {
     assertion = options.home.file.highestPrio == 100 && builtins.all (file:
       !file.enable || !(overlapsCopy file.target)
     ) (builtins.attrValues config.home.file);
