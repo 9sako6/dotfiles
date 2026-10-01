@@ -6,6 +6,13 @@ import { withTempDir, writeTree } from "./test-helpers";
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installScript = path.join(repoRoot, "install.sh");
 const remoteRevision = "1111111111111111111111111111111111111111";
+const fixtureGitEnvironment = {
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_CONFIG_NOSYSTEM: "1",
+  GIT_CONFIG_COUNT: "1",
+  GIT_CONFIG_KEY_0: "maintenance.auto",
+  GIT_CONFIG_VALUE_0: "false",
+};
 
 async function makeExecutable(filePath: string, content: string) {
   await mkdir(path.dirname(filePath), { recursive: true });
@@ -125,7 +132,7 @@ esac
 async function runScript(script: string, env: NodeJS.ProcessEnv) {
   const proc = Bun.spawn(["/bin/sh", script], {
     cwd: repoRoot,
-    env,
+    env: { ...env, ...fixtureGitEnvironment },
     stderr: "pipe",
     stdout: "pipe",
   });
@@ -137,9 +144,10 @@ async function runScript(script: string, env: NodeJS.ProcessEnv) {
   return { exitCode, stderr, stdout };
 }
 
-async function runCommand(command: string, args: string[], cwd: string) {
-  const proc = Bun.spawn([command, ...args], {
+async function runGit(args: string[], cwd: string) {
+  const proc = Bun.spawn(["git", ...args], {
     cwd,
+    env: { ...process.env, ...fixtureGitEnvironment },
     stderr: "pipe",
     stdout: "pipe",
   });
@@ -149,7 +157,7 @@ async function runCommand(command: string, args: string[], cwd: string) {
     new Response(proc.stdout).text(),
   ]);
   if (exitCode !== 0) {
-    throw new Error(`${command} ${args.join(" ")} failed: ${stderr}`);
+    throw new Error(`git ${args.join(" ")} failed: ${stderr}`);
   }
   return stdout.trim();
 }
@@ -199,9 +207,9 @@ describe("公開bootstrap", () => {
       const homeDir = path.join(tempDir, "home");
       const logPath = path.join(tempDir, "bootstrap.log");
       const nixPath = path.join(tempDir, "nix");
-      await runCommand("git", ["init", "--quiet", "--initial-branch=master", sourceDir], tempDir);
-      await runCommand("git", ["-C", sourceDir, "config", "user.email", "test@example.invalid"], tempDir);
-      await runCommand("git", ["-C", sourceDir, "config", "user.name", "Bootstrap Test"], tempDir);
+      await runGit(["init", "--quiet", "--initial-branch=master", sourceDir], tempDir);
+      await runGit(["-C", sourceDir, "config", "user.email", "test@example.invalid"], tempDir);
+      await runGit(["-C", sourceDir, "config", "user.name", "Bootstrap Test"], tempDir);
       await makeExecutable(
         path.join(sourceDir, "bin", "install-mise.sh"),
         "#!/bin/sh\nprintf 'install-mise\\n' >> \"$BOOTSTRAP_LOG\"\n",
@@ -212,9 +220,9 @@ describe("公開bootstrap", () => {
 }
 `,
       });
-      await runCommand("git", ["-C", sourceDir, "add", "bin/install-mise.sh", "lib/install-system.sh"], tempDir);
-      await runCommand("git", ["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
-      const revision = await runCommand("git", ["-C", sourceDir, "rev-parse", "HEAD"], tempDir);
+      await runGit(["-C", sourceDir, "add", "bin/install-mise.sh", "lib/install-system.sh"], tempDir);
+      await runGit(["-C", sourceDir, "commit", "--quiet", "-m", "fixture"], tempDir);
+      const revision = await runGit(["-C", sourceDir, "rev-parse", "HEAD"], tempDir);
       await makeExecutable(
         path.join(homeDir, ".local/bin/mise"),
         `#!/bin/sh
@@ -243,10 +251,9 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
       });
 
       expect(result.exitCode).toBe(0);
-      expect(await runCommand("git", ["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir)).toBe(revision);
-      expect(await runCommand("git", ["-C", dotfilesDir, "branch", "--show-current"], tempDir)).toBe("master");
-      expect(await runCommand(
-        "git",
+      expect(await runGit(["-C", dotfilesDir, "rev-parse", "HEAD"], tempDir)).toBe(revision);
+      expect(await runGit(["-C", dotfilesDir, "branch", "--show-current"], tempDir)).toBe("master");
+      expect(await runGit(
         ["-C", dotfilesDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
         tempDir,
       )).toBe("origin/master");
