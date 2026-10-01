@@ -1,0 +1,6 @@
+# Public per-user settings, reconciled without sudo by the Rust CLI.
+# Nightlight remains a pinned macOS platform artifact, not an ordinary mise tool.
+[night_shift]
+end = "07:00"
+start = "22:00"
+temperature = 80
