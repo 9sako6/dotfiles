@@ -394,7 +394,7 @@ mod tests {
     #[derive(Default)]
     struct FakeRunner {
         calls: std::cell::RefCell<Vec<(String, Vec<String>, String)>>,
-        fail_at: Option<usize>,
+        fail_operation: Option<&'static str>,
         mutate_lock: bool,
     }
 
@@ -405,7 +405,11 @@ mod tests {
             if self.mutate_lock {
                 fs::write(cwd.join("apm.lock.yaml"), "generated_at: new\nvalue: 1\n").unwrap();
             }
-            if self.fail_at == Some(calls.len()) {
+            if command == "apm"
+                && self
+                    .fail_operation
+                    .is_some_and(|operation| args.first().is_some_and(|arg| arg == operation))
+            {
                 anyhow::bail!("fake command failed")
             }
             Ok(())
@@ -483,14 +487,14 @@ mod tests {
         )
         .unwrap();
         assert!(!temp.path().join("home/.apm/skills/example-skill").exists());
-        assert_eq!(runner.calls.borrow().len(), 4);
+        assert!(temp.path().join("home/apm.yml").is_file());
     }
 
     #[test]
     fn leaves_source_when_compile_fails() {
         let temp = setup_repo();
         let runner = FakeRunner {
-            fail_at: Some(4),
+            fail_operation: Some("compile"),
             ..FakeRunner::default()
         };
         assert!(run_with(
@@ -508,7 +512,7 @@ mod tests {
     fn restores_lockfile_when_only_generated_at_changed_even_after_failure() {
         let temp = setup_repo();
         let runner = FakeRunner {
-            fail_at: Some(1),
+            fail_operation: Some("install"),
             mutate_lock: true,
             ..FakeRunner::default()
         };
