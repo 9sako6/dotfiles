@@ -1,7 +1,7 @@
 //! A frozen tracked working tree, captured without starting Nix.
 use std::fs;
-use std::io;
-use std::os::unix::fs::{symlink, PermissionsExt};
+use std::io::{self, Read};
+use std::os::unix::fs::{symlink, OpenOptionsExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
@@ -80,6 +80,33 @@ impl Snapshot {
         }
         Ok(())
     }
+}
+
+/// Read a declaration only from regular files inside the frozen tree. Symlinks
+/// remain valid snapshot entries for ownership comparison, not parser inputs.
+pub(super) fn read_regular(source: &Path, relative: &Path, label: &str) -> Result<Vec<u8>> {
+    if relative.as_os_str().is_empty()
+        || relative
+            .components()
+            .any(|part| !matches!(part, Component::Normal(_)))
+        || !fs::symlink_metadata(source)?.is_dir()
+    {
+        bail!("{label}: invalid frozen declaration path");
+    }
+    check_parents(source, relative)
+        .with_context(|| format!("{label}: invalid declaration parent"))?;
+    let mut file = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(source.join(relative))
+        .with_context(|| format!("{label}: declaration must be a readable regular file"))?;
+    if !file.metadata()?.is_file() {
+        bail!("{label}: declaration must be a regular file");
+    }
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)
+        .with_context(|| format!("{label}: cannot read declaration"))?;
+    Ok(bytes)
 }
 
 fn observe(directory: &Path, private: bool) -> Result<Observation> {

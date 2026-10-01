@@ -9,7 +9,7 @@ use sha2::{Digest, Sha256};
 mod live;
 mod state;
 
-pub(crate) use live::{inventory_paths as live_paths, roots as live_roots};
+pub(crate) use live::inventory_paths as live_paths;
 
 pub struct CopyChange {
     pub path: String,

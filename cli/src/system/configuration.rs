@@ -2,10 +2,11 @@
 //!
 //! Model identifiers come from the caller's canonical catalog, never a second
 //! hard-coded list. The Nix boundary still validates this contract independently.
+#[cfg(test)]
 use std::fs;
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use toml::Value;
 
@@ -33,13 +34,14 @@ pub(super) struct Private {
 
 impl Configuration {
     pub fn load(source: &Path, local: Option<&[u8]>) -> Result<Self> {
-        let public = fs::read(source.join("dotfiles.toml"))
-            .context("dotfiles.toml: cannot read public configuration")?;
+        let public =
+            super::snapshot::read_regular(source, Path::new("dotfiles.toml"), "dotfiles.toml")?;
         let catalog: std::collections::BTreeMap<String, serde_json::Value> =
-            serde_json::from_slice(
-                &fs::read(source.join("nix/localllm/catalog.json"))
-                    .context("cannot read model catalog")?,
-            )
+            serde_json::from_slice(&super::snapshot::read_regular(
+                source,
+                Path::new("nix/localllm/catalog.json"),
+                "model catalog",
+            )?)
             .map_err(|_| anyhow::anyhow!("invalid model catalog"))?;
         if catalog.values().any(|entry| !entry.is_object()) {
             bail!("invalid model catalog");
@@ -235,6 +237,25 @@ mod tests {
         )
         .unwrap();
         assert!(Configuration::load(root.path(), None).is_err());
+    }
+
+    #[test]
+    fn configuration_and_catalog_symlinks_cannot_escape_the_frozen_source() {
+        use std::os::unix::fs::symlink;
+        let outside = tempfile::tempdir().unwrap();
+        let secret = outside.path().join("secret");
+        fs::write(&secret, "secret-do-not-print").unwrap();
+        for relative in ["dotfiles.toml", "nix/localllm/catalog.json"] {
+            let root = tempfile::tempdir().unwrap();
+            fs::create_dir_all(root.path().join("nix/localllm")).unwrap();
+            fs::write(root.path().join("dotfiles.toml"), "").unwrap();
+            fs::write(root.path().join("nix/localllm/catalog.json"), "{}").unwrap();
+            fs::remove_file(root.path().join(relative)).unwrap();
+            symlink(&secret, root.path().join(relative)).unwrap();
+            let error = Configuration::load(root.path(), None).unwrap_err();
+            assert!(!format!("{error:#}").contains("secret-do-not-print"));
+            assert_eq!(fs::read_to_string(&secret).unwrap(), "secret-do-not-print");
+        }
     }
 
     #[test]

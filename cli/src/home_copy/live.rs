@@ -21,10 +21,6 @@ const ROOTS: &[(&str, bool)] = &[
     ("mybin", true),
 ];
 
-pub(crate) fn roots() -> impl Iterator<Item = &'static str> {
-    ROOTS.iter().map(|(root, _)| *root)
-}
-
 pub(crate) fn paths(source: &Path, copy: &[String]) -> Result<Vec<PathBuf>> {
     let mut paths = Vec::new();
     for (root, recursive) in ROOTS {
