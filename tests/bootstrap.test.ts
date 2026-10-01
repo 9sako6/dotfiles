@@ -71,11 +71,18 @@ if [ "\${BOOTSTRAP_FAIL_STAGE:-}" = "\${1:-}" ] && [ ! -e "\${BOOTSTRAP_FAILURE_
   : > "$BOOTSTRAP_FAILURE_MARKER"
   exit 1
 fi
+if [ "\${1:-}" = install ] && [ "\${2:-}" = --locked ] && [ "\${3:-}" = rust ]; then
+  [ "\${MISE_CONFIG_FILE:-}" = "$DOTFILES_DIR/home/.config/mise/config.toml" ] || exit 1
+  : > "$HOME/rust-ready"
+fi
 `,
   );
   await makeExecutable(
     nixPath,
     `#!/bin/sh
+set -eu
+[ "$(command -v mise)" = "$HOME/.local/bin/mise" ]
+[ -e "$HOME/rust-ready" ]
 printf 'nix' >> "$BOOTSTRAP_LOG"
 printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
 printf '\\n' >> "$BOOTSTRAP_LOG"
@@ -163,7 +170,7 @@ async function runGit(args: string[], cwd: string) {
 }
 
 describe("公開bootstrap", () => {
-  test("LixのtoolsetからRust CLIを実行してapplyする", async () => {
+  test("miseのRustを準備してからLixのtoolsetからapplyする", async () => {
     await withTempDir("bootstrap-nix-apply", async (tempDir) => {
       const { env, logPath } = await prepareBootstrapEnvironment(tempDir);
 
@@ -172,6 +179,7 @@ describe("公開bootstrap", () => {
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\n" +
+          `mise <trust> <${env.DOTFILES_DIR}/home/.config/mise/config.toml>\nmise <install> <--locked> <rust>\n` +
           nixApplyLog(env.DOTFILES_DIR!) +
           "mise <trust>\nmise <install>\nmise <bootstrap> <--yes> <--verbose>\n",
       );

@@ -38,10 +38,16 @@ jobs:
           restore-prefixes-first-match: nix-${{ runner.os }}-
 
       - name: Install mise
-        run: ./bin/install-mise.sh
+        run: |
+          ./bin/install-mise.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Trust repository mise config
-        run: '"$HOME/.local/bin/mise" trust'
+      - name: Prepare CLI refresh toolchain
+        run: |
+          "$HOME/.local/bin/mise" trust
+          "$HOME/.local/bin/mise" trust "$GITHUB_WORKSPACE/home/.config/mise/config.toml"
+          MISE_CONFIG_FILE="$GITHUB_WORKSPACE/home/.config/mise/config.toml" \
+            "$HOME/.local/bin/mise" install --locked rust
 
       - name: Build system configuration
         run: |

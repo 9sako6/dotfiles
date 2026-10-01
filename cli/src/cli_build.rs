@@ -1,6 +1,8 @@
+use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -109,6 +111,24 @@ impl Drop for BuildLock {
     }
 }
 
+pub fn refresh(root: &Path) -> Result<()> {
+    if unsafe { libc::geteuid() } == 0 {
+        bail!("run plan/apply as the login user");
+    }
+    if Source::capture(root)?.identity == env!("DOTFILES_BUILD_REVISION") {
+        return Ok(());
+    }
+    let home = PathBuf::from(env::var_os("HOME").context("HOME is not set")?);
+    let binary = install(root, &home)?;
+    let mut arguments = env::args_os();
+    let original_name = arguments.next().context("missing executable name")?;
+    Err(Command::new(binary)
+        .arg0(original_name)
+        .args(arguments)
+        .exec())
+    .context("cannot restart refreshed CLI")
+}
+
 pub fn install(root: &Path, home: &Path) -> Result<PathBuf> {
     install_with(root, home, Path::new("mise"))
 }
@@ -173,6 +193,10 @@ fn install_with(root: &Path, home: &Path, mise: &Path) -> Result<PathBuf> {
         .as_file()
         .set_permissions(fs::Permissions::from_mode(0o755))?;
     replacement.as_file().sync_all()?;
+    let replacement = replacement.into_temp_path();
+    if !matches_identity(&replacement, &source.identity) {
+        bail!("replacement CLI cannot run from its destination; installed binary was retained");
+    }
     replacement
         .persist(&installed)
         .context("cannot atomically install CLI")?;

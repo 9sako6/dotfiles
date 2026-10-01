@@ -42,6 +42,9 @@ main() {
   git -C "$DOTFILES_DIR" checkout --quiet --detach "$bootstrap_revision"
 
   "$DOTFILES_DIR/bin/install-mise.sh"
+  export PATH="$HOME/.local/bin:$PATH"
+  "$MISE_BIN" trust "$DOTFILES_DIR/home/.config/mise/config.toml"
+  MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" "$MISE_BIN" install --locked rust
   . "$DOTFILES_DIR/lib/install-system.sh"
   NIX_BIN="$(install_system_ensure_lix "$DOTFILES_DIR/bin/install-lix.sh")"
 

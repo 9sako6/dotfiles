@@ -120,6 +120,9 @@ fn run() -> Result<ExitCode> {
         return zinit::run(operation);
     }
     let dotfiles_dir = resolve_dotfiles_dir()?;
+    if matches!(command, Commands::Plan { .. } | Commands::Apply { .. }) {
+        cli_build::refresh(&dotfiles_dir)?;
+    }
     match command {
         Commands::ApplyBuilt(_)
         | Commands::CompleteApply { .. }
