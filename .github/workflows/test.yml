@@ -34,13 +34,15 @@ jobs:
         run: gitleaks git --redact --no-banner --exit-code 1
 
   rootless-contract:
-    runs-on: ubuntu-latest
+    # Keep unprivileged namespaces available without changing runner security settings.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Prepare isolated CLI tests
         run: |
           sudo apt-get update
           sudo apt-get install --yes bubblewrap
+          bwrap --unshare-user --ro-bind / / /bin/true
           rustup toolchain install 1.97.1 --profile minimal
           rustup default 1.97.1
           cargo fetch --locked --manifest-path cli/Cargo.toml
