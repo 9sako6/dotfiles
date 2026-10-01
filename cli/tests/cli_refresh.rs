@@ -117,7 +117,7 @@ chmod +x "$CARGO_TARGET_DIR/release/dotfiles"
             String::from_utf8(output.stdout).unwrap(),
             format!(
                 "{action}\n--show-trace\n{}\nspaces and 日本語\n{pid}\n",
-                fixture.home.display()
+                fixture.home.canonicalize().unwrap().display()
             )
         );
         assert!(output.stderr.is_empty());
