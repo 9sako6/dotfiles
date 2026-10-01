@@ -115,7 +115,7 @@ while [ ! -e "$FIXTURE_ROOT/release" ]; do sleep 0.01; done
             .arg(expected)
             .arg("/source/flake.nix")
             .args([
-                self.path("legacy-dotfiles"),
+                self.path("refreshed-dotfiles"),
                 self.path("source"),
                 self.path("paths.json"),
                 self.path("home"),
@@ -174,22 +174,15 @@ fn wait_for(mut ready: impl FnMut() -> bool) {
 
 #[test]
 #[ignore = "requires the repository shell backend"]
-fn backend_upgrades_an_incompatible_caller_and_preserves_copy_only_behavior() {
+fn backend_uses_the_refreshed_rootless_cli_and_preserves_copy_only_behavior() {
     for copy_only in [false, true] {
         let fixture = Fixture::new();
         fixture.executable(
             "sudo",
             "#!/bin/sh\ntouch \"$FIXTURE_ROOT/privileged\"\nunset XDG_STATE_HOME\nexec \"$@\"\n",
         );
-        fixture.executable(
-            "legacy-dotfiles",
-            "#!/bin/sh\nprintf \"error: unrecognized subcommand 'apply-built'\\n\" >&2\nexit 2\n",
-        );
-        symlink(
-            cargo_bin!("dotfiles"),
-            fixture.path("system/sw/bin/dotfiles"),
-        )
-        .unwrap();
+        symlink(cargo_bin!("dotfiles"), fixture.path("refreshed-dotfiles")).unwrap();
+        assert!(!fixture.path("system/sw/bin/dotfiles").exists());
         fixture.release();
         fs::write(fixture.path("paths.json"), "[\"managed\"]").unwrap();
         fs::write(fixture.path("source/home/managed"), "frozen").unwrap();
@@ -250,7 +243,7 @@ fn backend_upgrades_an_incompatible_caller_and_preserves_copy_only_behavior() {
 
 #[test]
 #[ignore = "requires the repository shell backend"]
-fn backend_rejects_an_unavailable_generation_cli_before_privileged_changes() {
+fn backend_rejects_an_unavailable_refreshed_cli_before_privileged_changes() {
     for missing in [false, true] {
         let fixture = Fixture::new();
         fixture.executable(
@@ -258,13 +251,12 @@ fn backend_rejects_an_unavailable_generation_cli_before_privileged_changes() {
             "#!/bin/sh\ntouch \"$FIXTURE_ROOT/privileged\"\nexit 99\n",
         );
         if !missing {
-            fs::write(fixture.path("system/sw/bin/dotfiles"), "not executable").unwrap();
+            fs::write(fixture.path("refreshed-dotfiles"), "not executable").unwrap();
         }
         let output = fixture.apply_via_backend(&[]);
         assert!(!output.status.success());
-        assert!(
-            String::from_utf8_lossy(&output.stderr).contains("built system has no dotfiles CLI")
-        );
+        assert!(String::from_utf8_lossy(&output.stderr)
+            .contains("refreshed rootless dotfiles CLI is missing or not executable"));
         assert!(!fixture.path("privileged").exists());
         assert!(!fixture.path("order").exists());
         assert!(!fixture.path("etc/flake.nix").is_symlink());
@@ -603,5 +595,118 @@ fn home_manager_conflict_after_activation_keeps_the_previous_source_record() {
         Path::new("/previous/flake.nix")
     );
     assert!(!fixture.path("home/.config/tool/config").is_symlink());
+    assert!(!fixture.path("state/dotfiles/home.json").exists());
+}
+
+#[test]
+fn system_only_activates_and_commits_without_touching_user_files_or_state() {
+    let mut fixture = Fixture::new();
+    // Invalid copy inputs prove that complete-apply is not even invoked.
+    fs::write(fixture.path("paths.json"), "not JSON").unwrap();
+    fs::write(fixture.path("home/managed"), "already reconciled").unwrap();
+    fs::create_dir_all(fixture.path("state/dotfiles")).unwrap();
+    fs::write(fixture.path("state/dotfiles/home.json"), "keep state").unwrap();
+    let home = fs::metadata(fixture.path("home/managed")).unwrap();
+    let state = fs::metadata(fixture.path("state/dotfiles/home.json")).unwrap();
+    fixture.release();
+    let apply = fixture.start_with("missing", "/source/flake.nix", &["--system-only"]);
+    assert!(fixture.finish(apply).success(), "{}", fixture.errors(apply));
+    assert_eq!(
+        fs::read_to_string(fixture.path("order")).unwrap(),
+        "profile\nactivation\n"
+    );
+    assert_eq!(
+        fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+        Path::new("/source/flake.nix")
+    );
+    assert_eq!(
+        fs::read_to_string(fixture.path("home/managed")).unwrap(),
+        "already reconciled"
+    );
+    assert_eq!(
+        fs::read_to_string(fixture.path("state/dotfiles/home.json")).unwrap(),
+        "keep state"
+    );
+    for (path, before) in [("home/managed", home), ("state/dotfiles/home.json", state)] {
+        let after = fs::metadata(fixture.path(path)).unwrap();
+        assert_eq!(after.ino(), before.ino());
+        assert_eq!(after.mtime(), before.mtime());
+        assert_eq!(after.mtime_nsec(), before.mtime_nsec());
+    }
+}
+
+#[test]
+fn system_only_failure_and_record_races_preserve_the_previous_record() {
+    for fail_activation in [true, false] {
+        let mut fixture = Fixture::new();
+        symlink("/previous/flake.nix", fixture.path("etc/flake.nix")).unwrap();
+        if fail_activation {
+            fs::write(fixture.path("fail"), "").unwrap();
+        }
+        let apply = fixture.start_with(
+            "/previous/flake.nix",
+            "/source/flake.nix",
+            &["--system-only"],
+        );
+        wait_for(|| fixture.path("entries").exists());
+        if !fail_activation {
+            fs::remove_file(fixture.path("etc/flake.nix")).unwrap();
+            symlink("/other/flake.nix", fixture.path("etc/flake.nix")).unwrap();
+        }
+        fixture.release();
+        assert!(!fixture.finish(apply).success());
+        assert_eq!(
+            fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+            Path::new(if fail_activation {
+                "/previous/flake.nix"
+            } else {
+                "/other/flake.nix"
+            })
+        );
+        assert!(!fixture.path("state/dotfiles/home.json").exists());
+    }
+}
+
+#[test]
+fn system_only_and_copy_only_cannot_be_combined() {
+    let mut fixture = Fixture::new();
+    let apply = fixture.start_with(
+        "missing",
+        "/source/flake.nix",
+        &["--system-only", "--copy-only"],
+    );
+    assert_eq!(fixture.finish(apply).code(), Some(2));
+    assert!(fixture.errors(apply).contains("cannot be used with"));
+    assert!(!fixture.path("order").exists());
+    assert!(!fixture.path("etc/flake.nix.apply.lock").exists());
+}
+
+#[test]
+#[ignore = "requires the repository shell backend"]
+fn backend_forwards_system_only_without_a_generation_cli_or_home_copy() {
+    let fixture = Fixture::new();
+    fixture.executable(
+        "sudo",
+        "#!/bin/sh\ntouch \"$FIXTURE_ROOT/privileged\"\nexec \"$@\"\n",
+    );
+    symlink(cargo_bin!("dotfiles"), fixture.path("refreshed-dotfiles")).unwrap();
+    fs::write(fixture.path("paths.json"), "not JSON").unwrap();
+    fixture.release();
+    let output = fixture.apply_via_backend(&["--system-only"]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!fixture.path("system/sw/bin/dotfiles").exists());
+    assert!(fixture.path("privileged").exists());
+    assert_eq!(
+        fs::read_to_string(fixture.path("order")).unwrap(),
+        "profile\nactivation\n"
+    );
+    assert_eq!(
+        fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+        Path::new("/source/flake.nix")
+    );
     assert!(!fixture.path("state/dotfiles/home.json").exists());
 }

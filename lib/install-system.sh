@@ -256,10 +256,11 @@ install_system_apply_built_system() (
   selection_path="$6"
   expected_target="$7"
   desired_target="$8"
+  cli_bin="$9"
   shift 9
 
-  cli_bin="$system_path/sw/bin/dotfiles"
-  [ -f "$cli_bin" ] && [ -x "$cli_bin" ] || install_system_fail 'built system has no dotfiles CLI'
+  [ -f "$cli_bin" ] && [ -x "$cli_bin" ] ||
+    install_system_fail 'refreshed rootless dotfiles CLI is missing or not executable'
   copy_only=false
   [ "${4:-}" != --copy-only ] || copy_only=true
   set -- "$env_bin" SUDO_USER="$primary_user" XDG_STATE_HOME="${XDG_STATE_HOME:-}" \

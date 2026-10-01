@@ -15,6 +15,8 @@ use anyhow::{bail, Context, Result};
 pub struct Args {
     #[arg(long)]
     copy_only: bool,
+    #[arg(long, conflicts_with = "copy_only")]
+    system_only: bool,
     #[arg(long, default_value = "/run/current-system")]
     current_generation: PathBuf,
     nix: PathBuf,
@@ -67,7 +69,7 @@ pub fn run(args: Args) -> Result<ExitCode> {
             },
         ]);
     }
-    commands.push({
+    if !args.system_only {
         let mut command = Command::new(env::current_exe()?);
         command.args(["complete-apply", "--user", &args.user]);
         command.arg("--directory").arg(
@@ -78,8 +80,8 @@ pub fn run(args: Args) -> Result<ExitCode> {
         command.args([&args.source, &args.paths, &args.home]);
         command.env("HOME", &args.home);
         command.env("USER", &args.user).env("LOGNAME", &args.user);
-        command
-    });
+        commands.push(command);
+    }
     for mut command in commands {
         let status = command
             .env("SUDO_USER", &args.user)
