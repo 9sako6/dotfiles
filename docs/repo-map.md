@@ -112,7 +112,7 @@ Nix flake では `flake.nix` に追従先ブランチやチャネルの意図を
 
 Python および MLX 関連の依存関係は `nix/localllm/pyproject.toml` および `nix/localllm/uv.lock` で厳密に固定し、[uv2nix](https://pyproject-nix.github.io/uv2nix/usage/getting-started.html) を介して Nix ビルドに変換する。ロックの更新は開発時に `uv lock --project nix/localllm` および `nix flake lock` を用いて明示的に行う。
 
-Nix でユーザー常設ツールを管理する際は、`flake.lock` による取得元リビジョンの固定にとどまらず、`nix/packages.nix` 内で期待するバージョンを明示してアサーションを行う。利用可能な場合は `rustPackages_1_97` などのバージョン付き属性を選択し、コメントにも完全なバージョン番号を記載する。nixpkgs の更新によって実際のバージョンが変わった場合は、期待バージョンを意図的に更新するまで評価を失敗させる。
+Nix でユーザー常設ツールを管理する際は、`flake.lock` による取得元リビジョンの固定にとどまらず、`nix/packages.nix` 内で期待するバージョンを明示してアサーションを行う。利用可能な場合はバージョン付き属性を選択し、コメントにも完全なバージョン番号を記載する。nixpkgs の更新によって実際のバージョンが変わった場合は、期待バージョンを意図的に更新するまで評価を失敗させる。
 
 Homebrewのformulaとcaskは `nix/homebrew-packages.nix` に集約する。普通のCLIの管理方式は[パッケージと環境の原則](#パッケージと環境の原則)に従う。miseで管理できない配布形式や実行時の制約がある場合は、その根拠を確認して管理境界を決める。
 

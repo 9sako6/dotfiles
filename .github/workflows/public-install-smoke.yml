@@ -101,7 +101,7 @@ jobs:
           test "$(mise exec -- sh -c 'command -v fzf')" = "$(mise which fzf)"
           mise exec -- atuin --version
           mise exec -- bun --version
-          cargo --version
+          mise exec -- cargo --version
           mise exec -- codex --version
           mise exec -- fd --version
           mise exec -- fzf --version
@@ -114,5 +114,5 @@ jobs:
           mise exec -- pnpm --version
           quint --version
           mise exec -- rg --version
-          rustc --version
+          mise exec -- rustc --version
           mise exec -- zoxide --version

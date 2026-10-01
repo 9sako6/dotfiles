@@ -204,12 +204,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
     # Quint 0.32.0
     quintPackage
 
-    # Rust 1.97.1
-    rustToolchain.rustc
-    rustToolchain.cargo
-    rustToolchain.rustfmt
-    rustToolchain.clippy
-
     # terminal-browser 0.6.0
     terminalBrowserPackage
   ];

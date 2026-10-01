@@ -26,6 +26,7 @@ opencode = "1.18.11"
 pnpm = "11.20.0"
 ripgrep = "15.2.0"
 ruby = "4.0.6"
+rust = { version = "1.97.1", components = ["rustfmt", "clippy"] }
 uv = "0.12.1"
 xcodegen = "2.46.0"
 zoxide = "0.10.0"
