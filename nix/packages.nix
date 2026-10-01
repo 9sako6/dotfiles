@@ -74,9 +74,6 @@ let
   ffmpegPackage = pkgs.ffmpeg;
   expectedFfmpegVersion = "8.1.2";
 
-  ghqPackage = pkgs.ghq;
-  expectedGhqVersion = "1.10.1";
-
   gitPackage = pkgs.git;
   expectedGitVersion = "2.55.0";
 
@@ -160,8 +157,6 @@ assert pkgs.lib.assertMsg (codexPackage.version == expectedCodexVersion)
   "Codex version drifted: expected ${expectedCodexVersion}, got ${codexPackage.version}";
 assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
   "FFmpeg version drifted: expected ${expectedFfmpegVersion}, got ${ffmpegPackage.version}";
-assert pkgs.lib.assertMsg (ghqPackage.version == expectedGhqVersion)
-  "ghq version drifted: expected ${expectedGhqVersion}, got ${ghqPackage.version}";
 assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
   "Git version drifted: expected ${expectedGitVersion}, got ${gitPackage.version}";
 assert pkgs.lib.assertMsg (goPackage.version == expectedGoVersion)
@@ -201,8 +196,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
     codexPackage
 
     ffmpegPackage
-
-    ghqPackage
 
     # Git 2.55.0
     gitPackage
