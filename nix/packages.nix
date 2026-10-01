@@ -49,29 +49,6 @@ let
   gitPackage = pkgs.git;
   expectedGitVersion = "2.55.0";
 
-  herdrPackage = pkgs.stdenvNoCC.mkDerivation {
-    pname = "herdr";
-    version = "0.8.2";
-    src = pkgs.fetchurl {
-      url = "https://github.com/herdrdev/herdr/releases/download/v0.8.2/herdr-macos-aarch64";
-      hash = "sha256-pdT01QTYswnJH4EQUFWTAPq6MSWEJfU8UIUvyW9q5XQ=";
-    };
-    dontUnpack = true;
-    installPhase = ''
-      runHook preInstall
-      install -Dm755 "$src" "$out/bin/herdr"
-      runHook postInstall
-    '';
-    meta = {
-      description = "Runtime for persistent coding-agent workspaces";
-      homepage = "https://github.com/herdrdev/herdr";
-      license = pkgs.lib.licenses.asl20;
-      mainProgram = "herdr";
-      platforms = [ "aarch64-darwin" ];
-    };
-  };
-  expectedHerdrVersion = "0.8.2";
-
   nightlightPackage = pkgs.nightlight;
   expectedNightlightVersion = "1.0.0";
 
@@ -120,8 +97,6 @@ assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
   "FFmpeg version drifted: expected ${expectedFfmpegVersion}, got ${ffmpegPackage.version}";
 assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
   "Git version drifted: expected ${expectedGitVersion}, got ${gitPackage.version}";
-assert pkgs.lib.assertMsg (herdrPackage.version == expectedHerdrVersion)
-  "Herdr version drifted: expected ${expectedHerdrVersion}, got ${herdrPackage.version}";
 assert pkgs.lib.assertMsg (nightlightPackage.version == expectedNightlightVersion)
   "Nightlight version drifted: expected ${expectedNightlightVersion}, got ${nightlightPackage.version}";
 assert pkgs.lib.assertMsg (quintPackage.version == expectedQuintVersion)
@@ -162,9 +137,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 
     # Git 2.55.0
     gitPackage
-
-    # Herdr 0.8.2
-    herdrPackage
 
     # Nightlight 1.0.0
     nightlightPackage
