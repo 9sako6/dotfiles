@@ -160,6 +160,7 @@ impl Fixture {
             &fixture.path("checkout/home/.config/mise/mise.lock"),
             "fixture lock\n",
         );
+        write(&fixture.path("checkout/nix/localllm/catalog.json"), "{}");
         write(
             &fixture.path("checkout/home/apm.yml"),
             "dependencies:\n  apm: []\n",
@@ -202,8 +203,22 @@ case "$1 $2" in
     case "$DOTFILES_INPUT_OPERATION" in
       configuration) cat "$FIXTURE/configuration.json" ;;
       artifacts)
-        # Artifact evaluation must use the full frozen source before projection.
-        grep -F "\"publicSource\":\"$FIXTURE/frozen\"" "$DOTFILES_INPUT_MANIFEST" >/dev/null
+        # The Rust snapshot must preserve the same complete tracked payload as
+        # our reference snapshot, rather than the system-only projection.
+        python3 - "$DOTFILES_INPUT_MANIFEST" "$FIXTURE/frozen" <<'PYTHON'
+import json, os, pathlib, sys
+source = pathlib.Path(json.loads(pathlib.Path(sys.argv[1]).read_text())["publicSource"])
+expected = pathlib.Path(sys.argv[2])
+assert source != expected and source != expected.parent / "checkout"
+for path in expected.rglob("*"):
+    observed = source / path.relative_to(expected)
+    if path.is_symlink():
+        assert observed.is_symlink() and os.readlink(observed) == os.readlink(path)
+    elif path.is_file():
+        assert observed.is_file() and observed.read_bytes() == path.read_bytes()
+    else:
+        assert observed.is_dir()
+PYTHON
         printf 'evaluated frozen artifacts\n' >> "$FIXTURE/commands"
         cat "$FIXTURE/artifacts.json" ;;
       *) exit 98 ;;

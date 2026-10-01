@@ -10,6 +10,70 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+const CONTRACTS: &[(&str, &str, &str, &str)] = &[
+    (
+        "anki-connect",
+        "anki-addon",
+        "share/anki/addons/anki-connect",
+        "Library/Application Support/Anki2/addons21/anki-connect",
+    ),
+    ("ffmpeg", "executable", "bin/ffmpeg", ".local/bin/ffmpeg"),
+    ("ffplay", "executable", "bin/ffplay", ".local/bin/ffplay"),
+    ("ffprobe", "executable", "bin/ffprobe", ".local/bin/ffprobe"),
+    (
+        "localllm",
+        "executable",
+        "bin/localllm",
+        ".local/bin/localllm",
+    ),
+    (
+        "nightlight",
+        "executable",
+        "bin/nightlight",
+        ".local/bin/nightlight",
+    ),
+];
+
+pub(super) fn input_identity(source: &Path, configuration: &impl Serialize) -> Result<String> {
+    fn hash(root: &Path, relative: &Path, digest: &mut Sha256) -> Result<()> {
+        let path = root.join(relative);
+        let metadata = match fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => return Err(error.into()),
+        };
+        let name = relative.as_os_str().as_encoded_bytes();
+        digest.update((name.len() as u64).to_be_bytes());
+        digest.update(name);
+        if metadata.is_dir() {
+            digest.update(b"directory");
+            let mut entries = fs::read_dir(path)?.collect::<std::io::Result<Vec<_>>>()?;
+            entries.sort_by_key(|entry| entry.file_name());
+            for entry in entries {
+                hash(root, &relative.join(entry.file_name()), digest)?;
+            }
+        } else if metadata.file_type().is_symlink() {
+            digest.update(b"link");
+            digest.update(fs::read_link(path)?.as_os_str().as_encoded_bytes());
+        } else if metadata.is_file() {
+            use std::os::unix::fs::PermissionsExt;
+            digest.update(b"file");
+            digest.update((metadata.permissions().mode() & 0o111).to_be_bytes());
+            digest.update(Sha256::digest(fs::read(path)?));
+        } else {
+            bail!("unsupported artifact input");
+        }
+        Ok(())
+    }
+    let mut digest = Sha256::new();
+    digest.update(b"dotfiles-artifact-input-v1");
+    for path in ["flake.nix", "flake.lock", "nix"] {
+        hash(source, Path::new(path), &mut digest)?;
+    }
+    digest.update(serde_json::to_vec(configuration)?);
+    Ok(format!("{:x}", digest.finalize()))
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Artifact {
@@ -29,7 +93,7 @@ struct Manifest {
     artifacts: Vec<Artifact>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Evaluation {
     manifest_data: Manifest,
@@ -54,7 +118,17 @@ struct DirectoryReceipt {
     inode: u64,
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct CachedEvaluation {
+    version: u32,
+    identity: String,
+    evaluation: Evaluation,
+}
+
 pub(super) struct Plan {
+    cache_identity: Option<String>,
+    needs_root: bool,
     evaluation: Evaluation,
     nix: PathBuf,
     home: PathBuf,
@@ -81,6 +155,8 @@ impl Plan {
     #[cfg(test)]
     pub(super) fn empty_for_test(home: &Path) -> Self {
         Self {
+            cache_identity: None,
+            needs_root: false,
             evaluation: Evaluation {
                 manifest_data: Manifest {
                     schema_version: 1,
@@ -128,6 +204,102 @@ impl Plan {
         Self::from_evaluation(nix, source, home, copy, evaluation)
     }
 
+    pub(super) fn cached(
+        source: &Path,
+        home: &Path,
+        copy: &[String],
+        identity: &str,
+    ) -> Result<Option<Self>> {
+        let state_home = env::var_os("XDG_STATE_HOME")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+            .unwrap_or_else(|| home.join(".local/state"));
+        let path = state_home.join("dotfiles/artifact-evaluation.json");
+        let anchor = if state_home.starts_with(home) {
+            home
+        } else {
+            &state_home
+        };
+        safe_parents(anchor, &path)?;
+        let Some(bytes) = read_state(&path)? else {
+            return Ok(None);
+        };
+        let Ok(cache) = serde_json::from_slice::<CachedEvaluation>(&bytes) else {
+            return Ok(None);
+        };
+        if cache.version != 1 || cache.identity != identity {
+            return Ok(None);
+        }
+        if cache.evaluation.manifest_data.schema_version != 1
+            || store_path(&cache.evaluation.output, false).is_err()
+            || store_path(&cache.evaluation.root, true).is_err()
+            || store_path(&cache.evaluation.manifest, true).is_err()
+            || cache
+                .evaluation
+                .manifest_data
+                .artifacts
+                .iter()
+                .any(|artifact| {
+                    store_path(&artifact.store_path, false).is_err()
+                        || !CONTRACTS.iter().any(|contract| {
+                            contract.0 == artifact.id
+                                && contract.1 == artifact.kind
+                                && Path::new(contract.2) == artifact.relative_path
+                                && Path::new(contract.3) == artifact.home_target
+                        })
+                })
+        {
+            return Ok(None);
+        }
+        // This is an evaluation cache, never evidence of home ownership. Both
+        // the rooted immutable manifest and its package links must still match.
+        if !outputs_match(&cache.evaluation)? {
+            return Ok(None);
+        }
+        let mut plan = Self::from_evaluation(Path::new(""), source, home, copy, cache.evaluation)?;
+        if fs::read_link(plan.output_root()).ok().as_ref() != Some(&plan.evaluation.output) {
+            return Ok(None);
+        }
+        plan.cache_identity = Some(identity.to_owned());
+        Ok(Some(plan))
+    }
+
+    pub(super) fn record_current(&self) -> Result<()> {
+        self.verify()?;
+        self.cache_evaluation()
+    }
+
+    pub(super) fn set_cache_identity(&mut self, identity: String) {
+        self.cache_identity = Some(identity);
+    }
+
+    fn cache_evaluation(&self) -> Result<()> {
+        let Some(identity) = &self.cache_identity else {
+            return Ok(());
+        };
+        if !outputs_match(&self.evaluation)? {
+            return Ok(());
+        }
+        let path = self.state.with_file_name("artifact-evaluation.json");
+        safe_parents(&self.state_anchor, &path)?;
+        let directory = path.parent().context("artifact cache has no parent")?;
+        fs::create_dir_all(directory)?;
+        let cache = CachedEvaluation {
+            version: 1,
+            identity: identity.clone(),
+            evaluation: self.evaluation.clone(),
+        };
+        let bytes = serde_json::to_vec(&cache)?;
+        if read_state(&path)?.as_deref() == Some(bytes.as_slice()) {
+            return Ok(());
+        }
+        let mut temporary = tempfile::NamedTempFile::new_in(directory)?;
+        temporary.write_all(&bytes)?;
+        temporary.as_file().sync_all()?;
+        temporary.persist(path)?;
+        Ok(())
+    }
+
     fn from_evaluation(
         nix: &Path,
         source: &Path,
@@ -169,11 +341,9 @@ impl Plan {
         }
         for (target, source) in &applied.links {
             relative(target)?;
-            if ![
-                Path::new(".local/bin/localllm"),
-                Path::new("Library/Application Support/Anki2/addons21/anki-connect"),
-            ]
-            .contains(&target.as_path())
+            if !CONTRACTS
+                .iter()
+                .any(|contract| target == Path::new(contract.3))
             {
                 bail!("unknown artifact ledger target");
             }
@@ -183,12 +353,9 @@ impl Plan {
         }
         for path in applied.retiring_directories.keys() {
             relative(path)?;
-            if ![
-                Path::new(".local/bin/localllm"),
-                Path::new("Library/Application Support/Anki2/addons21/anki-connect"),
-            ]
-            .iter()
-            .any(|target| path.starts_with(target))
+            if !CONTRACTS
+                .iter()
+                .any(|contract| path.starts_with(contract.3))
             {
                 bail!("invalid artifact directory receipt");
             }
@@ -197,19 +364,14 @@ impl Plan {
         let mut ids = std::collections::BTreeSet::new();
         let live = crate::home_copy::live_paths(source)?;
         for artifact in &evaluation.manifest_data.artifacts {
-            let contract = match artifact.id.as_str() {
-                "anki-connect" => (
-                    "anki-addon",
-                    "share/anki/addons/anki-connect",
-                    "Library/Application Support/Anki2/addons21/anki-connect",
-                ),
-                "localllm" => ("executable", "bin/localllm", ".local/bin/localllm"),
-                _ => bail!("unknown artifact ID"),
-            };
+            let contract = CONTRACTS
+                .iter()
+                .find(|contract| contract.0 == artifact.id)
+                .context("unknown artifact ID")?;
             if !ids.insert(&artifact.id)
-                || artifact.kind != contract.0
-                || artifact.relative_path != Path::new(contract.1)
-                || artifact.home_target != Path::new(contract.2)
+                || artifact.kind != contract.1
+                || artifact.relative_path != Path::new(contract.2)
+                || artifact.home_target != Path::new(contract.3)
             {
                 bail!("invalid or duplicate artifact deployment contract");
             }
@@ -231,6 +393,8 @@ impl Plan {
         let roots = state_home.join("dotfiles/artifact-roots");
         safe_parents(&state_anchor, &roots.join("entry"))?;
         let mut plan = Self {
+            cache_identity: None,
+            needs_root: false,
             evaluation,
             nix: nix.to_owned(),
             home: home.to_owned(),
@@ -324,6 +488,9 @@ impl Plan {
             }
             plan.observed.insert(path, current);
         }
+        plan.needs_root = !plan.evaluation.manifest_data.artifacts.is_empty()
+            && (fs::read_link(plan.output_root()).ok().as_ref() != Some(&plan.evaluation.output)
+                || !outputs_match(&plan.evaluation)?);
         Ok(plan)
     }
 
@@ -334,15 +501,35 @@ impl Plan {
         ))
     }
     pub(super) fn has_changes(&self) -> bool {
-        !self.changes.is_empty()
+        !self.changes.is_empty() || self.needs_root
     }
     pub(super) fn render(&self) -> String {
-        self.changes
+        let mut lines = self
+            .changes
             .iter()
             .map(|(p, c)| format!("{c} artifact {}", p.display()))
-            .collect::<Vec<_>>()
-            .join("\n")
+            .collect::<Vec<_>>();
+        if self.needs_root {
+            lines.push("+ artifact closure (registered GC root)".into());
+        }
+        if self.has_changes() && !self.evaluation.output.exists() {
+            for artifact in &self.evaluation.manifest_data.artifacts {
+                if let Some(model) = &artifact.model {
+                    lines.push(format!("artifact root includes model {model}; realization may download several GB (including copy-suppressed links)"));
+                }
+            }
+        }
+        lines.join("\n")
     }
+    pub(super) fn source_for_id(&self, id: &str) -> Option<PathBuf> {
+        self.evaluation
+            .manifest_data
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.id == id)
+            .map(|artifact| artifact.store_path.join(&artifact.relative_path))
+    }
+
     pub(super) fn targets(&self) -> impl Iterator<Item = &PathBuf> {
         self.desired.keys()
     }
@@ -383,6 +570,14 @@ impl Plan {
     }
     pub(super) fn realize(&mut self, lock: &File) -> Result<()> {
         self.verify()?;
+        if fs::read_link(self.output_root()).ok().as_ref() == Some(&self.evaluation.output)
+            && outputs_match(&self.evaluation)?
+        {
+            self.rooted = true;
+            self.needs_root = false;
+            self.cache_evaluation()?;
+            return Ok(());
+        }
         if !self.has_changes() {
             if !self.desired.is_empty()
                 && fs::read_link(self.output_root())? != self.evaluation.output
@@ -390,6 +585,8 @@ impl Plan {
                 bail!("artifact root changed after preview");
             }
             self.rooted = true;
+            self.needs_root = false;
+            self.cache_evaluation()?;
             return Ok(());
         }
         safe_parents(&self.state_anchor, &self.roots.join("entry"))?;
@@ -399,6 +596,9 @@ impl Plan {
             if existing != self.evaluation.output {
                 bail!("artifact GC root has changed");
             }
+        }
+        if self.nix.as_os_str().is_empty() {
+            bail!("cached artifact output changed after preview; run plan/apply again");
         }
         let mut command = super::nix_command(&self.nix);
         command
@@ -441,6 +641,8 @@ impl Plan {
         }
         self.verify()?;
         self.rooted = true;
+        self.needs_root = false;
+        self.cache_evaluation()?;
         Ok(())
     }
     pub(super) fn retiring_copy_targets(&self) -> impl Iterator<Item = PathBuf> + '_ {
@@ -605,6 +807,31 @@ impl Plan {
         self.state_bytes = Some(bytes);
         Ok(())
     }
+}
+
+fn outputs_match(evaluation: &Evaluation) -> Result<bool> {
+    let bytes = match fs::read(evaluation.output.join("manifest.json")) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error).context("cannot inspect cached artifact manifest"),
+    };
+    let Ok(actual) = serde_json::from_slice::<Manifest>(&bytes) else {
+        return Ok(false);
+    };
+    if actual != evaluation.manifest_data {
+        return Ok(false);
+    }
+    for artifact in &actual.artifacts {
+        if fs::read_link(evaluation.output.join("artifacts").join(&artifact.id))
+            .ok()
+            .as_ref()
+            != Some(&artifact.store_path)
+            || !artifact.store_path.join(&artifact.relative_path).exists()
+        {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn overlaps(a: &Path, b: &Path) -> bool {
@@ -840,6 +1067,8 @@ mod tests {
             let state = home.join(".local/state/dotfiles/artifacts.json");
             let target = PathBuf::from(".local/bin/localllm");
             let plan = Plan {
+                cache_identity: None,
+                needs_root: true,
                 evaluation: Evaluation {
                     manifest_data,
                     manifest: root.path().join("manifest.drv"),

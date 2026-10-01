@@ -136,6 +136,7 @@ fn sections(inventory: &Inventory) -> Vec<Section> {
     sections
 }
 
+#[cfg(test)]
 pub(super) fn report(inventory: &Inventory, width: Option<usize>) -> String {
     render_sections(&sections(inventory), width)
 }

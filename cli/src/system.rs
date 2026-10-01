@@ -1,9 +1,13 @@
 mod artifacts;
+mod configuration;
 #[cfg(test)]
 mod fast_path_tests;
 mod inputs;
+mod rootless_inventory;
+mod snapshot;
 mod tools;
 mod user_services;
+mod user_settings;
 
 use std::env;
 use std::fs::{self, File, OpenOptions};
@@ -15,7 +19,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 use anyhow::{bail, Context, Result};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+#[cfg(test)]
 use sha2::{Digest, Sha256};
 
 use crate::home_copy;
@@ -34,49 +39,6 @@ enum Review {
 }
 
 #[derive(Deserialize)]
-struct Metadata {
-    locked: LockedSource,
-    path: PathBuf,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct LockedSource {
-    nar_hash: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Inputs {
-    directory: PathBuf,
-    local_file: Option<PathBuf>,
-    private_flake: Option<String>,
-    public_flake: String,
-    public_revision: String,
-    public_source: PathBuf,
-    resource_flake: String,
-    system_inputs: Option<String>,
-    user: String,
-}
-
-#[derive(Deserialize)]
-struct ConfigurationResult<T> {
-    errors: Vec<String>,
-    config: Option<T>,
-}
-
-#[derive(Deserialize)]
-struct Configuration {
-    copy: Vec<String>,
-    private: Private,
-}
-
-#[derive(Deserialize)]
-struct Private {
-    path: Option<String>,
-}
-
-#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BuildResult {
     drv_path: String,
@@ -86,82 +48,6 @@ struct BuildResult {
 #[derive(Deserialize)]
 struct BuildOutputs {
     out: PathBuf,
-}
-
-struct Snapshot {
-    directory: PathBuf,
-    fingerprint: String,
-    reference: String,
-    source: PathBuf,
-    revision: String,
-}
-
-impl Snapshot {
-    fn capture(nix: &Path, directory: &Path, private: bool) -> Result<Self> {
-        let directory = directory
-            .canonicalize()
-            .context("private.path: checkout does not exist")?;
-        for file in ["flake.nix", "flake.lock"] {
-            if git(&directory, &["ls-files", "--error-unmatch", file]).is_err()
-                || !directory.join(file).is_file()
-            {
-                bail!("checkout requires tracked flake.nix and flake.lock");
-            }
-        }
-        if !git(&directory, &["ls-files", "dotfiles.local.toml"])?.is_empty() {
-            bail!("dotfiles.local.toml must remain untracked; remove it from the Git index");
-        }
-        if private
-            && git(&directory, &["show", "HEAD:flake.lock"])?
-                != fs::read(directory.join("flake.lock"))?
-        {
-            bail!("private.path: flake.lock must be committed and unchanged");
-        }
-        let before = fingerprint(&directory)?;
-        let reference = format!(
-            "git+{}",
-            url::Url::from_directory_path(&directory)
-                .map_err(|_| anyhow::anyhow!("invalid checkout path"))?
-        );
-        let metadata: Metadata = serde_json::from_slice(&capture(
-            nix_command(nix).args(["flake", "metadata", "--json", "--no-write-lock-file", "--no-update-lock-file", &reference]),
-            "Git snapshot failed; check that flake.lock is complete and its pinned inputs are available",
-        )?)?;
-        if before != fingerprint(&directory)? {
-            bail!("inputs changed while taking a snapshot; run plan again");
-        }
-        let revision = String::from_utf8(git(&directory, &["rev-parse", "HEAD"])?)?
-            .trim()
-            .to_owned();
-        let revision = if git(
-            &directory,
-            &["status", "--porcelain", "--untracked-files=no"],
-        )?
-        .is_empty()
-        {
-            revision
-        } else {
-            format!("{revision}-dirty")
-        };
-        let mut reference = url::Url::parse(&format!("path:{}", metadata.path.display()))?;
-        reference
-            .query_pairs_mut()
-            .append_pair("narHash", &metadata.locked.nar_hash);
-        Ok(Self {
-            directory,
-            fingerprint: before,
-            reference: reference.into(),
-            source: metadata.path,
-            revision,
-        })
-    }
-
-    fn verify(&self) -> Result<()> {
-        if self.fingerprint != fingerprint(&self.directory)? {
-            bail!("inputs changed after preview; nothing was activated. Run plan/apply again");
-        }
-        Ok(())
-    }
 }
 
 struct Runtime {
@@ -176,8 +62,8 @@ struct Runtime {
 }
 
 struct PlanInputs {
-    public: Snapshot,
-    private: Option<Snapshot>,
+    public: snapshot::Snapshot,
+    private: Option<snapshot::Snapshot>,
     local_path: PathBuf,
     local: Option<Vec<u8>>,
     selection: PathBuf,
@@ -221,6 +107,7 @@ impl PlanInputs {
 }
 
 struct Plan {
+    user_settings: Option<user_settings::Plan>,
     artifacts: artifacts::Plan,
     user_services: user_services::Plan,
     tools: tools::Plan,
@@ -240,6 +127,7 @@ impl Plan {
             Some(&self.tools),
             Some(&self.user_services),
             Some(&self.artifacts),
+            self.user_settings.as_ref(),
             confirm,
         )
     }
@@ -289,44 +177,17 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
     let backend = root.join("bin/system-backend.sh");
-    let nix = resolve_nix(root)?;
     let workspace = tempfile::Builder::new()
         .prefix("dotfiles-input-")
         .tempdir()?;
-    let frozen_local = freeze_local(workspace.path(), &local)?;
-    let public = Snapshot::capture(&nix, root, false)?;
-    let mut inputs = Inputs {
-        directory: root.to_path_buf(),
-        local_file: frozen_local,
-        private_flake: None,
-        public_flake: public.reference.clone(),
-        public_revision: public.revision.clone(),
-        public_source: public.source.clone(),
-        resource_flake: public.reference.clone(),
-        system_inputs: None,
-        user: user.clone(),
-    };
-    let manifest = workspace.path().join("inputs.json");
-    fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
-    let configuration: Configuration =
-        evaluate_configuration(&nix, &public.source, &manifest, "configuration", show_trace)?;
+    let public = snapshot::Snapshot::capture(root, false)?;
+    let configuration = configuration::Configuration::load(&public.source, local.as_deref())?;
     let private = configuration
         .private
         .path
         .as_ref()
-        .map(|path| -> Result<Snapshot> {
-            let directory = root
-                .join(path)
-                .canonicalize()
-                .context("dotfiles.local.toml: private.path: checkout does not exist")?;
-            Snapshot::capture(&nix, &directory, true)
-        })
+        .map(|path| snapshot::Snapshot::capture(&root.join(path), true))
         .transpose()?;
-    if let Some(private) = &private {
-        inputs.private_flake = Some(private.reference.clone());
-    }
-    let artifact_input = workspace.path().join("artifacts-input.json");
-    fs::write(&artifact_input, serde_json::to_vec(&inputs)?)?;
     let snapshot = PlanInputs {
         public,
         private,
@@ -341,40 +202,84 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     snapshot.verify()?;
     let public = &snapshot.public;
     let private = &snapshot.private;
-    let local = &snapshot.local;
-    let previous = &snapshot.previous;
     let previous_generation = &snapshot.previous_generation;
     let workspace = &snapshot.workspace;
     let tools = tools::Plan::capture(&public.source, &home, &runtime.mise)?;
     let user_services =
         user_services::Plan::capture(&public.source, &home, &runtime.launchctl, _lock.as_ref())?;
-    let artifact_input_roots = tempfile::Builder::new()
-        .prefix("dotfiles-artifact-input-")
-        .tempdir()?;
-    let mut retain_artifact_inputs = nix_command(&nix);
-    retain_artifact_inputs
-        .args([
-            "build",
-            "--offline",
-            "--no-write-lock-file",
-            "--no-update-lock-file",
-            "--out-link",
-        ])
-        .arg(artifact_input_roots.path().join("input"))
-        .arg(&public.source);
-    capture(
-        &mut retain_artifact_inputs,
-        "cannot retain frozen artifact inputs",
+    let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
+    // Private modules retain their existing configuration interface, so any
+    // value they could consume stays system-affecting when private is selected.
+    let system_configuration = if private.is_some() {
+        Some(serde_json::to_vec(&configuration)?)
+    } else {
+        None
+    };
+    let identity = inputs::identity_v2(
+        &system_source,
+        root,
+        &user,
+        &home,
+        private
+            .as_ref()
+            .map(|snapshot| snapshot.content_fingerprint.as_str()),
+        &system_configuration,
     )?;
-    let artifacts = artifacts::Plan::capture(
-        &nix,
+    let unchanged_system = snapshot.previous.is_some()
+        && inputs::matches_generation(previous_generation.as_deref(), &identity)?;
+    let artifact_identity = artifacts::input_identity(&public.source, &configuration.localllm)?;
+    let cached_artifacts = artifacts::Plan::cached(
         &public.source,
-        &artifact_input,
         &home,
         &configuration.copy,
-        show_trace,
+        &artifact_identity,
     )?;
-    fs::remove_file(&artifact_input)?;
+    let nix = if !unchanged_system || cached_artifacts.is_none() {
+        Some(resolve_nix(root)?)
+    } else {
+        None
+    };
+    let mut retained = Vec::new();
+    let frozen_public = if cached_artifacts.is_none() {
+        let path = store_source(
+            nix.as_deref().context("artifact Nix is unavailable")?,
+            &public.source,
+        )?;
+        retained.push(path.clone());
+        Some(path)
+    } else {
+        None
+    };
+    let mut artifacts = match cached_artifacts {
+        Some(plan) => plan,
+        None => {
+            let input = workspace.path().join("artifact-input.json");
+            let local_file = freeze_local(workspace.path(), &snapshot.local)?;
+            fs::write(
+                &input,
+                serde_json::to_vec(&serde_json::json!({
+                    "publicSource": frozen_public, "localFile": local_file,
+                    "privateSource": null
+                }))?,
+            )?;
+            let result = artifacts::Plan::capture(
+                nix.as_deref().unwrap(),
+                &public.source,
+                &input,
+                &home,
+                &configuration.copy,
+                show_trace,
+            )?;
+            fs::remove_file(input)?;
+            result
+        }
+    };
+    artifacts.set_cache_identity(artifact_identity);
+    let nightlight = artifacts
+        .source_for_id("nightlight")
+        .unwrap_or_else(|| home.join(".local/bin/nightlight"));
+    let user_settings =
+        user_settings::Plan::capture(&public.source, &home, &nightlight, _lock.as_ref())?;
     let copy_plan = home_copy::plan_live_with_artifact_handoffs(
         &public.source,
         root,
@@ -383,78 +288,62 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         artifacts.copy_handoffs(),
     )?
     .with_artifact_retirements(artifacts.retiring_copy_targets())?;
-    let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
-    let identity = inputs::identity(&system_source, &inputs, local, &home)?;
-    let copy_only = previous.is_some()
-        && inputs::matches_generation(previous_generation.as_deref(), &identity)?;
-    inputs.system_inputs = Some(identity);
-    let host = if copy_only {
+    let host = if unchanged_system {
         None
     } else {
+        let nix = nix.as_deref().context("system Nix is unavailable")?;
         let projected = tempfile::Builder::new()
             .prefix("dotfiles-system-")
             .tempdir()?;
         let source = projected.path().join("source");
         system_source.materialize(&public.source, &source)?;
-        let source = String::from_utf8(capture(
-            nix_command(&nix)
-                .args(["store", "add-path", "--name", "source"])
-                .arg(source),
-            "cannot freeze system inputs",
-        )?)?;
-        let hash = String::from_utf8(capture(
-            nix_command(&nix).args(["hash", "path", "--sri", source.trim()]),
-            "cannot identify frozen system inputs",
-        )?)?;
-        let mut reference = url::Url::parse(&format!("path:{}", source.trim()))?;
-        reference
-            .query_pairs_mut()
-            .append_pair("narHash", hash.trim());
-        inputs.public_flake = reference.into();
-        inputs.public_source = PathBuf::from(source.trim());
-        inputs.local_file = inputs
-            .local_file
-            .map(|_| PathBuf::from("dotfiles.local.toml"));
-        fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
+        let source = store_source(nix, &source)?;
+        let private = private
+            .as_ref()
+            .map(|private| store_source(nix, &private.source))
+            .transpose()?;
+        retained.push(source.clone());
+        retained.extend(private.iter().cloned());
+        let manifest = serde_json::json!({
+            "configuration": configuration, "directory": root, "localFile": null,
+            "privateFlake": private.as_ref().map(|path| locked_reference(nix, path)).transpose()?,
+            "publicFlake": locked_reference(nix, &source)?,
+            "publicRevision": public.revision, "publicSource": source,
+            "resourceFlake": locked_reference(nix, &source)?,
+            "systemInputs": identity, "user": user,
+        });
+        fs::write(
+            workspace.path().join("inputs.json"),
+            serde_json::to_vec(&manifest)?,
+        )?;
         fs::copy(
             public.source.join("nix/host-flake.nix"),
             workspace.path().join("flake.nix"),
         )?;
-        Some(
-            String::from_utf8(capture(
-                nix_command(&nix)
-                    .args(["store", "add-path", "--name", "source"])
-                    .arg(workspace.path()),
-                "cannot freeze host evaluation inputs",
-            )?)?
-            .trim()
-            .to_owned(),
-        )
+        let host = store_source(nix, workspace.path())?;
+        retained.push(host.clone());
+        Some(host.to_string_lossy().into_owned())
     };
-    let mut retain = nix_command(&nix);
-    retain
-        .args([
-            "build",
-            "--offline",
-            "--no-write-lock-file",
-            "--no-update-lock-file",
-            "--out-link",
-        ])
-        .arg(workspace.path().join("input"))
-        .arg(&public.source);
-    if let Some(host) = &host {
-        retain.arg(host).arg(&inputs.public_source);
+    if !retained.is_empty() {
+        let mut retain = nix_command(nix.as_deref().context("input Nix is unavailable")?);
+        retain
+            .args([
+                "build",
+                "--offline",
+                "--no-write-lock-file",
+                "--no-update-lock-file",
+                "--out-link",
+            ])
+            .arg(workspace.path().join("input"))
+            .args(retained);
+        capture(&mut retain, "cannot retain frozen inputs")?;
     }
-    if let Some(private) = private {
-        retain.arg(&private.source);
-    }
-    capture(&mut retain, "cannot retain frozen inputs")?;
-    drop(artifact_input_roots);
     drop(progress);
+    let nix = nix.as_deref().unwrap_or_else(|| Path::new(""));
     let progress = Progress::start("Checking changes");
     let mut preview = if let Some(host) = &host {
         let inventory = evaluate_json(
-            nix_command(&nix)
+            nix_command(nix)
                 .args([
                     "eval",
                     "--raw",
@@ -470,34 +359,27 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         crate::inventory::Preview::copy_only_with_ownership(previous_generation.as_deref())?
     };
     preview.validate_artifact_ownership(artifacts.targets())?;
+    let mut home_targets = crate::home_copy::live_paths(&public.source)?;
+    home_targets.extend(configuration.copy.iter().map(PathBuf::from));
+    preview.validate_artifact_ownership(home_targets.iter())?;
     let mut derivations = None;
-    let mut system = None;
     if preview.needs_native() || preview.needs_generation_comparison() {
         let [system_drv, brewfile_drv] = host_derivations(
-            &nix,
+            nix,
             host.as_deref().context("system inputs are unavailable")?,
             show_trace,
         )?;
+        // Old inventories cannot provide comparable resource fields. Show the
+        // immutable target identity; never build a generation before approval.
         if preview.needs_native() {
-            let built = build(&nix, &system_drv, &workspace.path().join("system"))?;
-            preview = crate::inventory::Preview::load(previous_generation.as_deref(), &built)?;
-            let brewfile = build(&nix, &brewfile_drv, &workspace.path().join("brewfile"))?;
-            let mut diagnostics = io::stderr();
-            preview.native = String::from_utf8(capture_with_diagnostics(
-                Command::new(&backend)
-                    .arg("preview")
-                    .arg(&nix)
-                    .arg(&built)
-                    .arg(&brewfile)
-                    .arg(
-                        previous_generation
-                            .as_deref()
-                            .unwrap_or(&workspace.path().join("no-active-generation")),
-                    ),
-                "system preview failed",
-                Some(&mut diagnostics),
-            )?)?;
-            system = Some(built);
+            preview.native = format!(
+                "system generation: {} -> {}",
+                previous_generation
+                    .as_deref()
+                    .map(|path| path.display().to_string())
+                    .unwrap_or_else(|| "none".into()),
+                system_drv.outputs.out.display()
+            );
         } else {
             preview.compare_generation(
                 previous_generation.as_deref(),
@@ -509,6 +391,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     }
     drop(progress);
     let mut plan = Plan {
+        user_settings: Some(user_settings),
         artifacts,
         user_services,
         tools,
@@ -517,6 +400,9 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         system: preview,
     };
     plan.user_services.verify(_lock.as_ref())?;
+    if let Some(settings) = &plan.user_settings {
+        settings.verify(_lock.as_ref())?;
+    }
     if let Review::Finished = plan.review(mode, runtime.confirm)? {
         if matches!(mode, Mode::Apply) {
             plan.inputs.verify()?;
@@ -526,6 +412,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
                 .context("home state may have been recorded; run plan/apply again")?;
             result?;
             plan.artifacts.verify()?;
+            plan.artifacts.record_current()?;
         }
         return Ok(ExitCode::SUCCESS);
     }
@@ -533,13 +420,25 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     plan.artifacts.verify()?;
     plan.user_services.verify(_lock.as_ref())?;
     let lock = _lock.as_ref().context("apply lock is unavailable")?;
-    if (plan.artifacts.has_changes() || plan.system.has_system_changes())
-        && plan
+    if plan.artifacts.has_changes() || plan.system.has_system_changes() {
+        let executables: Vec<_> = plan
             .artifacts
             .targets()
-            .any(|target| target == Path::new(".local/bin/localllm"))
-    {
-        verify_artifact_package_profile(&nix, &plan.system, plan.inputs.workspace.path(), lock)?;
+            .filter_map(|target| {
+                target
+                    .strip_prefix(".local/bin")
+                    .ok()
+                    .and_then(|path| path.to_str())
+                    .map(str::to_owned)
+            })
+            .collect();
+        verify_artifact_package_profile_for(
+            nix,
+            &plan.system,
+            plan.inputs.workspace.path(),
+            lock,
+            &executables,
+        )?;
         plan.inputs.verify()?;
         plan.artifacts.verify()?;
     }
@@ -548,57 +447,54 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         .verify()
         .context("artifacts may have been built and retained")?;
     result?;
-    let result = plan
-        .tools
-        .apply(_lock.as_ref().context("apply lock is unavailable")?);
+    plan.artifacts.prepare_home(lock)?;
+    plan.inputs.verify()?;
+    let result = plan.home.apply();
+    plan.inputs
+        .verify()
+        .context("home files may be partially changed; run plan/apply again")?;
+    result.context(
+        "home deployment failed; some home files may be partially changed. Run plan/apply again",
+    )?;
+    let result = plan.tools.apply(lock);
     plan.inputs
         .verify()
         .context("tools may be partially installed")?;
     result?;
+    let result = plan.artifacts.apply(lock);
+    plan.inputs
+        .verify()
+        .context("artifacts may be partially deployed")?;
+    result?;
+    if let Some(settings) = &mut plan.user_settings {
+        let result = settings.apply(lock);
+        plan.inputs
+            .verify()
+            .context("user settings may be partially changed")?;
+        result?;
+    }
+    let result = plan.user_services.apply(lock);
+    plan.inputs
+        .verify()
+        .context("user services may be partially changed")?;
+    result?;
     if !plan.system.has_system_changes() {
-        // The reviewed home plan owns its frozen source and success journal. A
-        // generation's CLI is neither needed nor allowed to re-plan this work.
-        plan.inputs.verify()?;
-        plan.artifacts.prepare_home(lock)?;
-        plan.inputs.verify()?;
-        let result = plan.home.apply();
-        plan.inputs
-            .verify()
-            .context("home files may be partially changed; run plan/apply again")?;
-        result.context("home deployment failed; some home files may be partially changed. Run plan/apply again")?;
-        plan.inputs.verify()?;
-        let result = plan.artifacts.apply(lock);
-        plan.inputs
-            .verify()
-            .context("artifacts may be partially deployed")?;
-        result?;
-        plan.inputs.verify()?;
-        let result = plan
-            .user_services
-            .apply(_lock.as_ref().context("apply lock is unavailable")?);
-        plan.inputs
-            .verify()
-            .context("user services may be partially changed")?;
-        result?;
         return Ok(ExitCode::SUCCESS);
     }
     let workspace = &plan.inputs.workspace;
-    let system = match system {
-        Some(system) => system,
-        None => {
-            let progress = Progress::start("Evaluating system");
-            let [system_drv, _] = match derivations {
-                Some(derivations) => derivations,
-                None => host_derivations(
-                    &nix,
-                    host.as_deref().context("system inputs are unavailable")?,
-                    show_trace,
-                )?,
-            };
-            drop(progress);
-            let _progress = Progress::start("Building system");
-            build(&nix, &system_drv, &workspace.path().join("system"))?
-        }
+    let progress = Progress::start("Evaluating system");
+    let [system_drv, _] = match derivations {
+        Some(derivations) => derivations,
+        None => host_derivations(
+            nix,
+            host.as_deref().context("system inputs are unavailable")?,
+            show_trace,
+        )?,
+    };
+    drop(progress);
+    let system = {
+        let _progress = Progress::start("Building system");
+        build(nix, &system_drv, &workspace.path().join("system"))?
     };
     plan.inputs.verify()?;
     let paths = workspace.path().join("copy.json");
@@ -607,7 +503,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let mut activation = Command::new(&backend);
     activation
         .arg("activate")
-        .arg(&nix)
+        .arg(nix)
         .arg(&user)
         .arg(&system)
         .arg(
@@ -620,12 +516,12 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         .arg(&runtime.executable)
         .arg(&plan.inputs.public.source)
         .arg(&paths)
-        .arg(&home);
+        .arg(&home)
+        .arg("--system-only");
     retain_apply_lock(
         &mut activation,
         _lock.as_ref().context("apply lock is unavailable")?,
     );
-    plan.artifacts.prepare_home(lock)?;
     plan.inputs.verify()?;
     let status = activation.status()?;
     if !status.success() {
@@ -638,36 +534,34 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         }
         bail!("activation/home deployment failed; the previous source record is retained. The system may be partially changed. Run: sudo darwin-rebuild switch --rollback. See docs/operations.md for profile and Homebrew recovery");
     }
-    // System activation deploys home prerequisites first. Validate the new
-    // generation, not the obsolete pre-activation pointer, around services.
-    {
-        let generation = activated_generation;
-        plan.inputs
-            .verify_activated(&root.join("flake.nix"), &generation)?;
-        let result = plan.artifacts.apply(lock);
-        plan.inputs
-            .verify_activated(&root.join("flake.nix"), &generation)
-            .context("artifacts may be partially deployed")?;
-        result?;
-        let result = plan
-            .user_services
-            .apply(_lock.as_ref().context("apply lock is unavailable")?);
-        plan.inputs
-            .verify_activated(&root.join("flake.nix"), &generation)
-            .context("user services may be partially changed")?;
-        result?;
-    }
+    plan.inputs
+        .verify_activated(&root.join("flake.nix"), &activated_generation)?;
     Ok(ExitCode::SUCCESS)
 }
 
+#[cfg(test)]
 fn verify_artifact_package_profile(
     nix: &Path,
     preview: &crate::inventory::Preview,
     workspace: &Path,
     lock: &File,
 ) -> Result<()> {
-    let (output, derivation) = preview.artifact_package_profile()
-        .context("Home Manager package profile metadata is missing; run a normal system transition before deploying localllm")?;
+    verify_artifact_package_profile_for(nix, preview, workspace, lock, &["localllm".into()])
+}
+
+fn verify_artifact_package_profile_for(
+    nix: &Path,
+    preview: &crate::inventory::Preview,
+    workspace: &Path,
+    lock: &File,
+    executables: &[String],
+) -> Result<()> {
+    if executables.is_empty() {
+        return Ok(());
+    }
+    let Some((output, derivation)) = preview.artifact_package_profile() else {
+        return Ok(());
+    };
     for path in [output, derivation] {
         if path.parent() != Some(Path::new("/nix/store")) || !path.is_absolute() {
             bail!("invalid Home Manager package profile store path");
@@ -678,6 +572,12 @@ fn verify_artifact_package_profile(
         .is_none_or(|extension| extension != "drv")
     {
         bail!("invalid Home Manager package profile derivation");
+    }
+    if output.exists() {
+        return inspect_artifact_package_profile_for(output, executables);
+    }
+    if nix.as_os_str().is_empty() {
+        bail!("active Home Manager profile disappeared; run plan/apply again");
     }
     let link = workspace.join("artifact-home-manager-profile");
     let mut command = nix_command(nix);
@@ -702,15 +602,45 @@ fn verify_artifact_package_profile(
     {
         bail!("Home Manager package profile differs from the reviewed output");
     }
-    inspect_artifact_package_profile(output)
+    inspect_artifact_package_profile_for(output, executables)
 }
 
+#[cfg(test)]
 fn inspect_artifact_package_profile(output: &Path) -> Result<()> {
-    match fs::symlink_metadata(output.join("bin/localllm")) {
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(error).context("cannot inspect Home Manager localllm export"),
-        Ok(_) => bail!("Home Manager package profile exports localllm and conflicts with the public artifact owner"),
+    inspect_artifact_package_profile_for(output, &["localllm".into()])
+}
+
+fn inspect_artifact_package_profile_for(output: &Path, executables: &[String]) -> Result<()> {
+    for name in executables {
+        match fs::symlink_metadata(output.join("bin").join(name)) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => (),
+            Err(error) => return Err(error).context("cannot inspect Home Manager executable export"),
+            Ok(_) => bail!("Home Manager package profile exports {name} and conflicts with the public artifact owner"),
+        }
     }
+    Ok(())
+}
+
+fn locked_reference(nix: &Path, source: &Path) -> Result<String> {
+    let hash = String::from_utf8(capture(
+        nix_command(nix).args(["hash", "path", "--sri"]).arg(source),
+        "cannot identify frozen Nix source",
+    )?)?;
+    let mut reference = url::Url::parse(&format!("path:{}", source.display()))?;
+    reference
+        .query_pairs_mut()
+        .append_pair("narHash", hash.trim());
+    Ok(reference.into())
+}
+
+fn store_source(nix: &Path, source: &Path) -> Result<PathBuf> {
+    let output = capture(
+        nix_command(nix)
+            .args(["store", "add-path", "--name", "source"])
+            .arg(source),
+        "cannot freeze Nix inputs",
+    )?;
+    Ok(PathBuf::from(String::from_utf8(output)?.trim()))
 }
 
 fn current_generation(path: &Path) -> Result<Option<PathBuf>> {
@@ -724,133 +654,38 @@ fn current_generation(path: &Path) -> Result<Option<PathBuf>> {
     }
 }
 
-pub struct InventoryInputs {
-    local: Option<Vec<u8>>,
-    nix: PathBuf,
-    private: Private,
-    public: Snapshot,
-    root: PathBuf,
-    workspace: tempfile::TempDir,
-}
-
-#[derive(Deserialize)]
-struct Inspection {
-    private: Private,
-    settings: Vec<Setting>,
-}
-
-pub fn load_settings(root: &Path) -> Result<(Vec<Setting>, InventoryInputs)> {
-    let nix = resolve_nix(root)?;
+pub fn rootless_settings_report(root: &Path, width: Option<usize>) -> Result<String> {
     let local_path = root.join("dotfiles.local.toml");
     let local = read_local(&local_path)?;
-    let workspace = tempfile::Builder::new()
-        .prefix("dotfiles-settings-")
-        .tempdir()?;
-    let frozen_local = freeze_local(workspace.path(), &local)?;
-    let public = Snapshot::capture(&nix, root, false)?;
-    let manifest = workspace.path().join("inputs.json");
-    fs::write(
-        &manifest,
-        serde_json::to_vec(&serde_json::json!({
-            "localFile": frozen_local,
-            "publicSource": public.source,
-        }))?,
-    )?;
-    let inspection: Inspection =
-        evaluate_configuration(&nix, &public.source, &manifest, "inspection", false)?;
-    public.verify()?;
-    verify_local(&local_path, &local)?;
-    Ok((
-        inspection.settings,
-        InventoryInputs {
-            local,
-            nix,
-            private: inspection.private,
-            public,
-            root: root.to_owned(),
-            workspace,
-        },
-    ))
-}
-
-impl InventoryInputs {
-    pub fn load<T: serde::de::DeserializeOwned>(self) -> Result<(T, PathBuf)> {
-        let Self {
-            local,
-            nix,
-            private,
-            public,
-            root,
-            workspace,
-        } = self;
-        let user = String::from_utf8(capture(
-            Command::new("/usr/bin/id").arg("-un"),
-            "cannot identify login user",
-        )?)?
-        .trim()
-        .to_owned();
-        let local_path = root.join("dotfiles.local.toml");
-        let frozen_local = local.as_ref().map(|_| PathBuf::from("dotfiles.local.toml"));
-        let manifest = workspace.path().join("inputs.json");
-        let mut inputs = Inputs {
-            directory: root.to_owned(),
-            local_file: frozen_local,
-            private_flake: None,
-            public_flake: public.reference.clone(),
-            public_revision: public.revision.clone(),
-            public_source: public.source.clone(),
-            resource_flake: public.reference.clone(),
-            system_inputs: None,
-            user,
-        };
-        let private = private
-            .path
-            .as_ref()
-            .map(|path| Snapshot::capture(&nix, &root.join(path), true))
-            .transpose()?;
-        inputs.private_flake = private.as_ref().map(|snapshot| snapshot.reference.clone());
-        fs::write(&manifest, serde_json::to_vec(&inputs)?)?;
-        fs::copy(
-            public.source.join("nix/host-flake.nix"),
-            workspace.path().join("flake.nix"),
-        )?;
-        let host = String::from_utf8(capture(
-            nix_command(&nix)
-                .args(["store", "add-path", "--name", "source"])
-                .arg(workspace.path()),
-            "cannot freeze inventory inputs",
-        )?)?;
-        let builds: Vec<serde_json::Value> = evaluate_json(
-            nix_command(&nix)
-                .args([
-                    "build",
-                    "--no-link",
-                    "--json",
-                    "--no-substitute",
-                    "--option",
-                    "builders",
-                    "",
-                    "--no-write-lock-file",
-                    "--no-update-lock-file",
-                ])
-                .arg(format!("{}#inventory", host.trim())),
-            "cannot evaluate managed resources",
-            false,
-        )?;
-        let path = builds
-            .first()
-            .and_then(|build| build["outputs"]["out"].as_str())
-            .context("Nix did not return the inventory data path")?;
-        let inventory =
-            serde_json::from_slice(&fs::read(path).context("cannot read inventory data")?)
-                .context("Nix returned invalid inventory data")?;
-        public.verify()?;
-        if let Some(private) = &private {
-            private.verify()?;
-        }
-        verify_local(&local_path, &local)?;
-        Ok((inventory, public.source))
+    let source = snapshot::Snapshot::capture(root, false)?;
+    let configuration = configuration::Configuration::load(&source.source, local.as_deref())?;
+    let private = configuration
+        .private
+        .path
+        .as_ref()
+        .map(|path| snapshot::Snapshot::capture(&root.join(path), true))
+        .transpose()?;
+    let settings: Vec<Setting> = serde_json::from_value(rootless_inventory::settings_json(
+        &fs::read(source.source.join("dotfiles.toml"))?,
+        local.as_deref(),
+        &configuration,
+    )?)?;
+    let generation = current_generation(Path::new("/run/current-system"))?;
+    let report =
+        rootless_inventory::report(&source.source, &configuration, generation.as_deref(), width)?;
+    source.verify()?;
+    if let Some(private) = private {
+        private.verify()?;
     }
+    verify_local(&local_path, &local)?;
+    if current_generation(Path::new("/run/current-system"))? != generation {
+        bail!("active generation changed while reading settings; run settings again");
+    }
+    Ok(format!(
+        "{}\n{}\n",
+        crate::settings::render(&settings, width),
+        report
+    ))
 }
 
 fn resolve_nix(root: &Path) -> Result<PathBuf> {
@@ -875,22 +710,6 @@ fn freeze_local(workspace: &Path, local: &Option<Vec<u8>>) -> Result<Option<Path
         .transpose()
 }
 
-fn evaluate_configuration<T: serde::de::DeserializeOwned>(
-    nix: &Path,
-    source: &Path,
-    manifest: &Path,
-    operation: &str,
-    show_trace: bool,
-) -> Result<T> {
-    let parsed: ConfigurationResult<T> = evaluate(nix, source, manifest, operation, show_trace)?;
-    if !parsed.errors.is_empty() {
-        bail!("{}", parsed.errors.join("\n"));
-    }
-    parsed
-        .config
-        .context("configuration was not returned by Nix")
-}
-
 #[cfg(test)]
 fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review> {
     review_plan_with(mode, &preview, None, None, || {
@@ -906,7 +725,7 @@ fn review_plan_with(
     user_services: Option<&user_services::Plan>,
     confirm: impl FnOnce() -> Result<()>,
 ) -> Result<Review> {
-    review_plan_with_artifacts(mode, preview, tools, user_services, None, confirm)
+    review_plan_with_artifacts(mode, preview, tools, user_services, None, None, confirm)
 }
 
 fn review_plan_with_artifacts(
@@ -915,12 +734,14 @@ fn review_plan_with_artifacts(
     tools: Option<&tools::Plan>,
     user_services: Option<&user_services::Plan>,
     artifacts: Option<&artifacts::Plan>,
+    user_settings: Option<&user_settings::Plan>,
     confirm: impl FnOnce() -> Result<()>,
 ) -> Result<Review> {
     if !preview.has_changes()
         && !tools.is_some_and(tools::Plan::has_changes)
         && !user_services.is_some_and(user_services::Plan::has_changes)
         && !artifacts.is_some_and(artifacts::Plan::has_changes)
+        && !user_settings.is_some_and(user_settings::Plan::has_changes)
     {
         return Ok(Review::Finished);
     }
@@ -929,6 +750,9 @@ fn review_plan_with_artifacts(
         tools.map(|tools| tools.render(width)).unwrap_or_default(),
         preview.render(width),
         artifacts.map(artifacts::Plan::render).unwrap_or_default(),
+        user_settings
+            .map(user_settings::Plan::render)
+            .unwrap_or_default(),
         user_services
             .map(user_services::Plan::render)
             .unwrap_or_default(),
@@ -1077,6 +901,7 @@ fn capture_with_diagnostics(
     Ok(output.stdout)
 }
 
+#[cfg(test)]
 fn git(root: &Path, args: &[&str]) -> Result<Vec<u8>> {
     capture(
         Command::new("git").arg("-C").arg(root).args(args),
@@ -1084,6 +909,7 @@ fn git(root: &Path, args: &[&str]) -> Result<Vec<u8>> {
     )
 }
 
+#[cfg(test)]
 fn fingerprint(root: &Path) -> Result<String> {
     let mut digest = Sha256::new();
     digest.update(git(root, &["rev-parse", "HEAD"])?);
@@ -1231,18 +1057,17 @@ mod tests {
     }
 
     #[test]
-    fn absent_home_manager_profile_metadata_fails_before_running_nix() {
+    fn absent_home_manager_profile_requires_no_nix_process() {
         let root = tempfile::tempdir().unwrap();
         let lock = acquire_lock(&root.path().join("lock")).unwrap();
         let preview = crate::inventory::Preview::copy_only();
-        let error = verify_artifact_package_profile(
+        verify_artifact_package_profile(
             Path::new("/must-not-run-nix"),
             &preview,
             root.path(),
             &lock,
         )
-        .unwrap_err();
-        assert!(error.to_string().contains("metadata is missing"));
+        .unwrap();
     }
 
     #[test]

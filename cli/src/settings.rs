@@ -20,13 +20,7 @@ pub struct Setting {
 }
 
 pub fn run(root: &Path) -> Result<ExitCode> {
-    let (settings, inventory) = system::load_settings(root)?;
-    let width = crate::terminal_width();
-    let report = format!(
-        "{}\n{}\n",
-        render(&settings, width),
-        crate::inventory::report(inventory, width)?
-    );
+    let report = system::rootless_settings_report(root, crate::terminal_width())?;
     let mut output = io::stdout().lock();
     output.write_all(report.as_bytes())?;
     output.flush()?;

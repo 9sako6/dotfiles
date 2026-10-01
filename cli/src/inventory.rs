@@ -20,6 +20,7 @@ pub struct Inventory {
     packages: Vec<Package>,
     system: Vec<Setting>,
     services: Vec<Service>,
+    #[serde(default)]
     tools: Vec<Tool>,
     #[serde(default, rename = "homeManagerTargets")]
     home_manager_targets: Vec<PathBuf>,
@@ -27,6 +28,7 @@ pub struct Inventory {
     home_manager_package_profile: Option<PathBuf>,
     #[serde(default, rename = "homeManagerPackageProfileDrv")]
     home_manager_package_profile_drv: Option<PathBuf>,
+    #[serde(default)]
     localllm: LocalLlm,
     #[serde(rename = "timeZone")]
     time_zone: String,
@@ -62,7 +64,7 @@ struct Tool {
     deploy: String,
 }
 
-#[derive(Clone, Deserialize, PartialEq)]
+#[derive(Clone, Default, Deserialize, PartialEq)]
 struct LocalLlm {
     enabled: bool,
     default_model: Option<String>,
@@ -73,12 +75,6 @@ struct Skill {
     name: String,
     origin: String,
     description: String,
-}
-
-pub fn report(inputs: crate::system::InventoryInputs, width: Option<usize>) -> Result<String> {
-    let (mut inventory, source): (Inventory, _) = inputs.load()?;
-    inventory.prepare(&source)?;
-    Ok(render::report(&inventory, width))
 }
 
 pub struct Preview {
@@ -138,6 +134,7 @@ impl Preview {
             .map(|(output, drv)| (output.as_path(), drv.as_path()))
     }
 
+    #[cfg(test)]
     pub fn load(current: Option<&Path>, desired: &Path) -> Result<Self> {
         let next = read_generation(desired)?.context("planned generation has no inventory")?;
         let mut preview = Self::from_inventory(current, next)?;
@@ -328,7 +325,11 @@ impl Inventory {
         self.tools
             .sort_by(|a, b| (&a.path, &a.deploy).cmp(&(&b.path, &b.deploy)));
         self.tools.dedup_by(|a, b| a == b);
-        self.skills = skills(source)?;
+        self.skills = if self.schema_version >= 4 {
+            Vec::new()
+        } else {
+            skills(source)?
+        };
         Ok(())
     }
 }
