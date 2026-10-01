@@ -13,6 +13,8 @@ struct Manifest {
     version: u32,
     home: PathBuf,
     copies: BTreeMap<String, String>,
+    #[serde(default)]
+    links: BTreeMap<String, PathBuf>,
 }
 
 pub(super) struct State {
@@ -48,6 +50,7 @@ impl State {
                 version: 1,
                 home: home.to_path_buf(),
                 copies: BTreeMap::new(),
+                links: BTreeMap::new(),
             },
             Err(error) => return Err(error).context("cannot inspect home copy state"),
         };
@@ -67,11 +70,44 @@ impl State {
                 );
             }
         }
+        let paths: Vec<_> = state.manifest.links.keys().cloned().collect();
+        super::validate_paths(&paths).context("invalid home link state paths")?;
+        for (relative, target) in &state.manifest.links {
+            state.validate_destination(&home.join(relative))?;
+            if !target.is_absolute() {
+                bail!("invalid home link state target: {}", state.path.display());
+            }
+        }
         Ok(state)
     }
 
     pub(super) fn copies(&self) -> &BTreeMap<String, String> {
         &self.manifest.copies
+    }
+
+    pub(super) fn links(&self) -> &BTreeMap<String, PathBuf> {
+        &self.manifest.links
+    }
+
+    pub(super) fn record_link(&mut self, relative: &Path, target: &Path) -> Result<()> {
+        let relative = relative.to_str().context("invalid home link state path")?;
+        if self
+            .manifest
+            .links
+            .get(relative)
+            .is_some_and(|previous| previous == target)
+        {
+            return Ok(());
+        }
+        self.manifest
+            .links
+            .insert(relative.to_owned(), target.to_owned());
+        self.save()
+    }
+
+    pub(super) fn forget_link(&mut self, relative: &str) -> Result<()> {
+        self.manifest.links.remove(relative);
+        self.save()
     }
 
     pub(super) fn validate_destination(&self, destination: &Path) -> Result<()> {

@@ -66,6 +66,7 @@ impl Fixture {
         ] {
             write(&root.join(name), "initial");
         }
+        write(&root.join("dotfiles.toml"), "copy = ['resource']\n");
         write(&root.join("home/.config/mise/config.toml"), "[tools]\n");
         write(&root.join("home/.config/mise/mise.lock"), "");
         write(&root.join("home/apm.yml"), "dependencies:\n  apm: []\n");
@@ -365,7 +366,8 @@ fn resource_apply_and_no_change_reapply_skip_system_evaluation() {
     assert!(activation.lines().any(|line| line == "--copy-only"));
     assert!(activation.contains(fixture.state.join("generation").to_str().unwrap()));
     fs::remove_file(fixture.state.join("activation")).unwrap();
-    home_copy::plan(
+    home_copy::plan_live(
+        &fixture.root,
         &fixture.root,
         &fixture.state.join("home"),
         &["resource".into()],
@@ -406,6 +408,70 @@ fn resource_apply_and_no_change_reapply_skip_system_evaluation() {
     assert_eq!(
         fs::read_to_string(fixture.state.join("home/resource")).unwrap(),
         "initial"
+    );
+}
+
+#[test]
+fn live_link_changes_use_the_rootless_path_without_system_builds() {
+    let fixture = Fixture::new();
+    home_copy::plan_live(
+        &fixture.root,
+        &fixture.root,
+        &fixture.state.join("home"),
+        &["resource".into()],
+    )
+    .unwrap()
+    .apply()
+    .unwrap();
+    write(&fixture.root.join("home/.config/new/config"), "live");
+    assert!(Command::new("git")
+        .args(["add", "home/.config/new/config"])
+        .current_dir(&fixture.root)
+        .status()
+        .unwrap()
+        .success());
+    let confirmed = Rc::new(Cell::new(0));
+    let count = confirmed.clone();
+    run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        fixture.runtime(move || {
+            count.set(count.get() + 1);
+            Ok(())
+        }),
+    )
+    .unwrap();
+    assert_eq!(confirmed.get(), 1);
+    let activation = fs::read_to_string(fixture.state.join("activation")).unwrap();
+    assert!(activation.lines().any(|line| line == "--copy-only"));
+    assert!(activation.contains(fixture.state.join("generation").to_str().unwrap()));
+    assert!(!fixture.state.join("installs").exists());
+    home_copy::plan_live(
+        &fixture.state.join("frozen"),
+        &fixture.root,
+        &fixture.state.join("home"),
+        &["resource".into()],
+    )
+    .unwrap()
+    .apply()
+    .unwrap();
+    fs::remove_file(fixture.state.join("activation")).unwrap();
+    write(
+        &fixture.root.join("home/.config/new/config"),
+        "immediate edit",
+    );
+    run_with(
+        Mode::Apply,
+        &fixture.root,
+        false,
+        fixture.runtime(|| panic!("live content needs no deployment")),
+    )
+    .unwrap();
+    assert!(!fixture.state.join("activation").exists());
+    assert_eq!(
+        fs::read_to_string(fixture.state.join("home/.config/new/config")).unwrap(),
+        "immediate edit"
     );
 }
 
@@ -519,7 +585,7 @@ esac
         );
         let configuration: Configuration =
             evaluate_configuration(&nix, &source, &manifest, "configuration", true).unwrap();
-        home_copy::plan(&source, &state.join("home"), &configuration.copy)
+        home_copy::plan_live(&source, &root, &state.join("home"), &configuration.copy)
             .unwrap()
             .apply()
             .unwrap();
@@ -691,7 +757,15 @@ fn tools_plan_and_apply_share_one_review_and_reapply_converges() {
     assert!(fixture.state.join("home/beta-installed").exists());
     assert!(fixture.state.join("activation").exists());
     fs::remove_file(fixture.state.join("activation")).unwrap();
-    write(&fixture.state.join("home/resource"), "initial");
+    home_copy::plan_live(
+        &fixture.root,
+        &fixture.root,
+        &fixture.state.join("home"),
+        &["resource".into()],
+    )
+    .unwrap()
+    .apply()
+    .unwrap();
     run_with(
         Mode::Apply,
         &fixture.root,
@@ -711,7 +785,16 @@ fn tools_plan_and_apply_share_one_review_and_reapply_converges() {
 fn partial_tools_failure_keeps_progress_and_stops_activation_until_retry() {
     let fixture = tools_fixture();
     let before = fingerprint(&fixture.root).unwrap();
-    write(&fixture.state.join("home/resource"), "initial");
+    home_copy::plan_live(
+        &fixture.root,
+        &fixture.root,
+        &fixture.state.join("home"),
+        &["resource".into()],
+    )
+    .unwrap()
+    .apply()
+    .unwrap();
+    fs::remove_file(fixture.state.join("home/.local/state/dotfiles/home.json")).unwrap();
     write(&fixture.state.join("partial-failure"), "");
     let error = run_with(
         Mode::Apply,

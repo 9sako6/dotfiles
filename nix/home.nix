@@ -2,45 +2,10 @@
 
 let
   ankiConnectAddon = "${toolset.ankiConnect}/share/anki/addons/anki-connect";
-  homeRoot = "${dotfilesDirectory}/home";
   toolset = import ./packages.nix { inherit inputs pkgs; };
-  outOfStore = relativePath:
-    config.lib.file.mkOutOfStoreSymlink "${homeRoot}/${relativePath}";
-  liveLink = relativePath: {
-    source = outOfStore relativePath;
-  };
   overlapsCopy = path: builtins.any (owned:
     path == owned || lib.hasPrefix (owned + "/") path || lib.hasPrefix (path + "/") owned
   ) configuration.copy;
-  collectLiveFiles = relativeRoot: sourceRoot:
-    let
-      entries = if builtins.any (owned: relativeRoot == owned || lib.hasPrefix (owned + "/") relativeRoot) configuration.copy
-        then { } else builtins.readDir sourceRoot;
-    in
-    builtins.foldl'
-      (files: name:
-        let
-          entryType = entries.${name};
-          relativePath = "${relativeRoot}/${name}";
-          sourcePath = sourceRoot + "/${name}";
-        in
-        files // (
-          if entryType == "directory" then
-            collectLiveFiles relativePath sourcePath
-          else
-            { ${relativePath} = liveLink relativePath; }
-        ))
-      { }
-      (builtins.attrNames entries);
-  liveFiles = builtins.foldl'
-    (files: relativeRoot:
-      files // collectLiveFiles relativeRoot (dotfilesSourceHome + "/${relativeRoot}"))
-    { }
-    [
-      ".config"
-      ".zsh.d"
-      "mybin"
-    ];
   inherit (import ./macos-settings.nix) nightShift;
 in
 {
@@ -66,13 +31,7 @@ in
     message = "home.file targets conflict with dotfiles copy paths";
   } ];
 
-  home.file = lib.filterAttrs (path: _: !(overlapsCopy path)) ({
-    ".gitconfig" = liveLink ".gitconfig";
-    ".gitignore_global" = liveLink ".gitignore_global";
-    ".zshenv" = liveLink ".zshenv";
-    ".zshrc" = liveLink ".zshrc";
+  home.file = lib.filterAttrs (path: _: !(overlapsCopy path)) {
     "Library/Application Support/Anki2/addons21/anki-connect".source = ankiConnectAddon;
-    "apm.lock.yaml" = liveLink "apm.lock.yaml";
-    "apm.yml" = liveLink "apm.yml";
-  } // liveFiles);
+  };
 }

@@ -17,7 +17,8 @@ impl SystemSource {
             .iter()
             .map(|path| Path::new("home").join(path))
             .collect();
-        excluded.extend(["home/.apm", "home/apm.lock.yaml", "home/apm.yml"].map(PathBuf::from));
+        excluded.push(PathBuf::from("home/.apm"));
+        excluded.extend(crate::home_copy::live_roots().map(|path| Path::new("home").join(path)));
         let mut entries = Vec::new();
         for name in [
             ".mise.toml",
@@ -161,6 +162,7 @@ mod tests {
         let copy = vec![".agents/skills".to_owned()];
         let original = SystemSource::inspect(root.path(), &copy).unwrap();
         for path in [
+            "home/.config/mise/config.toml",
             "home/.agents/skills/a/SKILL.md",
             "home/apm.yml",
             "home/apm.lock.yaml",
@@ -205,7 +207,6 @@ mod tests {
             "dotfiles.toml",
             "cli/src/main.rs",
             "nix/home.nix",
-            "home/.config/mise/config.toml",
         ] {
             write(root.path(), path, "updated");
             assert_ne!(
@@ -226,10 +227,10 @@ mod tests {
     #[test]
     fn file_names_types_executable_bits_and_link_targets_invalidate_the_system() {
         let root = tempfile::tempdir().unwrap();
-        write(root.path(), "home/mybin/tool", "tool");
+        write(root.path(), "nix/runtime/tool", "tool");
         let inspect = || SystemSource::inspect(root.path(), &[]).unwrap().fingerprint;
         let original = inspect();
-        let tool = root.path().join("home/mybin/tool");
+        let tool = root.path().join("nix/runtime/tool");
         fs::set_permissions(&tool, fs::Permissions::from_mode(0o755)).unwrap();
         assert_ne!(original, inspect());
         fs::set_permissions(&tool, fs::Permissions::from_mode(0o644)).unwrap();
@@ -244,6 +245,33 @@ mod tests {
         fs::remove_file(&tool).unwrap();
         symlink("second", &tool).unwrap();
         assert_ne!(first_link, inspect());
+    }
+
+    #[test]
+    fn live_content_modes_and_topology_do_not_change_system_inputs() {
+        let root = tempfile::tempdir().unwrap();
+        write(root.path(), "nix/home.nix", "system");
+        write(root.path(), "home/.zsh.d/init", "original");
+        write(root.path(), "home/non-live", "original");
+        let inspect = || SystemSource::inspect(root.path(), &[]).unwrap();
+        let original = inspect().fingerprint;
+        let path = root.path().join("home/.zsh.d/init");
+        fs::write(&path, "changed").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        assert_eq!(original, inspect().fingerprint);
+        fs::remove_file(&path).unwrap();
+        symlink("different-target", &path).unwrap();
+        assert_eq!(original, inspect().fingerprint);
+        fs::remove_file(&path).unwrap();
+        write(root.path(), "home/.zsh.d/init/nested", "new topology");
+        write(root.path(), "home/mybin/new-tool", "new root");
+        assert_eq!(original, inspect().fingerprint);
+        let projected = root.path().join("projected");
+        inspect().materialize(root.path(), &projected).unwrap();
+        assert!(!projected.join("home/.zsh.d").exists());
+        assert!(!projected.join("home/mybin").exists());
+        write(root.path(), "home/non-live", "changed");
+        assert_ne!(original, inspect().fingerprint);
     }
 
     #[test]

@@ -316,7 +316,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let previous_generation = &snapshot.previous_generation;
     let workspace = &snapshot.workspace;
     let tools = tools::Plan::capture(&public.source, &home, &runtime.mise)?;
-    let copy_plan = home_copy::plan(&public.source, &home, &configuration.copy)?;
+    let copy_plan = home_copy::plan_live(&public.source, root, &home, &configuration.copy)?;
     let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
     let identity = inputs::identity(&system_source, &inputs, local, &home)?;
     let copy_only = previous.is_some()
@@ -520,7 +520,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let status = activation.status()?;
     if !status.success() {
         if copy_only {
-            bail!("home copy failed; the source record is retained. Some home files may be partially changed. Run plan/apply again");
+            bail!("home deployment failed; the source record is retained. Some home files may be partially changed. Run plan/apply again");
         }
         if let Some(previous) = &plan.inputs.previous_generation {
             eprintln!("Restore the previous profile: sudo nix-env -p /nix/var/nix/profiles/system --set {}", previous.display());
@@ -529,7 +529,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
                 previous.display()
             );
         }
-        bail!("activation/copy failed; the previous source record is retained. The system may be partially changed. Run: sudo darwin-rebuild switch --rollback. See docs/operations.md for profile and Homebrew recovery");
+        bail!("activation/home deployment failed; the previous source record is retained. The system may be partially changed. Run: sudo darwin-rebuild switch --rollback. See docs/operations.md for profile and Homebrew recovery");
     }
     Ok(ExitCode::SUCCESS)
 }

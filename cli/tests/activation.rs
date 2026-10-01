@@ -570,3 +570,38 @@ fn copy_only_requires_the_existing_shared_lock_and_an_unchanged_source_record() 
         }
     }
 }
+
+#[test]
+fn home_manager_conflict_after_activation_keeps_the_previous_source_record() {
+    let mut fixture = Fixture::new();
+    fs::create_dir_all(fixture.path("source/home/.config/tool")).unwrap();
+    fs::write(fixture.path("source/home/.config/tool/config"), "public").unwrap();
+    symlink("/previous/flake.nix", fixture.path("etc/flake.nix")).unwrap();
+    let apply = fixture.start("/previous/flake.nix", "/checkout/flake.nix");
+    wait_for(|| fixture.path("entries").exists());
+    fs::create_dir_all(fixture.path("generation/home-files/.config/tool")).unwrap();
+    symlink(
+        "/private/config",
+        fixture.path("generation/home-files/.config/tool/config"),
+    )
+    .unwrap();
+    fs::create_dir_all(fixture.path("state/home-manager/gcroots")).unwrap();
+    symlink(
+        fixture.path("generation"),
+        fixture.path("state/home-manager/gcroots/current-home"),
+    )
+    .unwrap();
+    fixture.release();
+    assert!(!fixture.finish(apply).success());
+    assert!(fixture.errors(apply).contains("owned by Home Manager"));
+    assert_eq!(
+        fs::read_to_string(fixture.path("order")).unwrap(),
+        "profile\nactivation\n"
+    );
+    assert_eq!(
+        fs::read_link(fixture.path("etc/flake.nix")).unwrap(),
+        Path::new("/previous/flake.nix")
+    );
+    assert!(!fixture.path("home/.config/tool/config").is_symlink());
+    assert!(!fixture.path("state/dotfiles/home.json").exists());
+}

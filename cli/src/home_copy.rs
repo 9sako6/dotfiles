@@ -6,7 +6,10 @@ use std::path::{Component, Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use sha2::{Digest, Sha256};
 
+mod live;
 mod state;
+
+pub(crate) use live::{inventory_paths as live_paths, roots as live_roots};
 
 pub struct CopyChange {
     pub path: String,
@@ -18,6 +21,7 @@ pub struct CopyChange {
 pub struct CopyPlan {
     home: PathBuf,
     entries: Vec<CopyEntry>,
+    live: Option<live::Plan>,
 }
 
 #[derive(Debug, Clone)]
@@ -43,11 +47,24 @@ impl CopyPlan {
                 });
             }
         }
+        let retiring_links = self
+            .live
+            .as_ref()
+            .map(|live| live.removable_links(&self.home, state))
+            .transpose()?
+            .unwrap_or_default();
         for entry in &self.entries {
             state.validate_destination(&entry.destination)?;
-            validate_unowned_parents(&self.home, &entry.relative)?;
+            live::validate_parents(&self.home, &entry.relative, &retiring_links)?;
             let after = fingerprint(&entry.source, true)?.context("copy source disappeared")?;
-            let before = fingerprint(&entry.destination, false)?;
+            let before = if retiring_links
+                .iter()
+                .any(|path| entry.relative != *path && entry.relative.starts_with(path))
+            {
+                None
+            } else {
+                fingerprint(&entry.destination, false)?
+            };
             if before.as_ref() != Some(&after) {
                 changes.push(CopyChange {
                     path: entry.relative.display().to_string(),
@@ -55,6 +72,9 @@ impl CopyPlan {
                     after: Some(after),
                 });
             }
+        }
+        if let Some(live) = &self.live {
+            changes.extend(live.inspect(&self.home, state, self)?);
         }
         Ok(changes)
     }
@@ -93,6 +113,9 @@ impl CopyPlan {
         for entry in &self.entries {
             self.record_result(&mut state, entry)?;
         }
+        if let Some(live) = &self.live {
+            live.record_current(&self.home, &mut state)?;
+        }
         Ok(())
     }
 
@@ -116,11 +139,33 @@ impl CopyPlan {
             .into_iter()
             .map(|(relative, previous)| (relative.clone(), previous.clone()))
             .collect();
-        for (relative, previous) in retired {
-            if self.owned_fingerprint(&relative)?.as_ref() == Some(&previous) {
-                remove_entry(&self.home.join(&relative))?;
+        let pruning = self
+            .live
+            .as_ref()
+            .map(|live| live.prunable_directories(&self.home, &state, self))
+            .transpose()?
+            .unwrap_or_default();
+        for (relative, previous) in &retired {
+            if self.owned_fingerprint(relative)?.as_ref() == Some(previous) {
+                remove_entry(&self.home.join(relative))?;
             }
+        }
+        if let Some(live) = &self.live {
+            live.retire(&self.home, &state)?;
+        }
+        for relative in pruning {
+            validate_unowned_parents(&self.home, &relative)?;
+            match fs::remove_dir(self.home.join(relative)) {
+                Ok(()) => (),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+                Err(error) => return Err(error).context("cannot retire home directory"),
+            }
+        }
+        for (relative, _) in retired {
             state.forget(&relative)?;
+        }
+        if let Some(live) = &self.live {
+            live.forget_retired(&mut state)?;
         }
         for entry in &self.entries {
             validate_unowned_parents(&self.home, &entry.relative)?;
@@ -132,6 +177,9 @@ impl CopyPlan {
                 )
             })?;
             self.record_result(&mut state, entry)?;
+        }
+        if let Some(live) = &self.live {
+            live.apply(&self.home, &mut state)?;
         }
         Ok(())
     }
@@ -205,13 +253,27 @@ fn fingerprint(path: &Path, source: bool) -> Result<Option<String>> {
 }
 
 pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan> {
+    plan_with_live(repo_root, home, paths, None)
+}
+
+fn plan_with_live(
+    repo_root: &Path,
+    home: &Path,
+    paths: &[String],
+    live: Option<live::Plan>,
+) -> Result<CopyPlan> {
     validate_paths(paths)?;
+    let retiring_links = live
+        .as_ref()
+        .map(|live| live.removable_links(home, &state::State::load(home)?))
+        .transpose()?
+        .unwrap_or_default();
     let source_root = repo_root.join("home");
 
     let mut entries = Vec::with_capacity(paths.len());
     for relative in paths {
         let relative_path = PathBuf::from(&relative);
-        validate_unowned_parents(home, &relative_path)?;
+        live::validate_parents(home, &relative_path, &retiring_links)?;
         validate_unowned_parents(&source_root, &relative_path)?;
         let source = source_root.join(&relative_path);
         let metadata = fs::symlink_metadata(&source).with_context(|| {
@@ -242,7 +304,22 @@ pub fn plan(repo_root: &Path, home: &Path, paths: &[String]) -> Result<CopyPlan>
     Ok(CopyPlan {
         home: home.to_path_buf(),
         entries,
+        live,
     })
+}
+
+pub fn plan_live(
+    repo_root: &Path,
+    directory: &Path,
+    home: &Path,
+    paths: &[String],
+) -> Result<CopyPlan> {
+    plan_with_live(
+        repo_root,
+        home,
+        paths,
+        Some(live::Plan::new(repo_root, directory, paths)?),
+    )
 }
 
 fn validate_paths(paths: &[String]) -> Result<()> {

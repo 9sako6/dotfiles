@@ -12,6 +12,10 @@ let
       RunAtLoad = true;
     };
     homebrew.taps = [ "fixture/tap" ];
+    home-manager.users.fixture.home.file."fixture-owned" = {
+      target = "/Users/fixture/fixture-owned";
+      text = "fixture";
+    };
   };
   copyConfigured = self.lib.mkHost {
     configuration = composed.config.dotfiles.configuration // {
@@ -39,7 +43,9 @@ let
     configurationConflict = rejects { dotfiles.configuration = lib.mkForce { }; };
     copiedFilesExcluded = !(composed.config.home-manager.users.fixture.home.file ? ".gitconfig");
     additionalCopiedFileExcluded = !(copyConfigured.config.home-manager.users.fixture.home.file ? ".zshenv");
-    uncopiedFileLinked = composed.config.home-manager.users.fixture.home.file.".zshenv".enable;
+    publicLiveFileExcluded = !(composed.config.home-manager.users.fixture.home.file ? ".zshenv");
+    privateHomeTargetListed = builtins.elem "fixture-owned" (builtins.fromJSON composed.inventory.text).homeManagerTargets;
+    privateHomeFilePreserved = composed.config.home-manager.users.fixture.home.file."fixture-owned".enable;
     copyConflict = rejects { home-manager.users.fixture.home.file.".claude/skills/foreign".text = "fixture"; };
     copyTargetConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".gitconfig"; text = "fixture"; }; };
     copyParentConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".claude"; text = "fixture"; }; };

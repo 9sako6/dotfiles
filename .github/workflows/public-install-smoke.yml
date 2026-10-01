@@ -72,6 +72,15 @@ jobs:
               "git+file://$GITHUB_WORKSPACE#darwinConfigurations.current.config.home-manager.users.$primary_user.home.activationPackage"
           )"
           HOME_MANAGER_BACKUP_EXT=pre-home-manager "$activation_package/activate"
+          source="$(
+            DOTFILES_DIR="$GITHUB_WORKSPACE" "$nix_bin" eval --raw --impure \
+              --no-update-lock-file --no-write-lock-file \
+              --expr '(builtins.getFlake ("git+file://" + builtins.getEnv "DOTFILES_DIR")).outPath'
+          )"
+          "$nix_bin" eval --json --no-update-lock-file --no-write-lock-file \
+            .#darwinConfigurations.current.config.dotfiles.configuration.copy > "$RUNNER_TEMP/home-copy.json"
+          "$HOME/.local/bin/dotfiles" complete-apply --directory "$GITHUB_WORKSPACE" \
+            "$source" "$RUNNER_TEMP/home-copy.json" "$HOME"
           cd "$HOME"
           "$HOME/.local/bin/mise" bootstrap --yes --verbose
 

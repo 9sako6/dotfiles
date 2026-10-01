@@ -223,3 +223,72 @@ fn partial_failure_records_completed_resources_and_reapply_converges() {
     assert!(!fixture.path("home/first").exists());
     assert!(!fixture.path("home/second/resource").exists());
 }
+
+#[test]
+fn live_failure_keeps_completed_link_results_and_retry_converges() {
+    let fixture = Fixture::new();
+    fixture.write("source/home/.config/tool", "first");
+    fixture.write("source/home/.zsh.d/later", "second");
+    fs::create_dir(fixture.path("home/.zsh.d")).unwrap();
+    fs::set_permissions(
+        fixture.path("home/.zsh.d"),
+        fs::Permissions::from_mode(0o555),
+    )
+    .unwrap();
+    fixture.write("paths.json", "[]");
+    let apply = || {
+        cargo_bin_cmd!()
+            .args(["complete-apply", "--directory"])
+            .arg(fixture.path("checkout"))
+            .args([
+                fixture.path("source"),
+                fixture.path("paths.json"),
+                fixture.path("home"),
+            ])
+            .env("XDG_STATE_HOME", fixture.path("state"))
+            .assert()
+    };
+    let result = apply();
+    fs::set_permissions(
+        fixture.path("home/.zsh.d"),
+        fs::Permissions::from_mode(0o755),
+    )
+    .unwrap();
+    result.failure();
+    let recorded = fixture.recorded();
+    assert_eq!(
+        recorded["links"][".config/tool"],
+        fixture.path("checkout/home/.config/tool").to_str().unwrap()
+    );
+    assert!(recorded["links"].get(".zsh.d/later").is_none());
+    assert!(!fixture.path("home/.zsh.d/later").is_symlink());
+    apply().success();
+    assert_eq!(
+        fs::read_link(fixture.path("home/.zsh.d/later")).unwrap(),
+        fixture.path("checkout/home/.zsh.d/later")
+    );
+    apply().success();
+}
+
+#[test]
+fn v1_copy_ledger_without_links_remains_readable_during_live_migration() {
+    let fixture = Fixture::new();
+    fixture.write("source/home/managed", "frozen");
+    fixture.apply(&["managed"]).success();
+    let mut recorded = fixture.recorded();
+    recorded.as_object_mut().unwrap().remove("links");
+    fixture.write("state/dotfiles/home.json", &recorded.to_string());
+    cargo_bin_cmd!()
+        .args(["complete-apply", "--directory"])
+        .arg(fixture.path("checkout"))
+        .args([
+            fixture.path("source"),
+            fixture.path("paths.json"),
+            fixture.path("home"),
+        ])
+        .env("XDG_STATE_HOME", fixture.path("state"))
+        .assert()
+        .success();
+    assert_eq!(fixture.recorded()["copies"], recorded["copies"]);
+    assert!(fixture.recorded()["links"][".zshrc"].is_string());
+}

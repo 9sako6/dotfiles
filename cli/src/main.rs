@@ -37,6 +37,8 @@ enum Commands {
     CompleteApply {
         #[arg(long)]
         user: Option<String>,
+        #[arg(long)]
+        directory: Option<PathBuf>,
         source: PathBuf,
         paths: PathBuf,
         home: PathBuf,
@@ -101,6 +103,7 @@ fn run() -> Result<ExitCode> {
 
     if let Commands::CompleteApply {
         user,
+        directory,
         source,
         paths,
         home,
@@ -110,7 +113,11 @@ fn run() -> Result<ExitCode> {
             activation::become_user(&user)?;
         }
         let paths: Vec<String> = serde_json::from_slice(&std::fs::read(paths)?)?;
-        home_copy::plan(&source, &home, &paths)?.apply()?;
+        let plan = match directory {
+            Some(directory) => home_copy::plan_live(&source, &directory, &home, &paths)?,
+            None => home_copy::plan(&source, &home, &paths)?,
+        };
+        plan.apply()?;
         return Ok(ExitCode::SUCCESS);
     }
     if let Commands::ApplyBuilt(args) = command {

@@ -70,6 +70,11 @@ pub fn run(args: Args) -> Result<ExitCode> {
     commands.push({
         let mut command = Command::new(env::current_exe()?);
         command.args(["complete-apply", "--user", &args.user]);
+        command.arg("--directory").arg(
+            args.desired
+                .parent()
+                .context("source checkout has no parent")?,
+        );
         command.args([&args.source, &args.paths, &args.home]);
         command.env("HOME", &args.home);
         command.env("USER", &args.user).env("LOGNAME", &args.user);

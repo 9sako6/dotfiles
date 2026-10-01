@@ -164,12 +164,20 @@ pub(super) fn deployment(
     for copy in copies {
         add(
             format!("~/{}", copy.path),
-            copy.before
-                .as_ref()
-                .map(|hash| format!("sha256:{}", &hash[..12])),
-            copy.after
-                .as_ref()
-                .map(|hash| format!("sha256:{}", &hash[..12])),
+            copy.before.as_ref().map(|value| {
+                if value.starts_with("link -> ") {
+                    value.clone()
+                } else {
+                    format!("sha256:{}", &value[..12])
+                }
+            }),
+            copy.after.as_ref().map(|value| {
+                if value.starts_with("link -> ") {
+                    value.clone()
+                } else {
+                    format!("sha256:{}", &value[..12])
+                }
+            }),
         );
     }
     if rows.is_empty() {

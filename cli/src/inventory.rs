@@ -6,9 +6,9 @@ use diff::ResourceDiff;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -21,6 +21,8 @@ pub struct Inventory {
     system: Vec<Setting>,
     services: Vec<Service>,
     tools: Vec<Tool>,
+    #[serde(default, rename = "homeManagerTargets")]
+    home_manager_targets: Vec<PathBuf>,
     localllm: LocalLlm,
     #[serde(rename = "timeZone")]
     time_zone: String,
@@ -108,6 +110,7 @@ impl Preview {
     }
 
     pub fn from_inventory(current: Option<&Path>, mut next: Inventory) -> Result<Self> {
+        next.validate_live_ownership()?;
         next.prepare(&next.source.clone())?;
         let previous = current.map(read_generation).transpose()?.flatten();
         let notice = if current.is_some() && previous.is_none() {
@@ -224,6 +227,28 @@ fn read_generation(generation: &Path) -> Result<Option<Inventory>> {
 }
 
 impl Inventory {
+    fn validate_live_ownership(&self) -> Result<()> {
+        let live = crate::home_copy::live_paths(&self.source)?;
+        for target in &self.home_manager_targets {
+            let mut normalized = PathBuf::new();
+            for component in target.components() {
+                match component {
+                    Component::Normal(part) => normalized.push(part),
+                    Component::CurDir => (),
+                    Component::ParentDir if normalized.pop() => (),
+                    _ => bail!("desired Home Manager target is outside the home directory"),
+                }
+            }
+            if live
+                .iter()
+                .any(|path| path.starts_with(&normalized) || normalized.starts_with(path))
+            {
+                bail!("desired Home Manager targets conflict with public live home paths");
+            }
+        }
+        Ok(())
+    }
+
     fn prepare(&mut self, source: &Path) -> Result<()> {
         self.packages
             .sort_by_key(|p| (p.name.to_lowercase(), p.manager.clone(), p.declared.clone()));
@@ -232,7 +257,23 @@ impl Inventory {
         });
         self.system.sort_by(|a, b| a.key.cmp(&b.key));
         self.services.sort_by(|a, b| a.name.cmp(&b.name));
-        self.tools.sort_by(|a, b| a.path.cmp(&b.path));
+        self.tools.extend(
+            crate::home_copy::live_paths(source)?
+                .into_iter()
+                .filter_map(|path| {
+                    let path = path.to_string_lossy().into_owned();
+                    [".agents/", ".claude/", ".codex/", ".config/opencode/"]
+                        .iter()
+                        .any(|prefix| path.starts_with(prefix))
+                        .then_some(Tool {
+                            path,
+                            deploy: "symlink".into(),
+                        })
+                }),
+        );
+        self.tools
+            .sort_by(|a, b| (&a.path, &a.deploy).cmp(&(&b.path, &b.deploy)));
+        self.tools.dedup_by(|a, b| a == b);
         self.skills = skills(source)?;
         Ok(())
     }
@@ -320,6 +361,33 @@ mod tests {
             "localllm": {"enabled": false, "default_model": null}
         })).unwrap()).unwrap();
         generation
+    }
+
+    #[test]
+    fn desired_private_home_conflicts_are_rejected_before_preview() {
+        let root = tempfile::tempdir().unwrap();
+        let desired = generation(root.path(), "desired", "1.0.0", "Fixture");
+        let source = desired.join("source");
+        fs::write(source.join("dotfiles.toml"), "copy = []\n").unwrap();
+        fs::create_dir_all(source.join("home/.config/tool")).unwrap();
+        fs::write(source.join("home/.config/tool/config"), "live").unwrap();
+        for target in [
+            ".config/tool",
+            ".config/tool/config",
+            ".config/tool/config/child",
+            "./.config/tool/config",
+            "alias/../.config/tool/config",
+        ] {
+            let mut inventory = read_generation(&desired).unwrap().unwrap();
+            inventory.home_manager_targets = vec![target.into()];
+            let error = Preview::from_inventory(None, inventory).err().unwrap();
+            assert!(error
+                .to_string()
+                .contains("desired Home Manager targets conflict"));
+        }
+        let mut inventory = read_generation(&desired).unwrap().unwrap();
+        inventory.home_manager_targets = vec![".config/private".into()];
+        Preview::from_inventory(None, inventory).unwrap();
     }
 
     #[test]
