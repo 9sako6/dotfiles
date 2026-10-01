@@ -80,6 +80,7 @@ jobs:
             [[ -n $functions[_zsh_autosuggest_start] ]] || exit 1
             whence -w abbrev-alias | grep -q function || exit 1
             [[ "$(command -v fd)" == "$(mise which fd)" ]] || exit 1
+            [[ "$(command -v fzf)" == "$(mise which fzf)" ]] || exit 1
             print zinit-plugins-ok
           '
           "$HOME/.local/bin/mise" bootstrap repos status --missing
@@ -96,10 +97,11 @@ jobs:
       - name: Verify home-managed daily-use tools
         run: |
           export PATH="$HOME/.nix-profile/bin:$HOME/.local/bin:$PATH"
-          for tool in fzf ghq pnpm rg; do
+          for tool in ghq pnpm rg; do
             test "$(command -v "$tool")" = "$HOME/.nix-profile/bin/$tool"
           done
           test "$(mise exec -- sh -c 'command -v fd')" = "$(mise which fd)"
+          test "$(mise exec -- sh -c 'command -v fzf')" = "$(mise which fzf)"
           mise exec -- atuin --version
           bun --version
           cargo --version
@@ -109,7 +111,8 @@ jobs:
           touch "$search_fixture/mise-fd-fixture.txt"
           test "$(mise exec -- fd --type f --exact-depth 1 mise-fd-fixture "$search_fixture")" = "$search_fixture/mise-fd-fixture.txt"
           rm -r "$search_fixture"
-          fzf --version
+          mise exec -- fzf --version
+          test "$(printf 'alpha\nbeta\n' | mise exec -- fzf --filter '^beta$')" = beta
           mise exec -- gh --version
           ghq --version
           mise exec -- gitleaks version

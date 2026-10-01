@@ -74,17 +74,6 @@ let
   ffmpegPackage = pkgs.ffmpeg;
   expectedFfmpegVersion = "8.1.2";
 
-  fzfPackage = pkgs.fzf.overrideAttrs (final: previous: {
-    version = "0.74.4";
-    src = pkgs.fetchFromGitHub {
-      owner = "junegunn";
-      repo = "fzf";
-      tag = "v${final.version}";
-      hash = "sha256-QQ4hwbTeZ6MSojjCFn7dlISz1aGQbewGq4wnfs3/4K0=";
-    };
-  });
-  expectedFzfVersion = "0.74.4";
-
   ghqPackage = pkgs.ghq;
   expectedGhqVersion = "1.10.1";
 
@@ -171,8 +160,6 @@ assert pkgs.lib.assertMsg (codexPackage.version == expectedCodexVersion)
   "Codex version drifted: expected ${expectedCodexVersion}, got ${codexPackage.version}";
 assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
   "FFmpeg version drifted: expected ${expectedFfmpegVersion}, got ${ffmpegPackage.version}";
-assert pkgs.lib.assertMsg (fzfPackage.version == expectedFzfVersion)
-  "fzf version drifted: expected ${expectedFzfVersion}, got ${fzfPackage.version}";
 assert pkgs.lib.assertMsg (ghqPackage.version == expectedGhqVersion)
   "ghq version drifted: expected ${expectedGhqVersion}, got ${ghqPackage.version}";
 assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
@@ -214,8 +201,6 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
     codexPackage
 
     ffmpegPackage
-
-    fzfPackage
 
     ghqPackage
 
