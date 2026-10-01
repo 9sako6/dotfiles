@@ -28,6 +28,14 @@ if operation == "configuration" || operation == "settings" || operation == "insp
     }
     else parsed.config;
 }
+else if operation == "artifacts" then
+  let artifacts = public.lib.mkArtifacts { configuration = parsed.config; };
+  in {
+    inherit (artifacts) manifestData;
+    manifest = artifacts.manifest.drvPath;
+    output = artifacts.root.outPath;
+    root = artifacts.root.drvPath;
+  }
 else if operation == "outputs" then {
   brewfile = host.homebrewBrewfile.drvPath;
   copy = parsed.config.copy;

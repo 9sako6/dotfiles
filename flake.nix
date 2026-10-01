@@ -42,6 +42,9 @@
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
       toolset = import ./nix/packages.nix { inherit inputs pkgs; };
+      mkArtifacts = { configuration ? defaultConfiguration }: import ./nix/artifacts.nix {
+        inherit configuration pkgs toolset;
+      };
       ciToolsPackage = pkgs.buildEnv {
         name = "dotfiles-ci-tools";
         paths = toolset.ciPackages;
@@ -130,6 +133,7 @@
     in
     {
       packages.${system} = {
+        artifacts = (mkArtifacts { }).root;
         cachix = toolset.cachix;
         ciTools = ciToolsPackage;
         default = toolset.dotfiles;
@@ -145,6 +149,7 @@
       };
 
       checks.${system} = {
+        artifacts = import ./nix/tests/artifacts.nix { inherit self pkgs; };
         composition = import ./nix/tests/composition.nix { inherit self pkgs; inherit (nixpkgs) lib; };
         configuration = import ./nix/tests/configuration.nix { inherit (nixpkgs) lib; inherit pkgs; };
         modelFetch = let
@@ -173,7 +178,7 @@
       };
 
       lib = {
-        inherit mkHost;
+        inherit mkArtifacts mkHost;
       };
     };
 }

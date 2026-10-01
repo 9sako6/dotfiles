@@ -1,7 +1,7 @@
 { config, configuration, inputs, lib, options, pkgs, dotfilesDirectory, dotfilesSourceHome, ... }:
 
 let
-  ankiConnectAddon = "${toolset.ankiConnect}/share/anki/addons/anki-connect";
+  artifacts = import ./artifacts.nix { inherit configuration pkgs toolset; };
   toolset = import ./packages.nix { inherit inputs pkgs; };
   overlapsCopy = path: builtins.any (owned:
     path == owned || lib.hasPrefix (owned + "/") path || lib.hasPrefix (path + "/") owned
@@ -17,11 +17,11 @@ in
   '';
 
   home.stateVersion = "26.05";
-  home.packages = toolset.packages ++ [ toolset.dotfiles ] ++ lib.optional configuration.localllm.enabled (toolset.localllm configuration.localllm);
+  home.packages = toolset.packages ++ [ toolset.dotfiles ] ++ artifacts.homePackages;
 
   assertions = [ {
     assertion = !configuration.localllm.enabled || (
-      options.home.packages.highestPrio == 100 && builtins.elem (toolset.localllm configuration.localllm) config.home.packages
+      options.home.packages.highestPrio == 100 && builtins.elem artifacts.selected.localllm.package config.home.packages
     );
     message = "private home.packages definitions conflict with the public localllm owner";
   } {
@@ -31,7 +31,5 @@ in
     message = "home.file targets conflict with dotfiles copy paths";
   } ];
 
-  home.file = lib.filterAttrs (path: _: !(overlapsCopy path)) {
-    "Library/Application Support/Anki2/addons21/anki-connect".source = ankiConnectAddon;
-  };
+  home.file = lib.filterAttrs (path: _: !(overlapsCopy path)) artifacts.homeFiles;
 }

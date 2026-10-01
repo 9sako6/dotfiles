@@ -306,3 +306,15 @@ Linux の隔離した実行ファイル fixture で、追加、reload、削除�
 ```sh
 cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::user_services
 ```
+
+## Nix artifact constructor（#182 の準備）
+
+公開 flake の `lib.mkArtifacts { configuration = ...; }` は、既存の TOML 検証・マージ結果から AnkiConnect と有効時だけの localllm を選び、Darwin host や private module を評価せずに `root` と `manifest` を返す。`nix/host-input.nix` の `artifacts` operation は、既存の固定入力 manifest からこの constructor を呼ぶ。出力にはビルド前の予定 store path、derivation path、配備契約の `manifestData` を含む。モデルはマージ済み設定を使い、開発用 `.#localllm` の強制 9B 選択は使わない。`.#artifacts` は公開設定のみの確認用出力で、ローカル設定を自動探索しない。
+
+生成される JSON は既存 package object の store path と、AnkiConnect の相対ソース・home 配置先、localllm の起動ファイル・選択モデルを記録する。Nix の文字列 context を保持し、root には JSON と選択された package への symlink を置く。localllm のモデル、runtime、OpenCode、goal plugin は既存 launcher の推移的な参照で保持し、無効時には constructor の依存閉包へ入れない。普通の CLI と Anki GUI はこの root に束ねない。
+
+この段階では Home Manager が引き続き同じ配置を所有する。Rust CLI の artifact-only plan/apply、所有確認付き配備、永続 GC root の登録・切替は未実装で、#182 は未完了。通常の apply の activation を省略できるとは扱わない。後続実装では固定入力を一時 GC root で保持し、確認・ビルド・入力再検証の後に、選択 artifact の root を永続 GC root へ登録する。配備中は旧 root も保持し、配置・起動契約と所有記録の更新が成功するまで解放しない。store 内に root の出力があるだけでは GC root 登録にはならない。既存 Home Manager 配置からの引継ぎには、正確に同じ生成済み artifact ソースであることの確認が必要で、任意の private 配置は引き継がない。
+
+Anki GUI は `nix/packages.nix` の `anki-bin` 26.05 と Home Manager が引き続き所有する。AnkiConnect はその addon として別分類にする。GUI を mise へ移さず、Homebrew cask への二重登録や zap も行わない。GUI の将来の所有移行は別途検証する。
+
+`nix build --no-link --no-update-lock-file --no-write-lock-file .#checks.aarch64-darwin.artifacts` は小さな代替 package の root だけをビルドする。実際の両モデルは derivation の比較のみで、数 GB のモデルや MLX runtime はビルドしない。`python3 -m unittest discover -s nix/tests -p 'test_artifacts.py'` は固定入力入口、無効時の derivation graph、設定の拒否を評価のみで検証する。
