@@ -42,6 +42,7 @@ AGY_CLI_DISABLE_AUTO_UPDATE = "true"
 
 [settings]
 activate_aggressive = true
+auto_install = false
 disable_tools = ["awscli"]
 
 [settings.github]
