@@ -173,6 +173,19 @@ assert pkgs.lib.assertMsg (terminalBrowserPackage.version == expectedTerminalBro
 {
   ankiConnect = ankiConnectPackage;
   cachix = cachixPackage;
+  ciPackages = [
+    # Bun 1.3.13
+    bunPackage
+
+    # Git 2.55.0
+    gitPackage
+
+    # Rust 1.97.1
+    rustToolchain.rustc
+    rustToolchain.cargo
+    rustToolchain.rustfmt
+    rustToolchain.clippy
+  ];
   dotfiles = dotfilesPackage;
   localllmClient = import ./localllm/client.nix { inherit pkgs; };
   localllmGoalPlugin = import ./localllm/goal-plugin.nix { inherit pkgs; };

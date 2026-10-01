@@ -58,7 +58,7 @@ jobs:
 
       - name: Run repository tests with Nix-managed tools
         run: |
-          nix shell .#userTools --command /bin/bash -c '
+          nix shell .#ciTools --command /bin/bash -c '
             set -eu
             bun install --frozen-lockfile
             bun run tsc --noEmit

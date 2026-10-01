@@ -48,7 +48,7 @@ main() {
   cd "$DOTFILES_DIR"
   DOTFILES_DIR="$DOTFILES_DIR" "$NIX_BIN" \
     --extra-experimental-features "nix-command flakes" \
-    shell "path:$DOTFILES_DIR#userTools" --command \
+    shell "path:$DOTFILES_DIR#ciTools" --command \
     cargo run --locked --manifest-path "$DOTFILES_DIR/cli/Cargo.toml" -- apply
 
   "$MISE_BIN" trust

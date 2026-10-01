@@ -22,7 +22,7 @@ async function makeExecutable(filePath: string, content: string) {
 
 function nixApplyLog(dotfilesDir: string): string {
   return "nix <--extra-experimental-features> <nix-command flakes> <shell> " +
-    `<path:${dotfilesDir}#userTools> <--command> <cargo> <run> <--locked> <--manifest-path> ` +
+    `<path:${dotfilesDir}#ciTools> <--command> <cargo> <run> <--locked> <--manifest-path> ` +
     `<${dotfilesDir}/cli/Cargo.toml> <--> <apply>\n`;
 }
 

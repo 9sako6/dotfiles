@@ -10,7 +10,7 @@
 - `home.nix`: Home Manager で管理する home 配置と user toolset の適用
 - `homebrew-packages.nix`: Nix では合理的に管理しない Homebrew formula / cask
 - `homebrew-shellenv.zsh`: nix-homebrew が管理する Homebrew を zsh から使うための設定
-- `packages.nix`: ユーザーが常設する Nix package と期待バージョンの正本
+- `packages.nix`: ユーザー配備と CI/bootstrap が共有する Nix package と期待バージョンの正本
 - `system.nix`: macOS の既定値、サービス、Nix、Homebrew など system scope の設定
 
 公開 flake は repository root の `flake.nix` / `flake.lock` にある。共有設定ファイルの実体は `home/` に置く。
@@ -20,7 +20,7 @@
 
 普通のCLIやtoolchainは[パッケージと環境の原則](../docs/repo-map.md#パッケージと環境の原則)に従い、miseへ段階的に移行する。`packages.nix` はNix固有artifactと未移行のツールを管理する。現在はBun、Git、Go、Quint、Rust toolchainがここに残っている。
 
-`packages.nix` は Home Manager 専用 module ではなく、共有 toolset を返す。`home.nix` はその package list を `home.packages` に適用し、root flake は同じ list を `.#userTools` として公開する。CI もこの `.#userTools` を使うため、ユーザー環境と CI に別々のバージョン定義を持たない。
+`packages.nix` は Home Manager 専用 module ではなく、共有 toolset を返す。`home.nix` はユーザー向けの `packages` を `home.packages` に適用する。CI と初回 bootstrap が必要とする Bun・Rust・Git は `ciPackages` として分離し、root flake の `.#ciTools` から提供する。これにより、普通の CLI をユーザー配備から外しても CI と bootstrap のビルド経路を保つ。
 
 Nix package は `flake.lock` だけにバージョン管理を委ねず、期待バージョンを `packages.nix` に明示して assertion する。
 versioned attribute がある場合はそれを使い、コメントにも完全なバージョンを残す。

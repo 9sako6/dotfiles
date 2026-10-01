@@ -42,9 +42,9 @@
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
       toolset = import ./nix/packages.nix { inherit inputs pkgs; };
-      userToolsPackage = pkgs.buildEnv {
-        name = "dotfiles-user-tools";
-        paths = toolset.packages;
+      ciToolsPackage = pkgs.buildEnv {
+        name = "dotfiles-ci-tools";
+        paths = toolset.ciPackages;
       };
       primaryUser = let user = builtins.getEnv "DARWIN_PRIMARY_USER"; in if user == "" then "fixture" else user;
       defaultConfiguration = (import ./nix/configuration.nix {
@@ -131,6 +131,7 @@
     {
       packages.${system} = {
         cachix = toolset.cachix;
+        ciTools = ciToolsPackage;
         default = toolset.dotfiles;
         dotfiles = toolset.dotfiles;
         localllm = toolset.localllm (defaultConfiguration.localllm // {
@@ -141,7 +142,6 @@
         localllmClient = toolset.localllmClient;
         localllmGoalPlugin = toolset.localllmGoalPlugin;
         localllmRuntime = toolset.localllmRuntime;
-        userTools = userToolsPackage;
       };
 
       checks.${system} = {
