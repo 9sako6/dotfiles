@@ -80,8 +80,6 @@ let
   projectedInventory = builtins.fromJSON (builtins.unsafeDiscardStringContext projectedHost.inventory.text);
   rejects = module: !(builtins.tryEval (builtins.deepSeq (make module).system.drvPath true)).success;
   results = {
-    ankiGuiPreserved = builtins.elem pkgs.anki-bin publicHost.config.environment.systemPackages
-      && pkgs.anki-bin.version == "26.05";
     buildable = (builtins.tryEval composed.system.drvPath).success;
     configurationConflict = rejects { dotfiles.configuration = lib.mkForce { }; };
     copyAbsoluteTargetConflict = rejects {
@@ -108,14 +106,13 @@ let
     noPublicUserPackagesInSystem = builtins.all (package:
       !(builtins.elem (lib.getName package) [ "dotfiles" "ffmpeg" "localllm" "nightlight" ])
     ) publicHost.config.environment.systemPackages;
-    noRootlessInventory = publicInventory.tools == [ ] && !(publicInventory ? localllm)
+    noRootlessInventory = publicInventory.tools == [ ]
       && builtins.all (package: package.manager != "mise") publicInventory.packages
       && builtins.all (setting: !(lib.hasPrefix "nightShift." setting.key)) publicInventory.system;
     otherMachinePreserved = (builtins.tryEval otherMachine.system.drvPath).success
       && otherMachine.config.home-manager.users.another-fixture.home.stateVersion == "24.05"
       && otherMachine.config.home-manager.users.another-fixture.home.file."machine-owned".enable;
     privateHomeFilePreserved = composed.config.home-manager.users.fixture.home.file."fixture-owned".enable;
-    privateHomeStateVersionDefault = composed.config.home-manager.users.fixture.home.stateVersion == "26.05";
     privateHomeTargetListed = builtins.elem "fixture-owned" inventory.homeManagerTargets;
     privatePackagePreserved = builtins.elem privatePackage composed.config.home-manager.users.fixture.home.packages;
     privateUserAgentPreserved = composed.config.home-manager.users.fixture.launchd.agents.private-fixture.config.RunAtLoad

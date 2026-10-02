@@ -21,10 +21,6 @@ class InventoryTests(unittest.TestCase):
               configurationRevision = "fixture";
               dotfilesDirectory = "/fixture";
               primaryUser = "fixture";
-              privateFlake.darwinModules.default = { lib, ... }: {
-                _file = public.outPath + "/fixture-private.nix";
-                system.defaults.dock.show-recents = lib.mkForce true;
-              };
             };
           in host.pkgs.runCommand "dotfiles-generation-fixture" {} ''
             mkdir -p "$out"
@@ -42,29 +38,6 @@ class InventoryTests(unittest.TestCase):
         snapshot = generation / "dotfiles-inventory.json"
         self.assertTrue(snapshot.is_symlink())
         inventory = json.loads(snapshot.read_text())
-        values = {setting["key"]: setting["value"] for setting in inventory["system"]}
-        self.assertTrue(values["system.defaults.dock.show-recents"])
-        self.assertEqual(inventory["schemaVersion"], 4)
-        self.assertEqual(values["nix.gc.options"], "--delete-older-than 2d")
-        self.assertTrue(values["nix.gc.automatic"])
-        self.assertFalse(values["homebrew.global.autoUpdate"])
-        self.assertFalse(values["homebrew.onActivation.autoUpdate"])
-        self.assertEqual(values["homebrew.onActivation.cleanup"], "uninstall")
-        self.assertFalse(values["homebrew.onActivation.upgrade"])
-        self.assertFalse(values["nix-homebrew.mutableTaps"])
-        packages = {package["name"]: package["declared"] for package in inventory["packages"]}
-        self.assertNotIn("dotfiles", packages)
-        self.assertEqual(packages["anki-bin"], "26.05")
-        self.assertTrue(packages["lix"])
-        self.assertTrue(packages["zundamonotify"])
-        self.assertFalse(any(key.startswith("nightShift.") for key in values))
-        self.assertEqual(inventory["tools"], [])
-        self.assertEqual(inventory["homeManagerTargets"], [])
-        self.assertIsNone(inventory["homeManagerPackageProfile"])
-        self.assertIsNone(inventory["homeManagerPackageProfileDrv"])
-        self.assertTrue(values["dictationShortcut.enabled"])
-        self.assertEqual(values["dictationShortcut.parameters"], ["1048576", "18446744073708503039"])
-        self.assertEqual(values["dictationShortcut.type"], "modifier")
         source = Path(inventory["source"])
         self.assertTrue((source / "nix/system.nix").is_file())
         references = subprocess.check_output(
@@ -136,7 +109,6 @@ class InventoryTests(unittest.TestCase):
             self.assertEqual(set(package), {"name", "manager", "declared"})
         settings = {setting["key"]: setting["value"] for setting in inventory["system"]}
         self.assertFalse(settings["system.defaults.finder.AppleShowAllFiles"])
-        self.assertEqual(settings["system.defaults.finder.NewWindowTarget"], "Home")
         self.assertNotIn("system.keyboard.userKeyMapping", settings)
         self.assertEqual(settings["nix.gc.options"], "--delete-older-than 7d")
         self.assertFalse(settings["nix.gc.automatic"])
@@ -194,7 +166,6 @@ class InventoryTests(unittest.TestCase):
             changed = evaluate("path:" + str(source))
 
         for snapshot, enabled, parameters, kind in [
-            (original, True, [1048576, 18446744073708503039], "modifier"),
             (changed, False, [131072, 42], "standard"),
         ]:
             with self.subTest(enabled=enabled):

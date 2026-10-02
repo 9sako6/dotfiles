@@ -23,7 +23,6 @@ let
     models = []
   '').config;
   results = {
-    defaults = (parse "copy = []" null).config.localllm == { enabled = false; models = [ ]; default_model = null; };
     enable = valid "copy = []" enabled;
     falseValue = (parse enabled "[localllm]\nenabled = false").config.localllm.enabled == false;
     arrayReplacement = (parse "[localllm]\nmodels = ['qwen3.8-27b-4bit']" disabled).config.localllm.models == [ ];

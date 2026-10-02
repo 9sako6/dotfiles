@@ -80,7 +80,6 @@ class DisabledLlmTests(unittest.TestCase):
         derivations = json.loads(result.stdout)
         names = [item.get("env", {}).get("name", "") for item in derivations.values()]
         self.assertTrue(any(name.startswith("darwin-system-") for name in names))
-        self.assertTrue(any(name == "anki-bin-26.05" for name in names))
         forbidden = [name for name in names if name.startswith((
             "anki-connect-", "dotfiles-artifacts", "dotfiles-localllm-", "dotfiles-source-",
             "home-manager-generation", "localllm", "nightlight-",

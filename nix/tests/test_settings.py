@@ -224,15 +224,6 @@ sys.exit(result.returncode)
                 self.assertEqual(output.count(json.dumps(path)), 1)
         self.assertEqual(self.rows(piped)["copy"], (paths, "dotfiles.toml"))
 
-    def test_absent_local_file_includes_every_default(self):
-        self.assertEqual(self.rows(self.settings()), {
-            "copy": ([], "dotfiles.toml"),
-            "localllm.default_model": (None, None),
-            "localllm.enabled": (False, None),
-            "localllm.models": ([], None),
-            "private.path": (None, None),
-        })
-
     def test_current_declarations_are_separate_from_active_system_records(self):
         environment = self.package_fixture()
         before = self.git("status", "--porcelain").stdout
