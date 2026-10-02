@@ -79,7 +79,7 @@ FFmpegはconda-forgeのDarwin arm64配布をmise 2026.7.7で導入する。`home
 
 旧Nix版にあったSRT/RISTと外部Theora/Speex/Xvidエンコーダは、未使用の追加機能として今回の移行で省く。これらを指定するライブ転送や書き出しは対応範囲に含めない。内蔵デコーダの有無と外部エンコーダの有無は別であり、全形式の互換性を保証するものではない。
 
-`tests/test_ffmpeg.py` は合成入力でH.264/AAC変換、ffprobe、全フレームのデコード、WAV/MP3音声抽出、PNG画像抽出、stream copyによるremuxを検証する。macOS CIでは同じ試験を固定nixpkgsの旧配布とmise配布へそれぞれ実行する。ffplayは起動可能な版の確認だけを行い、GUI再生やハードウェアアクセラレーションは試験しない。
+`tests/test_ffmpeg.py` は合成入力でH.264/AAC変換、ffprobe、全フレームのデコード、WAV/MP3音声抽出、PNG画像抽出、stream copyによるremuxを検証する。macOS CIではmise配布に対して実行し、固定した8.1.2の挙動と必要な変換が満たされることを確認する。ffplayは起動可能な版の確認だけを行い、GUI再生やハードウェアアクセラレーションは試験しない。
 
 ```sh
 DOTFILES_TEST_FFMPEG="$(mise which ffmpeg)" \

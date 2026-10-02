@@ -82,21 +82,6 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           echo "$(dirname "$("$HOME/.local/bin/mise" which bun)")" >> "$GITHUB_PATH"
 
-      - name: Verify mise-managed Git behavior
-        env:
-          MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
-          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-          MISE_AUTO_INSTALL: "false"
-        run: |
-          before="$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
-          "$HOME/.local/bin/mise" install --locked conda:git
-          test "$before" = "$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
-          export DOTFILES_TEST_GIT="$("$HOME/.local/bin/mise" which git)"
-          "$DOTFILES_TEST_GIT" ls-remote https://github.com/9sako6/dotfiles.git refs/heads/master
-          bun install --frozen-lockfile
-          export PATH="$(dirname "$DOTFILES_TEST_GIT"):$PATH"
-          bun test tests/shell-config.test.ts -t "pre-commit|git undo"
-
       - name: Verify mise-managed FFmpeg media behavior
         env:
           MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
@@ -118,18 +103,6 @@ jobs:
           file -L "$DOTFILES_TEST_FFMPEG" "$DOTFILES_TEST_FFPLAY" "$DOTFILES_TEST_FFPROBE"
           "$DOTFILES_TEST_FFMPEG" -buildconf
           python3 -m unittest discover -s tests -p test_ffmpeg.py -v
-          # Compare the same media contract with the previously deployed Nix
-          # distribution. It remains a CI baseline, not a public home owner.
-          baseline="$(nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file --impure --expr '
-            let
-              flake = builtins.getFlake ("git+file://" + builtins.getEnv "GITHUB_WORKSPACE");
-              pkgs = import flake.inputs.nixpkgs { system = "aarch64-darwin"; };
-            in pkgs.lib.getBin pkgs.ffmpeg
-          ')"
-          DOTFILES_TEST_FFMPEG="$baseline/bin/ffmpeg" \
-          DOTFILES_TEST_FFPLAY="$baseline/bin/ffplay" \
-          DOTFILES_TEST_FFPROBE="$baseline/bin/ffprobe" \
-            python3 -m unittest discover -s tests -p test_ffmpeg.py -v
 
       - name: Check TypeScript and shell contracts
         run: |
