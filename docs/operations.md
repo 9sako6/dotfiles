@@ -231,6 +231,7 @@ bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
 cargo fmt --check --manifest-path cli/Cargo.toml
 cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
 cargo test --locked --manifest-path cli/Cargo.toml
+cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles inventory::tests::nix_legacy_ -- --ignored
 cargo test --locked --manifest-path cli/Cargo.toml --test zinit -- --ignored
 cargo test --locked --manifest-path cli/Cargo.toml --test activation -- --ignored
 cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::fast_path_tests::nix_generation_contains_the_inputs_used_by_the_copy_fast_path -- --ignored --exact

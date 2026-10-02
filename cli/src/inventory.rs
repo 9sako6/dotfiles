@@ -389,6 +389,107 @@ fn skills(source: &Path) -> Result<Vec<Skill>> {
 mod tests {
     use super::*;
     use std::os::unix::fs::symlink;
+    use std::process::Command;
+    use std::time::Duration;
+
+    fn evaluate_nix_inventory(expression: &str, variables: &[(&str, &Path)]) -> Value {
+        let repository = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut command = Command::new("nix");
+        command
+            .args([
+                "--extra-experimental-features",
+                "nix-command flakes",
+                "eval",
+                "--json",
+                "--impure",
+                "--no-write-lock-file",
+                "--no-update-lock-file",
+                "--expr",
+                expression,
+            ])
+            .current_dir(repository);
+        for (name, value) in variables {
+            command.env(name, value);
+        }
+        let output = assert_cmd::Command::from_std(command)
+            .timeout(Duration::from_secs(30))
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "Nix inventory evaluation failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        serde_json::from_slice(&output.stdout).unwrap()
+    }
+
+    #[test]
+    #[ignore = "requires Nix; run explicitly on the macOS CI runner"]
+    fn nix_legacy_source_keeps_skill_declarations_reachable() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("resources");
+        fs::create_dir_all(source.join("home/.agents/skills/example")).unwrap();
+        fs::write(
+            source.join("home/apm.yml"),
+            "dependencies:\n  apm: [./skills/example]\n",
+        )
+        .unwrap();
+        fs::write(
+            source.join("home/.agents/skills/example/SKILL.md"),
+            "---\ndescription: A frozen skill.\n---\n",
+        )
+        .unwrap();
+        let snapshot = evaluate_nix_inventory(
+            r#"(import ./nix/inventory.nix {
+              configuration = null;
+              host = null;
+              inputs = null;
+              publicSource = "/fixture/system";
+              resourceSource = builtins.toPath (builtins.getEnv "INVENTORY_RESOURCE_SOURCE");
+            }).source"#,
+            &[("INVENTORY_RESOURCE_SOURCE", &source)],
+        );
+        let retained: PathBuf = serde_json::from_value(snapshot).unwrap();
+        assert_eq!(retained, source);
+        let declarations = skills(&retained).unwrap();
+        assert_eq!(declarations.len(), 1);
+        assert_eq!(declarations[0].name, "example");
+        assert_eq!(declarations[0].description, "A frozen skill.");
+    }
+
+    #[test]
+    #[ignore = "requires Nix; run explicitly on the macOS CI runner"]
+    fn nix_legacy_llm_metadata_is_disabled_independently_of_artifact_selection() {
+        #[derive(Deserialize)]
+        struct LegacyInventory {
+            localllm: LocalLlm,
+        }
+
+        let snapshots = evaluate_nix_inventory(
+            r#"let
+              inventory = configuration: import ./nix/inventory.nix {
+                inherit configuration;
+                host = null;
+                inputs = null;
+                publicSource = null;
+              };
+            in map (configuration: { inherit (inventory configuration) localllm; }) [
+              { localllm = { enabled = false; models = []; default_model = null; }; }
+              { localllm = {
+                enabled = true;
+                models = ["qwen3.8-9b-distill-4bit"];
+                default_model = "qwen3.8-9b-distill-4bit";
+              }; }
+            ]"#,
+            &[],
+        );
+        let inventories: Vec<LegacyInventory> = serde_json::from_value(snapshots).unwrap();
+        assert_eq!(inventories.len(), 2);
+        for inventory in inventories {
+            assert!(!inventory.localllm.enabled);
+            assert!(inventory.localllm.default_model.is_none());
+        }
+    }
 
     fn preview(current: Option<&Path>, desired: &Path) -> Result<String> {
         Ok(Preview::load(current, desired)?.render(None))

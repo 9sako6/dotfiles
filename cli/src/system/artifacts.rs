@@ -1275,7 +1275,7 @@ mod tests {
         });
         fs::write(
             &f.plan.nix,
-            format!("#!/bin/sh\nprintf '%s\\n' '{}'\n", value),
+            format!("#!/bin/sh\nprintf '%s\\n' '{value}'\n"),
         )
         .unwrap();
         let plan = Plan::capture(
