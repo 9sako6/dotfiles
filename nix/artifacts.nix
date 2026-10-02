@@ -10,24 +10,6 @@ let
       relativePath = "share/anki/addons/anki-connect";
       homeTarget = "Library/Application Support/Anki2/addons21/anki-connect";
     };
-    ffmpeg = {
-      kind = "executable";
-      package = lib.getBin toolset.ffmpeg;
-      relativePath = "bin/ffmpeg";
-      homeTarget = ".local/bin/ffmpeg";
-    };
-    ffplay = {
-      kind = "executable";
-      package = lib.getBin toolset.ffmpeg;
-      relativePath = "bin/ffplay";
-      homeTarget = ".local/bin/ffplay";
-    };
-    ffprobe = {
-      kind = "executable";
-      package = lib.getBin toolset.ffmpeg;
-      relativePath = "bin/ffprobe";
-      homeTarget = ".local/bin/ffprobe";
-    };
     nightlight = {
       kind = "executable";
       package = lib.getBin toolset.nightlight;

@@ -92,6 +92,40 @@ jobs:
             bun test tests/shell-config.test.ts -t "pre-commit|git undo"
           '
 
+      - name: Verify mise-managed FFmpeg media behavior
+        env:
+          MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_AUTO_INSTALL: "false"
+        run: |
+          test "$(uname -s)" = Darwin
+          test "$(uname -m)" = arm64
+          before="$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
+          "$HOME/.local/bin/mise" install --force --locked conda:ffmpeg
+          test "$before" = "$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
+          DOTFILES_TEST_FFMPEG="$("$HOME/.local/bin/mise" which ffmpeg)"
+          DOTFILES_TEST_FFPLAY="$("$HOME/.local/bin/mise" which ffplay)"
+          DOTFILES_TEST_FFPROBE="$("$HOME/.local/bin/mise" which ffprobe)"
+          export DOTFILES_TEST_FFMPEG DOTFILES_TEST_FFPLAY DOTFILES_TEST_FFPROBE
+          test -x "$DOTFILES_TEST_FFMPEG"
+          test -x "$DOTFILES_TEST_FFPLAY"
+          test -x "$DOTFILES_TEST_FFPROBE"
+          file -L "$DOTFILES_TEST_FFMPEG" "$DOTFILES_TEST_FFPLAY" "$DOTFILES_TEST_FFPROBE"
+          "$DOTFILES_TEST_FFMPEG" -buildconf
+          python3 -m unittest discover -s tests -p test_ffmpeg.py -v
+          # Compare the same media contract with the previously deployed Nix
+          # distribution. It remains a CI baseline, not a public home owner.
+          baseline="$(nix build --no-link --print-out-paths --no-update-lock-file --no-write-lock-file --impure --expr '
+            let
+              flake = builtins.getFlake ("git+file://" + builtins.getEnv "GITHUB_WORKSPACE");
+              pkgs = import flake.inputs.nixpkgs { system = "aarch64-darwin"; };
+            in pkgs.lib.getBin pkgs.ffmpeg
+          ')"
+          DOTFILES_TEST_FFMPEG="$baseline/bin/ffmpeg" \
+          DOTFILES_TEST_FFPLAY="$baseline/bin/ffplay" \
+          DOTFILES_TEST_FFPROBE="$baseline/bin/ffprobe" \
+            python3 -m unittest discover -s tests -p test_ffmpeg.py -v
+
       - name: Check TypeScript and shell contracts
         run: |
           nix shell .#ciTools --command /bin/bash -c '

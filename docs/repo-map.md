@@ -5,7 +5,7 @@
 ファイルは次の 6 区分で管理する。共有可能な設定と非公開にすべき情報を同一リポジトリに混在させず、かつ単一の構成ルートから安全に組み立てるための境界である。
 
 - `repo runtime` — この repo 自身を動かすために必要なファイル。home directory には配備しない。
-- `home-managed user tools` — 普通のCLIは `home/.config/mise/config.toml` に宣言し、miseで固定する。FFmpeg、Nightlight、AnkiConnect、localllmはNix固有artifactとしてRustがrootlessに配備する。共有設定ファイルの実体は `home/` に置き、public live symlink と copy は Rust CLI が配備する。devcontainerから実ファイルとして見える必要があるものだけ `dotfiles.toml` の `copy` で配備する。
+- `home-managed user tools` — 普通のCLIは `home/.config/mise/config.toml` に宣言し、miseで固定する。Nightlight、AnkiConnect、localllmはNix固有artifactとしてRustがrootlessに配備する。共有設定ファイルの実体は `home/` に置き、public live symlink と copy は Rust CLI が配備する。devcontainerから実ファイルとして見える必要があるものだけ `dotfiles.toml` の `copy` で配備する。
 - `system configuration` — 公開ルートの `flake.nix` / `flake.lock` と `nix/system.nix` に Mac 全体の設定を置く。nix-darwin で反映し、Homebrew 本体と cask もここで管理する。公開 `flake.nix` が唯一の構成ルートである。
 - `private system configuration` — 公開できない追加設定。private側は独立したGit checkout / flakeを維持し、ローカル設定 `dotfiles.local.toml` の `private.path` 経由で公開 root flake の評価時に結合する。
 - `local-only` — マシン固有の設定。repo にコミットせず、Git 管理外の `dotfiles.local.toml` や各マシンのローカルファイルに置く。機密情報は含めず、必要に応じて個別にバックアップする。
@@ -85,7 +85,7 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 ### パッケージと環境の原則
 
 - 普通のCLIやツールチェーンは、バージョンを固定して `home/.config/mise/config.toml` の `[tools]` で管理する。移行時はmise backendの公式配布元と実行動作を確認し、同じツールのNix宣言を除く。GUI、system service、platform依存、Nix固有artifactは別の管理境界として扱う。
-- FFmpegは候補backendで既存codec/protocolの機能差があったため、固定済みNix artifactとして残す。NightlightはmacOS専用helper、AnkiConnectとlocalllmはNix固有artifactとして扱う。Anki GUI 26.05はsystem側のNix packageで維持する。CIやbootstrapが使うNix toolsetの依存も、各ツールを移行する前に確認する。private moduleの既存interfaceとHome Managerの利用方式は維持する。
+- FFmpegはmiseの `conda:ffmpeg` で固定する。旧Nix版との差分と検証範囲は[運用ガイド](operations.md#ffmpegの配布と検証)に記録する。NightlightはmacOS専用helper、AnkiConnectとlocalllmはNix固有artifactとして扱う。Anki GUI 26.05はsystem側のNix packageで維持する。CIやbootstrapが使うNix toolsetの依存も、各ツールを移行する前に確認する。private moduleの既存interfaceとHome Managerの利用方式は維持する。
 - 編集内容を即座に反映させたい通常の設定ファイルは、稼働中のリポジトリへの直接のシンボリックリンクとする。
 - devcontainer から参照するエージェント用設定は、Nix ストアやホスト固有の絶対パスシンボリックリンクにしてはならない。`dotfiles.toml` の `copy` に列挙したファイルまたはディレクトリのみを、実ファイルとして `$HOME` 配下に配備する。列挙されたディレクトリ配下は dotfiles が所有し、同期時にはコピー元に存在しない子要素を削除するが、親ディレクトリや同階層にある他のランタイムファイルには影響を与えない。
 - `copy`宣言されたパスと一致または親子関係にある公開構成のHome Managerリンクのみを自動除外する。その他の有効な`home.file.target`が`copy`対象と重複した場合は、別名キー経由の`target`指定も含めてNix評価時に拒否する。
@@ -139,7 +139,7 @@ private agent、system daemon、現在の Nix-backed zundamonotify は対象外�
 
 ### Nix artifact の所有と GC root
 
-`nix/artifacts.nix` をAnkiConnect、FFmpeg、Nightlight、有効時のlocalllmの選択元とし、固定・検証済み設定から manifest と package 参照を生成する。通常の CLI、GUI、private module はこの backend に取り込まない。Rust CLI は同じ公開 snapshot の artifact Plan を確認後に realization し、永続 Nix root を登録してから link を配備する。配備先は AnkiConnect の従来 target と `~/.local/bin/localllm`。public Home Manager userは定義しない。private frameworkを残し、Night ShiftはRust、Anki GUIはsystem側Nixが所有する。
+`nix/artifacts.nix` をAnkiConnect、Nightlight、有効時のlocalllmの選択元とし、固定・検証済み設定から manifest と package 参照を生成する。通常の CLI、GUI、private module はこの backend に取り込まない。Rust CLI は同じ公開 snapshot の artifact Plan を確認後に realization し、永続 Nix root を登録してから link を配備する。配備先は AnkiConnect の従来 target と `~/.local/bin/localllm`。public Home Manager userは定義しない。private frameworkを残し、Night ShiftはRust、Anki GUIはsystem側Nixが所有する。
 
 copy 優先、desired private HM target の非重複、実際の HM package profile の executable 検査を維持する。旧 HM 配置の採用は有効な宣言と選択ソースの一致を必要とする。artifact の前回結果と copy 引継ぎの観測 receipt は専用記録に置き、宣言や起動指示の第二正本にしない。親プロセスが captured Plan を扱い、世代内 CLI に再計画させない。
 

@@ -17,9 +17,6 @@ const CONTRACTS: &[(&str, &str, &str, &str)] = &[
         "share/anki/addons/anki-connect",
         "Library/Application Support/Anki2/addons21/anki-connect",
     ),
-    ("ffmpeg", "executable", "bin/ffmpeg", ".local/bin/ffmpeg"),
-    ("ffplay", "executable", "bin/ffplay", ".local/bin/ffplay"),
-    ("ffprobe", "executable", "bin/ffprobe", ".local/bin/ffprobe"),
     (
         "localllm",
         "executable",
@@ -32,6 +29,15 @@ const CONTRACTS: &[(&str, &str, &str, &str)] = &[
         "bin/nightlight",
         ".local/bin/nightlight",
     ),
+];
+
+// Ledger compatibility only: mise now owns these commands. Keep accepting old
+// successful receipts so exact managed links can be retired, but never admit
+// these targets into a new manifest or an evaluation-cache candidate.
+const RETIRED_TARGETS: &[&str] = &[
+    ".local/bin/ffmpeg",
+    ".local/bin/ffplay",
+    ".local/bin/ffprobe",
 ];
 
 pub(super) fn input_identity(source: &Path, configuration: &impl Serialize) -> Result<String> {
@@ -343,7 +349,9 @@ impl Plan {
             relative(target)?;
             if !CONTRACTS
                 .iter()
-                .any(|contract| target == Path::new(contract.3))
+                .map(|contract| contract.3)
+                .chain(RETIRED_TARGETS.iter().copied())
+                .any(|known| target == Path::new(known))
             {
                 bail!("unknown artifact ledger target");
             }
@@ -355,7 +363,9 @@ impl Plan {
             relative(path)?;
             if !CONTRACTS
                 .iter()
-                .any(|contract| path.starts_with(contract.3))
+                .map(|contract| contract.3)
+                .chain(RETIRED_TARGETS.iter().copied())
+                .any(|known| path.starts_with(known))
             {
                 bail!("invalid artifact directory receipt");
             }
@@ -1284,6 +1294,36 @@ mod tests {
         assert!(!f.plan.roots.exists());
         assert!(!f.plan.state.exists());
         assert!(!f.target().exists());
+    }
+    #[test]
+    fn retired_ffmpeg_commands_are_rejected_from_new_manifests() {
+        let f = Fixture::new();
+        let source = f._root.path().join("source");
+        fs::create_dir(&source).unwrap();
+        for name in ["ffmpeg", "ffplay", "ffprobe"] {
+            let evaluation = Evaluation {
+                root: "/nix/store/00000000000000000000000000000000-root.drv".into(),
+                manifest: "/nix/store/11111111111111111111111111111111-manifest.drv".into(),
+                output: "/nix/store/22222222222222222222222222222222-root".into(),
+                manifest_data: Manifest {
+                    schema_version: 1,
+                    artifacts: vec![Artifact {
+                        id: name.into(),
+                        kind: "executable".into(),
+                        store_path: "/nix/store/33333333333333333333333333333333-ffmpeg".into(),
+                        relative_path: format!("bin/{name}").into(),
+                        home_target: format!(".local/bin/{name}").into(),
+                        model: None,
+                    }],
+                },
+            };
+            let error = Plan::from_evaluation(&f.plan.nix, &source, &f.plan.home, &[], evaluation)
+                .err()
+                .expect("retired commands must not be redeployed");
+            assert!(error.to_string().contains("unknown artifact ID"));
+            assert!(!f.plan.state.exists());
+            assert!(!f.plan.roots.exists());
+        }
     }
     #[test]
     fn disabling_removes_only_exact_recorded_link_and_keeps_registered_root() {

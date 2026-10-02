@@ -25,17 +25,11 @@ let
     models = []
   '';
   addon = pkgs.writeTextDir "share/anki/addons/anki-connect/__init__.py" "fixture";
-  ffmpeg = pkgs.runCommand "ffmpeg-fixture" { } ''
-    mkdir -p "$out/bin"
-    for command in ffmpeg ffplay ffprobe; do
-      printf '#!%s\necho %s\n' '${pkgs.runtimeShell}' "$command" > "$out/bin/$command"
-      chmod +x "$out/bin/$command"
-    done
-  '';
   nightlight = pkgs.writeShellScriptBin "nightlight" "echo nightlight";
   fixtureToolset = {
     ankiConnect = addon;
-    inherit ffmpeg nightlight;
+    inherit nightlight;
+    ffmpeg = throw "mise-managed FFmpeg entered the Nix artifact closure";
     localllm = configuration: pkgs.writeShellScriptBin "localllm" ''
       printf '%s\n' '${configuration.default_model}'
     '';
@@ -78,16 +72,13 @@ let
     ];
     copySuppressedCandidatesRemainAvailable = allCopied.manifestData == on.manifestData
       && allCopied.selected ? anki-connect && allCopied.selected ? localllm;
-    disabledHasOnlyUserArtifacts = builtins.attrNames off.selected == [ "anki-connect" "ffmpeg" "ffplay" "ffprobe" "nightlight" ]
-      && off.homePackages == [ ffmpeg nightlight ] && builtins.length off.manifestData.artifacts == 5;
+    disabledHasOnlyUserArtifacts = builtins.attrNames off.selected == [ "anki-connect" "nightlight" ]
+      && off.homePackages == [ nightlight ] && builtins.length off.manifestData.artifacts == 2;
     disabledManifestIsLazy = builtins.stringLength off.manifest.text > 0;
     disabledRootIsLazy = builtins.stringLength off.root.drvPath > 0;
-    ffmpegExecutablesKeepFixedPackage = builtins.all (id:
-      (actual "qwen3.8-9b-distill-4bit").selected.${id}.package.drvPath == (lib.getBin pkgs.ffmpeg).drvPath
-    ) [ "ffmpeg" "ffplay" "ffprobe" ];
     homeAddonUnchanged = off.homeFiles."Library/Application Support/Anki2/addons21/anki-connect".source
       == "${addon}/share/anki/addons/anki-connect";
-    homePackagesSelected = on.homePackages == [ ffmpeg on.selected.localllm.package nightlight ];
+    homePackagesSelected = on.homePackages == [ on.selected.localllm.package nightlight ];
     launcherTarget = on.selected.localllm.homeTarget == ".local/bin/localllm";
     manifestKeepsAddonReference = hasReference addon on.manifest.text;
     manifestKeepsLauncherReference = hasReference on.selected.localllm.package on.manifest.text;
@@ -107,7 +98,7 @@ let
     }) fixtureToolset).root.drvPath == on.root.drvPath;
     userExecutableTargets = builtins.all (id:
       on.selected.${id}.homeTarget == ".local/bin/${id}" && on.selected.${id}.relativePath == "bin/${id}"
-    ) [ "ffmpeg" "ffplay" "ffprobe" "nightlight" ];
+    ) [ "nightlight" ];
   };
 in
 assert lib.assertMsg (builtins.all (value: value) (builtins.attrValues results))
@@ -123,7 +114,7 @@ pkgs.runCommand "artifact-constructor-check" {
   test "$(readlink ${on.root}/manifest.json)" = ${on.manifest}
   test -f ${on.root}/artifacts/anki-connect/share/anki/addons/anki-connect/__init__.py
   test "$(${on.root}/artifacts/localllm/bin/localllm)" = qwen3.8-27b-4bit
-  for command in ffmpeg ffplay ffprobe nightlight; do
+  for command in nightlight; do
     test "$(${on.root}/artifacts/$command/bin/$command)" = "$command"
   done
   test ! -e ${off.root}/artifacts/localllm

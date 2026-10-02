@@ -25,6 +25,9 @@ const ANKI: &str = "Library/Application Support/Anki2/addons21/anki-connect";
 const STORE: &str = "/nix/store";
 const ROOT: &str = "22222222222222222222222222222222-artifacts";
 const ANKI_PACKAGE: &str = "33333333333333333333333333333333-anki-connect";
+const FFMPEG_COMMANDS: &[&str] = &["ffmpeg", "ffplay", "ffprobe"];
+const FFMPEG_PACKAGE: &str = "55555555555555555555555555555555-ffmpeg";
+const FFMPEG_ROOT: &str = "66666666666666666666666666666666-ffmpeg-artifacts";
 const NIGHTLIGHT_PACKAGE: &str = "44444444444444444444444444444444-nightlight";
 
 fn write(path: &Path, contents: impl AsRef<[u8]>) {
@@ -382,6 +385,56 @@ impl Fixture {
         self.clear_commands();
     }
 
+    fn seed_legacy_ffmpeg(&self) -> serde_json::Value {
+        let state = self.path("home/.local/state/dotfiles/artifacts.json");
+        let mut ledger: serde_json::Value =
+            serde_json::from_slice(&fs::read(&state).unwrap()).unwrap();
+        let mut artifacts = Vec::new();
+        for name in FFMPEG_COMMANDS {
+            let source = format!("{STORE}/{FFMPEG_PACKAGE}/bin/{name}");
+            executable(
+                &self.path(&format!("nix/store/{FFMPEG_PACKAGE}/bin/{name}")),
+                "#!/bin/sh\nexit 0\n",
+            );
+            let target = format!(".local/bin/{name}");
+            symlink(&source, self.path(&format!("home/{target}"))).unwrap();
+            ledger["links"][&target] = source.into();
+            artifacts.push(serde_json::json!({
+                "id": name, "kind": "executable", "storePath": format!("{STORE}/{FFMPEG_PACKAGE}"),
+                "relativePath": format!("bin/{name}"), "homeTarget": target
+            }));
+            let link = self.path(&format!("nix/store/{FFMPEG_ROOT}/artifacts/{name}"));
+            fs::create_dir_all(link.parent().unwrap()).unwrap();
+            symlink(format!("{STORE}/{FFMPEG_PACKAGE}"), link).unwrap();
+        }
+        write(&state, ledger.to_string());
+        let evaluation = serde_json::json!({
+            "manifestData": {"schemaVersion": 1, "artifacts": artifacts},
+            "manifest": format!("{STORE}/77777777777777777777777777777777-manifest.drv"),
+            "output": format!("{STORE}/{FFMPEG_ROOT}"),
+            "root": format!("{STORE}/{FFMPEG_ROOT}.drv")
+        });
+        write(
+            &self.path(&format!("nix/store/{FFMPEG_ROOT}/manifest.json")),
+            evaluation["manifestData"].to_string(),
+        );
+        let output = format!("{STORE}/{FFMPEG_ROOT}");
+        let name = format!("{:x}", Sha256::digest(output.as_bytes()));
+        symlink(
+            output,
+            self.path(&format!("home/.local/state/dotfiles/artifact-roots/{name}")),
+        )
+        .unwrap();
+        evaluation
+    }
+
+    fn declare_mise_ffmpeg(&self) {
+        write(
+            &self.path("checkout/home/.config/mise/config.toml"),
+            "[tools]\n'conda:ffmpeg' = '8.1.2'\nrust = '1.2.3'\n",
+        );
+    }
+
     fn assert_rootless(&self) {
         let commands = self.commands();
         for prefix in ["nix ", "backend ", "sudo ", "darwin-rebuild ", "nix-env "] {
@@ -465,6 +518,9 @@ elif name == 'nix':
 elif name == 'mise':
     if args == ['install', '--locked']:
         if (f / 'fail-tools').exists(): sys.exit(42)
+        if (f / 'expect-ffmpeg-before-tools').exists():
+            for tool in ['ffmpeg', 'ffplay', 'ffprobe']:
+                assert (f / 'home/.local/bin' / tool).readlink() == pathlib.Path('/nix/store/55555555555555555555555555555555-ffmpeg/bin') / tool
         (f / 'tools-installed').write_text('yes')
     elif args == ['ls', '--json', '--locked']:
         config = pathlib.Path(os.environ['MISE_CONFIG_FILE']).read_text()
@@ -472,6 +528,8 @@ elif name == 'mise':
         tools = {'rust': [{'version': '1.2.3', 'requested_version': '1.2.3', 'installed': True, 'source': {'path': os.environ['MISE_CONFIG_FILE']}}]}
         if 'fixture-tool' in config:
             tools['fixture-tool'] = [{'version': '2.0.0', 'requested_version': '2.0.0', 'installed': installed, 'source': {'path': os.environ['MISE_CONFIG_FILE']}}]
+        if 'conda:ffmpeg' in config:
+            tools['conda:ffmpeg'] = [{'version': '8.1.2', 'requested_version': '8.1.2', 'installed': installed, 'source': {'path': os.environ['MISE_CONFIG_FILE']}}]
         emit(tools)
     else: raise RuntimeError('unexpected mise operation')
 elif name == 'launchctl':
@@ -650,6 +708,172 @@ fn warm_home_and_tool_changes_use_no_nix_or_system_activation() {
         fs::read(f.path("home/.local/state/dotfiles/artifacts.json")).unwrap(),
         artifact_ledger
     );
+}
+
+#[test]
+#[ignore = "requires Linux, non-root unprivileged bubblewrap, and an offline Cargo cache"]
+fn ffmpeg_migration_installs_tools_before_retiring_exact_links_and_retries_safely() {
+    let f = Fixture::new();
+    f.seed();
+    f.seed_legacy_ffmpeg();
+    f.declare_mise_ffmpeg();
+    f.rootless();
+    let state = f.path("home/.local/state/dotfiles/artifacts.json");
+    let before = fs::read(&state).unwrap();
+    let generation = fs::read_link(f.path("run/current-system")).unwrap();
+    let roots = f.path("home/.local/state/dotfiles/artifact-roots");
+    let roots_before = fs::read_dir(&roots).unwrap().count();
+    let plan = f.run("plan", "");
+    assert_success(&plan);
+    for name in FFMPEG_COMMANDS {
+        assert!(String::from_utf8_lossy(&plan.stdout)
+            .contains(&format!("- artifact .local/bin/{name}")));
+    }
+    assert!(!f.run("apply", "no\n").status.success());
+    assert_eq!(fs::read(&state).unwrap(), before);
+    write(&f.path("fail-tools"), "");
+    let failed = f.run("apply", "yes\n");
+    assert!(!failed.status.success());
+    assert_eq!(fs::read(&state).unwrap(), before);
+    for name in FFMPEG_COMMANDS {
+        assert_eq!(
+            fs::read_link(f.path(&format!("home/.local/bin/{name}"))).unwrap(),
+            Path::new(STORE).join(FFMPEG_PACKAGE).join("bin").join(name)
+        );
+    }
+    fs::remove_file(f.path("fail-tools")).unwrap();
+    write(&f.path("expect-ffmpeg-before-tools"), "");
+    assert_success(&f.run("apply", "yes\n"));
+    assert!(f.commands().contains("mise install --locked"));
+    let ledger: serde_json::Value = serde_json::from_slice(&fs::read(&state).unwrap()).unwrap();
+    for name in FFMPEG_COMMANDS {
+        assert!(fs::symlink_metadata(f.path(&format!("home/.local/bin/{name}"))).is_err());
+        assert!(ledger["links"].get(format!(".local/bin/{name}")).is_none());
+    }
+    assert!(ledger["links"].get(ANKI).is_some());
+    assert_eq!(fs::read_dir(roots).unwrap().count(), roots_before);
+    assert_eq!(
+        fs::read_link(f.path("run/current-system")).unwrap(),
+        generation
+    );
+    f.assert_rootless();
+    f.clear_commands();
+    let inode = fs::metadata(&state).unwrap().ino();
+    let converged = f.run("apply", "");
+    assert_success(&converged);
+    assert!(converged.stdout.is_empty());
+    assert_eq!(fs::metadata(state).unwrap().ino(), inode);
+    assert!(!f.commands().contains("mise install"));
+    f.assert_rootless();
+}
+
+#[test]
+#[ignore = "requires Linux, non-root unprivileged bubblewrap, and an offline Cargo cache"]
+fn ffmpeg_migration_preserves_modified_and_unowned_targets() {
+    let f = Fixture::new();
+    f.seed();
+    f.seed_legacy_ffmpeg();
+    f.declare_mise_ffmpeg();
+    fs::remove_file(f.path("home/.local/bin/ffmpeg")).unwrap();
+    symlink("/user/ffmpeg", f.path("home/.local/bin/ffmpeg")).unwrap();
+    fs::remove_file(f.path("home/.local/bin/ffplay")).unwrap();
+    write(&f.path("home/.local/bin/ffplay"), "user replacement\n");
+    let state = f.path("home/.local/state/dotfiles/artifacts.json");
+    let mut ledger: serde_json::Value = serde_json::from_slice(&fs::read(&state).unwrap()).unwrap();
+    ledger["links"]
+        .as_object_mut()
+        .unwrap()
+        .remove(".local/bin/ffprobe");
+    write(&state, ledger.to_string());
+    let before = fs::read(&state).unwrap();
+    f.rootless();
+    assert_success(&f.run("apply", "yes\n"));
+    assert_eq!(
+        fs::read_link(f.path("home/.local/bin/ffmpeg")).unwrap(),
+        Path::new("/user/ffmpeg")
+    );
+    assert_eq!(
+        fs::read(f.path("home/.local/bin/ffplay")).unwrap(),
+        b"user replacement\n"
+    );
+    assert_eq!(
+        fs::read_link(f.path("home/.local/bin/ffprobe")).unwrap(),
+        Path::new(STORE).join(FFMPEG_PACKAGE).join("bin/ffprobe")
+    );
+    assert_eq!(fs::read(&state).unwrap(), before);
+    assert_success(&f.run("apply", ""));
+    f.assert_rootless();
+}
+
+#[test]
+#[ignore = "requires Linux, non-root unprivileged bubblewrap, and an offline Cargo cache"]
+fn ffmpeg_migration_preserves_private_home_manager_owner_and_checkpoints_partial_retirement() {
+    let f = Fixture::new();
+    f.seed();
+    f.seed_legacy_ffmpeg();
+    f.declare_mise_ffmpeg();
+    let files = f.path("private-generation/home-files/.local/bin");
+    fs::create_dir_all(&files).unwrap();
+    symlink(
+        format!("{STORE}/{FFMPEG_PACKAGE}/bin/ffplay"),
+        files.join("ffplay"),
+    )
+    .unwrap();
+    let generation = f.path("home/.local/state/home-manager/gcroots/current-home");
+    fs::create_dir_all(generation.parent().unwrap()).unwrap();
+    symlink(f.path("private-generation"), generation).unwrap();
+    f.rootless();
+    let failed = f.run("apply", "yes\n");
+    assert!(!failed.status.success());
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("active Home Manager owner"));
+    assert!(fs::symlink_metadata(f.path("home/.local/bin/ffmpeg")).is_err());
+    for name in ["ffplay", "ffprobe"] {
+        assert_eq!(
+            fs::read_link(f.path(&format!("home/.local/bin/{name}"))).unwrap(),
+            Path::new(STORE).join(FFMPEG_PACKAGE).join("bin").join(name)
+        );
+    }
+    let state = f.path("home/.local/state/dotfiles/artifacts.json");
+    let ledger: serde_json::Value = serde_json::from_slice(&fs::read(&state).unwrap()).unwrap();
+    assert!(ledger["links"].get(".local/bin/ffmpeg").is_none());
+    assert!(ledger["links"].get(".local/bin/ffplay").is_some());
+    fs::remove_file(files.join("ffplay")).unwrap();
+    f.clear_commands();
+    assert_success(&f.run("apply", "yes\n"));
+    for name in FFMPEG_COMMANDS {
+        assert!(fs::symlink_metadata(f.path(&format!("home/.local/bin/{name}"))).is_err());
+    }
+    assert!(!f.commands().contains("mise install"));
+    assert_success(&f.run("apply", ""));
+    f.assert_rootless();
+}
+
+#[test]
+#[ignore = "requires Linux, non-root unprivileged bubblewrap, and an offline Cargo cache"]
+fn ffmpeg_legacy_cache_is_rejected_even_with_matching_manifest_packages_and_root() {
+    let f = Fixture::new();
+    f.seed();
+    let legacy = f.seed_legacy_ffmpeg();
+    f.declare_mise_ffmpeg();
+    let path = f.path("home/.local/state/dotfiles/artifact-evaluation.json");
+    let mut cache: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    // Keep the current input identity so this exercises the contract allowlist,
+    // not the usual recipe-identity cache miss during a real migration.
+    cache["evaluation"] = legacy;
+    write(&path, cache.to_string());
+    let old_cache = fs::read(&path).unwrap();
+    let planned = f.run("plan", "");
+    assert_success(&planned);
+    assert!(f.commands().contains("eval --impure"));
+    assert_eq!(fs::read(&path).unwrap(), old_cache);
+    assert_success(&f.run("apply", "yes\n"));
+    for name in FFMPEG_COMMANDS {
+        assert!(fs::symlink_metadata(f.path(&format!("home/.local/bin/{name}"))).is_err());
+    }
+    assert!(!f.commands().contains("backend activate"));
+    f.rootless();
+    assert_success(&f.run("apply", ""));
+    f.assert_rootless();
 }
 
 #[test]

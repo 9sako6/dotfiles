@@ -21,9 +21,6 @@ let
     env.DOTFILES_BUILD_REVISION = dotfilesRevision;
   };
 
-  ffmpegPackage = pkgs.ffmpeg;
-  expectedFfmpegVersion = "8.1.2";
-
   gitPackage = pkgs.git;
   expectedGitVersion = "2.55.0";
 
@@ -40,8 +37,6 @@ assert pkgs.lib.assertMsg (bunPackage.version == expectedBunVersion)
   "Bun version drifted: expected ${expectedBunVersion}, got ${bunPackage.version}";
 assert pkgs.lib.assertMsg (cachixPackage.version == expectedCachixVersion)
   "Cachix version drifted: expected ${expectedCachixVersion}, got ${cachixPackage.version}";
-assert pkgs.lib.assertMsg (ffmpegPackage.version == expectedFfmpegVersion)
-  "FFmpeg version drifted: expected ${expectedFfmpegVersion}, got ${ffmpegPackage.version}";
 assert pkgs.lib.assertMsg (gitPackage.version == expectedGitVersion)
   "Git version drifted: expected ${expectedGitVersion}, got ${gitPackage.version}";
 assert pkgs.lib.assertMsg (nightlightPackage.version == expectedNightlightVersion)
@@ -65,7 +60,6 @@ assert pkgs.lib.assertMsg (rustToolchain.rustc.version == expectedRustVersion)
     rustToolchain.clippy
   ];
   dotfiles = dotfilesPackage;
-  ffmpeg = ffmpegPackage;
   localllm = configuration: import ./localllm/package.nix { inherit configuration inputs pkgs; };
   localllmClient = import ./localllm/client.nix { inherit pkgs; };
   localllmGoalPlugin = import ./localllm/goal-plugin.nix { inherit pkgs; };

@@ -174,7 +174,7 @@ localllm専用のprogress-instructions.mdをNixに同梱し、OpenCodeのinstruc
 
 @prevalentware/opencode-goal-plugin 0.1.49を採用し、Nixでバージョンとソースハッシュを固定するとともに、依存関係（effect、zod、間接依存）をnix/localllm/goal-plugin/package-lock.jsonにより固定してビルド時にバンドル化しているため、起動時の追加取得は発生しません。「/goal <目的>」でのタスク開始、「/goal」での進捗確認、「/pause_goal」「/resume_goal」による一時停止・再開に対応しています。目的は専用の永続データ領域に保存され、会話要約後のコンテキスト引き継ぎおよび自律的な自動続行が可能です。
 
-Nix管理のユーザーツールに `FFmpeg 8.1.2` を追加し、`ffmpeg` および `ffprobe` を提供します。`dotfiles apply` の実行後は `localllm chat` 上から通常のコマンド名でそのまま実行でき、他の既存コマンドと同様に `PATH` 経由で連携して利用できます。
+miseの `conda:ffmpeg` で `FFmpeg 8.1.2` を固定し、`ffmpeg`、`ffplay`、`ffprobe` を提供します。`dotfiles apply` の実行後は `localllm chat` 上から通常のコマンド名でそのまま実行でき、他の既存コマンドと同様に `PATH` 経由で連携して利用できます。
 
 - **実行コマンド:**
   - `localllm chat -- <opencode-arguments>` (プロンプト実行引数を渡す)
@@ -202,6 +202,23 @@ Nix管理のユーザーツールに `FFmpeg 8.1.2` を追加し、`ffmpeg` お�
 背景と計測事例の詳細は[#151](https://github.com/9sako6/dotfiles/issues/151)および[#152](https://github.com/9sako6/dotfiles/issues/152)を参照する。
 
 [短縮経路の計測結果と再現手順](apply-performance.md)を記録している。
+
+## FFmpegの配布と検証
+
+FFmpegはconda-forgeのDarwin arm64配布をmise 2026.7.7で導入する。`home/.config/mise/mise.lock` に本体と依存artifactのURL・SHA256を固定し、通常のapplyでは `mise install --locked` を使う。lockはmacOS arm64上の固定miseで生成する。Linuxからのcross-platform lockはmacOSのvirtual packageを解決できず、不完全なエントリを出力する場合があるため使用しない。
+
+旧Nix版にあったSRT/RISTと外部Theora/Speex/Xvidエンコーダは、未使用の追加機能として今回の移行で省く。これらを指定するライブ転送や書き出しは対応範囲に含めない。内蔵デコーダの有無と外部エンコーダの有無は別であり、全形式の互換性を保証するものではない。
+
+`tests/test_ffmpeg.py` は合成入力でH.264/AAC変換、ffprobe、全フレームのデコード、WAV/MP3音声抽出、PNG画像抽出、stream copyによるremuxを検証する。macOS CIでは同じ試験を固定nixpkgsの旧配布とmise配布へそれぞれ実行する。ffplayは起動可能な版の確認だけを行い、GUI再生やハードウェアアクセラレーションは試験しない。
+
+```sh
+DOTFILES_TEST_FFMPEG="$(mise which ffmpeg)" \
+DOTFILES_TEST_FFPLAY="$(mise which ffplay)" \
+DOTFILES_TEST_FFPROBE="$(mise which ffprobe)" \
+  python3 -m unittest discover -s tests -p test_ffmpeg.py -v
+```
+
+移行時はmise導入の成功後に、前回のartifact記録と完全に一致する `.local/bin/ffmpeg`、`.local/bin/ffplay`、`.local/bin/ffprobe` の旧リンクだけを退役させる。利用者が変更したリンクやprivate Home Manager所有の配置を自動削除しない。旧artifact rootは保持し、自動GCは行わない。
 
 ## 検証
 
@@ -292,7 +309,7 @@ cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::user_s
 
 ## Nix artifact の反映
 
-公開 flake の `lib.mkArtifacts { configuration = ...; }` は、既存の TOML 検証・マージ結果から AnkiConnect、FFmpeg、Nightlightと有効時だけのlocalllmを選び、Darwin host や private module を評価せずに `root` と `manifest` を返す。`nix/host-input.nix` の `artifacts` operation は、既存の固定入力 manifest からこの constructor を呼ぶ。出力にはビルド前の予定 store path、derivation path、配備契約の `manifestData` を含む。モデルはマージ済み設定を使い、開発用 `.#localllm` の強制 9B 選択は使わない。`.#artifacts` は公開設定のみの確認用出力で、ローカル設定を自動探索しない。
+公開 flake の `lib.mkArtifacts { configuration = ...; }` は、既存の TOML 検証・マージ結果から AnkiConnect、Nightlightと有効時だけのlocalllmを選び、Darwin host や private module を評価せずに `root` と `manifest` を返す。`nix/host-input.nix` の `artifacts` operation は、既存の固定入力 manifest からこの constructor を呼ぶ。出力にはビルド前の予定 store path、derivation path、配備契約の `manifestData` を含む。モデルはマージ済み設定を使い、開発用 `.#localllm` の強制 9B 選択は使わない。`.#artifacts` は公開設定のみの確認用出力で、ローカル設定を自動探索しない。
 
 生成される JSON は既存 package object の store path と、AnkiConnect の相対ソース・home 配置先、localllm の起動ファイル・選択モデルを記録する。Nix の文字列 context を保持し、root には JSON と選択された package への symlink を置く。localllm のモデル、runtime、OpenCode、goal plugin は既存 launcher の推移的な参照で保持し、無効時には constructor の依存閉包へ入れない。普通の CLI と Anki GUI はこの root に束ねない。
 
