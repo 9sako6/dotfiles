@@ -11,14 +11,14 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-struct Declarations {
+pub(super) struct Declarations {
     #[serde(default)]
     agents: Vec<Agent>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct Agent {
     label: String,
@@ -32,7 +32,7 @@ struct Agent {
     working_directory: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct Calendar {
     minute: Option<u8>,
@@ -44,31 +44,16 @@ struct Calendar {
 
 /// Reuse the same schema and semantic validation as reconciliation without
 /// observing launchd, expanding user state, or exposing command arguments.
-pub(super) fn declared_inventory(source: &Path) -> Result<Vec<serde_json::Value>> {
-    let bytes = read_regular(&source.join("user-services.toml"), source)?;
-    let declarations: Declarations = bytes
-        .as_deref()
-        .map(|bytes| -> Result<Declarations> {
-            let text = std::str::from_utf8(bytes).context("invalid user-services.toml encoding")?;
-            toml::from_str(text).map_err(|_| anyhow::anyhow!("invalid user-services.toml schema"))
-        })
-        .transpose()?
-        .unwrap_or_default();
-    let mut labels = BTreeSet::new();
+pub(super) fn declared_inventory(declarations: &Declarations) -> Result<Vec<serde_json::Value>> {
+    declarations.validate()?;
     let mut rows = Vec::new();
-    for agent in declarations.agents {
-        // plist validates only declaration syntax/semantics. The placeholder is
-        // never read, written, printed, or used to resolve a real user's home.
-        agent.plist(Path::new("/dotfiles-inspection-home"))?;
-        if !labels.insert(agent.label.to_ascii_lowercase()) {
-            bail!("duplicate public LaunchAgent label");
-        }
+    for agent in &declarations.agents {
         let mut config =
             serde_json::json!({"RunAtLoad": agent.run_at_load, "KeepAlive": agent.keep_alive});
         if let Some(interval) = agent.start_interval {
             config["StartInterval"] = interval.into();
         }
-        if let Some(calendar) = agent.start_calendar_interval {
+        if let Some(calendar) = &agent.start_calendar_interval {
             let fields: serde_json::Map<String, serde_json::Value> = [
                 ("Minute", calendar.minute),
                 ("Hour", calendar.hour),
@@ -85,6 +70,26 @@ pub(super) fn declared_inventory(source: &Path) -> Result<Vec<serde_json::Value>
     }
     rows.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
     Ok(rows)
+}
+
+impl Declarations {
+    pub(super) fn validate(&self) -> Result<()> {
+        self.plists(Path::new("/dotfiles-inspection-home"))?;
+        Ok(())
+    }
+
+    fn plists(&self, home: &Path) -> Result<BTreeMap<String, String>> {
+        let mut desired = BTreeMap::new();
+        let mut labels = BTreeSet::new();
+        for agent in &self.agents {
+            let plist = agent.plist(home)?;
+            if !labels.insert(agent.label.to_ascii_lowercase()) {
+                bail!("duplicate public LaunchAgent label");
+            }
+            desired.insert(agent.label.clone(), plist);
+        }
+        Ok(desired)
+    }
 }
 
 // Results only: no desired declarations or execution instructions live here.
@@ -131,13 +136,10 @@ pub(super) struct Plan {
     previous: BTreeMap<String, String>,
     files: BTreeMap<String, Option<Vec<u8>>>,
     loaded: BTreeMap<String, bool>,
-    declaration: Option<Vec<u8>>,
-    source: PathBuf,
     home: PathBuf,
     state: PathBuf,
     state_anchor: PathBuf,
     stable_home: PathBuf,
-    stable_source: PathBuf,
     stable_state_anchor: PathBuf,
     state_bytes: Option<Vec<u8>>,
     launchctl: Launchctl,
@@ -238,7 +240,7 @@ impl Launchctl {
 
 impl Plan {
     pub(super) fn capture(
-        source: &Path,
+        declarations: &Declarations,
         home: &Path,
         executable: &Path,
         lock: Option<&File>,
@@ -251,7 +253,7 @@ impl Plan {
             .unwrap_or_else(|| home.join(".local/state"));
         let state = directory.join("dotfiles/user-services.json");
         Self::capture_with_anchor(
-            source,
+            declarations,
             home,
             &state,
             configured.as_deref().unwrap_or(home),
@@ -265,8 +267,13 @@ impl Plan {
 
     #[cfg(test)]
     fn capture_at(source: &Path, home: &Path, state: &Path) -> Result<Self> {
+        let configuration = super::configuration::Configuration::parse(
+            &fs::read(source.join("dotfiles.toml"))?,
+            None,
+            &[],
+        )?;
         Self::capture_with_anchor(
-            source,
+            &configuration.services,
             home,
             state,
             home,
@@ -279,7 +286,7 @@ impl Plan {
     }
 
     fn capture_with_anchor(
-        source: &Path,
+        declarations: &Declarations,
         home: &Path,
         state: &Path,
         state_anchor: &Path,
@@ -289,27 +296,8 @@ impl Plan {
         validate_path(home)?;
         validate_path(state)?;
         validate_path(state_anchor)?;
-        let stable_source = source.canonicalize()?;
         let stable_state_anchor = resolve_anchor(state_anchor)?;
-        let declaration = read_regular(&source.join("user-services.toml"), source)?;
-        let declarations = declaration
-            .as_deref()
-            .map(|bytes| -> Result<Declarations> {
-                let text =
-                    std::str::from_utf8(bytes).context("invalid user-services.toml encoding")?;
-                // Do not echo declaration contents in parser diagnostics.
-                toml::from_str(text)
-                    .map_err(|_| anyhow::anyhow!("invalid user-services.toml schema"))
-            })
-            .transpose()?
-            .unwrap_or_default();
-        let mut desired = BTreeMap::new();
-        for agent in declarations.agents {
-            let plist = agent.plist(home)?;
-            if desired.insert(agent.label, plist).is_some() {
-                bail!("duplicate public LaunchAgent label");
-            }
-        }
+        let desired = declarations.plists(home)?;
         let state_bytes = read_regular(state, state_anchor)?;
         let previous = state_bytes
             .as_deref()
@@ -384,13 +372,10 @@ impl Plan {
             previous,
             files,
             loaded,
-            declaration,
-            source: source.to_owned(),
             home: home.to_owned(),
             state: state.to_owned(),
             state_anchor: state_anchor.to_owned(),
             stable_home,
-            stable_source,
             stable_state_anchor,
             state_bytes,
             launchctl,
@@ -424,10 +409,7 @@ impl Plan {
             return Ok(());
         }
         if self.home.canonicalize()? != self.stable_home
-            || self.source.canonicalize()? != self.stable_source
             || resolve_anchor(&self.state_anchor)? != self.stable_state_anchor
-            || read_regular(&self.source.join("user-services.toml"), &self.source)?
-                != self.declaration
             || read_regular(&self.state, &self.state_anchor)? != self.state_bytes
         {
             bail!(
@@ -804,6 +786,7 @@ mod tests {
             let home = root_path.join("home");
             let state = home.join(".local/state/dotfiles/user-services.json");
             fs::create_dir(&source).unwrap();
+            fs::write(source.join("dotfiles.toml"), "").unwrap();
             fs::create_dir_all(home.join("Library/LaunchAgents")).unwrap();
             fixture_launchctl(&source, &home);
             Self {
@@ -815,7 +798,16 @@ mod tests {
             }
         }
         fn declare(&self, text: &str) {
-            fs::write(self.source.join("user-services.toml"), text).unwrap();
+            fs::write(
+                self.source.join("dotfiles.toml"),
+                format!("[services]\n{text}")
+                    .replace("[[agents]]", "[[services.agents]]")
+                    .replace(
+                        "[agents.start_calendar_interval]",
+                        "[services.agents.start_calendar_interval]",
+                    ),
+            )
+            .unwrap();
         }
         fn plan(&self) -> Result<Plan> {
             Plan::capture_at(&self.source, &self.home, &self.state)
@@ -993,7 +985,13 @@ mod tests {
         symlink(&actual, &alias).unwrap();
         let state = alias.join("dotfiles/user-services.json");
         assert!(!Plan::capture_with_anchor(
-            &f.source,
+            &super::super::configuration::Configuration::parse(
+                &fs::read(f.source.join("dotfiles.toml")).unwrap(),
+                None,
+                &[]
+            )
+            .unwrap()
+            .services,
             &f.home,
             &state,
             &alias,
@@ -1156,15 +1154,14 @@ mod tests {
     }
 
     #[test]
-    fn apply_revalidates_declaration_ledger_file_loaded_state_and_home_alias() {
-        for changed in ["declaration", "ledger", "file", "loaded", "source"] {
+    fn apply_revalidates_ledger_file_loaded_state_and_home_alias() {
+        for changed in ["ledger", "file", "loaded", "source"] {
             let f = Fixture::new();
             f.declare(DECLARATION);
             f.applied();
             f.declare(&DECLARATION.replace("60", "120"));
             let mut plan = f.plan().unwrap();
             match changed {
-                "declaration" => f.declare(""),
                 "ledger" => fs::write(&f.state, b"{}").unwrap(),
                 "file" => fs::write(f.plist("com.example.check"), b"external").unwrap(),
                 "loaded" => fs::remove_file(f.source.join("loaded/com.example.check")).unwrap(),
@@ -1344,7 +1341,13 @@ mod tests {
         let alias = f._root.path().join("state-alias");
         symlink(&first, &alias).unwrap();
         let mut plan = Plan::capture_with_anchor(
-            &f.source,
+            &super::super::configuration::Configuration::parse(
+                &fs::read(f.source.join("dotfiles.toml")).unwrap(),
+                None,
+                &[],
+            )
+            .unwrap()
+            .services,
             &f.home,
             &alias.join("dotfiles/user-services.json"),
             &alias,

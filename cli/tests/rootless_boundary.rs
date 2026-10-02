@@ -30,6 +30,16 @@ const FFMPEG_PACKAGE: &str = "55555555555555555555555555555555-ffmpeg";
 const FFMPEG_ROOT: &str = "66666666666666666666666666666666-ffmpeg-artifacts";
 const NIGHTLIGHT_PACKAGE: &str = "44444444444444444444444444444444-nightlight";
 
+fn declare(path: &Path, section: &str, declaration: impl AsRef<str>) {
+    let mut configuration: toml::Value =
+        toml::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+    configuration.as_table_mut().unwrap().insert(
+        section.into(),
+        toml::from_str(declaration.as_ref()).unwrap(),
+    );
+    write(path, toml::to_string(&configuration).unwrap());
+}
+
 fn write(path: &Path, contents: impl AsRef<[u8]>) {
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(path, contents).unwrap();
@@ -159,9 +169,14 @@ impl Fixture {
             &f.path("checkout/home/.config/mise/mise.lock"),
             "fixture lock\n",
         );
-        write(&f.path("checkout/user-services.toml"), "agents = []\n");
-        write(
-            &f.path("checkout/user-settings.toml"),
+        declare(
+            &f.path("checkout/dotfiles.toml"),
+            "services",
+            "agents = []\n",
+        );
+        declare(
+            &f.path("checkout/dotfiles.toml"),
+            "settings",
             "# no settings initially\n",
         );
         write(
@@ -587,9 +602,10 @@ fn cold_plan_and_cancel_do_not_realize_or_deploy_resources() {
 #[ignore = "requires Linux, non-root unprivileged bubblewrap, and an offline Cargo cache"]
 fn settings_is_read_only_and_nix_free_with_cold_and_warm_artifact_cache() {
     let f = Fixture::new();
-    write(&f.path("checkout/user-services.toml"), "[[agents]]\nlabel = 'com.example.report'\nargv = ['/usr/bin/true', 'DO_NOT_PRINT_PUBLIC_ARGV']\nstart_interval = 60\n");
-    write(
-        &f.path("checkout/user-settings.toml"),
+    declare(&f.path("checkout/dotfiles.toml"), "services", "[[agents]]\nlabel = 'com.example.report'\nargv = ['/usr/bin/true', 'DO_NOT_PRINT_PUBLIC_ARGV']\nstart_interval = 60\n");
+    declare(
+        &f.path("checkout/dotfiles.toml"),
+        "settings",
         "[night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = 65\n",
     );
     let mut active = f.inventory();
@@ -881,9 +897,10 @@ fn ffmpeg_legacy_cache_is_rejected_even_with_matching_manifest_packages_and_root
 fn warm_service_and_setting_changes_use_no_nix_or_sudo() {
     let f = Fixture::new();
     f.seed();
-    write(&f.path("checkout/user-services.toml"), "[[agents]]\nlabel = 'com.example.boundary'\nargv = ['/usr/bin/true']\nrun_at_load = true\n");
-    write(
-        &f.path("checkout/user-settings.toml"),
+    declare(&f.path("checkout/dotfiles.toml"), "services", "[[agents]]\nlabel = 'com.example.boundary'\nargv = ['/usr/bin/true']\nrun_at_load = true\n");
+    declare(
+        &f.path("checkout/dotfiles.toml"),
+        "settings",
         "[night_shift]\nend = '07:00'\nstart = '22:00'\ntemperature = 65\n",
     );
     f.rootless();
@@ -1204,7 +1221,7 @@ fn mixed_apply_finishes_rootless_work_before_system_and_retries_partial_failures
             &f.path("checkout/home/.config/mise/config.toml"),
             "[tools]\nrust = '1.2.3'\nfixture-tool = '2.0.0'\n",
         );
-        write(&f.path("checkout/user-services.toml"), "[[agents]]\nlabel = 'com.example.mixed'\nargv = ['~/.local/bin/nightlight', 'help']\nrun_at_load = true\n");
+        declare(&f.path("checkout/dotfiles.toml"), "services", "[[agents]]\nlabel = 'com.example.mixed'\nargv = ['~/.local/bin/nightlight', 'help']\nrun_at_load = true\n");
         write(&f.path("expect-rootless-first"), "");
         write(&f.path(failure), "");
         let failed = f.run("apply", "yes\n");
@@ -1261,7 +1278,7 @@ fn benchmark_public_rootless_boundaries() {
                         Err(error) => panic!("cannot reset tool fixture: {error}"),
                     }
                 }
-                "services" => write(&f.path("checkout/user-services.toml"), format!("[[agents]]\nlabel = 'com.example.benchmark'\nargv = ['/usr/bin/true']\nstart_interval = {}\n", 60 + sample)),
+                "services" => declare(&f.path("checkout/dotfiles.toml"), "services", format!("[[agents]]\nlabel = 'com.example.benchmark'\nargv = ['/usr/bin/true']\nstart_interval = {}\n", 60 + sample)),
                 "system" => write(&f.path("checkout/nix/system.nix"), format!("benchmark system {sample}\n")),
                 _ => unreachable!(),
             }

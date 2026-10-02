@@ -13,16 +13,15 @@ use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
-const DECLARATION: &str = "user-settings.toml";
 const VERSION: &str = "nightlight v1.0.0";
 
-#[derive(Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-struct Declarations {
+pub(super) struct Declarations {
     night_shift: Option<NightShift>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct NightShift {
     end: String,
@@ -61,9 +60,6 @@ struct HelperIdentity {
 }
 
 pub(super) struct Plan {
-    source: PathBuf,
-    stable_source: PathBuf,
-    declaration: Option<Vec<u8>>,
     home: PathBuf,
     stable_home: PathBuf,
     helper: PathBuf,
@@ -77,7 +73,7 @@ impl Plan {
     /// field or a PATH lookup. A missing artifact is explicitly pending: plan
     /// does not realize it or pretend that current preferences are known.
     pub(super) fn capture(
-        source: &Path,
+        declarations: &Declarations,
         home: &Path,
         helper: &Path,
         lock: Option<&File>,
@@ -85,12 +81,8 @@ impl Plan {
         if !helper.is_absolute() {
             bail!("Night Shift requires an absolute pinned helper path");
         }
-        let declaration = read_declaration(source)?;
-        let desired = parse_declarations(declaration.as_deref())?;
+        let desired = declarations.desired()?;
         let mut plan = Self {
-            source: source.to_owned(),
-            stable_source: source.canonicalize()?,
-            declaration,
             home: home.to_owned(),
             stable_home: home.canonicalize()?,
             helper: helper.to_owned(),
@@ -194,10 +186,7 @@ impl Plan {
     }
 
     fn verify_inputs(&self) -> Result<()> {
-        if self.source.canonicalize()? != self.stable_source
-            || self.home.canonicalize()? != self.stable_home
-            || read_declaration(&self.source)? != self.declaration
-        {
+        if self.home.canonicalize()? != self.stable_home {
             bail!("user settings inputs changed after preview; run plan/apply again");
         }
         Ok(())
@@ -289,8 +278,8 @@ impl Plan {
 
 /// Read only declared preferences, using the reconciliation parser. No helper
 /// executable is launched and no current preference value is inferred.
-pub(super) fn declared_inventory(source: &Path) -> Result<Vec<serde_json::Value>> {
-    let Some(desired) = parse_declarations(read_declaration(source)?.as_deref())? else {
+pub(super) fn declared_inventory(declarations: &Declarations) -> Result<Vec<serde_json::Value>> {
+    let Some(desired) = declarations.desired()? else {
         return Ok(Vec::new());
     };
     let Schedule::Custom(start, end) = desired.schedule else {
@@ -302,36 +291,29 @@ pub(super) fn declared_inventory(source: &Path) -> Result<Vec<serde_json::Value>
     ])
 }
 
-fn read_declaration(source: &Path) -> Result<Option<Vec<u8>>> {
-    let path = source.join(DECLARATION);
-    match fs::symlink_metadata(&path) {
-        Ok(metadata) if metadata.is_file() => Ok(Some(fs::read(&path)?)),
-        Ok(_) => bail!("user-settings.toml must be a regular file, not a symlink"),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error).context("cannot read user-settings.toml"),
+impl Declarations {
+    pub(super) fn validate(&self) -> Result<()> {
+        self.desired()?;
+        Ok(())
     }
-}
 
-fn parse_declarations(bytes: Option<&[u8]>) -> Result<Option<Observed>> {
-    let Some(bytes) = bytes else { return Ok(None) };
-    let declarations: Declarations =
-        toml::from_str(std::str::from_utf8(bytes).context("invalid user-settings.toml encoding")?)
-            .map_err(|_| anyhow::anyhow!("invalid user-settings.toml schema"))?;
-    declarations
-        .night_shift
-        .map(|night_shift| {
-            if night_shift.temperature > 100 {
-                bail!("Night Shift temperature must be between 0 and 100");
-            }
-            Ok(Observed {
-                schedule: Schedule::Custom(
-                    declared_time(&night_shift.start)?,
-                    declared_time(&night_shift.end)?,
-                ),
-                temperature: night_shift.temperature,
+    fn desired(&self) -> Result<Option<Observed>> {
+        self.night_shift
+            .as_ref()
+            .map(|night_shift| {
+                if night_shift.temperature > 100 {
+                    bail!("Night Shift temperature must be between 0 and 100");
+                }
+                Ok(Observed {
+                    schedule: Schedule::Custom(
+                        declared_time(&night_shift.start)?,
+                        declared_time(&night_shift.end)?,
+                    ),
+                    temperature: night_shift.temperature,
+                })
             })
-        })
-        .transpose()
+            .transpose()
+    }
 }
 
 fn declared_time(text: &str) -> Result<u16> {
@@ -424,7 +406,8 @@ mod tests {
     use super::*;
     use std::os::unix::fs::symlink;
 
-    const CONFIG: &str = "[night_shift]\nend = '07:00'\nstart = '22:00'\ntemperature = 80\n";
+    const CONFIG: &str =
+        "[settings.night_shift]\nend = '07:00'\nstart = '22:00'\ntemperature = 80\n";
 
     struct Fixture {
         root: tempfile::TempDir,
@@ -442,7 +425,7 @@ mod tests {
             let helper = root.path().join("nightlight");
             fs::create_dir(&source).unwrap();
             fs::create_dir(&home).unwrap();
-            fs::write(source.join(DECLARATION), CONFIG).unwrap();
+            fs::write(source.join("dotfiles.toml"), CONFIG).unwrap();
             let lock = File::create(root.path().join("apply.lock")).unwrap();
             let fixture = Self {
                 root,
@@ -498,7 +481,17 @@ esac
         }
 
         fn capture(&self) -> Result<Plan> {
-            Plan::capture(&self.source, &self.home, &self.helper, Some(&self.lock))
+            let declarations = super::super::configuration::Configuration::parse(
+                &super::super::snapshot::read_regular(
+                    &self.source,
+                    Path::new("dotfiles.toml"),
+                    "dotfiles.toml",
+                )?,
+                None,
+                &[],
+            )?
+            .settings;
+            Plan::capture(&declarations, &self.home, &self.helper, Some(&self.lock))
         }
 
         fn writes(&self) -> String {
@@ -579,13 +572,12 @@ esac
     }
 
     #[test]
-    fn stale_preferences_declarations_or_helpers_are_not_overwritten() {
-        for kind in ["settings", "declaration", "helper", "home"] {
+    fn stale_preferences_or_helpers_are_not_overwritten() {
+        for kind in ["settings", "helper", "home"] {
             let fixture = Fixture::new("off\n", "80\n");
             let mut plan = fixture.capture().unwrap();
             match kind {
                 "settings" => fixture.put("schedule", "sunset to sunrise\n"),
-                "declaration" => fs::write(fixture.source.join(DECLARATION), "").unwrap(),
                 "helper" => {
                     let mut bytes = fs::read(&fixture.helper).unwrap();
                     bytes.extend_from_slice(b"\n# changed\n");
@@ -635,43 +627,37 @@ esac
     }
 
     #[test]
-    fn absent_or_empty_declaration_does_not_read_or_reset_preferences() {
-        for remove in [false, true] {
-            let fixture = Fixture::new("not supported\n", "bad\n");
-            fs::remove_file(&fixture.helper).unwrap();
-            if remove {
-                fs::remove_file(fixture.source.join(DECLARATION)).unwrap();
-            } else {
-                fs::write(fixture.source.join(DECLARATION), "").unwrap();
-            }
-            let mut plan = fixture.capture().unwrap();
-            assert!(!plan.has_changes());
-            plan.apply(&fixture.lock).unwrap();
-            assert!(fixture.writes().is_empty());
-        }
+    fn absent_declaration_does_not_read_or_reset_preferences() {
+        let fixture = Fixture::new("not supported\n", "bad\n");
+        fs::remove_file(&fixture.helper).unwrap();
+        fs::write(fixture.source.join("dotfiles.toml"), "").unwrap();
+        let mut plan = fixture.capture().unwrap();
+        assert!(!plan.has_changes());
+        plan.apply(&fixture.lock).unwrap();
+        assert!(fixture.writes().is_empty());
     }
 
     #[test]
     fn invalid_schema_time_temperature_and_symlink_declarations_fail_closed() {
         for config in [
             "hook = 'echo unsafe'",
-            "[night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = 101",
-            "[night_shift]\nstart = '24:00'\nend = '07:00'\ntemperature = 80",
-            "[night_shift]\nstart = '22:00'\nend = '7:00'\ntemperature = 80",
-            "[night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = -1",
-            "[night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = 80\nhelper = '/bin/sh'",
+            "[settings.night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = 101",
+            "[settings.night_shift]\nstart = '24:00'\nend = '07:00'\ntemperature = 80",
+            "[settings.night_shift]\nstart = '22:00'\nend = '7:00'\ntemperature = 80",
+            "[settings.night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = -1",
+            "[settings.night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = 80\nhelper = '/bin/sh'",
         ] {
             assert!(
-                parse_declarations(Some(config.as_bytes())).is_err(),
+                super::super::configuration::Configuration::parse(config.as_bytes(), None, &[]).is_err(),
                 "{config}"
             );
         }
         let fixture = Fixture::new("off\n", "20\n");
-        fs::remove_file(fixture.source.join(DECLARATION)).unwrap();
+        fs::remove_file(fixture.source.join("dotfiles.toml")).unwrap();
         fixture.put("config", CONFIG);
         symlink(
             fixture.home.join("config"),
-            fixture.source.join(DECLARATION),
+            fixture.source.join("dotfiles.toml"),
         )
         .unwrap();
         assert!(fixture.capture().is_err());

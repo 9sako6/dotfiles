@@ -205,13 +205,17 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     let previous_generation = &snapshot.previous_generation;
     let workspace = &snapshot.workspace;
     let tools = tools::Plan::capture(&public.source, &home, &runtime.mise)?;
-    let user_services =
-        user_services::Plan::capture(&public.source, &home, &runtime.launchctl, _lock.as_ref())?;
+    let user_services = user_services::Plan::capture(
+        &configuration.services,
+        &home,
+        &runtime.launchctl,
+        _lock.as_ref(),
+    )?;
     let system_source = inputs::SystemSource::inspect(&public.source, &configuration.copy)?;
     // Private modules retain their existing configuration interface, so any
     // value they could consume stays system-affecting when private is selected.
     let system_configuration = if private.is_some() {
-        Some(serde_json::to_vec(&configuration)?)
+        Some(serde_json::to_vec(&configuration.system_value())?)
     } else {
         None
     };
@@ -279,7 +283,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         .source_for_id("nightlight")
         .unwrap_or_else(|| home.join(".local/bin/nightlight"));
     let user_settings =
-        user_settings::Plan::capture(&public.source, &home, &nightlight, _lock.as_ref())?;
+        user_settings::Plan::capture(&configuration.settings, &home, &nightlight, _lock.as_ref())?;
     let copy_plan = home_copy::plan_live_with_artifact_handoffs(
         &public.source,
         root,
@@ -305,7 +309,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         retained.push(source.clone());
         retained.extend(private.iter().cloned());
         let manifest = serde_json::json!({
-            "configuration": configuration, "directory": root, "localFile": null,
+            "configuration": configuration.system_value(), "directory": root, "localFile": null,
             "privateFlake": private.as_ref().map(|path| locked_reference(nix, path)).transpose()?,
             "publicFlake": locked_reference(nix, &source)?,
             "publicRevision": public.revision, "publicSource": source,

@@ -23,7 +23,7 @@ pub(super) fn settings_json(
         .map(|bytes| parse_toml(bytes, "dotfiles.local.toml"))
         .transpose()?
         .unwrap_or_else(|| toml::Value::Table(Default::default()));
-    let values = serde_json::to_value(configuration)?;
+    let values = configuration.system_value();
     let mut rows = Vec::new();
     fn flatten(
         prefix: &str,
@@ -86,8 +86,8 @@ pub(super) fn inventory_json(source: &Path, configuration: &Configuration) -> Re
         .map(|(path, manager)| json!({"path": path, "manager": manager}))
         .collect();
     Ok(
-        json!({"packages": packages, "home": home, "services": super::user_services::declared_inventory(source)?,
-        "userSettings": super::user_settings::declared_inventory(source)?, "localllm": configuration.localllm }),
+        json!({"packages": packages, "home": home, "services": super::user_services::declared_inventory(&configuration.services)?,
+        "userSettings": super::user_settings::declared_inventory(&configuration.settings)?, "localllm": configuration.localllm }),
     )
 }
 
@@ -171,7 +171,7 @@ pub(super) fn report(
         )
     ));
     sections.push(format!(
-        "user services (launchd; current public declarations)\n{}",
+        "user services (launchd; current declarations)\n{}",
         table(
             &["name", "manager", "schedule"],
             inventory["services"]
@@ -188,7 +188,7 @@ pub(super) fn report(
         )
     ));
     sections.push(format!(
-        "user settings (current public declarations)\n{}",
+        "user settings (current declarations)\n{}",
         table(
             &["name", "manager", "declared"],
             inventory["userSettings"]
@@ -342,16 +342,7 @@ mod tests {
     #[test]
     fn report_labels_ownership_without_launching_backends_or_printing_environment() {
         let root = fixture();
-        fs::write(root.path().join("user-services.toml"), "[[agents]]\nlabel = 'com.example.check'\nargv = ['~/bin/check', 'secret-do-not-print']\nstart_interval = 60\n").unwrap();
-        fs::write(
-            root.path().join("user-settings.toml"),
-            "[night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = 80\n",
-        )
-        .unwrap();
-        let config = Configuration {
-            copy: vec![".claude/settings.json".into()],
-            ..Default::default()
-        };
+        let config = Configuration::parse(b"copy = ['.claude/settings.json']\n[[services.agents]]\nlabel = 'com.example.check'\nargv = ['~/bin/check', 'secret-do-not-print']\nstart_interval = 60\n[settings.night_shift]\nstart = '22:00'\nend = '07:00'\ntemperature = 80\n", None, &[]).unwrap();
         let text = report(root.path(), &config, None, None).unwrap();
         for expected in [
             "alpha",
@@ -399,27 +390,5 @@ mod tests {
         assert!(text.contains("private-service"));
         assert!(!text.contains("secret-do-not-print"));
         assert!(text.contains("last-applied records, not current desired"));
-    }
-
-    #[test]
-    fn invalid_declarations_fail_without_echoing_values() {
-        let root = fixture();
-        for declaration in [
-            "unknown = 'secret-do-not-print'",
-            "[[agents]]\nlabel = 'com.example.check'\nargv = ['~/bin/check']\nstart_interval = 0",
-            "[[agents]]\nlabel = 'com.example.check'\nargv = ['sh', '-c', 'secret-do-not-print']",
-            "[[agents]]\nlabel = 'com.example.check'\nargv = ['~/bin/check']\n[agents.start_calendar_interval]\nhour = 24",
-        ] {
-            fs::write(root.path().join("user-services.toml"), declaration).unwrap();
-            let error = report(root.path(), &Configuration::default(), None, None).unwrap_err();
-            assert!(!format!("{error:#}").contains("secret-do-not-print"));
-        }
-        fs::write(root.path().join("user-services.toml"), "agents = []").unwrap();
-        fs::write(
-            root.path().join("user-settings.toml"),
-            "[night_shift]\nstart = '25:00'\nend = '07:00'\ntemperature = 80",
-        )
-        .unwrap();
-        assert!(report(root.path(), &Configuration::default(), None, None).is_err());
     }
 }

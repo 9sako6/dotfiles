@@ -166,8 +166,6 @@ mod tests {
             "nix/localllm/catalog.json",
             "nix/localllm/package.nix",
             "nix/packages.nix",
-            "user-services.toml",
-            "user-settings.toml",
         ] {
             write(root.path(), path, "first");
             assert_eq!(original, inspect().fingerprint, "{path}");
@@ -195,8 +193,6 @@ mod tests {
             "nix/localllm",
             "nix/artifacts.nix",
             "nix/packages.nix",
-            "user-services.toml",
-            "user-settings.toml",
         ] {
             assert!(!projected.join(path).exists(), "{path}");
         }

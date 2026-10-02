@@ -10,12 +10,14 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use toml::Value;
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(default, deny_unknown_fields)]
 pub(super) struct Configuration {
     pub copy: Vec<String>,
     pub localllm: LocalLlm,
     pub private: Private,
+    pub services: super::user_services::Declarations,
+    pub settings: super::user_settings::Declarations,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -33,6 +35,10 @@ pub(super) struct Private {
 }
 
 impl Configuration {
+    pub fn system_value(&self) -> serde_json::Value {
+        serde_json::json!({"copy": self.copy, "localllm": self.localllm, "private": self.private})
+    }
+
     pub fn load(source: &Path, local: Option<&[u8]>) -> Result<Self> {
         let public =
             super::snapshot::read_regular(source, Path::new("dotfiles.toml"), "dotfiles.toml")?;
@@ -134,6 +140,8 @@ impl Configuration {
         if !errors.is_empty() {
             bail!("{}", errors.join("\n"));
         }
+        configuration.services.validate()?;
+        configuration.settings.validate()?;
         Ok(configuration)
     }
 }
@@ -158,15 +166,26 @@ fn validate_structure(value: &Value, file: &str, prefix: &str, errors: &mut Vec<
                     .as_array()
                     .is_some_and(|values| values.iter().all(Value::is_str)),
             ),
-            "localllm" | "private" => Some(value.is_table()),
+            "localllm" | "private" | "settings" | "settings.night_shift" => Some(value.is_table()),
+            "services" => Some(
+                value.is_table()
+                    && value
+                        .clone()
+                        .try_into::<super::user_services::Declarations>()
+                        .is_ok(),
+            ),
             "localllm.enabled" => Some(value.is_bool()),
-            "localllm.default_model" | "private.path" => Some(value.is_str()),
+            "localllm.default_model"
+            | "private.path"
+            | "settings.night_shift.start"
+            | "settings.night_shift.end" => Some(value.is_str()),
+            "settings.night_shift.temperature" => Some(value.is_integer()),
             _ => None,
         };
         match valid {
             None => errors.push(format!("{file}: {path}: unknown key")),
             Some(false) => errors.push(format!("{file}: {path}: invalid type")),
-            Some(true) if path == "localllm" || path == "private" => {
+            Some(true) if value.is_table() && path != "services" => {
                 validate_structure(value, file, &format!("{path}."), errors);
             }
             Some(true) => (),
@@ -276,6 +295,30 @@ mod tests {
     }
 
     #[test]
+    fn rootless_sections_merge_locally_without_changing_the_system_contract() {
+        let public = "[[services.agents]]\nlabel = 'com.example.check'\nargv = ['/usr/bin/true']\n[settings.night_shift]\nstart = '21:00'\nend = '06:00'\ntemperature = 60\n";
+        let original = parse(public, Some("[private]\npath = '../private'\n")).unwrap();
+        let overridden = parse(public, Some("[private]\npath = '../private'\n[services]\nagents = []\n[settings.night_shift]\ntemperature = 75\n")).unwrap();
+        assert_eq!(original.system_value(), overridden.system_value());
+        assert_eq!(
+            super::super::user_services::declared_inventory(&original.services)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(
+            super::super::user_services::declared_inventory(&overridden.services)
+                .unwrap()
+                .is_empty()
+        );
+        let preferences =
+            super::super::user_settings::declared_inventory(&overridden.settings).unwrap();
+        assert_eq!(preferences[0]["start"], "21:00");
+        assert_eq!(preferences[0]["end"], "06:00");
+        assert_eq!(preferences[0]["temperature"], 75);
+    }
+
+    #[test]
     fn rejects_unknown_keys_types_and_source_ownership() {
         for public in [
             "unknown = true",
@@ -288,6 +331,12 @@ mod tests {
             "[localllm]\nextra = true",
             "[localllm]\ndefault_model = []",
             "[private]",
+            "services = []",
+            "[services]\nextra = 'private-secret'",
+            "settings = []",
+            "[settings]\nextra = 'private-secret'",
+            "[settings.night_shift]\nstart = '21:00'",
+            "[settings.night_shift]\nstart = '21:00'\nend = '06:00'\ntemperature = 60\nextra = 'private-secret'",
         ] {
             assert!(parse(public, None).is_err(), "{public}");
         }
@@ -342,6 +391,14 @@ mod tests {
             ("copy = ['private-secret'", None),
             ("", Some("[private]\npath = ['private-secret']")),
             ("[localllm]\nmodels = ['private-secret']", None),
+            (
+                "[[services.agents]]\nlabel = 'com.example.check'\nargv = ['private-secret']",
+                None,
+            ),
+            (
+                "[settings.night_shift]\nstart = 'private-secret'\nend = '06:00'\ntemperature = 60",
+                None,
+            ),
         ] {
             let error = format!("{:#}", parse(public, local).unwrap_err());
             assert!(!error.contains("private-secret"));
@@ -350,5 +407,135 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.starts_with("dotfiles.local.toml: localllm.models:"));
+    }
+    #[test]
+    #[ignore = "requires Nix and pinned flake inputs; run explicitly on the macOS CI runner"]
+    fn rust_configuration_matches_the_nix_schema() {
+        use std::fs;
+        use std::path::Path;
+        use std::process::Command;
+
+        let repository = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let catalog: std::collections::BTreeMap<String, serde_json::Value> =
+            serde_json::from_slice(
+                &fs::read(repository.join("nix/localllm/catalog.json")).unwrap(),
+            )
+            .unwrap();
+        let models: Vec<_> = catalog.into_keys().collect();
+        let model = models.first().expect("model catalog must not be empty");
+        let enabled = format!(
+            "[localllm]\nenabled = true\nmodels = ['{model}']\ndefault_model = '{model}'\n"
+        );
+        let mut cases: Vec<(String, Option<String>)> = vec![
+            (String::new(), None),
+            ("copy = ['a', 'b/c']".into(), None),
+            (
+                "[settings.night_shift]\nstart = '21:00'\nend = '06:00'\ntemperature = 60".into(),
+                Some("[settings.night_shift]\ntemperature = 75".into()),
+            ),
+            (
+                "[[services.agents]]\nlabel = 'com.example.check'\nargv = ['/usr/bin/true']".into(),
+                Some("[services]\nagents = []".into()),
+            ),
+            (enabled.clone(), None),
+            (enabled.clone(), Some("[localllm]\nenabled = false".into())),
+            (
+                enabled,
+                Some(
+                    "[localllm]\nenabled = false\nmodels = []\n[private]\npath = '../private'"
+                        .into(),
+                ),
+            ),
+        ];
+        for public in [
+            "copy = []",
+            "copy = [1]",
+            "copy = ['/absolute']",
+            "copy = ['a', 'a/b']",
+            "copy = ['a/', 'b']",
+            "copy = ['b', 'a']",
+            "copy = ['a', 'a']",
+            "copy = ['a/../b']",
+            "copy = ['a/./b']",
+            "copy = ['a//b']",
+            "copy = ['']",
+            "copy = 'a'",
+            "[private]\npath = '../private'",
+            "[_module]\nargs = {}",
+            "[localllm._module]\nargs = {}",
+            "unknown = 'redacted-value'",
+            "[localllm]\nenabled = 2",
+            "[localllm]\nmodels = [2]",
+            "[localllm]\ndefault_model = false",
+            "[localllm]\nenabled = true",
+            "[localllm]\nmodels = ['unknown']",
+        ] {
+            cases.push((public.into(), None));
+        }
+        for local in [
+            "copy = []",
+            "[private]\npath = 2",
+            "[private]\npath = ''",
+            "[private]\nextra = 'value'",
+            "[localllm]\nenabld = true",
+            "localllm = false",
+        ] {
+            cases.push((String::new(), Some(local.into())));
+        }
+        let expected: Vec<Option<serde_json::Value>> = cases
+            .iter()
+            .map(|(public, local)| {
+                Configuration::parse(
+                    public.as_bytes(),
+                    local.as_deref().map(str::as_bytes),
+                    &models,
+                )
+                .ok()
+                .map(|configuration| configuration.system_value())
+            })
+            .collect();
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("cases.json");
+        fs::write(&path, serde_json::to_vec(&cases).unwrap()).unwrap();
+        let output = Command::new("nix")
+            .args([
+                "--extra-experimental-features",
+                "nix-command flakes",
+                "eval",
+                "--impure",
+                "--json",
+                "--no-write-lock-file",
+                "--no-update-lock-file",
+                "--expr",
+                r#"let
+                  root = builtins.getEnv "DOTFILES_CONFIGURATION_TEST_ROOT";
+                  source = builtins.getFlake ("path:" + root);
+                  cases = builtins.fromJSON (builtins.readFile (builtins.getEnv "DOTFILES_CONFIGURATION_TEST_CASES"));
+                in map (pair:
+                  let
+                    local = builtins.elemAt pair 1;
+                    parsed = import (root + "/nix/configuration.nix") {
+                      inherit (source.inputs.nixpkgs) lib;
+                      publicFile = builtins.toFile "dotfiles.toml" (builtins.elemAt pair 0);
+                      localFile = if local == null then null else builtins.toFile "dotfiles.local.toml" local;
+                    };
+                  in if parsed.errors == [] then parsed.config else null
+                ) cases"#,
+            ])
+            .env("DOTFILES_CONFIGURATION_TEST_ROOT", repository)
+            .env("DOTFILES_CONFIGURATION_TEST_CASES", path)
+            .output()
+            .expect("Nix must be installed for the explicit parity test");
+        assert!(
+            output.status.success(),
+            "Nix schema comparison failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let actual: Vec<Option<serde_json::Value>> =
+            serde_json::from_slice(&output.stdout).unwrap();
+        for (index, (expected, actual)) in expected.iter().zip(actual.iter()).enumerate() {
+            assert_eq!(expected, actual, "configuration case {index}");
+        }
+        assert_eq!(actual.len(), expected.len());
     }
 }

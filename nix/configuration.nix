@@ -40,8 +40,9 @@ let
       else if children != { } && builtins.isAttrs value.${key} then
         check file (name + ".") children value.${key}
       else [ ]) (builtins.attrNames value);
-  public = builtins.fromTOML (builtins.readFile publicFile);
-  local = if localFile == null then { } else builtins.fromTOML (builtins.readFile localFile);
+  systemConfiguration = value: builtins.removeAttrs value [ "services" "settings" ];
+  public = systemConfiguration (builtins.fromTOML (builtins.readFile publicFile));
+  local = if localFile == null then { } else systemConfiguration (builtins.fromTOML (builtins.readFile localFile));
   structuralErrors = check "dotfiles.toml" "" options public
     ++ check "dotfiles.local.toml" "" options local
     ++ lib.optional (public ? private) "dotfiles.toml: private: only allowed in dotfiles.local.toml"

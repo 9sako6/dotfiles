@@ -40,7 +40,7 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 
 - 公開リポジトリ直下の `flake.nix` が唯一の構成ルートである。system構成だけを公開rootから評価する。日常のpublic home/tools/services/settingsはRust/miseが扱う。
 - 構成設定は、リポジトリ共有の `dotfiles.toml` と、Git 管理外の `dotfiles.local.toml` の 2 つで管理する。
-- 通常コマンドはRustのTOMLパーサーで設定を検証する。Nixへ進む場合は既存の設定スキーマでも検証し、両者の受理・拒否とマージ結果を同じ入力例で照合する。モデルカタログは `nix/localllm/catalog.json` を共通入力にする。エラーに設定値を含めない。
+- 通常コマンドはRustのTOMLパーサーで設定を検証する。Nixへ渡すcopy/localllm/privateはNixの設定スキーマでも検証し、両者の受理・拒否とマージ結果を同じ入力例で照合する。services/settingsはRustが検証・反映し、Nixには渡さない。モデルカタログは `nix/localllm/catalog.json` を共通入力にする。エラーに設定値を含めない。
 - 設定テーブルのマージは、「既定値 < 公開共有 (`dotfiles.toml`) < ローカル (`dotfiles.local.toml`)」の順序で再帰的に行われる。
 - 配列およびスカラー値はマージされず、`false` や空配列 `[]` を含め、上位の設定で完全に置換される。
 - `copy` セクションは共有の `dotfiles.toml` でのみ定義可能とし、ローカルファイルでの指定は拒否される。指定するパスは相対パス表記であり、重複がなく、アルファベット順に整列され、かつ相互に包含関係を持たないものでなければならない。
@@ -59,8 +59,8 @@ Nix の実現手段ごとにトップレベルディレクトリを分けない�
 - `plan` および `apply` の実行中に、自動的な `git clone`、`git pull`、または依存固定ファイルの更新は一切行わない。
 - ローカル設定による非純粋性は、明示的かつ一時的なマニフェストとして検証済み Nix エントリへ渡す箇所に限定し、公開 CI 環境は完全に純粋に保つ。
 - RustがGit追跡ファイルの内容・mode・symlinkを一時領域へ固定し、前後の変更を検査する。未追跡ファイルは含めない。privateの `flake.lock` はコミット済みかつ未変更でなければならない。コピーした固定ソース自体も確認後に再検証する。
-- system入力は `flake.nix`、`flake.lock` と `nix/` 内のsystemに必要な10ファイルに限定する。対象一覧は `cli/src/system/inputs.rs` が所有する。CLI、home、mise、user-services、user-settings、artifact実装はこの入力に含めない。制限したソースだけでprivate Home Managerを含むhostを評価できることをcomposition testで検証する。
-- `dotfiles-system-inputs` をactive generationから読み、Nixを起動する前にsystem変更を判定する。キーはsystemソース、privateの追跡内容、checkout位置、ユーザー、HOME。privateがある場合は、private moduleが参照し得るマージ済み設定全体も含める。この場合のcopy/localllm宣言変更は保守的にsystem変更として扱う。単なるコミット進行、CLIやhomeの内容変更はキーに含めない。
+- system入力は `flake.nix`、`flake.lock` と `nix/` 内のsystemに必要な10ファイルに限定する。対象一覧は `cli/src/system/inputs.rs` が所有する。CLI、home、mise、rootless設定、artifact実装はこの入力に含めない。制限したソースだけでprivate Home Managerを含むhostを評価できることをcomposition testで検証する。
+- `dotfiles-system-inputs` をactive generationから読み、Nixを起動する前にsystem変更を判定する。キーはsystemソース、privateの追跡内容、checkout位置、ユーザー、HOME。privateがある場合は、private moduleへ渡すマージ済みcopy/localllm/privateも含める。この場合のcopy/localllm宣言変更は保守的にsystem変更として扱う。単なるコミット進行、CLIやhomeの内容変更はキーに含めない。
 - artifactはsystemと別に、固定recipeと設定のidentity、manifest、登録済みGC rootを照合する。成功した評価結果は `artifact-evaluation.json` に保存するが、homeの所有証明には使わない。欠損・破損・root消失時は再評価し、通常のhome/tools/service変更で評価を繰り返さない。
 - 一つのPlanを一度表示し、applyだけが一度yesを確認する。確認後はartifactの必要なrealization、home、tools、artifact配置、user settings、user servicesの順に進む。system変更があるときだけ、その後にsystemをbuildし、入力を再確認してactivation直前にsudoを使う。system activationはrootless CLIの内部操作で行い、世代内CLIやhomeの再計画に依存しない。
 - planは配置、ツール導入、service操作、設定変更、成功記録の更新をしない。古いinventoryから移行するときもsystemを事前buildせず、予定世代と宣言差分を表示する。Nixが必要なcold pathでは固定inputの取得・store登録・評価が発生する。
@@ -120,13 +120,13 @@ Homebrewのformulaとcaskは `nix/homebrew-packages.nix` に集約する。普�
 
 ### Public user LaunchAgent の宣言と反映
 
-`user-services.toml` は public user LaunchAgent の唯一の宣言元で、Rust CLI が同じ公開 snapshot から読み、plist と追加・変更・削除の差分を生成する。system input へは含めない。Rust CLI は確認済み Plan の plist、所有記録、launchd の登録状態を再検証して反映する。サービスの前提となる tools と home を先に配備し、system変更を伴う場合もservice反映後にsystem build/activationへ進む。各rootless工程の前後で入力と現在の世代を確認し、activation成功後は更新先の世代とsource recordを検証する。
+`dotfiles.toml` の `[services]` が user LaunchAgent の宣言元で、`dotfiles.local.toml` の同じセクションで上書きできる。Rust CLI が共通の設定検証・マージ結果を受け取り、plist と追加・変更・削除の差分を生成する。system input へは含めない。Rust CLI は確認済み Plan の plist、所有記録、launchd の登録状態を再検証して反映する。サービスの前提となる tools と home を先に配備し、system変更を伴う場合もservice反映後にsystem build/activationへ進む。各rootless工程の前後で入力と現在の世代を確認し、activation成功後は更新先の世代とsource recordを検証する。
 
-`[[agents]]` の必須項目は `label` と `argv`。任意項目は `run_at_load`、`keep_alive`（既定 false）、正の `start_interval`、`start_calendar_interval`（minute/hour/day/weekday/month）、`working_directory`。interval と calendar は同時指定できない。未知のキー、大文字小文字のみ異なるものを含む重複 label、空 argv、制御文字、不正な schedule/path は拒否する。raw shell hook や任意の plist key は受け付けない。これは実行ファイルの sandbox ではない。
+`[[services.agents]]` の必須項目は `label` と `argv`。任意項目は `run_at_load`、`keep_alive`（既定 false）、正の `start_interval`、`start_calendar_interval`（minute/hour/day/weekday/month）、`working_directory`。interval と calendar は同時指定できない。未知のキー、大文字小文字のみ異なるものを含む重複 label、空 argv、制御文字、不正な schedule/path は拒否する。raw shell hook や任意の plist key は受け付けない。これは実行ファイルの sandbox ではない。
 
 `argv[0]` は絶対パスまたは `~/` で始まる安定した実行入口を明記する。mise tool は [mise shims](https://mise.jdx.dev/dev-tools/shims.html) を使い、標準構成なら `~/.local/share/mise/shims/node` 等を指定する。`MISE_SHIMS_DIR` / `shims_dir` / data directory を変更した環境では、利用者がその構成に対応した実際の shim path を指定する。CLI は bare command から shim path を推測しない。mise install の版固定パス、Nix store の実行パス、shell interpreter と env の直接指定は拒否する。`~/` 展開は実行入口と working directory のみで、他の argv 要素に shell 展開は行わない。shim は作業ディレクトリに対応した mise 設定を選ぶので、必要に応じて working directory を指定する。
 
-前回成功結果は `$XDG_STATE_HOME/dotfiles/user-services.json`（既定 `~/.local/state/dotfiles/user-services.json`）の version 1、home、agents（label → plist SHA-256）の記録として読む。宣言や起動指示は記録しない。差分は宣言 label と記録済み label のみに限定し、LaunchAgents を走査して所有を推測しない。記録がない既存 plist、記録と内容が異なる plist、配備先や記録の symlink、破損記録は競合として停止する。HOME、公開 snapshot root、明示した XDG_STATE_HOME 自体の OS alias は許容し、その配下の symlink は拒否する。記録を失った場合、既存 agent を自動採用・削除せず手動で所有を確認する。欠損した managed plist は再作成差分となる。
+前回成功結果は `$XDG_STATE_HOME/dotfiles/user-services.json`（既定 `~/.local/state/dotfiles/user-services.json`）の version 1、home、agents（label → plist SHA-256）の記録として読む。宣言や起動指示は記録しない。差分は宣言 label と記録済み label のみに限定し、LaunchAgents を走査して所有を推測しない。記録がない既存 plist、記録と内容が異なる plist、配備先や記録の symlink、破損記録は競合として停止する。HOME、明示した XDG_STATE_HOME 自体の OS alias は許容し、その配下の symlink は拒否する。記録を失った場合、既存 agent を自動採用・削除せず手動で所有を確認する。欠損した managed plist は再作成差分となる。
 
 launchctl の対象は実行ユーザーの `gui/<euid>` に限定する。`print gui/<euid>/<label>` の登録元が canonical HOME 配下の対象 plist と一致し、種別が LaunchAgent と確認できる場合だけ登録済みとして扱う。以前の plist 所有記録もある場合に限って `bootout gui/<euid>/<label>` を実行する。登録がないと判断するには、status 113、対象 label と uid が一致する既知の missing-service 診断、GUI domain の `print` 成功をすべて要求する。その他のエラーや未知の出力形式は停止条件となる。PID、起動回数、実行中か待機中かは差分に含めない。
 

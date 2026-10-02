@@ -232,6 +232,7 @@ cargo fmt --check --manifest-path cli/Cargo.toml
 cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
 cargo test --locked --manifest-path cli/Cargo.toml
 cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles inventory::tests::nix_legacy_ -- --ignored
+cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::configuration::tests::rust_configuration_matches_the_nix_schema -- --ignored --exact
 cargo test --locked --manifest-path cli/Cargo.toml --test zinit -- --ignored
 cargo test --locked --manifest-path cli/Cargo.toml --test activation -- --ignored
 cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::fast_path_tests::nix_generation_contains_the_inputs_used_by_the_copy_fast_path -- --ignored --exact
@@ -276,16 +277,16 @@ GitHub-hosted な macOS runner では、public rootless homeの配置・固定mi
 
 ## Public user service の反映
 
-`user-services.toml` は現在空のままであり、既存サービスの移行は行っていない。宣言の形式例は次のとおり。shell snippet ではなく argv を記述する。
+`dotfiles.toml` の `[services]` にuser LaunchAgentを宣言する。現在は宣言がなく、既存サービスの移行は行っていない。宣言の形式例は次のとおり。shell snippet ではなく argv を記述する。
 
 ```toml
-[[agents]]
+[[services.agents]]
 label = "com.example.daily-check"
 argv = ["~/.local/share/mise/shims/node", "/absolute/path/to/check.js"]
 working_directory = "~/jobs"
 run_at_load = false
 
-[agents.start_calendar_interval]
+[services.agents.start_calendar_interval]
 hour = 9
 minute = 0
 ```
@@ -330,6 +331,6 @@ Anki GUIは `flake.nix` のsystem packageとして26.05を維持する。Homebre
 
 ## Public user settings
 
-`user-settings.toml` の `[night_shift]` にstart/end（24時間表記）とtemperature（0〜100）を宣言する。既存値は22:00〜07:00、80。Rustは固定Nightlight 1.0.0のreadbackを12/24時間表示のどちらでも解釈し、異なる値だけを書いて再読込する。manual on/offを切り替えるコマンドは呼ばない。helper未導入時は現在値をunknownとしてPlanに示し、承認後のartifact導入後に読む。
+`dotfiles.toml` の `[settings.night_shift]` にstart/end（24時間表記）とtemperature（0〜100）を宣言する。両セクションとも`dotfiles.local.toml`から同じルールで上書きできる。Rustは固定Nightlight 1.0.0のreadbackを12/24時間表示のどちらでも解釈し、異なる値だけを書いて再読込する。manual on/offを切り替えるコマンドは呼ばない。helper未導入時は現在値をunknownとしてPlanに示し、承認後のartifact導入後に読む。
 
-設定を宣言から削除してもOS値を初期化しない。source/helper/値が確認後に変われば停止する。部分成功後の再applyは実際の値を読み直して収束する。Linux fixtureで呼出しとreadbackを検証しており、実Macの私有APIやlaunchctl互換性は実機受け入れと区別する。
+設定を宣言から削除してもOS値を初期化しない。共通snapshotの設定入力、helper、OS値が確認後に変われば停止する。部分成功後の再applyは実際の値を読み直して収束する。Linux fixtureで呼出しとreadbackを検証しており、実Macの私有APIやlaunchctl互換性は実機受け入れと区別する。

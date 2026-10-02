@@ -601,14 +601,16 @@ fn nix_generation_contains_the_inputs_used_by_the_copy_fast_path() {
 
 fn services_fixture() -> Fixture {
     let fixture = Fixture::new();
-    write(
-        &fixture.root.join("user-services.toml"),
-        "[[agents]]\nlabel = 'com.example.fixture'\nargv = ['~/resource']\nrun_at_load = true\n",
+    let mut declaration = fs::read_to_string(fixture.root.join("dotfiles.toml")).unwrap();
+    declaration.push('\n');
+    declaration.push_str(
+        "[[services.agents]]\nlabel = 'com.example.fixture'\nargv = ['~/resource']\nrun_at_load = true\n",
     );
+    write(&fixture.root.join("dotfiles.toml"), &declaration);
     assert!(Command::new("git")
         .arg("-C")
         .arg(&fixture.root)
-        .args(["add", "user-services.toml"])
+        .args(["add", "dotfiles.toml"])
         .status()
         .unwrap()
         .success());
@@ -726,6 +728,30 @@ fn unified_failed_service_bootstrap_retains_home_then_retries_only_service() {
     assert_eq!(fs::metadata(&home).unwrap().ino(), inode);
     assert!(fixture.state.join("loaded/com.example.fixture").exists());
     assert!(!fixture.state.join("activation").exists());
+}
+
+#[test]
+fn merged_rootless_declaration_changes_after_review_stop_before_deployment() {
+    for local in [false, true] {
+        let fixture = services_fixture();
+        let declaration = fixture.root.join(if local {
+            "dotfiles.local.toml"
+        } else {
+            "dotfiles.toml"
+        });
+        let result = run_with(
+            Mode::Apply,
+            &fixture.root,
+            false,
+            services_runtime(&fixture, move || {
+                write(&declaration, "[services]\nagents = []\n");
+                Ok(())
+            }),
+        );
+        assert!(result.unwrap_err().to_string().contains("changed"));
+        assert!(!fixture.state.join("home/resource").exists());
+        assert!(!fixture.state.join("loaded/com.example.fixture").exists());
+    }
 }
 
 #[test]
