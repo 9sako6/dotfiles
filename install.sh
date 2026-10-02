@@ -44,20 +44,13 @@ main() {
   "$DOTFILES_DIR/bin/install-mise.sh"
   export PATH="$HOME/.local/bin:$PATH"
   "$MISE_BIN" trust "$DOTFILES_DIR/home/.config/mise/config.toml"
-  MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" "$MISE_BIN" install --locked rust
-  . "$DOTFILES_DIR/lib/install-system.sh"
-  install_system_ensure_lix "$DOTFILES_DIR/bin/install-lix.sh" >/dev/null
-
+  MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" "$MISE_BIN" install --locked bun
   cd "$DOTFILES_DIR"
-  DOTFILES_DIR="$DOTFILES_DIR" \
-    MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" \
-    "$MISE_BIN" exec -- \
-    cargo run --locked --manifest-path "$DOTFILES_DIR/cli/Cargo.toml" -- apply
-
   "$MISE_BIN" trust
-
-  cd "$HOME"
-  "$MISE_BIN" bootstrap --yes --verbose
+  MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" \
+    "$MISE_BIN" exec -- mise run home:apply
+  "$MISE_BIN" exec -- mise run agents:apply
+  "$MISE_BIN" exec -- mise run system:apply
 
   git -C "$DOTFILES_DIR" checkout --quiet -B master "$bootstrap_revision"
   git -C "$DOTFILES_DIR" branch --quiet --set-upstream-to=origin/master master

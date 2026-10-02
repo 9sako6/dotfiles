@@ -34,23 +34,20 @@ jobs:
         run: gitleaks git --redact --no-banner --exit-code 1
 
   rootless-contract:
-    # Keep unprivileged namespaces available without changing runner security settings.
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Prepare isolated CLI tests
+      - name: Prepare mise and Bun
+        env:
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes bubblewrap
-          bwrap --unshare-user --ro-bind / / /bin/true
           ./bin/install-mise.sh
-          ci_rust_version="$("$HOME/.local/bin/mise" --quiet config get --file home/.config/mise/config.toml tools.rust.version)"
-          rustup toolchain install "$ci_rust_version" --profile minimal
-          rustup default "$ci_rust_version"
-          cargo fetch --locked --manifest-path cli/Cargo.toml
-      - name: Verify actual rootless plan and apply
-        run: |
-          cargo test --locked --manifest-path cli/Cargo.toml --test public_home_apply --test rootless_boundary -- --ignored
+          "$HOME/.local/bin/mise" install bun
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$(dirname "$("$HOME/.local/bin/mise" which bun)")" >> "$GITHUB_PATH"
+      - name: Verify actual home and agents tasks without Nix or Rust
+        run: bun test tests/apply.test.ts
 
   contract-test:
     runs-on: macos-latest
@@ -82,6 +79,7 @@ jobs:
           MISE_AUTO_INSTALL: "false"
         run: |
           ./bin/install-mise.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           before="$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
           "$HOME/.local/bin/mise" install --locked conda:git
           test "$before" = "$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
@@ -135,20 +133,6 @@ jobs:
             bun install --frozen-lockfile
             bun run tsc --noEmit
             bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
-          '
-
-      - name: Check Rust public contracts
-        run: |
-          nix shell .#ciTools --command /bin/bash -c '
-            set -eu
-            cargo fmt --check --manifest-path cli/Cargo.toml
-            cargo clippy --locked --manifest-path cli/Cargo.toml --all-targets -- -D warnings
-            cargo test --locked --manifest-path cli/Cargo.toml
-            cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles inventory::tests::nix_legacy_ -- --ignored
-            cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::configuration::tests::rust_configuration_matches_the_nix_schema -- --ignored --exact
-            cargo test --locked --manifest-path cli/Cargo.toml --test zinit -- --ignored
-            cargo test --locked --manifest-path cli/Cargo.toml --test activation -- --ignored
-            cargo test --locked --manifest-path cli/Cargo.toml --bin dotfiles system::fast_path_tests::nix_generation_contains_the_inputs_used_by_the_copy_fast_path -- --ignored --exact
           '
 
       - name: Check artifact and private composition

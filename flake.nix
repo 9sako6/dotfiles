@@ -61,16 +61,8 @@
         modules ? [ ],
         configuration ? defaultConfiguration,
         primaryUser,
-        privateSource ? null,
-        resourceSource ? self.outPath,
-        systemInputs ? null,
       }:
         let
-          inventory = darwinSystem.pkgs.writeText "dotfiles-inventory.json" (builtins.toJSON (import ./nix/inventory.nix {
-            inherit configuration inputs privateSource resourceSource;
-            host = darwinSystem;
-            publicSource = self.outPath;
-          }));
           darwinSystem = nix-darwin.lib.darwinSystem {
             specialArgs = {
               inherit configuration dotfilesDirectory dotfilesSourceHome inputs;
@@ -78,13 +70,6 @@
             modules = [
               self.darwinModules.default
               ({ pkgs, ... }: {
-                system.systemBuilderCommands = ''
-                  ln -s ${inventory} "$out/dotfiles-inventory.json"
-                '' + pkgs.lib.optionalString (systemInputs != null) ''
-                  ln -s ${pkgs.writeText "dotfiles-system-inputs" systemInputs} "$out/dotfiles-system-inputs"
-                '';
-                # GUI ownership remains at the system boundary; user tools and
-                # the CLI are deployed by the rootless backends.
                 environment.systemPackages = [ pkgs.anki-bin ];
                 assertions = [ {
                   assertion = pkgs.anki-bin.version == "26.05";
@@ -104,7 +89,6 @@
           };
         in
         darwinSystem // {
-          inherit inventory;
           homebrewBrewfile = darwinSystem.pkgs.writeText
             "Brewfile"
             darwinSystem.config.homebrew.brewfile;
@@ -120,14 +104,11 @@
         dotfilesDirectory,
         primaryUser,
         privateFlake ? null,
-        resourceSource ? self.outPath,
-        systemInputs ? null,
       }:
         assert nixpkgs.lib.assertMsg (privateFlake == null || privateFlake ? darwinModules.default)
           "private.path must export darwinModules.default";
         mkDarwinSystem {
-          inherit configuration configurationRevision dotfilesDirectory primaryUser resourceSource systemInputs;
-          privateSource = if privateFlake == null then null else privateFlake.outPath or null;
+          inherit configuration configurationRevision dotfilesDirectory primaryUser;
           modules = nixpkgs.lib.optional (privateFlake != null) privateFlake.darwinModules.default;
         };
       publicSystem = mkHost {
@@ -141,8 +122,7 @@
         artifacts = (mkArtifacts { }).root;
         cachix = toolset.cachix;
         ciTools = ciToolsPackage;
-        default = toolset.dotfiles;
-        dotfiles = toolset.dotfiles;
+        default = (mkArtifacts { }).root;
         localllm = toolset.localllm (defaultConfiguration.localllm // {
           default_model = "qwen3.8-9b-distill-4bit";
           enabled = true;

@@ -45,25 +45,15 @@ if mise which atuin > /dev/null 2>&1; then
   eval "$(atuin init zsh)"
 fi
 
-: "zinit" && {
-  ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
-  if [ -f "${ZINIT_HOME}/zinit.zsh" ]; then
-    source "${ZINIT_HOME}/zinit.zsh"
-
-    () {
-      local repository
-      local -a verified_plugins
-      verified_plugins=("${(@f)$(command dotfiles zinit verify --plugins-dir "${ZINIT[PLUGINS_DIR]}" \
-        momo-lab/zsh-abbrev-alias \
-        zsh-users/zsh-syntax-highlighting \
-        zsh-users/zsh-autosuggestions)}")
-      for repository in "${verified_plugins[@]}"; do
-        [[ -n "$repository" ]] || continue
-        zinit ice nocompile
-        zinit light "$repository"
-      done
-    }
-  fi
+() {
+  local plugin
+  for plugin in \
+    momo-lab---zsh-abbrev-alias/abbrev-alias.plugin.zsh \
+    zsh-users---zsh-autosuggestions/zsh-autosuggestions.zsh \
+    zsh-users---zsh-syntax-highlighting/zsh-syntax-highlighting.zsh; do
+    local source="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/plugins/${plugin}"
+    [[ ! -f "$source" ]] || source "$source"
+  done
 }
 
 # prompt

@@ -20,9 +20,10 @@ async function makeExecutable(filePath: string, content: string) {
   await chmod(filePath, 0o755);
 }
 
-function rootlessApplyLog(dotfilesDir: string): string {
-  return "mise <exec> <--> <cargo> <run> <--locked> <--manifest-path> " +
-    `<${dotfilesDir}/cli/Cargo.toml> <--> <apply>\n`;
+function rootlessApplyLog(_dotfilesDir: string): string {
+  return "mise <exec> <--> <mise> <run> <home:apply>\n" +
+    "mise <exec> <--> <mise> <run> <agents:apply>\n" +
+    "mise <exec> <--> <mise> <run> <system:apply>\n";
 }
 
 async function prepareBootstrapEnvironment(
@@ -70,13 +71,12 @@ if [ "\${BOOTSTRAP_FAIL_STAGE:-}" = "\${1:-}" ] && [ ! -e "\${BOOTSTRAP_FAILURE_
   : > "$BOOTSTRAP_FAILURE_MARKER"
   exit 1
 fi
-if [ "\${1:-}" = install ] && [ "\${2:-}" = --locked ] && [ "\${3:-}" = rust ]; then
+if [ "\${1:-}" = install ] && [ "\${2:-}" = --locked ] && [ "\${3:-}" = bun ]; then
   [ "\${MISE_CONFIG_FILE:-}" = "$DOTFILES_DIR/home/.config/mise/config.toml" ] || exit 1
-  : > "$HOME/rust-ready"
+  : > "$HOME/bun-ready"
 fi
 if [ "\${1:-}" = exec ]; then
-  [ -e "$HOME/rust-ready" ] || exit 1
-  [ "\${MISE_CONFIG_FILE:-}" = "$DOTFILES_DIR/home/.config/mise/config.toml" ] || exit 1
+  [ -e "$HOME/bun-ready" ] || exit 1
 fi
 `,
   );
@@ -85,7 +85,7 @@ fi
     `#!/bin/sh
 set -eu
 [ "$(command -v mise)" = "$HOME/.local/bin/mise" ]
-[ -e "$HOME/rust-ready" ]
+[ -e "$HOME/bun-ready" ]
 printf 'nix' >> "$BOOTSTRAP_LOG"
 printf ' <%s>' "$@" >> "$BOOTSTRAP_LOG"
 printf '\\n' >> "$BOOTSTRAP_LOG"
@@ -173,7 +173,7 @@ async function runGit(args: string[], cwd: string) {
 }
 
 describe("公開bootstrap", () => {
-  test("miseの固定Rustからrootless CLIを起動してapplyする", async () => {
+  test("固定Bunでhome、agents、systemを順に反映する", async () => {
     await withTempDir("bootstrap-nix-apply", async (tempDir) => {
       const { env, logPath } = await prepareBootstrapEnvironment(tempDir);
 
@@ -182,9 +182,8 @@ describe("公開bootstrap", () => {
       expect(result).toEqual({ exitCode: 0, stderr: "", stdout: "" });
       expect(await readFile(logPath, "utf8")).toBe(
         "install-mise\n" +
-          `mise <trust> <${env.DOTFILES_DIR}/home/.config/mise/config.toml>\nmise <install> <--locked> <rust>\n` +
-          rootlessApplyLog(env.DOTFILES_DIR!) +
-          "mise <trust>\nmise <bootstrap> <--yes> <--verbose>\n",
+          `mise <trust> <${env.DOTFILES_DIR}/home/.config/mise/config.toml>\nmise <install> <--locked> <bun>\n` +
+          "mise <trust>\n" + rootlessApplyLog(env.DOTFILES_DIR!),
       );
     });
   });
@@ -271,7 +270,7 @@ printf '\\n' >> "$BOOTSTRAP_LOG"
     });
   });
 
-  for (const failureStage of ["install-mise", "exec", "trust", "install", "bootstrap"] as const) {
+  for (const failureStage of ["install-mise", "exec", "trust", "install"] as const) {
     test(`${failureStage}の失敗後も再実行でmasterへ収束する`, async () => {
       await withTempDir(`bootstrap-retry-${failureStage}`, async (tempDir) => {
         const { env } = await prepareBootstrapEnvironment(tempDir);

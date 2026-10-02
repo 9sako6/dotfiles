@@ -42,42 +42,28 @@ jobs:
           ./bin/install-mise.sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Prepare CLI refresh toolchain
+      - name: Prepare Bun
         run: |
-          "$HOME/.local/bin/mise" trust
-          "$HOME/.local/bin/mise" trust "$GITHUB_WORKSPACE/home/.config/mise/config.toml"
-          MISE_CONFIG_FILE="$GITHUB_WORKSPACE/home/.config/mise/config.toml" \
-            "$HOME/.local/bin/mise" install --locked rust
+          mise trust
+          mise trust "$GITHUB_WORKSPACE/home/.config/mise/config.toml"
+          MISE_CONFIG_FILE="$GITHUB_WORKSPACE/home/.config/mise/config.toml" mise install --locked bun
 
-      - name: Build system configuration
+      - name: Deploy public home and fixed tools
         run: |
-          DOTFILES_DIR="$GITHUB_WORKSPACE" \
-            /nix/var/nix/profiles/default/bin/nix \
-              --extra-experimental-features "nix-command flakes" \
-              run .#dotfiles -- plan
+          MISE_CONFIG_FILE="$GITHUB_WORKSPACE/home/.config/mise/config.toml" mise exec -- mise run home:apply
 
-      - name: Deploy public rootless home and fixed tools
+      - name: Build system configuration and resources
         run: |
-          nix_bin=/nix/var/nix/profiles/default/bin/nix
-          source="$(
-            DOTFILES_DIR="$GITHUB_WORKSPACE" "$nix_bin" eval --raw --impure \
-              --no-update-lock-file --no-write-lock-file \
-              --expr '(builtins.getFlake ("git+file://" + builtins.getEnv "DOTFILES_DIR")).outPath'
-          )"
-          "$nix_bin" eval --json --no-update-lock-file --no-write-lock-file \
-            .#darwinConfigurations.current.config.dotfiles.configuration.copy > "$RUNNER_TEMP/home-copy.json"
-          "$HOME/.local/bin/dotfiles" complete-apply --directory "$GITHUB_WORKSPACE" \
-            "$source" "$RUNNER_TEMP/home-copy.json" "$HOME"
-          "$HOME/.local/bin/mise" trust "$GITHUB_WORKSPACE/home/.config/mise/config.toml"
-          MISE_CONFIG_FILE="$GITHUB_WORKSPACE/home/.config/mise/config.toml" \
-            "$HOME/.local/bin/mise" install --locked
-          cd "$HOME"
-          "$HOME/.local/bin/mise" bootstrap --yes --verbose
+          /nix/var/nix/profiles/default/bin/nix \
+            --extra-experimental-features "nix-command flakes" \
+            build --impure --no-update-lock-file --no-write-lock-file \
+            --file nix/apply.nix --argstr directory "$GITHUB_WORKSPACE" \
+            --argstr user "$(id -un)" bundle --out-link "$RUNNER_TEMP/dotfiles-system"
 
-      - name: Verify zinit plugins converged by bootstrap
+      - name: Verify shell plugins converged by bootstrap
         run: '"$HOME/.local/bin/mise" bootstrap repos status --missing'
 
-      - name: Verify zinit plugins load in an interactive shell
+      - name: Verify shell plugins load in an interactive shell
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           script -q /dev/null zsh -i -c '
@@ -90,11 +76,12 @@ jobs:
           '
           "$HOME/.local/bin/mise" bootstrap repos status --missing
 
-      - name: Verify generated agent resources
+      - name: Generate and deploy agent resources
         run: |
-          "$HOME/.local/bin/mise" run agents:build
-          git diff --exit-code -- home
-          test -z "$(git status --short --untracked-files=all -- home)"
+          mise exec -- mise run agents:apply
+          for resource in .agents/skills .claude/rules .claude/settings.json .claude/skills .codex/AGENTS.md; do
+            diff -r "home/$resource" "$HOME/$resource"
+          done
 
       - name: Verify secrets are absent after install
         run: test ! -e "$HOME/.zsh.d/secrets.zsh"
