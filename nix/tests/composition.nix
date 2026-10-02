@@ -21,6 +21,7 @@ let
         target = "/Users/fixture/fixture-owned";
         text = "fixture";
       };
+      home.file."related-private" = { target = ".config/git/private.conf"; text = "fixture"; };
       home.packages = [ privatePackage ];
       launchd.agents.private-fixture = {
         enable = true;
@@ -70,6 +71,7 @@ let
       && otherMachine.config.home-manager.users.another-fixture.home.stateVersion == "24.05"
       && otherMachine.config.home-manager.users.another-fixture.home.file."machine-owned".enable;
     privateHomeFilePreserved = composed.config.home-manager.users.fixture.home.file."fixture-owned".enable;
+    privateSiblingPreserved = composed.config.home-manager.users.fixture.home.file."related-private".enable;
     privatePackagePreserved = builtins.elem privatePackage composed.config.home-manager.users.fixture.home.packages;
     privateUserAgentPreserved = composed.config.home-manager.users.fixture.launchd.agents.private-fixture.config.RunAtLoad;
     publicLinkConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".config/mise"; text = "fixture"; }; };
