@@ -152,12 +152,9 @@ dotfiles -V
 | 設定キー | 型 | 既定値 | 記述先 | 説明 |
 | --- | --- | --- | --- | --- |
 | `copy` | 文字列配列 | `[]` | 共有のみ | ホームへ実体コピーする相対パス |
-| `localllm.default_model` | 文字列または`null` | `null` | 共有・ローカル | 起動時にロードするモデルID |
-| `localllm.enabled` | 真偽値 | `false` | 共有・ローカル | ローカルLLMを構成に含めるか |
-| `localllm.models` | 文字列配列 | `[]` | 共有・ローカル | 構成に含めるモデルIDの一覧 |
 | `private.path` | 文字列または`null` | `null` | ローカルのみ | 非公開モジュールを取り込むチェックアウト |
 
-表の既定値は[nix/configuration.nix](../nix/configuration.nix)のスキーマに基づきます。現在の共有設定には`copy`の一覧があり、ローカルLLMは無効です。
+表の既定値は[nix/configuration.nix](../nix/configuration.nix)のスキーマに基づきます。
 
 TOMLには`null`を直接記述できません。既定値の`null`を使う場合は、そのキーを省略します。ただし、共有設定に値がある場合、ローカル側で省略してもその値を引き継ぎます。
 
@@ -195,20 +192,3 @@ copy = [
 [private]
 path = "../private-dotfiles"
 ```
-
-### localllm
-
-モデルIDは[カタログ](../nix/localllm/catalog.nix)で定義します。既知のIDは`qwen3.8-27b-4bit`と`qwen3.8-9b-distill-4bit`です。`models`は無効時も既知のIDだけを重複なくアルファベット順に並べる必要があります。
-
-`enabled = true`にする場合は、`models`にちょうど1モデルを指定し、`default_model`にそのIDを指定します。共有設定では無効を維持し、利用するマシンの`dotfiles.local.toml`で有効にします。
-
-```toml
-[localllm]
-default_model = "qwen3.8-27b-4bit"
-enabled = true
-models = [
-  "qwen3.8-27b-4bit",
-]
-```
-
-有効時の初回ビルドには約16 GBのモデルデータ取得を伴います。`plan`はモデルをbuildしません。取得は表示したPlanへの承認後です。無効な構成にはLLM固有の依存を含めませんが、取得済みのデータは無効化だけでは削除されず、不要になったストアパスは後続のGCで回収されます。ランチャーの使い方と動作環境は[ローカルLLMとOpenCode](../docs/operations.md#ローカル-llm-と-opencode-localllm)を参照してください。

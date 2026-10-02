@@ -37,7 +37,6 @@ export async function deployResources(home: string, state: string, resources: st
       !Object.values(previous.links).every(value => typeof value === "string") ||
       Object.keys(previous.retiring_directories ?? {}).length) throw new Error("invalid artifact ownership record");
   const targets: [string, string][] = [
-    [".local/bin/localllm", "bin/localllm"],
     [".local/bin/nightlight", "bin/nightlight"],
     ["Library/Application Support/Anki2/addons21/anki-connect", "share/anki-connect"],
   ];
@@ -56,6 +55,17 @@ export async function deployResources(home: string, state: string, resources: st
       throw new Error(`resource conflicts with foreign link: ${target}`);
     }
     plans.push({ relative, target, desired, link });
+  }
+  const declared = new Set(targets.map(([relative]) => relative));
+  for (const [relative, recorded] of Object.entries(previous.links)) {
+    if (declared.has(relative)) continue;
+    const target = path.join(home, relative);
+    await safeParents(home, target);
+    const existing = await inspect(target);
+    if (existing && !existing.isSymbolicLink()) continue;
+    const link = existing ? await readlink(target) : undefined;
+    if (link && link !== recorded) continue;
+    plans.push({ relative, target, desired: undefined, link });
   }
   for (const { relative, target, desired, link } of plans) {
     await mkdir(path.dirname(target), { recursive: true });

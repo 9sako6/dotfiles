@@ -12,7 +12,7 @@ let
   publicTargets = configuration.copy ++ [
     ".gitignore_global" ".local/bin/nightlight" ".zshenv" ".zshrc"
     "Library/Application Support/Anki2/addons21/anki-connect"
-  ] ++ lib.optional configuration.localllm.enabled ".local/bin/localllm" ++ lib.concatMap (directory:
+  ] ++ lib.concatMap (directory:
     files directory (dotfilesSourceHome + "/${directory}")
   ) [ ".config" ".zsh.d" "mybin" ];
   overlapsPublic = target:

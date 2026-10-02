@@ -65,7 +65,7 @@ let
     };
     noPublicHomeManagerUser = publicHost.config.home-manager.users == { };
     noPublicUserPackagesInSystem = builtins.all (package:
-      !(builtins.elem (lib.getName package) [ "dotfiles" "ffmpeg" "localllm" "nightlight" ])
+      !(builtins.elem (lib.getName package) [ "ffmpeg" "nightlight" ])
     ) publicHost.config.environment.systemPackages;
     otherMachinePreserved = (builtins.tryEval otherMachine.system.drvPath).success
       && otherMachine.config.home-manager.users.another-fixture.home.stateVersion == "24.05"

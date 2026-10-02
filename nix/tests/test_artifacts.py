@@ -35,7 +35,7 @@ class ArtifactTests(unittest.TestCase):
                 ["nix-store", "--query", "--requisites", fixture["output"]],
                 capture_output=True, text=True, check=True, timeout=60,
             ).stdout.splitlines()
-            for relative in ["bin/localllm", "bin/nightlight", "share/anki-connect/__init__.py"]:
+            for relative in ["bin/nightlight", "share/anki-connect/__init__.py"]:
                 target = (root / relative).resolve()
                 package = "/nix/store/" + target.parts[3]
                 self.assertIn(package, closure)

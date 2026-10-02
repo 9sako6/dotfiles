@@ -65,23 +65,30 @@ for (const conflict of ["parent", "source", "target"] as const) {
   });
 }
 
-test("resources update recorded links, remove disabled launchers and preserve Anki data", async () => {
+test("resources update recorded links, remove undeclared and disabled launchers and preserve Anki data", async () => {
   await withTempDir("resources", async root => {
     const { home } = await fixture(root);
     const state = path.join(home, ".local/state/dotfiles");
     const resources = path.join(root, "resources");
     await mkdir(state, { recursive: true });
-    await writeTree(resources, { "bin/localllm": "llm", "bin/nightlight": "night", "share/anki-connect/__init__.py": "addon" });
+    await writeTree(path.join(root, "orphan"), { "bin/localllm": "old" });
+    await mkdir(path.join(home, ".local/bin"), { recursive: true });
+    await symlink(path.join(root, "orphan/bin/localllm"), path.join(home, ".local/bin/localllm"));
+    await writeFile(path.join(state, "artifacts.json"), JSON.stringify({ version: 1, home, links: { ".local/bin/localllm": path.join(root, "orphan/bin/localllm") } }));
+    await writeTree(resources, { "bin/nightlight": "night", "share/anki-connect/__init__.py": "addon" });
     await writeTree(home, { "Library/Application Support/Anki2/profile/collection.anki2": "collection" });
     await deployResources(home, state, resources);
-    expect(await readlink(path.join(home, ".local/bin/localllm"))).toBe(path.join(resources, "bin/localllm"));
-    const disabled = path.join(root, "disabled");
-    await writeTree(disabled, { "bin/nightlight": "next", "share/anki-connect/__init__.py": "next" });
-    await deployResources(home, state, disabled);
+    expect(await readlink(path.join(home, ".local/bin/nightlight"))).toBe(path.join(resources, "bin/nightlight"));
     expect(await Bun.file(path.join(home, ".local/bin/localllm")).exists()).toBe(false);
+    expect(JSON.parse(await readFile(path.join(state, "artifacts.json"), "utf8")).links[".local/bin/localllm"]).toBeUndefined();
+    const disabled = path.join(root, "disabled");
+    await writeTree(disabled, { "share/anki-connect/__init__.py": "next" });
+    await deployResources(home, state, disabled);
+    expect(await Bun.file(path.join(home, ".local/bin/nightlight")).exists()).toBe(false);
     expect(await readFile(path.join(home, "Library/Application Support/Anki2/profile/collection.anki2"), "utf8")).toBe("collection");
-    await rm(path.join(home, ".local/bin/nightlight"));
-    await symlink(path.join(resources, "bin/nightlight"), path.join(home, ".local/bin/nightlight"));
+    const anki = path.join(home, "Library/Application Support/Anki2/addons21/anki-connect");
+    await rm(anki, { recursive: true, force: true });
+    await symlink(path.join(resources, "share/anki-connect"), anki);
     await expect(deployResources(home, state, disabled)).rejects.toThrow("foreign link");
   });
 });

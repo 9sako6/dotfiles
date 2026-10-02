@@ -1,10 +1,8 @@
-{ configuration, pkgs, toolset }:
+{ pkgs, toolset }:
 let
   selected = {
     anki-connect = toolset.ankiConnect;
     nightlight = pkgs.lib.getBin toolset.nightlight;
-  } // pkgs.lib.optionalAttrs configuration.localllm.enabled {
-    localllm = toolset.localllm configuration.localllm;
   };
   root = pkgs.linkFarm "dotfiles-system-resources" (
     [ { name = "share/anki-connect"; path = "${selected.anki-connect}/share/anki/addons/anki-connect"; } ]

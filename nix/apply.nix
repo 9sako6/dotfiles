@@ -20,7 +20,7 @@ let
     configurationRevision = public.rev or public.dirtyRev or null;
   };
   system = host.system;
-  resources = (public.lib.mkArtifacts { inherit configuration; }).root;
+  resources = (public.lib.mkArtifacts { }).root;
 in
 {
   inherit system resources;

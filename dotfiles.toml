@@ -7,10 +7,6 @@ copy = [
   ".gitconfig",
 ]
 
-[localllm]
-enabled = false
-models = []
-
 [settings.night_shift]
 end = "07:00"
 start = "22:00"

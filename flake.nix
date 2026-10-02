@@ -16,21 +16,6 @@
     };
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    pyproject-build-systems = {
-      url = "github:pyproject-nix/build-system-pkgs/master";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.pyproject-nix.follows = "pyproject-nix";
-      inputs.uv2nix.follows = "uv2nix";
-    };
-    pyproject-nix = {
-      url = "github:pyproject-nix/pyproject.nix/master";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    uv2nix = {
-      url = "github:pyproject-nix/uv2nix/master";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.pyproject-nix.follows = "pyproject-nix";
-    };
     zundamonotify = {
       url = "github:9sako6/zundamonotify";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -41,14 +26,8 @@
     let
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
-      toolset = import ./nix/packages.nix { inherit inputs pkgs; };
-      mkArtifacts = { configuration ? defaultConfiguration }: import ./nix/artifacts.nix {
-        inherit configuration pkgs toolset;
-      };
-      ciToolsPackage = pkgs.buildEnv {
-        name = "dotfiles-ci-tools";
-        paths = toolset.ciPackages;
-      };
+      toolset = import ./nix/packages.nix { inherit pkgs; };
+      mkArtifacts = { }: import ./nix/artifacts.nix { inherit pkgs toolset; };
       primaryUser = let user = builtins.getEnv "DARWIN_PRIMARY_USER"; in if user == "" then "fixture" else user;
       defaultConfiguration = (import ./nix/configuration.nix {
         inherit (nixpkgs) lib;
@@ -120,35 +99,13 @@
     {
       packages.${system} = {
         artifacts = (mkArtifacts { }).root;
-        cachix = toolset.cachix;
-        ciTools = ciToolsPackage;
         default = (mkArtifacts { }).root;
-        localllm = toolset.localllm (defaultConfiguration.localllm // {
-          default_model = "qwen3.8-9b-distill-4bit";
-          enabled = true;
-          models = [ "qwen3.8-9b-distill-4bit" ];
-        });
-        localllmClient = toolset.localllmClient;
-        localllmGoalPlugin = toolset.localllmGoalPlugin;
-        localllmRuntime = toolset.localllmRuntime;
       };
 
       checks.${system} = {
         artifacts = import ./nix/tests/artifacts.nix { inherit self pkgs; };
         composition = import ./nix/tests/composition.nix { inherit self pkgs; inherit (nixpkgs) lib; };
         configuration = import ./nix/tests/configuration.nix { inherit (nixpkgs) lib; inherit pkgs; };
-        modelFetch = let
-          entry = (import ./nix/localllm/catalog.nix)."qwen3.8-9b-distill-4bit";
-          fixture = import ./nix/localllm/model.nix {
-            inherit pkgs;
-            model = entry // {
-              files = builtins.filter (file: file.name == "4bit/generation_config.json") entry.files;
-            };
-          };
-        in pkgs.runCommand "localllm-model-fetch-check" { } ''
-          test -f ${fixture}/generation_config.json
-          touch "$out"
-        '';
       };
 
       darwinConfigurations.current = publicSystem;

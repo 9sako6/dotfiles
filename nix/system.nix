@@ -151,7 +151,6 @@ in
       remapCapsLockToControl = true;
     };
     stateVersion = 6;
-    systemBuilderArgs.allowSubstitutes = false;
   };
 
   time.timeZone = "Asia/Tokyo";

@@ -72,25 +72,30 @@ jobs:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
 
+      - name: Prepare mise and Bun
+        env:
+          MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+        run: |
+          ./bin/install-mise.sh
+          "$HOME/.local/bin/mise" install --locked bun
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$(dirname "$("$HOME/.local/bin/mise" which bun)")" >> "$GITHUB_PATH"
+
       - name: Verify mise-managed Git behavior
         env:
           MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
           MISE_AUTO_INSTALL: "false"
         run: |
-          ./bin/install-mise.sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           before="$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
           "$HOME/.local/bin/mise" install --locked conda:git
           test "$before" = "$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
           export DOTFILES_TEST_GIT="$("$HOME/.local/bin/mise" which git)"
           "$DOTFILES_TEST_GIT" ls-remote https://github.com/9sako6/dotfiles.git refs/heads/master
-          nix shell .#ciTools --command /bin/bash -c '
-            set -eu
-            bun install --frozen-lockfile
-            export PATH="$(dirname "$DOTFILES_TEST_GIT"):$PATH"
-            bun test tests/shell-config.test.ts -t "pre-commit|git undo"
-          '
+          bun install --frozen-lockfile
+          export PATH="$(dirname "$DOTFILES_TEST_GIT"):$PATH"
+          bun test tests/shell-config.test.ts -t "pre-commit|git undo"
 
       - name: Verify mise-managed FFmpeg media behavior
         env:
@@ -128,36 +133,17 @@ jobs:
 
       - name: Check TypeScript and shell contracts
         run: |
-          nix shell .#ciTools --command /bin/bash -c '
-            set -eu
-            bun install --frozen-lockfile
-            bun run tsc --noEmit
-            bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
-          '
+          bun install --frozen-lockfile
+          bun run tsc --noEmit
+          bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
 
       - name: Check artifact and private composition
         run: |
           nix build --no-link --no-update-lock-file --no-write-lock-file \
             .#checks.aarch64-darwin.artifacts .#checks.aarch64-darwin.composition .#checks.aarch64-darwin.configuration
 
-      - name: Check local LLM boundaries
-        run: |
-          nix shell .#ciTools --command /bin/bash -c '
-            set -eu
-            opencode_package="$(nix build --no-link --print-out-paths .#localllmClient)"
-            goal_plugin="$(nix build --no-link --print-out-paths .#localllmGoalPlugin)"
-            DOTFILES_TEST_OPENCODE="$opencode_package/bin/opencode" DOTFILES_TEST_GOAL_PLUGIN="$goal_plugin" python3 -m unittest discover -s nix/localllm -p "test_*.py"
-          '
-
       - name: Check Nix and settings contracts
-        run: |
-          nix shell .#ciTools --command /bin/bash -c '
-            set -eu
-            python3 -m unittest discover -s nix/tests -p "test_*.py"
-          '
+        run: python3 -m unittest discover -s nix/tests -p "test_*.py"
 
-      - name: Check fixed model metadata online and offline
-        run: |
-          nix build --no-link .#checks.aarch64-darwin.modelFetch
-          nix build --no-link --offline .#checks.aarch64-darwin.modelFetch
-          nix eval --raw .#darwinConfigurations.current.system.drvPath
+      - name: Check system derivation
+        run: nix eval --raw .#darwinConfigurations.current.system.drvPath
