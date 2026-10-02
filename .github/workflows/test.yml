@@ -43,8 +43,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes bubblewrap
           bwrap --unshare-user --ro-bind / / /bin/true
-          rustup toolchain install 1.97.1 --profile minimal
-          rustup default 1.97.1
+          ./bin/install-mise.sh
+          ci_rust_version="$("$HOME/.local/bin/mise" --quiet config get --file home/.config/mise/config.toml tools.rust.version)"
+          rustup toolchain install "$ci_rust_version" --profile minimal
+          rustup default "$ci_rust_version"
           cargo fetch --locked --manifest-path cli/Cargo.toml
       - name: Verify actual rootless plan and apply
         run: |

@@ -1,7 +1,7 @@
 //! Nix-free validation of the public/local configuration contract.
 //!
 //! Model identifiers come from the caller's canonical catalog, never a second
-//! hard-coded list. The Nix boundary still validates this contract independently.
+//! hard-coded list. Nix independently validates the system projection.
 #[cfg(test)]
 use std::fs;
 use std::path::Path;
