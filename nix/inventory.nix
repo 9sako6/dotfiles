@@ -60,9 +60,10 @@ let
     [ ".agents/" ".claude/" ".codex/" ".config/opencode/" ];
 in {
   schemaVersion = 4;
-  # A generation retains only its system projection. Public user resources are
-  # inventoried by Rust from the full frozen snapshot, outside this derivation.
-  source = publicSource;
+  # Current callers provide the system projection; legacy callers provide the
+  # full snapshot for skill declarations.
+  source = resourceSource;
+  localllm = { enabled = false; default_model = null; };
   packages = map nixPackage (builtins.filter (p: lib.getVersion p != "")
     (homePackages ++ cfg.environment.systemPackages))
     ++ map brewPackage (cfg.homebrew.brews ++ cfg.homebrew.casks);

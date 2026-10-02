@@ -13,6 +13,58 @@ REPOSITORY = Path(__file__).resolve().parents[2]
 
 
 class InventoryTests(unittest.TestCase):
+    def test_legacy_inventory_keeps_the_callers_frozen_resource_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "resources"
+            (source / "home").mkdir(parents=True)
+            (source / "home/apm.yml").write_text("dependencies:\n  apm: []\n")
+            expression = '''
+              (import ./nix/inventory.nix {
+                configuration = null;
+                host = null;
+                inputs = null;
+                publicSource = "/fixture/system";
+                resourceSource = builtins.toPath (builtins.getEnv "INVENTORY_RESOURCE_SOURCE");
+              }).source
+            '''
+            result = subprocess.run(
+                ["nix", "eval", "--raw", "--impure", "--expr", expression],
+                cwd=REPOSITORY,
+                env={**os.environ, "INVENTORY_RESOURCE_SOURCE": str(source)},
+                capture_output=True, text=True, timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(Path(result.stdout), source)
+            self.assertTrue((Path(result.stdout) / "home/apm.yml").is_file())
+
+    def test_legacy_llm_metadata_is_disabled_independently_of_artifact_selection(self):
+        expression = '''
+          let
+            inventory = configuration: (import ./nix/inventory.nix {
+              inherit configuration;
+              host = null;
+              inputs = null;
+              publicSource = null;
+            }).localllm;
+          in map inventory [
+            { localllm = { enabled = false; models = []; default_model = null; }; }
+            { localllm = {
+              enabled = true;
+              models = ["qwen3.8-9b-distill-4bit"];
+              default_model = "qwen3.8-9b-distill-4bit";
+            }; }
+          ]
+        '''
+        result = subprocess.run(
+            ["nix", "eval", "--json", "--impure", "--expr", expression],
+            cwd=REPOSITORY, capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), [
+            {"enabled": False, "default_model": None},
+            {"enabled": False, "default_model": None},
+        ])
+
     def test_generation_keeps_its_system_inventory_reachable(self):
         expression = '''
           let
@@ -62,7 +114,7 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(inventory["homeManagerTargets"], [])
         self.assertIsNone(inventory["homeManagerPackageProfile"])
         self.assertIsNone(inventory["homeManagerPackageProfileDrv"])
-        self.assertNotIn("localllm", inventory)
+        self.assertEqual(inventory["localllm"], {"enabled": False, "default_model": None})
         self.assertTrue(values["dictationShortcut.enabled"])
         self.assertEqual(values["dictationShortcut.parameters"], ["1048576", "18446744073708503039"])
         self.assertEqual(values["dictationShortcut.type"], "modifier")
@@ -153,7 +205,7 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(job["config"], {"RunAtLoad": False, "StartInterval": 42})
         shared = next(job for job in inventory["services"] if job["name"] == "inventory-shared")
         self.assertEqual(shared["scope"], "all users")
-        self.assertNotIn("localllm", inventory)
+        self.assertEqual(inventory["localllm"], {"enabled": False, "default_model": None})
 
     def test_activation_commands_and_inventory_follow_the_same_setting_changes(self):
         expression = '''
