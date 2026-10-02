@@ -107,7 +107,7 @@ impl PlanInputs {
 }
 
 struct Plan {
-    user_settings: Option<user_settings::Plan>,
+    user_settings: user_settings::Plan,
     artifacts: artifacts::Plan,
     user_services: user_services::Plan,
     tools: tools::Plan,
@@ -121,15 +121,27 @@ impl Plan {
         self.inputs.verify()?;
         self.artifacts.verify()?;
         self.system.copy_changes = self.home.changes()?;
-        review_plan_with_artifacts(
-            mode,
-            &self.system,
-            Some(&self.tools),
-            Some(&self.user_services),
-            Some(&self.artifacts),
-            self.user_settings.as_ref(),
-            confirm,
-        )
+        if !self.system.has_changes()
+            && !self.tools.has_changes()
+            && !self.user_services.has_changes()
+            && !self.artifacts.has_changes()
+            && !self.user_settings.has_changes()
+        {
+            return Ok(Review::Finished);
+        }
+        let width = crate::terminal_width();
+        let text = [
+            self.tools.render(width),
+            self.system.render(width),
+            self.artifacts.render(),
+            self.user_settings.render(),
+            self.user_services.render(),
+        ]
+        .into_iter()
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n");
+        review_text(mode, &text, confirm)
     }
 }
 
@@ -395,7 +407,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
     }
     drop(progress);
     let mut plan = Plan {
-        user_settings: Some(user_settings),
+        user_settings,
         artifacts,
         user_services,
         tools,
@@ -404,9 +416,7 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         system: preview,
     };
     plan.user_services.verify(_lock.as_ref())?;
-    if let Some(settings) = &plan.user_settings {
-        settings.verify(_lock.as_ref())?;
-    }
+    plan.user_settings.verify(_lock.as_ref())?;
     if let Review::Finished = plan.review(mode, runtime.confirm)? {
         if matches!(mode, Mode::Apply) {
             plan.inputs.verify()?;
@@ -470,13 +480,11 @@ fn run_with(mode: Mode, root: &Path, show_trace: bool, runtime: Runtime) -> Resu
         .verify()
         .context("artifacts may be partially deployed")?;
     result?;
-    if let Some(settings) = &mut plan.user_settings {
-        let result = settings.apply(lock);
-        plan.inputs
-            .verify()
-            .context("user settings may be partially changed")?;
-        result?;
-    }
+    let result = plan.user_settings.apply(lock);
+    plan.inputs
+        .verify()
+        .context("user settings may be partially changed")?;
+    result?;
     let result = plan.user_services.apply(lock);
     plan.inputs
         .verify()
@@ -716,55 +724,15 @@ fn freeze_local(workspace: &Path, local: &Option<Vec<u8>>) -> Result<Option<Path
 
 #[cfg(test)]
 fn review_plan(mode: Mode, preview: crate::inventory::Preview) -> Result<Review> {
-    review_plan_with(mode, &preview, None, None, || {
+    if !preview.has_changes() {
+        return Ok(Review::Finished);
+    }
+    review_text(mode, &preview.render(crate::terminal_width()), || {
         confirm_apply(&mut io::stdin().lock(), &mut io::stdout().lock())
     })
 }
 
-#[cfg(test)]
-fn review_plan_with(
-    mode: Mode,
-    preview: &crate::inventory::Preview,
-    tools: Option<&tools::Plan>,
-    user_services: Option<&user_services::Plan>,
-    confirm: impl FnOnce() -> Result<()>,
-) -> Result<Review> {
-    review_plan_with_artifacts(mode, preview, tools, user_services, None, None, confirm)
-}
-
-fn review_plan_with_artifacts(
-    mode: Mode,
-    preview: &crate::inventory::Preview,
-    tools: Option<&tools::Plan>,
-    user_services: Option<&user_services::Plan>,
-    artifacts: Option<&artifacts::Plan>,
-    user_settings: Option<&user_settings::Plan>,
-    confirm: impl FnOnce() -> Result<()>,
-) -> Result<Review> {
-    if !preview.has_changes()
-        && !tools.is_some_and(tools::Plan::has_changes)
-        && !user_services.is_some_and(user_services::Plan::has_changes)
-        && !artifacts.is_some_and(artifacts::Plan::has_changes)
-        && !user_settings.is_some_and(user_settings::Plan::has_changes)
-    {
-        return Ok(Review::Finished);
-    }
-    let width = crate::terminal_width();
-    let text = [
-        tools.map(|tools| tools.render(width)).unwrap_or_default(),
-        preview.render(width),
-        artifacts.map(artifacts::Plan::render).unwrap_or_default(),
-        user_settings
-            .map(user_settings::Plan::render)
-            .unwrap_or_default(),
-        user_services
-            .map(user_services::Plan::render)
-            .unwrap_or_default(),
-    ]
-    .into_iter()
-    .filter(|text| !text.is_empty())
-    .collect::<Vec<_>>()
-    .join("\n\n");
+fn review_text(mode: Mode, text: &str, confirm: impl FnOnce() -> Result<()>) -> Result<Review> {
     let mut output = io::stdout().lock();
     writeln!(output, "{text}")?;
     output.flush()?;

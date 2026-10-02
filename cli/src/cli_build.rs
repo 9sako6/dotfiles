@@ -45,7 +45,15 @@ impl Source {
             .arg("--no-optional-locks")
             .arg("-C")
             .arg(root)
-            .args(["ls-files", "-z", "--", "cli"])
+            .args([
+                "ls-files",
+                "-z",
+                "--",
+                "cli/Cargo.lock",
+                "cli/Cargo.toml",
+                "cli/build.rs",
+                "cli/src",
+            ])
             .output()?;
         if !output.status.success() {
             bail!("cannot inspect tracked CLI inputs");
@@ -253,6 +261,15 @@ mod tests {
         let root = fixture();
         let first = Source::capture(root.path()).unwrap().identity;
         fs::write(root.path().join("unrelated"), "change").unwrap();
+        fs::create_dir(root.path().join("cli/tests")).unwrap();
+        fs::write(root.path().join("cli/tests/behavior.rs"), "test only").unwrap();
+        fs::write(root.path().join("cli/README.md"), "documentation only").unwrap();
+        assert!(Command::new("git")
+            .args(["add", "cli"])
+            .current_dir(root.path())
+            .status()
+            .unwrap()
+            .success());
         assert_eq!(first, Source::capture(root.path()).unwrap().identity);
         fs::write(root.path().join("cli/src/main.rs"), "dirty").unwrap();
         let dirty = Source::capture(root.path()).unwrap().identity;
@@ -276,6 +293,15 @@ mod tests {
         let old = fs::read(&installed).unwrap();
         let inode = fs::metadata(&installed).unwrap().ino();
         executable(&mise, "exit 42");
+        fs::create_dir(root.path().join("cli/tests")).unwrap();
+        fs::write(root.path().join("cli/tests/behavior.rs"), "test only").unwrap();
+        fs::write(root.path().join("cli/README.md"), "documentation only").unwrap();
+        assert!(Command::new("git")
+            .args(["add", "cli"])
+            .current_dir(root.path())
+            .status()
+            .unwrap()
+            .success());
         install_with(root.path(), home.path(), &mise).unwrap();
         assert_eq!(inode, fs::metadata(&installed).unwrap().ino());
         fs::write(root.path().join("cli/src/main.rs"), "second").unwrap();

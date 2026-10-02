@@ -325,7 +325,13 @@ fn home_and_system_changes_share_one_review() {
     .unwrap();
     let system = crate::inventory::Preview::from_inventory(None, inventory).unwrap();
     let mut plan = Plan {
-        user_settings: None,
+        user_settings: user_settings::Plan::capture(
+            &user_settings::Declarations::default(),
+            &fixture.state.join("home"),
+            &fixture.state.join("nightlight"),
+            None,
+        )
+        .unwrap(),
         artifacts: artifacts::Plan::empty_for_test(&fixture.state.join("home")),
         user_services: user_services::Plan::default(),
         tools: tools::Plan::capture(

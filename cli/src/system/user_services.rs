@@ -1389,31 +1389,4 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
     }
-
-    #[test]
-    fn pending_services_share_unified_confirmation() {
-        let f = Fixture::new();
-        f.declare(DECLARATION);
-        let plan = f.plan().unwrap();
-        let preview = crate::inventory::Preview::copy_only();
-        assert!(matches!(
-            super::super::review_plan_with(
-                super::super::Mode::Plan,
-                &preview,
-                None,
-                Some(&plan),
-                || panic!("plan confirmation")
-            ),
-            Ok(super::super::Review::Finished)
-        ));
-        let result = super::super::review_plan_with(
-            super::super::Mode::Apply,
-            &preview,
-            None,
-            Some(&plan),
-            || Ok(()),
-        );
-        assert!(matches!(result, Ok(super::super::Review::Apply)));
-        assert!(!f.state.exists());
-    }
 }
