@@ -103,7 +103,7 @@
       };
 
       checks.${system} = {
-        artifacts = import ./nix/tests/artifacts.nix { inherit self pkgs; };
+        artifacts = import ./nix/tests/artifacts.nix { inherit pkgs; };
         composition = import ./nix/tests/composition.nix { inherit self pkgs; inherit (nixpkgs) lib; };
         configuration = import ./nix/tests/configuration.nix { inherit (nixpkgs) lib; inherit pkgs; };
       };

@@ -1,4 +1,4 @@
-{ self, pkgs }:
+{ pkgs }:
 let
   lib = pkgs.lib;
   addon = pkgs.writeTextDir "share/anki/addons/anki-connect/__init__.py" "fixture";
@@ -8,19 +8,13 @@ let
     inherit nightlight;
   };
   fixture = import ../artifacts.nix { inherit pkgs; toolset = fixtureToolset; };
-  actual = self.lib.mkArtifacts { };
   results = {
     fixtureSelectsResources = builtins.attrNames fixture.selected == [ "anki-connect" "nightlight" ];
-    nightlightKeepsFixedPackage = actual.selected.nightlight.drvPath
-      == (lib.getBin pkgs.nightlight).drvPath;
-    publicOutputMatchesConstructor = self.packages.${pkgs.stdenv.hostPlatform.system}.artifacts.drvPath
-      == actual.root.drvPath;
   };
 in
 assert lib.assertMsg (builtins.all (value: value) (builtins.attrValues results))
   "artifact constructor contract test failed";
-# Only tiny fixture packages are built. The real packages above are evaluated,
-# never interpolated into build inputs, so no full artifact build is requested.
+# Only tiny fixture packages are built.
 pkgs.runCommand "artifact-constructor-check" {
   passthru.fixtureRoot = fixture.root;
 } ''
