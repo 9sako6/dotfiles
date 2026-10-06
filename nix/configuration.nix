@@ -50,6 +50,8 @@ let
       "dotfiles.toml: copy: entries must not overlap"
     ++ lib.optional (merged.private.path == "") "dotfiles.local.toml: private.path: must not be empty";
   errors = structuralErrors ++ lib.optionals (structuralErrors == [ ]) valueErrors;
+  invalidConfiguration = throw ("dotfiles configuration is invalid:\n"
+    + lib.concatMapStringsSep "\n" (error: "  " + error) errors);
   settings = path: value:
     if builtins.isAttrs value then
       lib.concatMap (key: settings (path ++ [ key ]) value.${key}) (builtins.attrNames value)
@@ -63,6 +65,6 @@ let
 in
 {
   inherit errors;
-  config = if errors == [ ] then merged else throw "dotfiles configuration is invalid";
-  settings = if errors == [ ] then settings [ ] merged else throw "dotfiles configuration is invalid";
+  config = if errors == [ ] then merged else invalidConfiguration;
+  settings = if errors == [ ] then settings [ ] merged else invalidConfiguration;
 }

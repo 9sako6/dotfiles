@@ -61,6 +61,8 @@ path = "../private-dotfiles"
 
 private flakeは `darwinModules.default` を公開する。既存のHome Managerのhome.file、packages、launchd、stateVersionとspecialArgsを維持する。公開配置と重なるprivate home.fileはNix評価時に拒否する。ユーザーLaunchAgentはprivate Nix moduleのlaunchd宣言に置く。旧 `[services.agents]` に宣言が残っていればsystem:applyは停止する。
 
+`dotfiles configuration is invalid` が出た場合は、続くファイル名・キー名・理由を確認し、宣言元を修正する。エラーには設定値を含めない。システム用のキーは `copy` と `private.path` で、旧形式のキーがローカル設定に残っている場合も検査で停止する。
+
 公開・privateともNixのGit入力を使う。追跡済みの未コミット編集は評価に入り、未追跡・無視されたファイルは入らない。新しいNixファイルはgit addしてから評価する。例外は、明示的に読み込むdotfiles.local.tomlだけ。ビルド中の宣言変更を固定する独自snapshotは持たないため、反映中に設定を編集しない。
 
 補助資源はNightlight、AnkiConnect。Nixのout-linkを状態ディレクトリの `dotfiles/current` に登録し、依存をGCから保持する。状態ディレクトリはXDG_STATE_HOME、未指定時はホームの `.local/state`。配置したリンクの参照先だけを `dotfiles/artifacts.json` に記録する。版変更では、記録と一致するリンクだけを更新・削除する。同じパッケージへ解決する旧Home Managerリンクも移行できる。Ankiのprofileやmediaは削除しない。
