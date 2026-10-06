@@ -408,13 +408,13 @@ url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/492109389"
 provenance = "github-attestations"
 
 [[tools.bitwarden]]
-version = "2026.7.0"
+version = "2026.9.1"
 backend = "aqua:bitwarden/clients"
 
 [tools.bitwarden."platforms.macos-arm64"]
-checksum = "sha256:61d5de8a279a9faf3637216f4fb02b506a1e4bb2817d1c64be0bd474466dd85a"
-url = "https://github.com/bitwarden/clients/releases/download/cli-v2026.7.0/bw-macos-arm64-2026.7.0.zip"
-url_api = "https://api.github.com/repos/bitwarden/clients/releases/assets/487644300"
+checksum = "sha256:9f52edf5fb855e277315c1106f1bae326a87c41b425a4c0e00fd1440e77fa0a6"
+url = "https://github.com/bitwarden/clients/releases/download/cli-v2026.9.1/bw-macos-arm64-2026.9.1.zip"
+url_api = "https://api.github.com/repos/bitwarden/clients/releases/assets/603936238"
 
 [[tools.bitwarden-secrets-manager]]
 version = "2.1.0"
