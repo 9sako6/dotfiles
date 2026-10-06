@@ -24,6 +24,8 @@ Bootstrapはorigin/masterを取得し、固定miseとBunを導入して、home�
 
 ツールの宣言元は `home/.config/mise/config.toml`、取得先の固定は同じディレクトリの `mise.lock`。home:applyはこの設定を明示して `mise install --locked` を実行する。バイナリはmiseのユーザー共有領域に入り、リポジトリ専用のツールディレクトリは作らない。ホームのmise設定で常用ツールを有効にし、各プロジェクトの設定では必要な版を選ぶ。
 
+Rubyは `settings.ruby.compile = true` でソースからの導入を明示し、lockに保存した取得先と一致させる。mise 2026.8以降はビルド済みバイナリが既定になるため、導入方式を省略すると既存のlockを使えなくなる。
+
 シェルプラグインは同じmise設定の `[bootstrap.repos]` に40桁のコミットで固定する。home:applyで取得し、zshは取得済みのファイルを直接読む。シェル起動時にGit検査やダウンロードを行わない。
 
 `dotfiles.toml` の `copy` に指定したものは実ファイルとして配置する。`.agents`、`.claude`、`.codex` 配下はagents:apply、それ以外はhome:applyが担当する。指定したディレクトリ全体を所有するため、コピー元から消した子要素は配置先からも消す。親や同階層のランタイムファイルは保持する。未変更ファイルのinodeとmtimeは保ち、変更ファイルは同じディレクトリ内でrenameして置き換える。

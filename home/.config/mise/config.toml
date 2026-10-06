@@ -49,6 +49,9 @@ disable_tools = ["awscli"]
 [settings.github]
 credential_command = 'gh_path="$(mise which gh)"; exec "$gh_path" auth token'
 
+[settings.ruby]
+compile = true
+
 [bootstrap.repos]
 "~/.local/share/zinit/plugins/momo-lab---zsh-abbrev-alias" = { url = "https://github.com/momo-lab/zsh-abbrev-alias.git", ref = "33fe094da0a70e279e1cc5376a3d7cb7a5343df5" }
 "~/.local/share/zinit/plugins/zsh-users---zsh-autosuggestions" = { url = "https://github.com/zsh-users/zsh-autosuggestions.git", ref = "85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5" }
