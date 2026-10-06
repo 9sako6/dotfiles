@@ -5,15 +5,6 @@ install_system_fail() {
   exit 1
 }
 
-install_system_host_platform() {
-  [ "$1" = "Darwin" ] || install_system_fail "nix-darwin requires macOS"
-
-  case "$2" in
-    arm64) printf '%s\n' aarch64-darwin ;;
-    *) install_system_fail "Lix system management currently supports Apple Silicon only" ;;
-  esac
-}
-
 install_system_is_root_owned_readonly() {
   metadata="$(LC_ALL=C /usr/bin/stat -L -f '%u:%Lp' -- "$1" 2>/dev/null)" ||
     return 1
@@ -31,15 +22,6 @@ install_system_resolve_sudo() {
   install_system_is_root_owned_readonly /usr/bin || return 1
   install_system_is_root_owned_readonly "$sudo_bin" || return 1
   printf '%s\n' "$sudo_bin"
-}
-
-install_system_resolve_env() {
-  env_bin=/usr/bin/env
-  [ -f "$env_bin" ] && [ -x "$env_bin" ] || return 1
-  install_system_is_root_owned_readonly /usr || return 1
-  install_system_is_root_owned_readonly /usr/bin || return 1
-  install_system_is_root_owned_readonly "$env_bin" || return 1
-  printf '%s\n' "$env_bin"
 }
 
 install_system_resolve_nix() {
@@ -91,17 +73,6 @@ install_system_fail_lix_resolution() {
     2) install_system_fail "refusing untrusted Nix installation" ;;
     *) install_system_fail "system configuration requires a working Lix installation" ;;
   esac
-}
-
-install_system_require_lix() {
-  if nix_bin="$(install_system_resolve_lix)"; then
-    printf '%s\n' "$nix_bin"
-    return 0
-  else
-    resolve_status=$?
-  fi
-
-  install_system_fail_lix_resolution "$resolve_status"
 }
 
 install_system_ensure_lix() {

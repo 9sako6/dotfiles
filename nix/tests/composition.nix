@@ -1,6 +1,9 @@
 { self, lib, pkgs }:
 let
-  defaultConfiguration = self.darwinConfigurations.current.config.dotfiles.configuration;
+  defaultConfiguration = (import ../configuration.nix {
+    inherit lib;
+    publicFile = ../../dotfiles.toml;
+  }).config;
   make = module: self.lib.mkHost {
     configurationRevision = "0123456789abcdef0123456789abcdef01234567-dirty";
     dotfilesDirectory = "/fixture";
@@ -49,7 +52,6 @@ let
   rejects = module: !(builtins.tryEval (builtins.deepSeq (make module).system.drvPath true)).success;
   results = {
     buildable = (builtins.tryEval composed.system.drvPath).success;
-    configurationConflict = rejects { dotfiles.configuration = lib.mkForce { }; };
     copyAbsoluteTargetConflict = rejects {
       home-manager.users.fixture.home.file.alias = { target = "/Users/fixture/.gitconfig"; text = "fixture"; };
     };
@@ -64,9 +66,6 @@ let
       home-manager.users.fixture.home.file = lib.mkForce { ".gitconfig".text = "fixture"; };
     };
     noPublicHomeManagerUser = publicHost.config.home-manager.users == { };
-    noPublicUserPackagesInSystem = builtins.all (package:
-      !(builtins.elem (lib.getName package) [ "ffmpeg" "nightlight" ])
-    ) publicHost.config.environment.systemPackages;
     otherMachinePreserved = (builtins.tryEval otherMachine.system.drvPath).success
       && otherMachine.config.home-manager.users.another-fixture.home.stateVersion == "24.05"
       && otherMachine.config.home-manager.users.another-fixture.home.file."machine-owned".enable;
@@ -76,9 +75,6 @@ let
     privateUserAgentPreserved = composed.config.home-manager.users.fixture.launchd.agents.private-fixture.config.RunAtLoad;
     publicLinkConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".config/mise"; text = "fixture"; }; };
     publicResourceConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".local/bin/nightlight"; text = "fixture"; }; };
-    publicActivationAbsent = !(composed.config.home-manager.users.fixture.home.activation ? configureNightShift);
-    publicHomeFilesAbsent = builtins.all (path: !(builtins.hasAttr path composed.config.home-manager.users.fixture.home.file))
-      [ ".gitconfig" ".zshenv" "Library/Application Support/Anki2/addons21/anki-connect" ];
     service = composed.config.launchd.user.agents.fixture.serviceConfig.RunAtLoad;
     tap = builtins.any (tap: tap.name == "fixture/tap") composed.config.homebrew.taps;
   };

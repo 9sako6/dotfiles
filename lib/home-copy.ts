@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export async function inspect(file: string) {
@@ -29,13 +29,7 @@ async function validateSource(source: string) {
 
 async function sync(source: string, target: string) {
   const sourceEntry = await lstat(source);
-  let targetEntry = await inspect(target);
-  if (targetEntry?.isSymbolicLink()) {
-    const link = path.resolve(path.dirname(target), await readlink(target));
-    if (link !== source) throw new Error(`refusing copy over symlink: ${target}`);
-    await rm(target);
-    targetEntry = undefined;
-  }
+  const targetEntry = await inspect(target);
   if (sourceEntry.isDirectory()) {
     if (targetEntry && !targetEntry.isDirectory()) throw new Error(`copy directory conflicts with file: ${target}`);
     await mkdir(target, { recursive: true });

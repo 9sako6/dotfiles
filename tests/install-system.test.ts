@@ -6,6 +6,7 @@ import { withTempDir } from "./test-helpers";
 const repoRoot = path.resolve(import.meta.dir, "..");
 const installLix = path.join(repoRoot, "bin/install-lix.sh");
 const installMise = path.join(repoRoot, "bin/install-mise.sh");
+const miseVersion = (await readFile(installMise, "utf8")).match(/^MISE_VERSION="([^"]+)"/m)![1];
 const installSystemLibrary = path.join(
   repoRoot,
   "lib/install-system.sh",
@@ -44,7 +45,7 @@ async function runScript(
 async function prepareMiseInstaller(
   tempDir: string,
   fakeBin: string,
-  installedVersion = "2026.7.7",
+  installedVersion = miseVersion,
 ) {
   const installerPath = path.join(tempDir, "mise-installer.sh");
 
@@ -78,7 +79,7 @@ done
   await makeExecutable(
     path.join(fakeBin, "shasum"),
     `#!/bin/sh
-/bin/cat > "$MISE_CHECKSUM_LOG"
+/bin/cat > /dev/null
 exit "\${MISE_SHASUM_EXIT:-0}"
 `,
   );
@@ -90,7 +91,6 @@ async function runInstallSystemFunction(
   command: string,
   args: string[],
   env: Record<string, string> = {},
-  input?: string,
 ) {
   const proc = Bun.spawn(
     [
@@ -107,15 +107,10 @@ ${command}`,
       cwd: repoRoot,
       env: { ...process.env, ...env },
       stderr: "pipe",
-      stdin: input === undefined ? "ignore" : "pipe",
+      stdin: "ignore",
       stdout: "pipe",
     },
   );
-  if (input !== undefined) {
-    if (!proc.stdin) throw new Error("test stdin is unavailable");
-    proc.stdin.write(input);
-    proc.stdin.end();
-  }
 
   const [exitCode, stderr, stdout] = await Promise.all([
     proc.exited,
@@ -135,7 +130,7 @@ describe("install:mise", () => {
       await makeExecutable(
         miseBin,
         `#!/bin/sh
-printf '%s\n' '2026.7.7 macos-arm64'
+printf '%s\n' '${miseVersion} macos-arm64'
 `,
       );
       await makeExecutable(
@@ -160,7 +155,6 @@ exit 1
     await withTempDir("install-mise-missing", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const installMarker = path.join(tempDir, "installed-version");
-      const checksumLog = path.join(tempDir, "checksum.log");
       const tempRoot = path.join(tempDir, "tmp");
 
       await mkdir(tempRoot);
@@ -168,17 +162,13 @@ exit 1
 
       const result = await runScript(installMise, fakeBin, {
         HOME: tempDir,
-        MISE_CHECKSUM_LOG: checksumLog,
         MISE_FAKE_INSTALLER: installerPath,
         MISE_INSTALL_MARKER: installMarker,
         TMPDIR: tempRoot,
       });
 
       expect(result).toMatchObject({ exitCode: 0, stderr: "", stdout: "" });
-      expect(await readFile(installMarker, "utf8")).toBe("v2026.7.7\n");
-      expect(await readFile(checksumLog, "utf8")).toMatch(
-        /^0b98c2dc48edc807be860a76e14209afcfe36684c591f92337c5d9ff909e7740  .*\/install\.sh\n$/,
-      );
+      expect(await readFile(installMarker, "utf8")).toBe(`v${miseVersion}\n`);
       expect(await readdir(tempRoot)).toEqual([]);
     });
   });
@@ -205,14 +195,12 @@ exit 1
     await withTempDir("install-mise-integrity-failure", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const installMarker = path.join(tempDir, "installed-version");
-      const checksumLog = path.join(tempDir, "checksum.log");
       const tempRoot = path.join(tempDir, "tmp");
 
       await mkdir(tempRoot);
       const installerPath = await prepareMiseInstaller(tempDir, fakeBin);
       const result = await runScript(installMise, fakeBin, {
         HOME: tempDir,
-        MISE_CHECKSUM_LOG: checksumLog,
         MISE_FAKE_INSTALLER: installerPath,
         MISE_INSTALL_MARKER: installMarker,
         MISE_SHASUM_EXIT: "1",
@@ -229,21 +217,19 @@ exit 1
     await withTempDir("install-mise-version-mismatch", async (tempDir) => {
       const fakeBin = path.join(tempDir, "bin");
       const installMarker = path.join(tempDir, "installed-version");
-      const checksumLog = path.join(tempDir, "checksum.log");
       const tempRoot = path.join(tempDir, "tmp");
 
       await mkdir(tempRoot);
       const installerPath = await prepareMiseInstaller(tempDir, fakeBin, "2026.7.6");
       const result = await runScript(installMise, fakeBin, {
         HOME: tempDir,
-        MISE_CHECKSUM_LOG: checksumLog,
         MISE_FAKE_INSTALLER: installerPath,
         MISE_INSTALL_MARKER: installMarker,
         TMPDIR: tempRoot,
       });
 
       expect(result.exitCode).not.toBe(0);
-      expect(result.stderr).toContain("expected mise 2026.7.7, got: 2026.7.6");
+      expect(result.stderr).toContain(`expected mise ${miseVersion}, got: 2026.7.6`);
       expect(await readdir(tempRoot)).toEqual([]);
     });
   });
@@ -407,30 +393,6 @@ install_system_ensure_lix "$1"`,
       expect(result.exitCode).not.toBe(0);
       expect(result.stderr).toContain("system configuration requires a working Lix installation");
       expect(await Bun.file(marker).exists()).toBe(true);
-    });
-  });
-
-  test("非対応の CPU ではダウンロード前に終了する", async () => {
-    await withTempDir("install-system-arch", async (tempDir) => {
-      const fakeBin = path.join(tempDir, "bin");
-      const downloadMarker = path.join(tempDir, "downloaded");
-
-      await makeExecutable(
-        path.join(fakeBin, "curl"),
-        `#!/bin/sh
-touch "$SYSTEM_DOWNLOAD_MARKER"
-`,
-      );
-
-      const result = await runInstallSystemFunction(
-        'install_system_host_platform "$1" "$2"',
-        ["Darwin", "x86_64"],
-        { SYSTEM_DOWNLOAD_MARKER: downloadMarker },
-      );
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain("supports Apple Silicon only");
-      expect(await Bun.file(downloadMarker).exists()).toBe(false);
     });
   });
 

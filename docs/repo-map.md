@@ -18,13 +18,13 @@ APMの依存操作と生成はAPM自身に任せる。agents:applyは固定依�
 
 ## システムの合成
 
-Nix宣言はnixディレクトリにまとめる。system.nixがmacOSとHomebrew、packages.nixがNixパッケージ、artifacts.nixが補助資源、home.nixがprivate Home Managerの互換性と所有境界を担当する。nix/apply.nixはローカル設定を読み、公開・privateのhostと補助資源を構築する。
+Nix宣言はnixディレクトリにまとめる。system.nixがmacOSとHomebrew、packages.nixがNixパッケージ、artifacts.nixが補助資源、home.nixがprivate Home Managerの所有境界を担当する。nix/apply.nixはローカル設定を読み、公開・privateのhostと補助資源を構築する。
 
 公開設定はdotfiles.toml、マシン固有の上書きはGit管理外のdotfiles.local.tomlに置く。copyは公開設定だけ、private.pathはローカル設定だけで定義する。Night Shiftはローカルで個々の値を上書きできる。Nix側のcopy・privateはconfiguration.nixで検証し、Night Shiftはsystemタスクで検証する。設定値をエラーへ含めない。
 
 privateは独立したGit checkoutとflakeを持ち、darwinModules.defaultを公開する。Home Manager userはprivateが明示的に定義する。公開側はuserを作らず、privateのhome.file、packages、launchd、stateVersionを維持する。configuration、dotfilesDirectory、dotfilesSourceHome、inputsのspecialArgsと、公開nixpkgsを共有する契約も維持する。公開配置と重なるprivate home.fileは拒否する。
 
-補助資源のNix rootはパッケージへのリンクを持ち、状態ディレクトリにout-linkとして登録する。前回配置したリンクの参照先だけを記録し、利用者や他ツールが置き換えた配置を自動削除しない。コピー対象のディレクトリには独自の所有記録を作らず、現在のcopy宣言を所有範囲とする。
+補助資源のNix rootはNightlightとAnkiConnectへのリンクを持ち、状態ディレクトリにout-linkとして登録する。前回配置したリンクの参照先だけを記録し、利用者や他ツールが置き換えた配置は更新を拒否する。コピー対象のディレクトリには独自の所有記録を作らず、現在のcopy宣言を所有範囲とする。
 
 公開・privateはNix標準のGit入力で取得する。独自snapshot、全領域のplan、inventory、評価cache、CLIの自己更新を持たない。システム反映は標準nix-darwinの世代とactivationに任せる。Bootstrapだけが固定miseとBunを導入して3つのタスクを順に実行する。
 
@@ -44,4 +44,4 @@ privateは独立したGit checkoutとflakeを持ち、darwinModules.defaultを�
 
 普通のCLIの版はhome/.config/mise/config.tomlを正本とし、CIとBootstrapへ同じ版を重複定義しない。mise本体はbin/install-mise.shで版とinstaller hashを固定する。Nixの版更新ではflake.lockだけでなく、期待バージョンのassertionも確認する。`latest`、範囲指定、タグだけのActions指定は固定として扱わない。
 
-Homebrewのformulaとcaskはnix/homebrew-packages.nixに集約する。FFmpegはmiseのconda:ffmpegで固定し、旧Nix配布との差分は[運用ガイド](operations.md#ffmpegの配布と検証)に記録する。手動で列挙する資源はアルファベット順を保つ。
+Homebrewのformulaとcaskはnix/homebrew-packages.nixに集約する。FFmpegはmiseのconda:ffmpegで固定し、検証方法は[運用ガイド](operations.md#ffmpegの配布と検証)に記録する。手動で列挙する資源はアルファベット順を保つ。

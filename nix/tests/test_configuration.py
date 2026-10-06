@@ -14,28 +14,26 @@ class ConfigurationDiagnosticsTests(unittest.TestCase):
             local = root / "dotfiles.local.toml"
             public.write_text("copy = []\n")
             local.write_text("unknown = 'secret-do-not-print'\n[private]\npath = 123456789\n")
-            for attribute in ["config", "settings"]:
-                with self.subTest(attribute=attribute):
-                    expression = f'''
-                        let public = builtins.getFlake {json.dumps("git+" + repository.as_uri())};
-                        in (import {json.dumps(str(repository / "nix/configuration.nix"))} {{
-                            inherit (public.inputs.nixpkgs) lib;
-                            publicFile = {json.dumps(str(public))};
-                            localFile = {json.dumps(str(local))};
-                        }}).{attribute}
-                    '''
-                    result = subprocess.run(
-                        ["nix", "--extra-experimental-features", "nix-command flakes", "eval", "--impure", "--json", "--expr", expression],
-                        capture_output=True,
-                        text=True,
-                    )
-                    self.assertNotEqual(result.returncode, 0)
-                    self.assertIn("dotfiles configuration is invalid", result.stderr)
-                    self.assertIn("dotfiles.local.toml: private.path: invalid type", result.stderr)
-                    self.assertIn("dotfiles.local.toml: unknown: unknown key", result.stderr)
-                    self.assertNotIn("secret-do-not-print", result.stderr)
-                    self.assertNotIn("123456789", result.stderr)
-                    self.assertEqual(result.stdout, "")
+            expression = f'''
+                let public = builtins.getFlake {json.dumps("git+" + repository.as_uri())};
+                in (import {json.dumps(str(repository / "nix/configuration.nix"))} {{
+                    inherit (public.inputs.nixpkgs) lib;
+                    publicFile = {json.dumps(str(public))};
+                    localFile = {json.dumps(str(local))};
+                }}).config
+            '''
+            result = subprocess.run(
+                ["nix", "--extra-experimental-features", "nix-command flakes", "eval", "--impure", "--json", "--expr", expression],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("dotfiles configuration is invalid", result.stderr)
+            self.assertIn("dotfiles.local.toml: private.path: invalid type", result.stderr)
+            self.assertIn("dotfiles.local.toml: unknown: unknown key", result.stderr)
+            self.assertNotIn("secret-do-not-print", result.stderr)
+            self.assertNotIn("123456789", result.stderr)
+            self.assertEqual(result.stdout, "")
 
 
 if __name__ == "__main__":

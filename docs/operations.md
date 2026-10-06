@@ -16,8 +16,6 @@ Apple Silicon macOSで `./install.sh` を実行する。別の場所から取得
 
 Bootstrapはorigin/masterを取得し、固定miseとBunを導入して、home、agents、systemの順に反映する。既存checkoutに未コミット変更、別ブランチ、origin/masterから分岐したコミットがあれば停止する。成功後はmasterをorigin/masterへ接続する。
 
-既存環境の移行では、固定miseを確認してから同じ3つのタスクを順に実行する。旧dotfilesコマンドは使わない。READMEとcli/READMEは旧構成の資料として残しているため、現在の手順は本書を参照する。
-
 ## 設定の編集とツール導入
 
 通常の設定は `.mise.toml` の `[dotfiles]` からcheckoutへリンクする。編集はそのまま反映される。追加した配置やコピー対象を反映するときは `mise run home:apply` を実行する。プレビューは `mise dotfiles apply --dry-run` で確認できるが、コピー・ツール導入はこのプレビューに含まれない。
@@ -30,7 +28,7 @@ Rubyは `settings.ruby.compile = true` でソースからの導入を明示し�
 
 `dotfiles.toml` の `copy` に指定したものは実ファイルとして配置する。`.agents`、`.claude`、`.codex` 配下はagents:apply、それ以外はhome:applyが担当する。指定したディレクトリ全体を所有するため、コピー元から消した子要素は配置先からも消す。親や同階層のランタイムファイルは保持する。未変更ファイルのinodeとmtimeは保ち、変更ファイルは同じディレクトリ内でrenameして置き換える。
 
-コピー元にsymlinkがある場合や、配置先の親がsymlinkの場合は停止する。checkoutの同じコピー元を指すリンクは実体へ移行できる。それ以外のリンクやファイルとディレクトリの衝突は、管理元を確認してから解消する。`copy` とmiseのリンク宣言を同じパスに重ねない。
+コピー元、配置先、配置先の親にsymlinkがある場合は停止する。ファイルとディレクトリの衝突も、管理元を確認してから解消する。`copy` とmiseのリンク宣言を同じパスに重ねない。
 
 miseは宣言から外した古いリンクを削除しない。コピー対象そのものを宣言から外した場合も配置済みファイルは残す。不要になった配置は所有を確認して手動で削除する。
 
@@ -59,13 +57,13 @@ mise run agents:update
 path = "../private-dotfiles"
 ```
 
-private flakeは `darwinModules.default` を公開する。既存のHome Managerのhome.file、packages、launchd、stateVersionとspecialArgsを維持する。公開配置と重なるprivate home.fileはNix評価時に拒否する。ユーザーLaunchAgentはprivate Nix moduleのlaunchd宣言に置く。旧 `[services.agents]` に宣言が残っていればsystem:applyは停止する。
+private flakeは `darwinModules.default` を公開する。Home Managerのhome.file、packages、launchd、stateVersionとspecialArgsを利用できる。公開配置と重なるprivate home.fileはNix評価時に拒否する。ユーザーLaunchAgentはprivate Nix moduleのlaunchd宣言に置く。
 
 `dotfiles configuration is invalid` が出た場合は、続くファイル名・キー名・理由を確認し、宣言元を修正する。エラーには設定値を含めない。システム用のキーは `copy` と `private.path` で、旧形式のキーがローカル設定に残っている場合も検査で停止する。
 
 公開・privateともNixのGit入力を使う。追跡済みの未コミット編集は評価に入り、未追跡・無視されたファイルは入らない。新しいNixファイルはgit addしてから評価する。例外は、明示的に読み込むdotfiles.local.tomlだけ。ビルド中の宣言変更を固定する独自snapshotは持たないため、反映中に設定を編集しない。
 
-補助資源はNightlight、AnkiConnect。Nixのout-linkを状態ディレクトリの `dotfiles/current` に登録し、依存をGCから保持する。状態ディレクトリはXDG_STATE_HOME、未指定時はホームの `.local/state`。配置したリンクの参照先だけを `dotfiles/artifacts.json` に記録する。版変更では、記録と一致するリンクだけを更新・削除する。同じパッケージへ解決する旧Home Managerリンクも移行できる。Ankiのprofileやmediaは削除しない。
+補助資源はNightlight、AnkiConnect。Nixのout-linkを状態ディレクトリの `dotfiles/current` に登録し、依存をGCから保持する。状態ディレクトリはXDG_STATE_HOME、未指定時はホームの `.local/state`。配置したリンクの参照先だけを `dotfiles/artifacts.json` に記録し、版変更では記録と一致するリンクを更新する。管理外のリンクへの置き換えや既存ファイルとの衝突は拒否する。Ankiのprofileやmediaは削除しない。
 
 Night Shiftは `[settings.night_shift]` のstart、end、temperatureで指定する。ローカル設定では個々の値を上書きできる。時刻はHH:MM、temperatureは0〜100の整数。スケジュールと色温度を反映し、手動のON/OFFは変更しない。
 
@@ -79,15 +77,12 @@ mise run system:rollback
 
 ## FFmpegの配布と検証
 
-FFmpegはconda-forgeのDarwin arm64配布をmise 2026.7.7で導入する。`home/.config/mise/mise.lock` に本体と依存artifactのURL・SHA256を固定し、通常のapplyでは `mise install --locked` を使う。lockはmacOS arm64上の固定miseで生成する。Linuxからのcross-platform lockはmacOSのvirtual packageを解決できず、不完全なエントリを出力する場合があるため使用しない。
+FFmpegはconda-forgeのDarwin arm64配布を固定miseで導入する。`home/.config/mise/mise.lock` に本体と依存artifactのURL・SHA256を固定し、通常のapplyでは `mise install --locked` を使う。lockはmacOS arm64上の固定miseで生成する。Linuxからのcross-platform lockはmacOSのvirtual packageを解決できず、不完全なエントリを出力する場合があるため使用しない。
 
-旧Nix版にあったSRT/RISTと外部Theora/Speex/Xvidエンコーダは、未使用の追加機能として今回の移行で省く。これらを指定するライブ転送や書き出しは対応範囲に含めない。内蔵デコーダの有無と外部エンコーダの有無は別であり、全形式の互換性を保証するものではない。
-
-`tests/test_ffmpeg.py` は合成入力でH.264/AAC変換、ffprobe、全フレームのデコード、WAV/MP3音声抽出、PNG画像抽出、stream copyによるremuxを検証する。macOS CIではmise配布に対して実行し、固定した8.1.2の挙動と必要な変換が満たされることを確認する。ffplayは起動可能な版の確認だけを行い、GUI再生やハードウェアアクセラレーションは試験しない。
+`tests/test_ffmpeg.py` は合成入力でH.264/AAC変換、ffprobe、全フレームのデコード、WAV/MP3音声抽出、PNG画像抽出、stream copyによるremuxを検証する。macOS CIではmise配布に対して実行し、必要な変換が満たされることを確認する。
 
 ```sh
 DOTFILES_TEST_FFMPEG="$(mise which ffmpeg)" \
-DOTFILES_TEST_FFPLAY="$(mise which ffplay)" \
 DOTFILES_TEST_FFPROBE="$(mise which ffprobe)" \
   python3 -m unittest discover -s tests -p test_ffmpeg.py -v
 ```

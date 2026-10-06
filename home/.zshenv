@@ -1,5 +1,4 @@
 # /etc/profile を読み込まない設定
-# 勝手に読み込まれるとPATH先頭に/usr/binが来てanyenvで入れた*envのPATHが読み込まれない
 setopt no_global_rcs
 
 export LANG=ja_JP.UTF-8

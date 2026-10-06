@@ -30,7 +30,7 @@ let
       else if children != { } && builtins.isAttrs value.${key} then
         check file (name + ".") children value.${key}
       else [ ]) (builtins.attrNames value);
-  systemConfiguration = value: builtins.removeAttrs value [ "services" "settings" ];
+  systemConfiguration = value: builtins.removeAttrs value [ "settings" ];
   public = systemConfiguration (builtins.fromTOML (builtins.readFile publicFile));
   local = if localFile == null then { } else systemConfiguration (builtins.fromTOML (builtins.readFile localFile));
   structuralErrors = check "dotfiles.toml" "" options public
@@ -52,19 +52,8 @@ let
   errors = structuralErrors ++ lib.optionals (structuralErrors == [ ]) valueErrors;
   invalidConfiguration = throw ("dotfiles configuration is invalid:\n"
     + lib.concatMapStringsSep "\n" (error: "  " + error) errors);
-  settings = path: value:
-    if builtins.isAttrs value then
-      lib.concatMap (key: settings (path ++ [ key ]) value.${key}) (builtins.attrNames value)
-    else [ {
-      key = lib.concatStringsSep "." path;
-      inherit value;
-      source = if lib.hasAttrByPath path local then "dotfiles.local.toml"
-        else if lib.hasAttrByPath path public then "dotfiles.toml"
-        else null;
-    } ];
 in
 {
   inherit errors;
   config = if errors == [ ] then merged else invalidConfiguration;
-  settings = if errors == [ ] then settings [ ] merged else invalidConfiguration;
 }

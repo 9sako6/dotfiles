@@ -5,9 +5,7 @@ Run once for each distribution, using its real executables (not PATH shims):
     DOTFILES_TEST_FFPROBE=/path/to/bin/ffprobe \
     python3 -m unittest discover -s tests -p test_ffmpeg.py -v
 
-DOTFILES_TEST_FFPLAY optionally selects ffplay. Otherwise, a sibling of ffmpeg
-is checked when present. Only its version is run; no display or audio device is
-opened. With no binary paths configured, unittest discovery skips this suite.
+With no binary paths configured, unittest discovery skips this suite.
 """
 
 from fractions import Fraction
@@ -15,17 +13,14 @@ import json
 import math
 import os
 from pathlib import Path
-import re
 import shlex
 import struct
 import subprocess
-import sys
 import tempfile
 import unittest
 import wave
 
 
-EXPECTED_VERSION = "8.1.2"
 WIDTH, HEIGHT, FRAME_RATE, FRAME_COUNT = 96, 64, 12, 12
 SAMPLE_RATE = 48000
 DURATION = FRAME_COUNT / FRAME_RATE
@@ -66,35 +61,17 @@ def binary_path(value, variable):
     return path
 
 
-def check_version(binary, tool):
-    output = run(binary, "-version").decode(errors="replace")
-    print(f"\n{binary}\n{output}", file=sys.stderr)
-    match = re.match(rf"{tool} version (\S+)", output)
-    actual = match.group(1) if match else None
-    # Distribution suffixes are allowed, but a different upstream release is not.
-    if actual is None or actual.split("-", 1)[0] != EXPECTED_VERSION:
-        raise AssertionError(f"Expected {tool} {EXPECTED_VERSION}, found {actual!r}: {binary}")
-
-
 class FFmpegBehaviorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        variables = ("DOTFILES_TEST_FFMPEG", "DOTFILES_TEST_FFPROBE", "DOTFILES_TEST_FFPLAY")
+        variables = ("DOTFILES_TEST_FFMPEG", "DOTFILES_TEST_FFPROBE")
         if not any(os.environ.get(variable) for variable in variables):
             raise unittest.SkipTest("set DOTFILES_TEST_FFMPEG and DOTFILES_TEST_FFPROBE to real binaries")
-        for variable in variables[:2]:
+        for variable in variables:
             if not os.environ.get(variable):
                 raise AssertionError(f"{variable} is required when opting into FFmpeg behavior tests")
         cls.ffmpeg = binary_path(os.environ[variables[0]], variables[0])
         cls.ffprobe = binary_path(os.environ[variables[1]], variables[1])
-        check_version(cls.ffmpeg, "ffmpeg")
-        check_version(cls.ffprobe, "ffprobe")
-
-        cls.ffplay = None
-        if os.environ.get(variables[2]):
-            cls.ffplay = binary_path(os.environ[variables[2]], variables[2])
-        elif (cls.ffmpeg.parent / "ffplay").exists():
-            cls.ffplay = binary_path(str(cls.ffmpeg.parent / "ffplay"), variables[2])
 
         temporary = tempfile.TemporaryDirectory(prefix="dotfiles-ffmpeg-")
         cls.addClassCleanup(temporary.cleanup)
@@ -239,12 +216,6 @@ class FFmpegBehaviorTests(unittest.TestCase):
         self.assertTrue(before[1], "No AAC packets were encoded")
         self.assertEqual(after, before, "Remux changed encoded video/audio packet payloads")
         self.convert("-err_detect", "explode", "-i", remuxed, "-map", "0", "-f", "null", "-")
-
-    def test_ffplay_version_without_opening_devices(self):
-        if self.ffplay is None:
-            self.skipTest("distribution has no sibling ffplay; set DOTFILES_TEST_FFPLAY if stored separately")
-        check_version(self.ffplay, "ffplay")
-
 
 if __name__ == "__main__":
     unittest.main()

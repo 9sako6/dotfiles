@@ -23,7 +23,6 @@ let
       [ "copy = ['b','a']" null ]
       [ "copy = ['a','a']" null ]
     ];
-    noValueDisclosure = builtins.all (message: !(lib.hasInfix "secret-do-not-print" message)) (parse "copy = []" "unknown = 'secret-do-not-print'").errors;
   };
 in
 assert lib.assertMsg (builtins.all (value: value) (builtins.attrValues results)) "configuration behavior test failed";

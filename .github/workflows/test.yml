@@ -94,13 +94,11 @@ jobs:
           "$HOME/.local/bin/mise" install --force --locked conda:ffmpeg
           test "$before" = "$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
           DOTFILES_TEST_FFMPEG="$("$HOME/.local/bin/mise" which ffmpeg)"
-          DOTFILES_TEST_FFPLAY="$("$HOME/.local/bin/mise" which ffplay)"
           DOTFILES_TEST_FFPROBE="$("$HOME/.local/bin/mise" which ffprobe)"
-          export DOTFILES_TEST_FFMPEG DOTFILES_TEST_FFPLAY DOTFILES_TEST_FFPROBE
+          export DOTFILES_TEST_FFMPEG DOTFILES_TEST_FFPROBE
           test -x "$DOTFILES_TEST_FFMPEG"
-          test -x "$DOTFILES_TEST_FFPLAY"
           test -x "$DOTFILES_TEST_FFPROBE"
-          file -L "$DOTFILES_TEST_FFMPEG" "$DOTFILES_TEST_FFPLAY" "$DOTFILES_TEST_FFPROBE"
+          file -L "$DOTFILES_TEST_FFMPEG" "$DOTFILES_TEST_FFPROBE"
           "$DOTFILES_TEST_FFMPEG" -buildconf
           python3 -m unittest discover -s tests -p test_ffmpeg.py -v
 

@@ -16,9 +16,6 @@ tmp/**
 .env.*
 *.local
 dotfiles.local.toml
-!home/.local/
-!home/.local/bin/
-!home/.local/bin/dot
 *.pem
 *.key
 .superpowers/
@@ -32,6 +29,4 @@ deno.lock
 apm_modules/
 home/.gitignore
 
-# Rust
-cli/target/
 __pycache__/

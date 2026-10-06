@@ -27,51 +27,13 @@
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
       toolset = import ./nix/packages.nix { inherit pkgs; };
-      mkArtifacts = { }: import ./nix/artifacts.nix { inherit pkgs toolset; };
+      artifacts = import ./nix/artifacts.nix { inherit pkgs toolset; };
       primaryUser = let user = builtins.getEnv "DARWIN_PRIMARY_USER"; in if user == "" then "fixture" else user;
       defaultConfiguration = (import ./nix/configuration.nix {
         inherit (nixpkgs) lib;
         publicFile = ./dotfiles.toml;
       }).config;
       dotfilesSourceHome = self.outPath + "/home";
-      mkDarwinSystem = {
-        configurationRevision ? null,
-        dotfilesDirectory ? "/Users/${primaryUser}/dotfiles",
-        modules ? [ ],
-        configuration ? defaultConfiguration,
-        primaryUser,
-      }:
-        let
-          darwinSystem = nix-darwin.lib.darwinSystem {
-            specialArgs = {
-              inherit configuration dotfilesDirectory dotfilesSourceHome inputs;
-            };
-            modules = [
-              self.darwinModules.default
-              ({ pkgs, ... }: {
-                environment.systemPackages = [ pkgs.anki-bin ];
-                assertions = [ {
-                  assertion = pkgs.anki-bin.version == "26.05";
-                  message = "Anki version drifted: expected 26.05, got ${pkgs.anki-bin.version}";
-                } {
-                  assertion = toString pkgs.path == nixpkgs.outPath;
-                  message = "private modules must use the public nixpkgs package set";
-                } ];
-              })
-              {
-                nixpkgs.hostPlatform = system;
-                system = {
-                  inherit configurationRevision primaryUser;
-                };
-              }
-            ] ++ modules;
-          };
-        in
-        darwinSystem // {
-          homebrewBrewfile = darwinSystem.pkgs.writeText
-            "Brewfile"
-            darwinSystem.config.homebrew.brewfile;
-        };
       publicDotfilesDirectory =
         let
           configured = builtins.getEnv "DOTFILES_DIR";
@@ -86,9 +48,29 @@
       }:
         assert nixpkgs.lib.assertMsg (privateFlake == null || privateFlake ? darwinModules.default)
           "private.path must export darwinModules.default";
-        mkDarwinSystem {
-          inherit configuration configurationRevision dotfilesDirectory primaryUser;
-          modules = nixpkgs.lib.optional (privateFlake != null) privateFlake.darwinModules.default;
+        nix-darwin.lib.darwinSystem {
+          specialArgs = {
+            inherit configuration dotfilesDirectory dotfilesSourceHome inputs;
+          };
+          modules = [
+            self.darwinModules.default
+            ({ pkgs, ... }: {
+              environment.systemPackages = [ pkgs.anki-bin ];
+              assertions = [ {
+                assertion = pkgs.anki-bin.version == "26.05";
+                message = "Anki version drifted: expected 26.05, got ${pkgs.anki-bin.version}";
+              } {
+                assertion = toString pkgs.path == nixpkgs.outPath;
+                message = "private modules must use the public nixpkgs package set";
+              } ];
+            })
+            {
+              nixpkgs.hostPlatform = system;
+              system = {
+                inherit configurationRevision primaryUser;
+              };
+            }
+          ] ++ nixpkgs.lib.optional (privateFlake != null) privateFlake.darwinModules.default;
         };
       publicSystem = mkHost {
         inherit primaryUser;
@@ -98,8 +80,8 @@
     in
     {
       packages.${system} = {
-        artifacts = (mkArtifacts { }).root;
-        default = (mkArtifacts { }).root;
+        inherit artifacts;
+        default = artifacts;
       };
 
       checks.${system} = {
@@ -120,7 +102,7 @@
       };
 
       lib = {
-        inherit mkArtifacts mkHost;
+        inherit mkHost;
       };
     };
 }

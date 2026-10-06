@@ -20,7 +20,7 @@ let
     configurationRevision = public.rev or public.dirtyRev or null;
   };
   system = host.system;
-  resources = (public.lib.mkArtifacts { }).root;
+  resources = public.packages.aarch64-darwin.artifacts;
 in
 {
   inherit system resources;
