@@ -438,7 +438,9 @@ version = "2.1.220"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.macos-arm64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.220/darwin-arm64/claude"
+checksum = "sha256:1c895d3d7a97cc1ebd457a2f64ba20212476de82468e4a3fc142beeee270e55e"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.220/claude-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/488921610"
 
 [[tools."conda:ffmpeg"]]
 version = "8.1.2"
