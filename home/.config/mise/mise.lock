@@ -693,6 +693,10 @@ backend = "core:node"
 checksum = "sha256:f4387df0b46556516d19abf2f2d6806481ac8368aa7f9d96bafed422a56a1d01"
 url = "https://nodejs.org/dist/v26.5.1/node-v26.5.1-darwin-arm64.tar.gz"
 
+[[tools."npm:@deepseek-ai/dsh"]]
+version = "0.2.0-rc.2"
+backend = "npm:@deepseek-ai/dsh"
+
 [[tools."npm:@devcontainers/cli"]]
 version = "0.88.0"
 backend = "npm:@devcontainers/cli"
