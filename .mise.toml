@@ -5,11 +5,7 @@ task.run_auto_install = false
 [dotfiles]
 "~/.config" = { source = "home/.config", mode = "symlink-each" }
 "~/.gitignore_global" = { source = "home/.gitignore_global", mode = "symlink" }
-"~/.zsh.d/alias.zsh" = { source = "home/.zsh.d/alias.zsh", mode = "symlink" }
-"~/.zsh.d/functions.zsh" = { source = "home/.zsh.d/functions.zsh", mode = "symlink" }
-"~/.zsh.d/keybindings.zsh" = { source = "home/.zsh.d/keybindings.zsh", mode = "symlink" }
-"~/.zsh.d/prompt.zsh" = { source = "home/.zsh.d/prompt.zsh", mode = "symlink" }
-"~/.zsh.d/ssh-agent.zsh" = { source = "home/.zsh.d/ssh-agent.zsh", mode = "symlink" }
+"~/.zsh.d" = { source = "home/.zsh.d", mode = "symlink-each" }
 "~/.zshenv" = { source = "home/.zshenv", mode = "symlink" }
 "~/.zshrc" = { source = "home/.zshrc", mode = "symlink" }
 "~/mybin" = { source = "home/mybin", mode = "symlink-each" }

@@ -20,6 +20,8 @@ Bootstrapはorigin/masterを取得し、固定miseとBunを導入して、home�
 
 通常の設定は `.mise.toml` の `[dotfiles]` からcheckoutへリンクする。編集はそのまま反映される。追加した配置やコピー対象を反映するときは `mise run home:apply` を実行する。プレビューは `mise dotfiles apply --dry-run` で確認できるが、コピー・ツール導入はこのプレビューに含まれない。
 
+`.zsh.d` は `symlink-each` で、`home/.zsh.d` にあるファイルを個別にリンクする。Git管理外の `home/.zsh.d/local.zsh` と `home/.zsh.d/secrets.zsh` も、配置元にあれば `home:apply` で反映する。旧 `dist/` を参照するリンクも現在の配置元へ更新する。配置元にないファイルはリンクを作らず、配置先にだけあるファイルは保持する。
+
 ツールの宣言元は `home/.config/mise/config.toml`、取得先の固定は同じディレクトリの `mise.lock`。home:applyはこの設定を明示して `mise install --locked` を実行する。バイナリはmiseのユーザー共有領域に入り、リポジトリ専用のツールディレクトリは作らない。ホームのmise設定で常用ツールを有効にし、各プロジェクトの設定では必要な版を選ぶ。
 
 Rubyは `settings.ruby.compile = true` でソースからの導入を明示し、lockに保存した取得先と一致させる。mise 2026.8以降はビルド済みバイナリが既定になるため、導入方式を省略すると既存のlockを使えなくなる。

@@ -112,9 +112,11 @@ test.skipIf(!mise)("actual mise tasks deploy home and agents independently witho
     await writeTree(repo, {
       "home/.config/mise/config.toml": "[settings]\nauto_install = false\n",
       "home/.gitignore_global": "ignore", "home/.zshenv": "environment", "home/.zshrc": "shell",
-      "home/mybin/fixture": "executable", "home/.zsh.d/secrets.zsh": "untracked secret",
+      "home/mybin/fixture": "executable",
       ...Object.fromEntries(["alias", "functions", "keybindings", "prompt", "ssh-agent"].map(name => [`home/.zsh.d/${name}.zsh`, name])),
     });
+    await writeTree(home, { ".zsh.d/runtime.zsh": "keep" });
+    await symlink(path.join(repo, "dist/.zsh.d/alias.zsh"), path.join(home, ".zsh.d/alias.zsh"));
     await writeTree(bin, {
       "mise": '#!/bin/sh\ncase "$1" in\ndotfiles) exec "$REAL_MISE" "$@" ;;\ninstall|bootstrap) printf "%s:%s\\n" "$*" "$MISE_CONFIG_FILE" >> "$APPLY_LOG" ;;\n*) exit 99 ;;\nesac\n',
       "apm": '#!/bin/sh\nprintf "apm:%s:%s\\n" "$*" "$PWD" >> "$APPLY_LOG"\nif [ "$1" = compile ]; then\n  [ "${FAIL_COMPILE:-}" != 1 ] || exit 1\n  printf generated > .agents/skills/current/SKILL.md\nfi\n',
@@ -128,10 +130,26 @@ test.skipIf(!mise)("actual mise tasks deploy home and agents independently witho
       return { code, output };
     };
     expect(await execute("home:apply")).toMatchObject({ code: 0 });
+    for (const name of ["local", "secrets"]) {
+      await expect(lstat(path.join(home, `.zsh.d/${name}.zsh`))).rejects.toMatchObject({ code: "ENOENT" });
+    }
+    await writeTree(repo, { "home/.zsh.d/local.zsh": "local configuration", "home/.zsh.d/secrets.zsh": "untracked secret" });
+    for (const name of ["local", "secrets"]) {
+      await symlink(path.join(repo, `dist/.zsh.d/${name}.zsh`), path.join(home, `.zsh.d/${name}.zsh`));
+    }
     expect(await execute("home:apply")).toMatchObject({ code: 0 });
+    for (const name of ["alias", "functions", "keybindings", "local", "prompt", "secrets", "ssh-agent"]) {
+      expect(await readlink(path.join(home, `.zsh.d/${name}.zsh`))).toBe(path.join(repo, `home/.zsh.d/${name}.zsh`));
+    }
+    const secret = path.join(home, ".zsh.d/secrets.zsh");
+    const before = await lstat(secret);
+    expect(await execute("home:apply")).toMatchObject({ code: 0 });
+    const after = await lstat(secret);
+    expect([after.ino, after.mtimeMs]).toEqual([before.ino, before.mtimeMs]);
+    expect(await readFile(path.join(home, ".zsh.d/runtime.zsh"), "utf8")).toBe("keep");
     expect(await realpath(path.join(home, ".config/mise/config.toml"))).toBe(await realpath(path.join(repo, "home/.config/mise/config.toml")));
     expect(await readFile(path.join(home, ".gitconfig"), "utf8")).toBe("configuration");
-    expect(await Bun.file(path.join(home, ".zsh.d/secrets.zsh")).exists()).toBe(false);
+    expect(await readFile(secret, "utf8")).toBe("untracked secret");
     expect(await Bun.file(path.join(home, ".agents/skills/current/SKILL.md")).exists()).toBe(false);
     expect(await execute("agents:apply")).toMatchObject({ code: 0 });
     expect(await readFile(path.join(home, ".agents/skills/current/SKILL.md"), "utf8")).toBe("generated");
