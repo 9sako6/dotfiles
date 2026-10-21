@@ -42,6 +42,7 @@ in
   };
 
   nix = {
+    channel.enable = false;
     enable = true;
     gc = {
       automatic = true;
