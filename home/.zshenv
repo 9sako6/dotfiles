@@ -22,5 +22,12 @@ export PATH
 
 export SSH_AUTH_SOCK="${SSH_AUTH_SOCK:-$HOME/.ssh/agent.sock}"
 
+if [[ -r "${NIX_SSL_CERT_FILE:-/etc/ssl/cert.pem}" ]]; then
+  export SSL_CERT_FILE="${SSL_CERT_FILE:-${NIX_SSL_CERT_FILE:-/etc/ssl/cert.pem}}"
+  export PIP_CERT="${PIP_CERT:-$SSL_CERT_FILE}"
+  export REQUESTS_CA_BUNDLE="${REQUESTS_CA_BUNDLE:-$SSL_CERT_FILE}"
+  export AWS_CA_BUNDLE="${AWS_CA_BUNDLE:-$SSL_CERT_FILE}"
+fi
+
 # Set secret environment variables
 [ -e "${HOME}/.zsh.d/secrets.zsh" ] && source "${HOME}/.zsh.d/secrets.zsh"

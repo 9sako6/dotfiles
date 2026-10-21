@@ -71,6 +71,11 @@ in
 
   programs.zsh.shellInit = builtins.readFile ./homebrew-shellenv.zsh;
 
+  security.pki.caCertificateBlacklist = [
+    "Comodo AAA Services root"
+    "emSign ECC Root CA - G3"
+  ];
+
   # Fixed SSH agent socket so nix-daemon (root) can reuse the user's SSH keys
   # for git+ssh flake inputs (e.g. private hermes). The socket itself is
   # created on demand by home/.zsh.d/ssh-agent.zsh.
@@ -84,6 +89,19 @@ in
       # スクリーンショット保存先のディレクトリを用意する
       extraActivation.text = ''
         install -d -o "${primaryUser}" -g "$(id -gn "${primaryUser}")" "${screenshotDirectory}"
+        (
+          certificates=/etc/ssl/cert.pem
+          filtered="$(mktemp /etc/ssl/cert.pem.XXXXXX)"
+          trap 'rm -f "$filtered"' EXIT
+          /usr/bin/awk -f ${../lib/remove-emudhra-roots.awk} "$certificates" > "$filtered"
+          /usr/bin/openssl crl2pkcs7 -nocrl -certfile "$filtered" -out /dev/null
+          if ! /usr/bin/cmp -s "$certificates" "$filtered"; then
+            if [ ! -e "$certificates.before-emudhra" ]; then
+              cp -p "$certificates" "$certificates.before-emudhra"
+            fi
+            /usr/bin/install -o root -g wheel -m 0644 "$filtered" "$certificates"
+          fi
+        )
       '';
       postActivation.text = ''
         launchctl asuser "$(id -u -- "${primaryUser}")" sudo --user="${primaryUser}" -- \

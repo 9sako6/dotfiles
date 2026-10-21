@@ -2,9 +2,9 @@
 set -eu
 
 MISE_BIN="${HOME}/.local/bin/mise"
-MISE_INSTALLER_SHA256="0b98c2dc48edc807be860a76e14209afcfe36684c591f92337c5d9ff909e7740"
-MISE_INSTALLER_URL="https://github.com/jdx/mise/releases/download/v2026.7.7/install.sh"
-MISE_VERSION="2026.7.7"
+MISE_INSTALLER_SHA256="314162b17b5fe78e31d464416ab91ede17e9149aea4322f5f3539f1ebe46242f"
+MISE_INSTALLER_URL="https://github.com/jdx/mise/releases/download/v2026.10.17/install.sh"
+MISE_VERSION="2026.10.17"
 
 temp_dir=""
 

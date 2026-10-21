@@ -434,13 +434,13 @@ checksum = "sha256:5467e3f65dba526b9fea98f0cce04efafc0c63e169733ec27b876a3ad32da
 url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.13/bun-darwin-aarch64.zip"
 
 [[tools.claude]]
-version = "2.1.220"
+version = "2.1.306"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.macos-arm64"]
-checksum = "sha256:1c895d3d7a97cc1ebd457a2f64ba20212476de82468e4a3fc142beeee270e55e"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.220/claude-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/488921610"
+checksum = "sha256:7d83cdfb0a9457f712881bb2f86b0f8fd655c818dbb8abf679c43fd04de44171"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.306/claude-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/661106615"
 
 [[tools."conda:ffmpeg"]]
 version = "8.1.2"
@@ -659,12 +659,12 @@ url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8
 url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332059"
 
 [[tools.go]]
-version = "1.26.5"
+version = "1.26.10"
 backend = "core:go"
 
 [tools.go."platforms.macos-arm64"]
-checksum = "sha256:efb87ff28af9a188d0536ef5d42e63dd52ba8263cd7344a993cc48dd11dedb6a"
-url = "https://dl.google.com/go/go1.26.5.darwin-arm64.tar.gz"
+checksum = "sha256:0b5183492292ada170f9b561a834863808dd02edba599e4ad0e89899330020b3"
+url = "https://dl.google.com/go/go1.26.10.darwin-arm64.tar.gz"
 
 [[tools.herdr]]
 version = "0.8.2"
@@ -686,12 +686,12 @@ url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/47
 provenance = "github-attestations"
 
 [[tools.node]]
-version = "26.5.1"
+version = "26.12.1"
 backend = "core:node"
 
 [tools.node."platforms.macos-arm64"]
-checksum = "sha256:f4387df0b46556516d19abf2f2d6806481ac8368aa7f9d96bafed422a56a1d01"
-url = "https://nodejs.org/dist/v26.5.1/node-v26.5.1-darwin-arm64.tar.gz"
+checksum = "sha256:1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c59e8"
+url = "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz"
 
 [[tools."npm:@deepseek-ai/dsh"]]
 version = "0.2.0-rc.2"
@@ -772,13 +772,13 @@ backend = "core:rust"
 components = "clippy,rustfmt"
 
 [[tools.uv]]
-version = "0.12.1"
+version = "0.13.4"
 backend = "aqua:astral-sh/uv"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:77d2906988e8074fd43f2f329ec452ebbf9b0c257ba1c66451c71de70a6baf42"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.1/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/497097062"
+checksum = "sha256:e0b1d4743ce64c55d9f0f4a444afa6b81125680070ee04e853fcd0f6c1ebf8f1"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.4/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/659693291"
 provenance = "github-attestations"
 
 [[tools.xcodegen]]
