@@ -24,6 +24,8 @@ Bootstrapはorigin/masterを取得し、固定miseとBunを導入して、home�
 
 ツールの宣言元は `home/.config/mise/config.toml`、取得先の固定は同じディレクトリの `mise.lock`。home:applyはこの設定を明示して `mise install --locked` を実行する。バイナリはmiseのユーザー共有領域に入り、リポジトリ専用のツールディレクトリは作らない。ホームのmise設定で常用ツールを有効にし、各プロジェクトの設定では必要な版を選ぶ。
 
+Blacksmithの組織トークン発行と使用量照会には[公式CLI](https://docs.blacksmith.sh/blacksmith-cli/overview)を使う。miseのレジストリに未登録のため、[公式installer](https://get.blacksmith.sh)と同じ配布元から、`http`バックエンドでバージョン指定のバイナリとSHA-256を取得する。0.5.2の配布とmacOS arm64での起動を2026-10-23に確認した。取得先とchecksumはmise.lockへ固定し、`BLACKSMITH_DISABLE_AUTO_UPDATE=1`でCLI自身の自動更新を無効にする。更新時は設定の完全なバージョンを変更し、`mise lock --global http:blacksmith --platform macos-arm64` を実行する。以前の版へ戻す場合も設定とlockを一緒に戻してhome:applyを実行する。公開バイナリのソースとの対応とbuild provenanceは未確認。
+
 Rubyは `settings.ruby.compile = true` でソースからの導入を明示し、lockに保存した取得先と一致させる。mise 2026.8以降はビルド済みバイナリが既定になるため、導入方式を省略すると既存のlockを使えなくなる。
 
 シェルプラグインは同じmise設定の `[bootstrap.repos]` に40桁のコミットで固定する。home:applyで取得し、zshは取得済みのファイルを直接読む。シェル起動時にGit検査やダウンロードを行わない。
@@ -90,6 +92,8 @@ DOTFILES_TEST_FFPROBE="$(mise which ffprobe)" \
 ```
 
 ## 検証
+
+コミット・push前の検査入口は `bin/check-for-agent`。dotfilesで固定したTypeScript・Bun・Gitを使い、型検査、既存テスト、公開文書と秘密情報の検査を実行する。隔離環境を作るテストへmiseの親SessionのPATH差分を持ち込まないよう、子プロセスでmiseのSession用変数を外す。Nixの宣言を変更した場合は、下記のNixビルドも実行する。
 
 ```sh
 bun install --frozen-lockfile

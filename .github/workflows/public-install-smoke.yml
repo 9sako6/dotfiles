@@ -93,6 +93,7 @@ jobs:
           test "$(mise exec -- sh -c 'command -v fzf')" = "$(mise which fzf)"
           mise exec -- agy --version
           mise exec -- atuin --version
+          mise exec -- blacksmith --version
           mise exec -- bun --version
           mise exec -- cargo --version
           mise exec -- codex --version

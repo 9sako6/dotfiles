@@ -675,6 +675,14 @@ checksum = "sha256:a5d4f4d504d8b309c91f811050559300faba31258425f53c50852fc96f6ae
 url = "https://github.com/herdrdev/herdr/releases/download/v0.8.2/herdr-macos-aarch64"
 url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/521169108"
 
+[[tools."http:blacksmith"]]
+version = "0.5.2"
+backend = "http:blacksmith"
+
+[tools."http:blacksmith"."platforms.macos-arm64"]
+checksum = "sha256:82d428b8dbeba0ecdbc796d27de72ea4938a97ec00c97bc70aec3e26cfe66e77"
+url = "https://clireleases.blacksmith.sh/cli/v0.5.2/darwin/arm64/blacksmith"
+
 [[tools.lefthook]]
 version = "2.1.10"
 backend = "aqua:evilmartians/lefthook"

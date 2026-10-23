@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+dotfiles_dir="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+cd "$dotfiles_dir"
+
+exec mise exec -- sh -eu -c '
+unset __MISE_DIFF __MISE_SESSION __MISE_ORIG_PATH
+bun run tsc --noEmit
+bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
+home/.config/git/hooks/check-public-document-privacy
+home/.config/git/hooks/run-gitleaks-pre-commit
+'
