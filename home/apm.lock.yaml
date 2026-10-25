@@ -1,12 +1,12 @@
 lockfile_version: '1'
-generated_at: '2026-10-05T09:51:57.602374+00:00'
+generated_at: '2026-10-25T09:33:14.193651+00:00'
 apm_version: 0.26.0
 dependencies:
 - repo_url: 9sako6/-
   name: minus
   host: github.com
-  resolved_commit: 9e163b7bc656bfd30cc1a79c97c488f26a7e0e36
-  resolved_ref: 9e163b7bc656bfd30cc1a79c97c488f26a7e0e36
+  resolved_commit: c299b119acef39b39d0ce14f7aaa8d991efeff9b
+  resolved_ref: c299b119acef39b39d0ce14f7aaa8d991efeff9b
   version: unknown
   virtual_path: skills/minus
   is_virtual: true
@@ -17,9 +17,9 @@ dependencies:
   - .claude/skills/minus
   - .claude/skills/minus/SKILL.md
   deployed_file_hashes:
-    .agents/skills/minus/SKILL.md: sha256:02fb7d02f3da99b87cf7cad07ac7d3557df520edf01628e73dfc8e33d9e4d98c
-    .claude/skills/minus/SKILL.md: sha256:02fb7d02f3da99b87cf7cad07ac7d3557df520edf01628e73dfc8e33d9e4d98c
-  content_hash: sha256:a4ca853e271507620e95c3a232d08c1ac4d469be694aa66f54b39ede0dfc9d80
+    .agents/skills/minus/SKILL.md: sha256:2228142560d04d3f5664009ababfa76159a482e395ff1a1bc9da1c9b8429b341
+    .claude/skills/minus/SKILL.md: sha256:2228142560d04d3f5664009ababfa76159a482e395ff1a1bc9da1c9b8429b341
+  content_hash: sha256:f876e3b5ba360069f7f791f9aec7a9456a852c2edd096f2366041e58b97ef000
 - repo_url: _local/anki
   name: anki
   version: 0.0.0
@@ -585,7 +585,7 @@ deployments:
   owners:
   - 9sako6/-/skills/minus
   active_owner: 9sako6/-/skills/minus
-  content_hash: sha256:02fb7d02f3da99b87cf7cad07ac7d3557df520edf01628e73dfc8e33d9e4d98c
+  content_hash: sha256:2228142560d04d3f5664009ababfa76159a482e395ff1a1bc9da1c9b8429b341
 - kind: project-relative
   target: claude
   value: .claude/skills/model-it
@@ -1259,7 +1259,7 @@ deployments:
   owners:
   - 9sako6/-/skills/minus
   active_owner: 9sako6/-/skills/minus
-  content_hash: sha256:02fb7d02f3da99b87cf7cad07ac7d3557df520edf01628e73dfc8e33d9e4d98c
+  content_hash: sha256:2228142560d04d3f5664009ababfa76159a482e395ff1a1bc9da1c9b8429b341
 - kind: project-relative
   target: codex
   value: .agents/skills/model-it

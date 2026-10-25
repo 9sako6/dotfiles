@@ -16,7 +16,7 @@ dependencies:
     - ./.apm/skills/jp
     - ./.apm/skills/model-it
     - ./.apm/skills/resolve-it
-    - 9sako6/-/skills/minus#9e163b7bc656bfd30cc1a79c97c488f26a7e0e36
+    - 9sako6/-/skills/minus#c299b119acef39b39d0ce14f7aaa8d991efeff9b
     - ayghri/i-have-adhd/skills/i-have-adhd#4c76175b17421d61babfc35c10ab07604ef578d0
     - cloudflare/security-audit-skill/skills/security-audit#c1c8a8c1471069fb0e188eeaff69b8e8db6564a8
     - coji/natural-japanese/skills/natural-japanese#9a78a42964096da509b8f3e011f0085a5f080151
