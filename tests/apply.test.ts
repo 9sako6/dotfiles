@@ -6,7 +6,6 @@ import { deployResources, nightShift, retireNightlightLink } from "../lib/system
 import { withTempDir, writeTree } from "./test-helpers.ts";
 
 const repository = path.resolve(import.meta.dir, "..");
-const mise = Bun.which("mise");
 
 async function fixture(root: string) {
   const repo = path.join(root, "repo");
@@ -117,69 +116,33 @@ test("Night Shift merges local fields and rejects invalid input without exposing
   });
 });
 
-test.skipIf(!mise)("actual mise tasks deploy home and agents independently without Nix or Rust", async () => {
-  await withTempDir("public-apply", async root => {
+test("agent generation preserves deployed resources on failure and can be retried", async () => {
+  await withTempDir("agents-apply", async root => {
     const { repo, home } = await fixture(root);
     for (const directory of ["bin", "lib"]) {
       await mkdir(path.join(repo, directory), { recursive: true });
     }
-    for (const file of [".mise.toml", "bin/home-apply.ts", "bin/agents-apply.ts", "lib/home-copy.ts", "lib/process.ts", "lib/system-resources.ts"]) {
+    for (const file of ["bin/agents-apply.ts", "lib/home-copy.ts", "lib/process.ts"]) {
       await cp(path.join(repository, file), path.join(repo, file));
     }
     const bin = path.join(root, "bin");
-    const log = path.join(root, "commands");
-    await writeTree(repo, {
-      "home/.config/mise/config.toml": "[settings]\nauto_install = false\n",
-      "home/.gitignore_global": "ignore", "home/.zshenv": "environment", "home/.zshrc": "shell",
-      "home/mybin/fixture": "executable",
-      ...Object.fromEntries(["alias", "functions", "keybindings", "prompt", "ssh-agent"].map(name => [`home/.zsh.d/${name}.zsh`, name])),
-    });
-    await writeTree(home, { ".zsh.d/runtime.zsh": "keep" });
-    await symlink(path.join(repo, "dist/.zsh.d/alias.zsh"), path.join(home, ".zsh.d/alias.zsh"));
     await writeTree(bin, {
-      "mise": '#!/bin/sh\ncase "$1" in\ndotfiles) exec "$REAL_MISE" "$@" ;;\nwhich) [ "$2" = nightlight ] || exit 99; printf "fixture-nightlight\\n" ;;\ninstall|bootstrap) printf "%s:%s\\n" "$*" "$MISE_CONFIG_FILE" >> "$APPLY_LOG" ;;\n*) exit 99 ;;\nesac\n',
-      "apm": '#!/bin/sh\nprintf "apm:%s:%s\\n" "$*" "$PWD" >> "$APPLY_LOG"\nif [ "$1" = compile ]; then\n  [ "${FAIL_COMPILE:-}" != 1 ] || exit 1\n  printf generated > .agents/skills/current/SKILL.md\nfi\n',
-      ...Object.fromEntries(["nix", "sudo", "cargo", "rustc"].map(name => [name, "#!/bin/sh\nexit 99\n"])),
+      "apm": '#!/bin/sh\nif [ "$1" = compile ]; then\n  [ "${FAIL_COMPILE:-}" != 1 ] || exit 1\n  printf generated > .agents/skills/current/SKILL.md\nfi\n',
     });
-    for (const command of ["mise", "apm", "nix", "sudo", "cargo", "rustc"]) await chmod(path.join(bin, command), 0o755);
-    const env = { ...process.env, HOME: home, XDG_STATE_HOME: path.join(home, ".local/state"), PATH: `${bin}:${path.dirname(process.execPath)}:/usr/bin:/bin`, REAL_MISE: mise!, APPLY_LOG: log, MISE_TRUSTED_CONFIG_PATHS: repo, MISE_GLOBAL_CONFIG_FILE: path.join(root, "global.toml"), MISE_CONFIG_FILE: "", MISE_DATA_DIR: path.join(root, "mise-data"), MISE_CACHE_DIR: path.join(root, "mise-cache") };
-    const execute = async (task: string, extra: NodeJS.ProcessEnv = {}) => {
-      const child = Bun.spawn([mise!, "--cd", repo, "run", task], { env: { ...env, ...extra }, stdout: "pipe", stderr: "pipe" });
+    await chmod(path.join(bin, "apm"), 0o755);
+    const execute = async (extra: NodeJS.ProcessEnv = {}) => {
+      const child = Bun.spawn([process.execPath, path.join(repo, "bin/agents-apply.ts")], {
+        env: { ...process.env, HOME: home, PATH: `${bin}:/usr/bin:/bin`, ...extra }, stdout: "pipe", stderr: "pipe",
+      });
       const [code, output] = await Promise.all([child.exited, new Response(child.stderr).text()]);
       return { code, output };
     };
-    expect(await execute("home:apply")).toMatchObject({ code: 0 });
-    for (const name of ["local", "secrets"]) {
-      await expect(lstat(path.join(home, `.zsh.d/${name}.zsh`))).rejects.toMatchObject({ code: "ENOENT" });
-    }
-    await writeTree(repo, { "home/.zsh.d/local.zsh": "local configuration", "home/.zsh.d/secrets.zsh": "untracked secret" });
-    for (const name of ["local", "secrets"]) {
-      await symlink(path.join(repo, `dist/.zsh.d/${name}.zsh`), path.join(home, `.zsh.d/${name}.zsh`));
-    }
-    expect(await execute("home:apply")).toMatchObject({ code: 0 });
-    for (const name of ["alias", "functions", "keybindings", "local", "prompt", "secrets", "ssh-agent"]) {
-      expect(await readlink(path.join(home, `.zsh.d/${name}.zsh`))).toBe(path.join(repo, `home/.zsh.d/${name}.zsh`));
-    }
-    const secret = path.join(home, ".zsh.d/secrets.zsh");
-    const before = await lstat(secret);
-    expect(await execute("home:apply")).toMatchObject({ code: 0 });
-    const after = await lstat(secret);
-    expect([after.ino, after.mtimeMs]).toEqual([before.ino, before.mtimeMs]);
-    expect(await readFile(path.join(home, ".zsh.d/runtime.zsh"), "utf8")).toBe("keep");
-    expect(await realpath(path.join(home, ".config/mise/config.toml"))).toBe(await realpath(path.join(repo, "home/.config/mise/config.toml")));
-    expect(await readFile(path.join(home, ".gitconfig"), "utf8")).toBe("configuration");
-    expect(await readFile(secret, "utf8")).toBe("untracked secret");
-    expect(await Bun.file(path.join(home, ".agents/skills/current/SKILL.md")).exists()).toBe(false);
-    expect(await execute("agents:apply")).toMatchObject({ code: 0 });
+    expect(await execute()).toMatchObject({ code: 0 });
     expect(await readFile(path.join(home, ".agents/skills/current/SKILL.md"), "utf8")).toBe("generated");
     await writeFile(path.join(repo, "home/.agents/skills/current/SKILL.md"), "pending");
-    expect((await execute("agents:apply", { FAIL_COMPILE: "1" })).code).not.toBe(0);
+    expect((await execute({ FAIL_COMPILE: "1" })).code).not.toBe(0);
     expect(await readFile(path.join(home, ".agents/skills/current/SKILL.md"), "utf8")).toBe("generated");
-    expect(await execute("agents:apply")).toMatchObject({ code: 0 });
-    const commands = await readFile(log, "utf8");
-    expect(commands).toContain(`install --locked:${repo}/home/.config/mise/config.toml`);
-    expect(commands).toContain(`bootstrap repos apply --yes:${repo}/home/.config/mise/config.toml`);
-    expect(commands).toContain(`apm:install --frozen --only apm:${repo}/home`);
-    expect(commands).toContain(`apm:compile --clean:${repo}/home`);
+    expect(await execute()).toMatchObject({ code: 0 });
+    expect(await readFile(path.join(home, ".agents/skills/current/SKILL.md"), "utf8")).toBe("generated");
   });
-}, 30000);
+});

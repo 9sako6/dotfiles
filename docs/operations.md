@@ -130,6 +130,6 @@ nix build --no-link --no-update-lock-file --no-write-lock-file \
 python3 -m unittest discover -s nix/tests -p 'test_*.py'
 ```
 
-Bunのテストはコピーの更新・削除、未変更時の保持、symlinkの拒否、補助資源の所有確認、APM失敗後の再実行を検証する。実際のmiseタスクも隔離したホームで実行し、NixとRustが不要なことを確認する。Nixのテストはprivate合成、補助資源のGC rootを確認する。
+Bunのテストはコピーの更新・削除、未変更時の保持、symlinkの拒否、補助資源の所有確認、APM失敗後の再実行を検証する。通常の導入はPRのmacOS CIで実際のhome:apply・agents:applyを実行し、ツールの起動、シェルプラグイン、生成物の配備、FFmpegの変換を確認する。Nixはこれらの確認が終わってから導入する。Nixのテストはprivate合成、補助資源のGC rootを確認する。
 
-push時のtest workflowに加え、public-install-smokeを手動実行すると、固定ツールの導入、APMの生成・配備、シェルプラグイン、公開システムのビルドをmacOSで確認できる。CIでは実機のmacOS設定をactivateしない。
+test workflowはPRとmasterへのpushで実導入と振る舞いを検証する。public-system-buildは定期実行または手動実行で公開システム全体をビルドする。通常のツール導入はtest workflowだけに置き、二重に実行しない。CIではmacOS設定をactivateしない。

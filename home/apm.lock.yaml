@@ -1,6 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-10-26T05:14:02.685493+00:00'
-apm_version: 0.26.0
+apm_version: 0.35.0
 dependencies:
 - repo_url: 9sako6/-
   name: minus
@@ -22,7 +21,7 @@ dependencies:
   content_hash: sha256:f876e3b5ba360069f7f791f9aec7a9456a852c2edd096f2366041e58b97ef000
 - repo_url: _local/anki
   name: anki
-  version: 0.0.0
+  version: unknown
   package_type: claude_skill
   deployed_files:
   - .agents/skills/anki
@@ -58,9 +57,10 @@ dependencies:
     .claude/skills/anki/tools/goal.ts: sha256:d261964c5302c1160d916e8968434224a5f601c2cdad029b4480b757aa668bd4
   source: local
   local_path: ./.apm/skills/anki
+  content_hash: sha256:39d0f47a0abfa67deb820c79544b9ef2f6b1cbcf10b24934094f0de83e9c10ad
 - repo_url: _local/design-it
   name: design-it
-  version: 0.0.0
+  version: unknown
   package_type: claude_skill
   deployed_files:
   - .agents/skills/design-it
@@ -72,9 +72,10 @@ dependencies:
     .claude/skills/design-it/SKILL.md: sha256:6cc6cdc04ae827a0d13a6ee5acb8a755336fa3af3fbbd3df15f5bd44bd9dabcc
   source: local
   local_path: ./.apm/skills/design-it
+  content_hash: sha256:7eed1409d4b81e306b27d9bdcd8d559a39cf7742756193e639eac12c1e89de44
 - repo_url: _local/jp
   name: jp
-  version: 0.0.0
+  version: unknown
   package_type: claude_skill
   deployed_files:
   - .agents/skills/jp
@@ -90,9 +91,10 @@ dependencies:
     .claude/skills/jp/references/writing-rules.md: sha256:7fded38b12883e6778ab57db6526b83d3f692d8e8c7d6acc36ae45f1edc8b901
   source: local
   local_path: ./.apm/skills/jp
+  content_hash: sha256:7c8956dd63486e183e467d2f0867e51e114ff72ada34254ef293b5601692048e
 - repo_url: _local/model-it
   name: model-it
-  version: 0.0.0
+  version: unknown
   package_type: claude_skill
   deployed_files:
   - .agents/skills/model-it
@@ -104,9 +106,10 @@ dependencies:
     .claude/skills/model-it/SKILL.md: sha256:95ac7281d2f51eee7d42f67cbfa6f0990b2e9bcf1812e1a0a3f627c4b9b7da5f
   source: local
   local_path: ./.apm/skills/model-it
+  content_hash: sha256:a0d3fcc66e8aeae1f2fc6b752aed6dc45bdb8a568557fa9c3e4e01600ad82ba1
 - repo_url: _local/resolve-it
   name: resolve-it
-  version: 0.0.0
+  version: unknown
   package_type: claude_skill
   deployed_files:
   - .agents/skills/resolve-it
@@ -118,6 +121,7 @@ dependencies:
     .claude/skills/resolve-it/SKILL.md: sha256:d29def3739738c2c82f032bf842371885992846b61b275bd354beaa897f0c5b8
   source: local
   local_path: ./.apm/skills/resolve-it
+  content_hash: sha256:dca133297147057a335e1513274ca3f512ce914539082468498c66994c4f50cf
 - repo_url: ayghri/i-have-adhd
   name: i-have-adhd
   host: github.com

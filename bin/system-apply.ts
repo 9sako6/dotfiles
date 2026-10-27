@@ -8,7 +8,7 @@ if (process.platform !== "darwin" || process.arch !== "arm64") throw new Error("
 if (await capture(["/usr/bin/id", "-u"]) === "0") throw new Error("run system:apply as the login user");
 const settings = await nightShift(repository);
 const nightlight = settings ? await capture(["mise", "which", "nightlight"], repository, {
-  ...process.env, MISE_CONFIG_FILE: `${repository}/home/.config/mise/config.toml`,
+  ...process.env, MISE_GLOBAL_CONFIG_FILE: `${repository}/home/.config/mise/config.toml`,
 }) : undefined;
 const nix = await capture(["/bin/sh", "-c", '. "$1/lib/install-system.sh"; install_system_ensure_lix "$1/bin/install-lix.sh"', "system:apply", repository]);
 const anchor = process.env.XDG_STATE_HOME ?? home!;

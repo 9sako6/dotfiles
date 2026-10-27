@@ -1,0 +1,43 @@
+name: public-system-build
+
+on:
+  schedule:
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: public-system-build
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
+jobs:
+  public-system-build:
+    runs-on: macos-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install Lix
+        run: ./bin/install-lix.sh
+
+      - name: Restore and save Nix store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+
+      - name: Build system configuration and resources
+        run: |
+          /nix/var/nix/profiles/default/bin/nix \
+            --extra-experimental-features "nix-command flakes" \
+            build --impure --no-update-lock-file --no-write-lock-file \
+            --file nix/apply.nix --argstr directory "$GITHUB_WORKSPACE" \
+            --argstr user "$(id -un)" bundle --out-link "$RUNNER_TEMP/dotfiles-system"

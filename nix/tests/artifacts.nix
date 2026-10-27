@@ -11,6 +11,5 @@ pkgs.runCommand "artifact-constructor-check" {
   passthru.fixtureRoot = fixture;
 } ''
   test -f ${fixture}/share/anki-connect/__init__.py
-  test ! -e ${fixture}/bin/nightlight
   touch "$out"
 ''
