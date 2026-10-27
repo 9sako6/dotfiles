@@ -25,7 +25,8 @@
   outputs = { self, home-manager, nix-darwin, nix-homebrew, zundamonotify, nixpkgs, ... }@inputs:
     let
       system = "aarch64-darwin";
-      pkgs = nixpkgs.legacyPackages.${system};
+      brotliOverlay = import ./nix/brotli-overlay.nix;
+      pkgs = nixpkgs.legacyPackages.${system}.extend brotliOverlay;
       toolset = import ./nix/packages.nix { inherit pkgs; };
       artifacts = import ./nix/artifacts.nix { inherit pkgs toolset; };
       primaryUser = let user = builtins.getEnv "DARWIN_PRIMARY_USER"; in if user == "" then "fixture" else user;
@@ -66,6 +67,7 @@
             })
             {
               nixpkgs.hostPlatform = system;
+              nixpkgs.overlays = [ brotliOverlay ];
               system = {
                 inherit configurationRevision primaryUser;
               };

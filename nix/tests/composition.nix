@@ -52,6 +52,9 @@ let
   rejects = module: !(builtins.tryEval (builtins.deepSeq (make module).system.drvPath true)).success;
   results = {
     buildable = (builtins.tryEval composed.system.drvPath).success;
+    brotliPatched = pkgs.brotli.version == "1.2.1"
+      && composed.pkgs.brotli.drvPath == pkgs.brotli.drvPath
+      && publicHost.pkgs.brotli.drvPath == pkgs.brotli.drvPath;
     copyAbsoluteTargetConflict = rejects {
       home-manager.users.fixture.home.file.alias = { target = "/Users/fixture/.gitconfig"; text = "fixture"; };
     };
