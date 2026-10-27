@@ -116,12 +116,6 @@ jobs:
           fi
           echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
-      - name: Restore and save Nix store
-        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
-        with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
-
       - name: Check artifact and private composition
         run: |
           nix build --no-link --no-update-lock-file --no-write-lock-file \
