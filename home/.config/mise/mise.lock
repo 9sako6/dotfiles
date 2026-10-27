@@ -100,17 +100,17 @@ checksum = "sha256:d9c62dae9d8f5bebadf72fcf369c00cc353183cb2521f9fffbf4c2f70b58b
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libass-0.17.5-h0a551c8_1.conda"
 checksum = "sha256:2ef900bd889e111a40d2c57e3611be9e89b3e6195c01f45c7f9c3e0a72ea9d50"
 
-[conda-packages.macos-arm64."libbrotlicommon-1.2.0-h1dcdb26_4"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlicommon-1.2.0-h1dcdb26_4.conda"
-checksum = "sha256:8a6e4789a6049dabb41c6fcaf6719232245484d81dfeb199b5abdb95c84c9fc2"
+[conda-packages.macos-arm64."libbrotlicommon-1.2.1-h1dcdb26_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlicommon-1.2.1-h1dcdb26_0.conda"
+checksum = "sha256:4ee2413810c5ef07e29a4c2a39d11f08f27d17ecee3577541e4dad06f635b375"
 
-[conda-packages.macos-arm64."libbrotlidec-1.2.0-h5295a6a_4"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlidec-1.2.0-h5295a6a_4.conda"
-checksum = "sha256:4e1f5989561de4546209b42c935795a41fa4265e0b670861480f1adffec623a8"
+[conda-packages.macos-arm64."libbrotlidec-1.2.1-h5295a6a_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlidec-1.2.1-h5295a6a_0.conda"
+checksum = "sha256:d77356267bf34639265ec79b217efe0b32fc2e91f4ca7a04263a5169cb156458"
 
-[conda-packages.macos-arm64."libbrotlienc-1.2.0-h2ddc9cb_4"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlienc-1.2.0-h2ddc9cb_4.conda"
-checksum = "sha256:4d2da97825b221054a39f492e4dffe361e1931c8381d0367f1e0598a50d02f34"
+[conda-packages.macos-arm64."libbrotlienc-1.2.1-h2ddc9cb_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlienc-1.2.1-h2ddc9cb_0.conda"
+checksum = "sha256:5572a16f08a527f7b952d125be3c3215b4b0a1c8163efcb6fd052c8895fcc8ee"
 
 [conda-packages.macos-arm64."libcurl-8.22.0-h6651222_0"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libcurl-8.22.0-h6651222_0.conda"
@@ -426,12 +426,12 @@ url = "https://github.com/bitwarden/sdk-sm/releases/download/bws-v2.1.0/bws-aarc
 url_api = "https://api.github.com/repos/bitwarden/sdk-sm/releases/assets/426507211"
 
 [[tools.bun]]
-version = "1.3.13"
+version = "1.4.4"
 backend = "core:bun"
 
 [tools.bun."platforms.macos-arm64"]
-checksum = "sha256:5467e3f65dba526b9fea98f0cce04efafc0c63e169733ec27b876a3ad32da190"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.13/bun-darwin-aarch64.zip"
+checksum = "sha256:c240d7f0ccb90c263a849fcdb09b7ee62630d921348ed6aafda86b9d577bc510"
+url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-darwin-aarch64.zip"
 
 [[tools.claude]]
 version = "2.1.306"
@@ -510,9 +510,9 @@ conda_deps = [
     "graphite2-1.3.15-h784d473_1",
     "icu-78.3-py310h579977c_2",
     "libhwy-1.4.0-hd2bdd19_1",
-    "libbrotlienc-1.2.0-h2ddc9cb_4",
-    "libbrotlicommon-1.2.0-h1dcdb26_4",
-    "libbrotlidec-1.2.0-h5295a6a_4",
+    "libbrotlienc-1.2.1-h2ddc9cb_0",
+    "libbrotlicommon-1.2.1-h1dcdb26_0",
+    "libbrotlidec-1.2.1-h5295a6a_0",
     "tbb-2023.1.0-h81c76ee_2",
     "libabseil-20260526.0-cxx17_h4c27e2a_2",
     "libprotobuf-7.35.1-h391e224_3",

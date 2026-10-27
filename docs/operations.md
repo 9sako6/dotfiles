@@ -91,6 +91,22 @@ DOTFILES_TEST_FFPROBE="$(mise which ffprobe)" \
   python3 -m unittest discover -s tests -p test_ffmpeg.py -v
 ```
 
+## Brotliのセキュリティ更新
+
+[CVE-2026-111497](https://patchtheplanet.org/brotli)への対応として、Bunは1.4.4、Nixの共有BrotliライブラリとFFmpegのBrotli依存は1.2.1に固定する。Nixでは `nix/brotli-overlay.nix` を公開設定とprivate設定で共有する。上流のNixpkgsを更新するときは、このoverrideが引き続き必要か確認する。
+
+マージ後は設定を取得し、次の順に反映する。FFmpeg本体の版は変わらないため、lockだけでなく導入済みの依存も置き換える。
+
+```sh
+mise run home:apply
+mise install --force --locked conda:ffmpeg
+mise run system:apply
+```
+
+反映後は利用中のアプリとサービスを再起動する。サービスが古いNode.jsやBunの絶対パスを保持している場合は、宣言元の実行パスも更新する。シェルで選ばれる版を更新しただけでは、実行中のプロセスは変わらない。
+
+Python wheelや `bun build --compile` の実行ファイルなど、Brotliを内部に含む配布物にはNixの共有ライブラリ更新は届かない。所有するプロジェクトで依存を更新し、再ビルド・再配布する。Node.jsの修正版は22.23.4、24.22.1、26.12.1で、Brotliの表示バージョンだけでは修正済みか判定しない。詳細は[Node.js公式告知](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)、[Bun公式告知](https://github.com/oven-sh/bun/security/advisories/GHSA-663w-cv8g-jj2p)、[Brotli公式リリース](https://github.com/google/brotli/releases/tag/v1.2.1)を参照する。
+
 ## 検証
 
 コミット・push前の検査入口は `bin/check-for-agent`。dotfilesで固定したTypeScript・Bun・Gitを使い、型検査、既存テスト、公開文書と秘密情報の検査を実行する。隔離環境を作るテストへmiseの親SessionのPATH差分を持ち込まないよう、子プロセスでmiseのSession用変数を外す。Nixの宣言を変更した場合は、下記のNixビルドも実行する。
