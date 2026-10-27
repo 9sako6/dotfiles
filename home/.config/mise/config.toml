@@ -24,7 +24,7 @@ herdr = "0.8.2"
 "http:blacksmith" = { version = "0.5.2", url = 'https://clireleases.blacksmith.sh/cli/v{{ version }}/{{ os(macos="darwin") }}/{{ arch(x64="amd64") }}/blacksmith', checksum_url = 'https://clireleases.blacksmith.sh/cli/v{{ version }}/{{ os(macos="darwin") }}/{{ arch(x64="amd64") }}/blacksmith.sha256', checksum_expr = '"sha256:" + split(body, " ")[0]' }
 lefthook = "2.1.10"
 node = "26.12.1"
-opencode = "1.18.11"
+opencode = "1.19.4"
 "npm:@deepseek-ai/dsh" = "0.2.0-rc.2"
 "npm:@devcontainers/cli" = "0.88.0"
 "npm:@informalsystems/quint" = "0.32.0"
