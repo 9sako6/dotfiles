@@ -43,10 +43,6 @@ description = "Deploy home configuration and install user tools with mise"
 run = "bun bin/system-apply.ts"
 description = "Apply macOS, private configuration and Nix resources"
 
-[tasks."system:check"]
-run = "bun bin/system-apply.ts --dry-run"
-description = "Preview required system builds without installation or activation"
-
 [tasks."system:rollback"]
 run = "./bin/system-rollback.sh"
 description = "Switch to the previous nix-darwin generation"

@@ -77,7 +77,7 @@ let
     privatePackagePreserved = builtins.elem privatePackage composed.config.home-manager.users.fixture.home.packages;
     privateUserAgentPreserved = composed.config.home-manager.users.fixture.launchd.agents.private-fixture.config.RunAtLoad;
     publicLinkConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".config/mise"; text = "fixture"; }; };
-    publicResourceConflict = rejects { home-manager.users.fixture.home.file.alias = { target = ".local/bin/nightlight"; text = "fixture"; }; };
+    publicResourceConflict = rejects { home-manager.users.fixture.home.file.alias = { target = "Library/Application Support/Anki2/addons21/anki-connect"; text = "fixture"; }; };
     service = composed.config.launchd.user.agents.fixture.serviceConfig.RunAtLoad;
     tap = builtins.any (tap: tap.name == "fixture/tap") composed.config.homebrew.taps;
   };

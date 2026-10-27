@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { chmod, cp, lstat, mkdir, readFile, readlink, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { applyCopies } from "../lib/home-copy.ts";
-import { deployResources, nightShift } from "../lib/system-resources.ts";
+import { deployResources, nightShift, retireNightlightLink } from "../lib/system-resources.ts";
 import { withTempDir, writeTree } from "./test-helpers.ts";
 
 const repository = path.resolve(import.meta.dir, "..");
@@ -71,14 +71,12 @@ test("resources update recorded links, preserve Anki data and reject foreign lin
     const state = path.join(home, ".local/state/dotfiles");
     const resources = path.join(root, "resources");
     await mkdir(state, { recursive: true });
-    await writeTree(resources, { "bin/nightlight": "night", "share/anki-connect/__init__.py": "addon" });
+    await writeTree(resources, { "share/anki-connect/__init__.py": "addon" });
     await writeTree(home, { "Library/Application Support/Anki2/profile/collection.anki2": "collection" });
     await deployResources(home, state, resources);
-    expect(await readlink(path.join(home, ".local/bin/nightlight"))).toBe(path.join(resources, "bin/nightlight"));
     const next = path.join(root, "next");
-    await writeTree(next, { "bin/nightlight": "next", "share/anki-connect/__init__.py": "next" });
+    await writeTree(next, { "share/anki-connect/__init__.py": "next" });
     await deployResources(home, state, next);
-    expect(await readlink(path.join(home, ".local/bin/nightlight"))).toBe(path.join(next, "bin/nightlight"));
     expect(await readFile(path.join(home, "Library/Application Support/Anki2/profile/collection.anki2"), "utf8")).toBe("collection");
     const anki = path.join(home, "Library/Application Support/Anki2/addons21/anki-connect");
     await rm(anki, { recursive: true, force: true });
@@ -88,6 +86,27 @@ test("resources update recorded links, preserve Anki data and reject foreign lin
     await expect(deployResources(home, state, next)).rejects.toThrow("foreign link");
   });
 });
+
+for (const owned of [true, false]) {
+  test(`Nightlight migration ${owned ? "removes the recorded" : "preserves a replacement"} link`, async () => {
+    await withTempDir("nightlight-migration", async root => {
+      const { home } = await fixture(root);
+      const state = path.join(home, ".local/state/dotfiles");
+      const target = path.join(home, ".local/bin/nightlight");
+      const old = path.join(root, "old/nightlight");
+      const replacement = path.join(root, "custom/nightlight");
+      const links = { ".local/bin/nightlight": old, "addon": "preserve" };
+      await writeTree(state, { "artifacts.json": JSON.stringify({ version: 1, home, links }) });
+      await mkdir(path.dirname(target), { recursive: true });
+      await symlink(owned ? old : replacement, target);
+      await retireNightlightLink(home, state);
+      if (owned) await expect(lstat(target)).rejects.toMatchObject({ code: "ENOENT" });
+      else expect(await readlink(target)).toBe(replacement);
+      const record = JSON.parse(await readFile(path.join(state, "artifacts.json"), "utf8"));
+      expect(record.links).toEqual({ addon: "preserve" });
+    });
+  });
+}
 
 test("Night Shift merges local fields and rejects invalid input without exposing it", async () => {
   await withTempDir("settings", async root => {
@@ -104,7 +123,7 @@ test.skipIf(!mise)("actual mise tasks deploy home and agents independently witho
     for (const directory of ["bin", "lib"]) {
       await mkdir(path.join(repo, directory), { recursive: true });
     }
-    for (const file of [".mise.toml", "bin/home-apply.ts", "bin/agents-apply.ts", "lib/home-copy.ts", "lib/process.ts"]) {
+    for (const file of [".mise.toml", "bin/home-apply.ts", "bin/agents-apply.ts", "lib/home-copy.ts", "lib/process.ts", "lib/system-resources.ts"]) {
       await cp(path.join(repository, file), path.join(repo, file));
     }
     const bin = path.join(root, "bin");
@@ -118,12 +137,12 @@ test.skipIf(!mise)("actual mise tasks deploy home and agents independently witho
     await writeTree(home, { ".zsh.d/runtime.zsh": "keep" });
     await symlink(path.join(repo, "dist/.zsh.d/alias.zsh"), path.join(home, ".zsh.d/alias.zsh"));
     await writeTree(bin, {
-      "mise": '#!/bin/sh\ncase "$1" in\ndotfiles) exec "$REAL_MISE" "$@" ;;\ninstall|bootstrap) printf "%s:%s\\n" "$*" "$MISE_CONFIG_FILE" >> "$APPLY_LOG" ;;\n*) exit 99 ;;\nesac\n',
+      "mise": '#!/bin/sh\ncase "$1" in\ndotfiles) exec "$REAL_MISE" "$@" ;;\nwhich) [ "$2" = nightlight ] || exit 99; printf "fixture-nightlight\\n" ;;\ninstall|bootstrap) printf "%s:%s\\n" "$*" "$MISE_CONFIG_FILE" >> "$APPLY_LOG" ;;\n*) exit 99 ;;\nesac\n',
       "apm": '#!/bin/sh\nprintf "apm:%s:%s\\n" "$*" "$PWD" >> "$APPLY_LOG"\nif [ "$1" = compile ]; then\n  [ "${FAIL_COMPILE:-}" != 1 ] || exit 1\n  printf generated > .agents/skills/current/SKILL.md\nfi\n',
       ...Object.fromEntries(["nix", "sudo", "cargo", "rustc"].map(name => [name, "#!/bin/sh\nexit 99\n"])),
     });
     for (const command of ["mise", "apm", "nix", "sudo", "cargo", "rustc"]) await chmod(path.join(bin, command), 0o755);
-    const env = { ...process.env, HOME: home, PATH: `${bin}:${path.dirname(process.execPath)}:/usr/bin:/bin`, REAL_MISE: mise!, APPLY_LOG: log, MISE_TRUSTED_CONFIG_PATHS: repo, MISE_GLOBAL_CONFIG_FILE: path.join(root, "global.toml"), MISE_CONFIG_FILE: "", MISE_DATA_DIR: path.join(root, "mise-data"), MISE_CACHE_DIR: path.join(root, "mise-cache") };
+    const env = { ...process.env, HOME: home, XDG_STATE_HOME: path.join(home, ".local/state"), PATH: `${bin}:${path.dirname(process.execPath)}:/usr/bin:/bin`, REAL_MISE: mise!, APPLY_LOG: log, MISE_TRUSTED_CONFIG_PATHS: repo, MISE_GLOBAL_CONFIG_FILE: path.join(root, "global.toml"), MISE_CONFIG_FILE: "", MISE_DATA_DIR: path.join(root, "mise-data"), MISE_CACHE_DIR: path.join(root, "mise-cache") };
     const execute = async (task: string, extra: NodeJS.ProcessEnv = {}) => {
       const child = Bun.spawn([mise!, "--cd", repo, "run", task], { env: { ...env, ...extra }, stdout: "pipe", stderr: "pipe" });
       const [code, output] = await Promise.all([child.exited, new Response(child.stderr).text()]);

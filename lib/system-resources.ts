@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, readlink, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readlink, rename, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { inspect, safeParents } from "./home-copy.ts";
 
@@ -24,7 +24,7 @@ export async function nightShift(repository: string) {
   return { start, end, temperature };
 }
 
-export async function deployResources(home: string, state: string, resources: string) {
+async function resourceRecord(home: string, state: string) {
   const ledger = path.join(state, "artifacts.json");
   await safeParents(path.dirname(state), ledger);
   const entry = await inspect(ledger);
@@ -33,8 +33,33 @@ export async function deployResources(home: string, state: string, resources: st
   if (previous.version !== 1 || previous.home !== home || !previous.links ||
       typeof previous.links !== "object" || Array.isArray(previous.links) ||
       !Object.values(previous.links).every(value => typeof value === "string")) throw new Error("invalid artifact ownership record");
+  return { ledger, previous };
+}
+
+async function saveRecord(state: string, ledger: string, previous: unknown) {
+  const record = await mkdtemp(path.join(state, ".dotfiles-record-"));
+  try {
+    await writeFile(path.join(record, "file"), JSON.stringify(previous));
+    await rename(path.join(record, "file"), ledger);
+  } finally { await rm(record, { recursive: true, force: true }); }
+}
+
+export async function retireNightlightLink(home: string, state: string) {
+  if (!await inspect(path.join(state, "artifacts.json"))) return;
+  const { ledger, previous } = await resourceRecord(home, state);
+  const relative = ".local/bin/nightlight";
+  if (!previous.links[relative]) return;
+  const target = path.join(home, relative);
+  await safeParents(home, target);
+  const existing = await inspect(target);
+  if (existing?.isSymbolicLink() && await readlink(target) === previous.links[relative]) await unlink(target);
+  delete previous.links[relative];
+  await saveRecord(state, ledger, previous);
+}
+
+export async function deployResources(home: string, state: string, resources: string) {
+  const { ledger, previous } = await resourceRecord(home, state);
   const targets: [string, string][] = [
-    [".local/bin/nightlight", "bin/nightlight"],
     ["Library/Application Support/Anki2/addons21/anki-connect", "share/anki-connect"],
   ];
   const plans = [];
@@ -60,11 +85,7 @@ export async function deployResources(home: string, state: string, resources: st
         await rename(path.join(temporary, "link"), target);
       }
       previous.links[relative] = source;
-      const record = await mkdtemp(path.join(state, ".dotfiles-record-"));
-      try {
-        await writeFile(path.join(record, "file"), JSON.stringify(previous));
-        await rename(path.join(record, "file"), ledger);
-      } finally { await rm(record, { recursive: true, force: true }); }
+      await saveRecord(state, ledger, previous);
     } finally { await rm(temporary, { recursive: true, force: true }); }
   }
 }

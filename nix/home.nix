@@ -10,7 +10,7 @@ let
       else [ "${prefix}/${name}" ]
     ) (builtins.attrNames entries);
   publicTargets = configuration.copy ++ [
-    ".gitignore_global" ".local/bin/nightlight" ".zshenv" ".zshrc"
+    ".gitignore_global" ".zshenv" ".zshrc"
     "Library/Application Support/Anki2/addons21/anki-connect"
   ] ++ lib.concatMap (directory:
     files directory (dotfilesSourceHome + "/${directory}")

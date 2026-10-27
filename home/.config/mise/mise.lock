@@ -8,13 +8,13 @@ checksum = "sha256:292b3cfab77d5db222b53add0ec3b5e7e5c04ce2cb8cf8a7237cbe0643b3e
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-h4e30115_10.conda"
 checksum = "sha256:8ec22f0ba25cbfc2e64d70cf29459eccd7ffdf6436f6a6ff15bbfef799f7d4f6"
 
-[conda-packages.macos-arm64."c-ares-1.34.8-h74c22ad_2"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/c-ares-1.34.8-h74c22ad_2.conda"
-checksum = "sha256:82bdd5a3fcada6afef6255a9bf41172f07b362f36e04a354dc2abc0a29bfb756"
+[conda-packages.macos-arm64."c-ares-1.34.9-h74c22ad_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/c-ares-1.34.9-h74c22ad_0.conda"
+checksum = "sha256:74b52d784b3576643da3aea1240a4120c1f25ee057f14ae5a89e8a7b3fb2e69f"
 
-[conda-packages.macos-arm64."ca-certificates-2026.7.22-hbd8a1cb_0"]
-url = "https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.7.22-hbd8a1cb_0.conda"
-checksum = "sha256:0a0544cf95f64394fe4959286f5c71f5444ad58feb0602e53becb27448d24da6"
+[conda-packages.macos-arm64."ca-certificates-2026.10.23-hbd8a1cb_0"]
+url = "https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.10.23-hbd8a1cb_0.conda"
+checksum = "sha256:95619b9c1184be7175392eeb0ee7eeb5ccf25d280951f4225f2d62e725790be3"
 
 [conda-packages.macos-arm64."cairo-1.18.6-h580cee5_0"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/cairo-1.18.6-h580cee5_0.conda"
@@ -51,6 +51,10 @@ checksum = "sha256:a997f2f1921bb9c9d76e6fa2f6b408b7fa549edd349a77639c9fe7a23ea93
 [conda-packages.macos-arm64.fonts-conda-forge-1-hc364b38_1]
 url = "https://conda.anaconda.org/conda-forge/noarch/fonts-conda-forge-1-hc364b38_1.conda"
 checksum = "sha256:54eea8469786bc2291cc40bca5f46438d3e062a399e8f53f013b6a9f50e98333"
+
+[conda-packages.macos-arm64."freetype-2.14.3-hce30654_2"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/freetype-2.14.3-hce30654_2.conda"
+checksum = "sha256:90681f1d0658cb2fd49a074f644eb4774272499290487a4bebb1c4df01d6997b"
 
 [conda-packages.macos-arm64."fribidi-1.0.17-hb001647_0"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/fribidi-1.0.17-hb001647_0.conda"
@@ -92,9 +96,9 @@ checksum = "sha256:5f9b511f918e13dfddb8495c1764aec894b66c5a88359737aa302b8899ae2
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/lerc-4.2.0-h1eee2c3_0.conda"
 checksum = "sha256:c97aa17d16d2ac332ba9f184e82ce8f72dcb10e9a10c5f299030be2d44e191b9"
 
-[conda-packages.macos-arm64."libabseil-20260526.0-cxx17_h4c27e2a_2"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libabseil-20260526.0-cxx17_h4c27e2a_2.conda"
-checksum = "sha256:d9c62dae9d8f5bebadf72fcf369c00cc353183cb2521f9fffbf4c2f70b58bef9"
+[conda-packages.macos-arm64."libabseil-20260526.0-cxx17_h4c27e2a_3"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libabseil-20260526.0-cxx17_h4c27e2a_3.conda"
+checksum = "sha256:27859d85276442961b01bcfc488dc85426109330ffb157d3224772a7eaa72a75"
 
 [conda-packages.macos-arm64."libass-0.17.5-h0a551c8_1"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libass-0.17.5-h0a551c8_1.conda"
@@ -112,13 +116,13 @@ checksum = "sha256:d77356267bf34639265ec79b217efe0b32fc2e91f4ca7a04263a5169cb156
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlienc-1.2.1-h2ddc9cb_0.conda"
 checksum = "sha256:5572a16f08a527f7b952d125be3c3215b4b0a1c8163efcb6fd052c8895fcc8ee"
 
-[conda-packages.macos-arm64."libcurl-8.22.0-h6651222_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libcurl-8.22.0-h6651222_0.conda"
-checksum = "sha256:46def32ec20d4dc6bce75d90fe5f2465a71cc22acef608c5ba37cc392e80e01d"
+[conda-packages.macos-arm64."libcurl-8.23.0-h6651222_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libcurl-8.23.0-h6651222_0.conda"
+checksum = "sha256:d9f60525b665e50da15c84fcb4e74e6b1f0a56ea4c89a02d4258f23c3fe1f02c"
 
-[conda-packages.macos-arm64."libcxx-23.1.2-h55c6f16_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libcxx-23.1.2-h55c6f16_0.conda"
-checksum = "sha256:087a610bacee7901d259ef72c6f060d795ab26831bd7541ba75ced786a5a63f9"
+[conda-packages.macos-arm64."libcxx-23.1.4-h55c6f16_2"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libcxx-23.1.4-h55c6f16_2.conda"
+checksum = "sha256:9c390b4f403db32346754ccef6b84b7e5d9b70cb6d76258fd23b05f2db2ab216"
 
 [conda-packages.macos-arm64."libdav1d7-1.5.4-h74c22ad_4"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libdav1d7-1.5.4-h74c22ad_4.conda"
@@ -132,17 +136,17 @@ checksum = "sha256:d896f4aa4ce4c590c2838678cb1917356fdb461d2a189991c0280c818c362
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libdovi-3.4.0-hc336dc4_1.conda"
 checksum = "sha256:6439dd036af971cc5665b27ed4e8266edd8b948d1839b5d28c776f41b05b1707"
 
-[conda-packages.macos-arm64."libedit-3.1.20250104-pl5321h26f1114_1"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libedit-3.1.20250104-pl5321h26f1114_1.conda"
-checksum = "sha256:257c926f19e32bdb981fc674c76966049b6fc73f706bae58e9fed8757ad1da70"
+[conda-packages.macos-arm64."libedit-3.1.20260512-pl5321h26f1114_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libedit-3.1.20260512-pl5321h26f1114_0.conda"
+checksum = "sha256:5692a969e49b200c7874d1e869d281753361980b2ecfe9191b571d7e550f8b92"
 
 [conda-packages.macos-arm64."libev-4.33-h1a92334_3"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libev-4.33-h1a92334_3.conda"
 checksum = "sha256:c0100064506ae8abb432c5a506d474f10af2cf48c33d62bc221fb28b6d6ff6ac"
 
-[conda-packages.macos-arm64."libexpat-2.8.5-h6111c0a_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libexpat-2.8.5-h6111c0a_0.conda"
-checksum = "sha256:50aa761b83fc7a116ca88fe0cb4cefce5abababb10a926bf8afbafd5c298d102"
+[conda-packages.macos-arm64."libexpat-2.9.0-h6111c0a_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libexpat-2.9.0-h6111c0a_0.conda"
+checksum = "sha256:b155c524118f751ad8b1c823397bab8b7f715f7e3ca10479925867a7e23e7e9d"
 
 [conda-packages.macos-arm64."libffi-3.7.0-h47dc5ef_1"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libffi-3.7.0-h47dc5ef_1.conda"
@@ -160,17 +164,21 @@ checksum = "sha256:d9b203d6484ad491b5b5f33d49a9d7a91189d776a9adae53d2b63af18ec11
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libglib-2.90.0-hccd281b_0.conda"
 checksum = "sha256:4ec64c476881b31f211842952f192208a3af0925a596da227f4d97fb9a63e0ac"
 
-[conda-packages.macos-arm64."libharfbuzz-14.5.1-hcda0f7c_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libharfbuzz-14.5.1-hcda0f7c_0.conda"
-checksum = "sha256:a84540418ae803bd30ab51ee5d382d002e60d8681c66af892c3589d964a68d91"
+[conda-packages.macos-arm64."libharfbuzz-15.0.0-hcda0f7c_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libharfbuzz-15.0.0-hcda0f7c_0.conda"
+checksum = "sha256:1cf7900cfd17b60a8e3f76a31ca95140deca4781899e290b499b6caad82058b2"
+
+[conda-packages.macos-arm64."libharfbuzz-devel-15.0.0-hcda0f7c_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libharfbuzz-devel-15.0.0-hcda0f7c_0.conda"
+checksum = "sha256:764b95c1630e66f7eebca2f75ab3dd2cb039aa1d007d00c763e122cd29564a8a"
 
 [conda-packages.macos-arm64."libhwloc-2.15.0-default_h98d0dc1_1001"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libhwloc-2.15.0-default_h98d0dc1_1001.conda"
 checksum = "sha256:71df89f0fe359b3110de311afcd68f5717e618fc22318dd3dd18187c83203503"
 
-[conda-packages.macos-arm64."libhwy-1.4.0-hd2bdd19_1"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libhwy-1.4.0-hd2bdd19_1.conda"
-checksum = "sha256:d965f815878a176fb75329d02718f449230e687e100a081762688f763990abf2"
+[conda-packages.macos-arm64."libhwy-1.4.0-hd2bdd19_2"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libhwy-1.4.0-hd2bdd19_2.conda"
+checksum = "sha256:117e856df7fcce374f1a8721fca521e759cd861010047fc5e277f8af13f448f8"
 
 [conda-packages.macos-arm64."libiconv-1.18-he4c29f2_3"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libiconv-1.18-he4c29f2_3.conda"
@@ -184,9 +192,9 @@ checksum = "sha256:b43c6645e668f86d04d5c06d6dc17efe921bbd9244be4b77946d56fb950a3
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libjpeg-turbo-3.2.0-h84a0fba_1.conda"
 checksum = "sha256:05006418f9392c9b723e8428808db106de0350a497832f95f921b85ff1072310"
 
-[conda-packages.macos-arm64."libjxl-0.12.0-hb71b141_2"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libjxl-0.12.0-hb71b141_2.conda"
-checksum = "sha256:1f02661543be1722b619548b5207d6eaceab5bf95983fd6c9487f52bd8246a7a"
+[conda-packages.macos-arm64."libjxl-0.12.0-hb71b141_4"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libjxl-0.12.0-hb71b141_4.conda"
+checksum = "sha256:77fa5ba83bdbad2fa14e62a1bcaa82529af58f8728111dd38df5df61fbaff5c0"
 
 [conda-packages.macos-arm64."liblzma-5.8.3-h8088a28_1"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/liblzma-5.8.3-h8088a28_1.conda"
@@ -200,61 +208,69 @@ checksum = "sha256:445440d8cccccb6585f71d1eb7c949d64a2af2ced5481d924621424ff3b6a
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libogg-1.3.5-h48c0fde_1.conda"
 checksum = "sha256:28bd1fe20fe43da105da41b95ac201e95a1616126f287985df8e86ddebd1c3d8"
 
-[conda-packages.macos-arm64."libopenvino-2026.4.0-h3654348_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-2026.4.0-h3654348_0.conda"
-checksum = "sha256:b15b2e75c0b9e3dbb48bee12eddcb052433c8e91954be8dffc86e0e966012122"
+[conda-packages.macos-arm64."libopenvino-2026.4.1-h5050ef2_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-2026.4.1-h5050ef2_0.conda"
+checksum = "sha256:6e8fa7f5d4b68889e5b9fe5d847b801b30a395d4fc532b117809b5e11f78aba7"
 
-[conda-packages.macos-arm64."libopenvino-arm-cpu-plugin-2026.4.0-h3654348_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-arm-cpu-plugin-2026.4.0-h3654348_0.conda"
-checksum = "sha256:21bb3e3b905ec8281a1514dacc639cc799539c77ba5b86d77821e66d55368e7a"
+[conda-packages.macos-arm64."libopenvino-arm-cpu-plugin-2026.4.1-h5050ef2_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-arm-cpu-plugin-2026.4.1-h5050ef2_0.conda"
+checksum = "sha256:834f4235234d8f9b54dff8c3cf0ab14ef57bb8abfb4979e5b09dd68121514bd9"
 
-[conda-packages.macos-arm64."libopenvino-auto-batch-plugin-2026.4.0-hb2ea1c4_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-auto-batch-plugin-2026.4.0-hb2ea1c4_0.conda"
-checksum = "sha256:a4d6998d8fa00907aa20ddd0c5800795e2386561ff302c0ed1682e13131e3cdd"
+[conda-packages.macos-arm64."libopenvino-auto-batch-plugin-2026.4.1-h44445a9_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-auto-batch-plugin-2026.4.1-h44445a9_0.conda"
+checksum = "sha256:efad51e7756de51974e52f8d9cf0159a6d2b90914bfb3fc9a6f8e01efc2c3b53"
 
-[conda-packages.macos-arm64."libopenvino-auto-plugin-2026.4.0-hb2ea1c4_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-auto-plugin-2026.4.0-hb2ea1c4_0.conda"
-checksum = "sha256:64c694ffbdf40d5f3c0e82489dcbaa56133459fa5ab688350fcd769f5b8ac083"
+[conda-packages.macos-arm64."libopenvino-auto-plugin-2026.4.1-h44445a9_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-auto-plugin-2026.4.1-h44445a9_0.conda"
+checksum = "sha256:6772963fa5828c7321daa5007ed5491da07cb85be0d8b3921757f87797fbc1d3"
 
-[conda-packages.macos-arm64."libopenvino-gguf-frontend-2026.4.0-hb2ea1c4_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-gguf-frontend-2026.4.0-hb2ea1c4_0.conda"
-checksum = "sha256:9613441db474d7ff2c659d484c0d9161be8c96639e640255e6a6df1b34ee9b0a"
+[conda-packages.macos-arm64."libopenvino-gguf-frontend-2026.4.1-h44445a9_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-gguf-frontend-2026.4.1-h44445a9_0.conda"
+checksum = "sha256:393e407afcab52022cf9e2d457397ac6edb734951cdae9db612fdef6b030db43"
 
-[conda-packages.macos-arm64."libopenvino-hetero-plugin-2026.4.0-he33a331_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-hetero-plugin-2026.4.0-he33a331_0.conda"
-checksum = "sha256:ad3fc84ac155bf9bd6faec9438d78b4784c58be44d0ccae6ea98c236bb4812d9"
+[conda-packages.macos-arm64."libopenvino-hetero-plugin-2026.4.1-hf4bfad6_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-hetero-plugin-2026.4.1-hf4bfad6_0.conda"
+checksum = "sha256:ec070e8d74aec05c64112b809a33748de2fdfb59676a0890714dbd2f7fe4080d"
 
-[conda-packages.macos-arm64."libopenvino-ir-frontend-2026.4.0-he33a331_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-ir-frontend-2026.4.0-he33a331_0.conda"
-checksum = "sha256:6d7d2473b61642e66a91e24ebf42bc17449ebb1dc5081166d63fc96b02cc63a2"
+[conda-packages.macos-arm64."libopenvino-ir-frontend-2026.4.1-hf4bfad6_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-ir-frontend-2026.4.1-hf4bfad6_0.conda"
+checksum = "sha256:3203a888fb40962f3fa6d7cb51efbbbb410a9a7d1360a327d69e7ba0c010ac62"
 
-[conda-packages.macos-arm64."libopenvino-onnx-frontend-2026.4.0-hfd01559_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-onnx-frontend-2026.4.0-hfd01559_0.conda"
-checksum = "sha256:609206ae15d922345fc152fffef97d11229ca181fb2c1cd6974f8075cdf0653d"
+[conda-packages.macos-arm64."libopenvino-onnx-frontend-2026.4.1-h866fd04_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-onnx-frontend-2026.4.1-h866fd04_0.conda"
+checksum = "sha256:262852442df218fa02bc4d15bc2fcbe0272ebb20120aefbbaffd35e1ad603d0f"
 
-[conda-packages.macos-arm64."libopenvino-paddle-frontend-2026.4.0-hfd01559_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-paddle-frontend-2026.4.0-hfd01559_0.conda"
-checksum = "sha256:3195355bf736d06be4a476264e14bf7e56788444cce7a7772e208bf08295aa36"
+[conda-packages.macos-arm64."libopenvino-paddle-frontend-2026.4.1-h866fd04_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-paddle-frontend-2026.4.1-h866fd04_0.conda"
+checksum = "sha256:ade1031015504ecfcdf49921cb90349c774c22e9ab77a2e4787cfcf25ccaf6c5"
 
-[conda-packages.macos-arm64."libopenvino-pytorch-frontend-2026.4.0-h2ffa9d5_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-pytorch-frontend-2026.4.0-h2ffa9d5_0.conda"
-checksum = "sha256:724bc1e32fb4a3d28218290075df2f80d8c249f129158be226e08e2ce06f37c4"
+[conda-packages.macos-arm64."libopenvino-pytorch-frontend-2026.4.1-ha1fe3df_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-pytorch-frontend-2026.4.1-ha1fe3df_0.conda"
+checksum = "sha256:b19488a5c5364c5ccbe4bf4b1008fcef59449383636652f6e32b78a5dc26689a"
 
-[conda-packages.macos-arm64."libopenvino-tensorflow-frontend-2026.4.0-h6bbf1e4_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-tensorflow-frontend-2026.4.0-h6bbf1e4_0.conda"
-checksum = "sha256:5cacb0d9369e294c60cd31fdd33dd354e001431758e136fecead8b607fd73585"
+[conda-packages.macos-arm64."libopenvino-tensorflow-frontend-2026.4.1-hb5bd0f1_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-tensorflow-frontend-2026.4.1-hb5bd0f1_0.conda"
+checksum = "sha256:9a5c9da25bd88b1a97d3cf37f6b0fe660e554fbdbed1c70568521d2498782b22"
 
-[conda-packages.macos-arm64."libopenvino-tensorflow-lite-frontend-2026.4.0-h2ffa9d5_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-tensorflow-lite-frontend-2026.4.0-h2ffa9d5_0.conda"
-checksum = "sha256:a5f4f0123cd23e499aae4e53e0ddbfa5ee2e60cb799eca1d567bb1da2b94aa8a"
+[conda-packages.macos-arm64."libopenvino-tensorflow-lite-frontend-2026.4.1-ha1fe3df_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopenvino-tensorflow-lite-frontend-2026.4.1-ha1fe3df_0.conda"
+checksum = "sha256:e50a30c682d049480544022d3f9199a109b8711ffc9a2e577547294a65f09ce5"
 
 [conda-packages.macos-arm64."libopus-1.6.1-h74c22ad_1"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libopus-1.6.1-h74c22ad_1.conda"
 checksum = "sha256:f5fd2e1b1fec6da5d9218177b7d989af15f5aa14a84a1b1491dc3572e2457f1f"
 
-[conda-packages.macos-arm64."libplacebo-7.360.1-hca394fb_1"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libplacebo-7.360.1-hca394fb_1.conda"
-checksum = "sha256:7b50ecb8b110540b5b980ba94499fe760947e079bc119a7fac02dfb3df9cfb53"
+[conda-packages.macos-arm64."libpango-1.58.2-hc2ac4f2_3"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libpango-1.58.2-hc2ac4f2_3.conda"
+checksum = "sha256:90118019ce64d713888abbe41a15be9e5885bdc8d5d4f84480e615299d2b5a01"
+
+[conda-packages.macos-arm64."libpango-devel-1.58.2-haa2d88b_3"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libpango-devel-1.58.2-haa2d88b_3.conda"
+checksum = "sha256:2434b8c792ce63ba089da94a21acb25ec45430a053d5cbe537d18f18771b27a7"
+
+[conda-packages.macos-arm64."libplacebo-7.360.1-h8466173_2"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libplacebo-7.360.1-h8466173_2.conda"
+checksum = "sha256:f271f68926597eaaf2b226d62870352f2e4d2a9e6f5966d67a701c72d908995b"
 
 [conda-packages.macos-arm64."libpng-1.6.59-hf5e6511_0"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libpng-1.6.59-hf5e6511_0.conda"
@@ -280,9 +296,9 @@ checksum = "sha256:a056e518c3d2d09fbb1778cea80c0c95338fb24adf1a817bbf90fb484850a
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libtiff-4.7.2-hf67920b_1.conda"
 checksum = "sha256:847d22a86ae28f66d3888702698254d25bb4eac3a0f64c1fabfb1842ac00be4c"
 
-[conda-packages.macos-arm64."libusb-1.0.30-h74c22ad_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libusb-1.0.30-h74c22ad_0.conda"
-checksum = "sha256:2a876e51ee52959b1a4439a8386997d34d84d07eb2ea7b2266244b6f6e1f2303"
+[conda-packages.macos-arm64."libusb-1.0.30-h602ebc4_1"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libusb-1.0.30-h602ebc4_1.conda"
+checksum = "sha256:f70b1196dee785900d7e35432feade41b0e7884aad8fb27db680529f01da05e2"
 
 [conda-packages.macos-arm64."libvorbis-1.3.7-h81086ad_2"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libvorbis-1.3.7-h81086ad_2.conda"
@@ -300,13 +316,13 @@ checksum = "sha256:aaf22c7f0bbd2bac3a070a49e03c0c4baedf16ce22ad80ca697a7c15422c5
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libwebp-base-1.6.0-h202fb40_1.conda"
 checksum = "sha256:0ff54650d470c7e54cbeffdd53a8c063e055a7bcf784388c0385ce5c4741b0f4"
 
-[conda-packages.macos-arm64."libxml2-16-2.15.4-heb56d2d_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libxml2-16-2.15.4-heb56d2d_0.conda"
-checksum = "sha256:8a26f7c94ab849c1930da36c298f4b82e892382b70ae865cd7274188d9d783e2"
+[conda-packages.macos-arm64."libxml2-16-2.15.4-heb56d2d_1"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libxml2-16-2.15.4-heb56d2d_1.conda"
+checksum = "sha256:1acd4dd49c6f54440dc172ab469d0e2c7c3c02de5b1f21158a233eb585ec3c38"
 
-[conda-packages.macos-arm64."libxml2-2.15.4-h550178d_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/libxml2-2.15.4-h550178d_0.conda"
-checksum = "sha256:81217fcd4d4abdc69ee63cdb9cdb22e05a20b9ba7a76f596579914a838fe5960"
+[conda-packages.macos-arm64."libxml2-2.15.4-h550178d_1"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/libxml2-2.15.4-h550178d_1.conda"
+checksum = "sha256:f333b4c6c823ea317aeb0b817520ae3ba2fb16277923d848f5f2aee2049198e5"
 
 [conda-packages.macos-arm64."libzlib-1.3.2-h8088a28_3"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/libzlib-1.3.2-h8088a28_3.conda"
@@ -324,13 +340,13 @@ checksum = "sha256:7024a48c8c0d0114ed4ab53c76bf9275d50e91ba7cea367a9aead638d3c29
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/openh264-2.6.0-hf8510ef_2.conda"
 checksum = "sha256:abbf05ef3f338eb70623400c6ecf3318fe3a71fbf56b1099d7b3fddd13a0a0aa"
 
-[conda-packages.macos-arm64."openssl-3.6.4-h55eecbc_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.6.4-h55eecbc_0.conda"
-checksum = "sha256:f23239eacd75c4c50705e68fae1aa3292da473e6a3a4abe2330f1e6afa680704"
+[conda-packages.macos-arm64."openssl-3.6.5-h55eecbc_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.6.5-h55eecbc_0.conda"
+checksum = "sha256:44fbc526456571a9fb8fa18157f6f269d4d4bd40eef20183a93b9c9296f94497"
 
-[conda-packages.macos-arm64."pango-1.58.2-hf9b25ef_1"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/pango-1.58.2-hf9b25ef_1.conda"
-checksum = "sha256:9ba23103198cffa523488ff583b184ad37eb6d90985d330a683a1039dc917771"
+[conda-packages.macos-arm64."pango-1.58.2-hc6efcc1_3"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/pango-1.58.2-hc6efcc1_3.conda"
+checksum = "sha256:4206a8d179dbc2ae070d7c5ed148b73ccf5ec8a962f428e2645527bad9c016de"
 
 [conda-packages.macos-arm64."pcre2-10.47-he63d830_1"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/pcre2-10.47-he63d830_1.conda"
@@ -352,21 +368,21 @@ checksum = "sha256:5ad8d036040b095f85d23c70624d3e5e1e4c00bc5cea97831542f2dcae294
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/sdl2-2.32.56-h784d473_0.conda"
 checksum = "sha256:595db3f62eec1b86aad03ad8c7e4943e78a18e112228c91adf3f3ada4e959a5c"
 
-[conda-packages.macos-arm64."sdl3-3.4.16-h4bb5895_0"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/sdl3-3.4.16-h4bb5895_0.conda"
-checksum = "sha256:e07ffcbfc7a5c35fa28144cca4d0a5668b17461f15f0ff261d7df11879858774"
+[conda-packages.macos-arm64."sdl3-3.4.18-h4bb5895_0"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/sdl3-3.4.18-h4bb5895_0.conda"
+checksum = "sha256:7e829f9fb4a122e071c852d5cafec41183ccbac1871fb8505593ebbc9e7c067b"
 
-[conda-packages.macos-arm64."shaderc-2026.3-hfd4ff19_1"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/shaderc-2026.3-hfd4ff19_1.conda"
-checksum = "sha256:1fbea82ad781f388ed21306e967a864895f56cb3f1debb41017f05dc18f5477f"
+[conda-packages.macos-arm64."shaderc-2026.4-hfd4ff19_1"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/shaderc-2026.4-hfd4ff19_1.conda"
+checksum = "sha256:db004be85f8a777a0a4d62c465f4141be543a1a6af8b9c48d7d8fe7dcb02e8e8"
 
 [conda-packages.macos-arm64."snappy-1.2.2-h3951085_2"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/snappy-1.2.2-h3951085_2.conda"
 checksum = "sha256:1f2c0290f7f88479a49df2e53ace3575c68fe41edc204875fb10423312fb7e47"
 
-[conda-packages.macos-arm64."spirv-tools-2026.3-hc0b298b_1"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/spirv-tools-2026.3-hc0b298b_1.conda"
-checksum = "sha256:962119a27ea90e229d8294dab4d21b221b630898a31cbc0c90cfb9f874e6c132"
+[conda-packages.macos-arm64."spirv-tools-2026.4-hc0b298b_2"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/spirv-tools-2026.4-hc0b298b_2.conda"
+checksum = "sha256:e3529ae4406adff290ae541501e3349b7d08d057720ae46c56f4a41a97922ad1"
 
 [conda-packages.macos-arm64."svt-av1-4.2.0-h484c67d_1"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/svt-av1-4.2.0-h484c67d_1.conda"
@@ -376,9 +392,9 @@ checksum = "sha256:9122d11ed85053b1223ea0645aeac0ca583adc7482e60e3266c37e70d5242
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/tbb-2023.1.0-h81c76ee_2.conda"
 checksum = "sha256:fad8ffbe4ec2333c501c0c6702b21aba86319539fe2714651d6ebf91cce6eac9"
 
-[conda-packages.macos-arm64."x264-1!164.3095-hb001647_3"]
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/x264-1!164.3095-hb001647_3.conda"
-checksum = "sha256:8a2c9866d7b37e07ab5ee8cdd622c694f232ef566273b67b0e9ea56f47a5d537"
+[conda-packages.macos-arm64."x264-1!164.3095-pl5321h4df14c8_3"]
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/x264-1!164.3095-pl5321h4df14c8_3.conda"
+checksum = "sha256:0a30e9f55a62c1a179f17e65d10af1fb8baba47263e807efcb07632a40313d49"
 
 [conda-packages.macos-arm64."x265-3.5-h55d2f36_4"]
 url = "https://conda.anaconda.org/conda-forge/osx-arm64/x265-3.5-h55d2f36_4.conda"
@@ -389,32 +405,40 @@ url = "https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hf451053_7.co
 checksum = "sha256:da867f5092eb0cb746d353694f0098031fd9817a4ce7d5743121209ae0f406ca"
 
 [[tools.antigravity-cli]]
-version = "1.2.2"
+version = "1.4.7"
 backend = "aqua:google-antigravity/antigravity-cli"
 
 [tools.antigravity-cli."platforms.macos-arm64"]
-checksum = "sha256:f90ff6094a196f1be3854ac45d999a542d47ec66a1513aa882a8505b947b9a0f"
-url = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.2.2/agy_cli_mac_arm64.tar.gz"
-url_api = "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/assets/558553056"
+checksum = "sha256:9fed7bfe90cb158ac00b5b2da64dd54af732f7c062259e68ebd060b827fd0d88"
+url = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.4.7/agy_cli_mac_arm64.tar.gz"
+url_api = "https://api.github.com/repos/google-antigravity/antigravity-cli/releases/assets/671080158"
 
 [[tools.atuin]]
-version = "18.18.1"
+version = "18.24.2"
 backend = "aqua:atuinsh/atuin"
 
 [tools.atuin."platforms.macos-arm64"]
-checksum = "sha256:2c2bd7a4fb5a093cb222c5befb199bd09700f9b13b830c80a05dd5b2e7950457"
-url = "https://github.com/atuinsh/atuin/releases/download/v18.18.1/atuin-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/492109389"
+checksum = "sha256:ba155cb61385e424c972ba5cadab68add2c6ad0d4f842365fc958d7a5f5917d5"
+url = "https://github.com/atuinsh/atuin/releases/download/v18.24.2/atuin-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/665441742"
 provenance = "github-attestations"
 
+[[tools.awscli]]
+version = "2.38.5"
+backend = "aqua:aws/aws-cli"
+
+[tools.awscli."platforms.macos-arm64"]
+checksum = "sha256:4cb957d1f79c7264ef5a0f3a509ce477bbfd23c91eee888493a9dfff445a8d7c"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.38.5.pkg"
+
 [[tools.bitwarden]]
-version = "2026.9.1"
+version = "2026.10.0"
 backend = "aqua:bitwarden/clients"
 
 [tools.bitwarden."platforms.macos-arm64"]
-checksum = "sha256:9f52edf5fb855e277315c1106f1bae326a87c41b425a4c0e00fd1440e77fa0a6"
-url = "https://github.com/bitwarden/clients/releases/download/cli-v2026.9.1/bw-macos-arm64-2026.9.1.zip"
-url_api = "https://api.github.com/repos/bitwarden/clients/releases/assets/603936238"
+checksum = "sha256:062c880508678b8d936ab2522a3a1e92d60f52b5c534e71406e9b47329e95207"
+url = "https://github.com/bitwarden/clients/releases/download/cli-v2026.10.0/bw-macos-arm64-2026.10.0.zip"
+url_api = "https://api.github.com/repos/bitwarden/clients/releases/assets/644457665"
 
 [[tools.bitwarden-secrets-manager]]
 version = "2.1.0"
@@ -434,98 +458,100 @@ checksum = "sha256:c240d7f0ccb90c263a849fcdb09b7ee62630d921348ed6aafda86b9d577bc
 url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-darwin-aarch64.zip"
 
 [[tools.claude]]
-version = "2.1.306"
+version = "2.1.310"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.macos-arm64"]
-checksum = "sha256:7d83cdfb0a9457f712881bb2f86b0f8fd655c818dbb8abf679c43fd04de44171"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.306/claude-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/661106615"
+checksum = "sha256:cf47d30004ff26e5cfed6004a29ca94e05ad53d6f890ee1be8bb582e8ce2a5b5"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.310/claude-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/670426479"
 
 [[tools."conda:ffmpeg"]]
-version = "8.1.2"
+version = "9.0.2"
 backend = "conda:ffmpeg"
 
 [tools."conda:ffmpeg".options]
 channel = "conda-forge"
 
 [tools."conda:ffmpeg"."platforms.macos-arm64"]
-checksum = "sha256:b6f683d0cb78a9ce61b0f36f7d537cc26301a2137f1d0c4c3ea0e23d855d15d8"
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/ffmpeg-8.1.2-gpl_h35cfcbb_109.conda"
+checksum = "sha256:e1513d48c60a92f8e694d9fa0cdd126c3e9cc0dc8a55ba894986787df5148b27"
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/ffmpeg-9.0.2-gpl_h45cda2f_105.conda"
 conda_deps = [
     "libvpx-1.17.0-h484c67d_0",
-    "libopenvino-tensorflow-lite-frontend-2026.4.0-h2ffa9d5_0",
-    "libopenvino-tensorflow-frontend-2026.4.0-h6bbf1e4_0",
-    "libopenvino-pytorch-frontend-2026.4.0-h2ffa9d5_0",
-    "libopenvino-paddle-frontend-2026.4.0-hfd01559_0",
-    "libopenvino-onnx-frontend-2026.4.0-hfd01559_0",
-    "libopenvino-ir-frontend-2026.4.0-he33a331_0",
-    "libopenvino-hetero-plugin-2026.4.0-he33a331_0",
-    "libopenvino-gguf-frontend-2026.4.0-hb2ea1c4_0",
-    "libopenvino-auto-plugin-2026.4.0-hb2ea1c4_0",
-    "libopenvino-auto-batch-plugin-2026.4.0-hb2ea1c4_0",
-    "libopenvino-arm-cpu-plugin-2026.4.0-h3654348_0",
-    "libopenvino-2026.4.0-h3654348_0",
+    "librsvg-2.62.4-hc8ac265_0",
+    "libopenvino-tensorflow-lite-frontend-2026.4.1-ha1fe3df_0",
+    "libopenvino-tensorflow-frontend-2026.4.1-hb5bd0f1_0",
+    "libopenvino-pytorch-frontend-2026.4.1-ha1fe3df_0",
+    "libopenvino-paddle-frontend-2026.4.1-h866fd04_0",
+    "libopenvino-onnx-frontend-2026.4.1-h866fd04_0",
+    "libopenvino-ir-frontend-2026.4.1-hf4bfad6_0",
+    "libopenvino-hetero-plugin-2026.4.1-hf4bfad6_0",
+    "libopenvino-gguf-frontend-2026.4.1-h44445a9_0",
+    "libopenvino-auto-plugin-2026.4.1-h44445a9_0",
+    "libopenvino-auto-batch-plugin-2026.4.1-h44445a9_0",
+    "libopenvino-arm-cpu-plugin-2026.4.1-h5050ef2_0",
+    "libopenvino-2026.4.1-h5050ef2_0",
     "fonts-conda-ecosystem-1-0",
+    "cairo-1.18.6-h580cee5_0",
     "pugixml-1.15-hd3d436d_0",
     "aom-3.14.1-pl5321hf79ea98_2",
     "fontconfig-2.18.3-h81aa574_1",
     "lame-4.0-hef9b5c2_1",
     "libass-0.17.5-h0a551c8_1",
-    "libexpat-2.8.5-h6111c0a_0",
+    "libexpat-2.9.0-h6111c0a_0",
     "libfreetype-2.14.3-hce30654_2",
     "libfreetype6-2.14.3-h2ed5691_2",
-    "libharfbuzz-14.5.1-hcda0f7c_0",
-    "libpng-1.6.59-hf5e6511_0",
-    "libglib-2.90.0-hccd281b_0",
-    "cairo-1.18.6-h580cee5_0",
-    "libjxl-0.12.0-hb71b141_2",
     "liblzma-5.8.3-h8088a28_1",
     "libopus-1.6.1-h74c22ad_1",
-    "libplacebo-7.360.1-hca394fb_1",
+    "libplacebo-7.360.1-h8466173_2",
     "libvorbis-1.3.7-h81086ad_2",
     "libvulkan-loader-1.4.357.0-hfbe1efa_2",
     "libwebp-base-1.6.0-h202fb40_1",
-    "libxml2-16-2.15.4-heb56d2d_0",
-    "libxml2-2.15.4-h550178d_0",
     "libzlib-1.3.2-h8088a28_3",
     "openh264-2.6.0-hf8510ef_2",
     "sdl2-2.32.56-h784d473_0",
-    "shaderc-2026.3-hfd4ff19_1",
     "svt-av1-4.2.0-h484c67d_1",
+    "libabseil-20260526.0-cxx17_h4c27e2a_3",
     "bzip2-1.0.8-h4e30115_10",
     "gmp-6.3.0-hf5e55b1_3",
-    "libcxx-23.1.2-h55c6f16_0",
+    "libcxx-23.1.4-h55c6f16_2",
     "libdav1d7-1.5.4-h74c22ad_4",
+    "libharfbuzz-15.0.0-hcda0f7c_0",
+    "libpng-1.6.59-hf5e6511_0",
     "libiconv-1.18-he4c29f2_3",
-    "librsvg-2.62.4-hc8ac265_0",
-    "openssl-3.6.4-h55eecbc_0",
-    "x264-1!164.3095-hb001647_3",
+    "libjxl-0.12.0-hb71b141_4",
+    "libxml2-2.15.4-h550178d_1",
+    "libxml2-16-2.15.4-heb56d2d_1",
+    "openssl-3.6.5-h55eecbc_0",
+    "x264-1!164.3095-pl5321h4df14c8_3",
     "x265-3.5-h55d2f36_4",
     "libintl-0.25.1-hae62183_2",
+    "libglib-2.90.0-hccd281b_0",
     "fonts-conda-forge-1-hc364b38_1",
     "font-ttf-dejavu-sans-mono-2.37-hab24e00_0",
     "mpg123-1.33.7-h0e3f465_1",
     "fribidi-1.0.17-hb001647_0",
     "graphite2-1.3.15-h784d473_1",
     "icu-78.3-py310h579977c_2",
-    "libhwy-1.4.0-hd2bdd19_1",
     "libbrotlienc-1.2.1-h2ddc9cb_0",
     "libbrotlicommon-1.2.1-h1dcdb26_0",
     "libbrotlidec-1.2.1-h5295a6a_0",
+    "libhwy-1.4.0-hd2bdd19_2",
     "tbb-2023.1.0-h81c76ee_2",
-    "libabseil-20260526.0-cxx17_h4c27e2a_2",
     "libprotobuf-7.35.1-h391e224_3",
     "snappy-1.2.2-h3951085_2",
+    "shaderc-2026.4-hfd4ff19_1",
     "libdovi-3.4.0-hc336dc4_1",
     "lcms2-2.19.1-hce41798_3",
-    "pango-1.58.2-hf9b25ef_1",
     "gdk-pixbuf-2.44.8-h5867e2c_2",
+    "pango-1.58.2-hc6efcc1_3",
+    "libpango-devel-1.58.2-haa2d88b_3",
+    "libpango-1.58.2-hc2ac4f2_3",
+    "libharfbuzz-devel-15.0.0-hcda0f7c_0",
+    "freetype-2.14.3-hce30654_2",
     "libogg-1.3.5-h48c0fde_1",
-    "ca-certificates-2026.7.22-hbd8a1cb_0",
-    "sdl3-3.4.16-h4bb5895_0",
-    "glslang-16.6.0-h1a33c25_0",
-    "spirv-tools-2026.3-hc0b298b_1",
+    "ca-certificates-2026.10.23-hbd8a1cb_0",
+    "sdl3-3.4.18-h4bb5895_0",
     "font-ttf-ubuntu-0.83-h77eed37_3",
     "font-ttf-inconsolata-3.000-h77eed37_0",
     "font-ttf-source-code-pro-2.038-h77eed37_0",
@@ -533,75 +559,68 @@ conda_deps = [
     "libffi-3.7.0-h47dc5ef_1",
     "pcre2-10.47-he63d830_1",
     "libhwloc-2.15.0-default_h98d0dc1_1001",
+    "glslang-16.6.0-h1a33c25_0",
+    "spirv-tools-2026.4-hc0b298b_2",
     "libjpeg-turbo-3.2.0-h84a0fba_1",
     "libtiff-4.7.2-hf67920b_1",
     "lerc-4.2.0-h1eee2c3_0",
-    "libusb-1.0.30-h74c22ad_0",
     "dbus-1.16.2-hf049998_2",
+    "libusb-1.0.30-h602ebc4_1",
     "libdeflate-1.25-he7e0567_1",
     "zstd-1.5.7-hf451053_7",
 ]
 
 [[tools."conda:git"]]
-version = "2.55.0"
+version = "2.56.0"
 backend = "conda:git"
 
 [tools."conda:git".options]
 channel = "conda-forge"
 
 [tools."conda:git"."platforms.macos-arm64"]
-checksum = "sha256:a10bbb7fcf02454996776c30bb982aaa23639a017bc7c4f81bf731ad4c61b7d5"
-url = "https://conda.anaconda.org/conda-forge/osx-arm64/git-2.55.0-pl5321h66f49b9_3.conda"
+checksum = "sha256:2faaa571f7da2dd0b17f54ddb8a0437c9bde290af2202257c75ba73889819975"
+url = "https://conda.anaconda.org/conda-forge/osx-arm64/git-2.56.0-pl5440h66f49b9_0.conda"
 conda_deps = [
-    "libcurl-8.22.0-h6651222_0",
+    "libcurl-8.23.0-h6651222_0",
+    "libexpat-2.9.0-h6111c0a_0",
     "libintl-0.25.1-hae62183_2",
     "libzlib-1.3.2-h8088a28_3",
     "pcre2-10.47-he63d830_1",
-    "libexpat-2.8.5-h6111c0a_0",
     "libiconv-1.18-he4c29f2_3",
-    "openssl-3.6.4-h55eecbc_0",
+    "openssl-3.6.5-h55eecbc_0",
     "perl-5.44.0-1_hb001647_perl5",
     "krb5-1.22.2-h34f8a20_2",
     "libnghttp2-1.68.1-h435687b_1",
     "libpsl-0.23.1-hdb0c161_1",
     "libssh2-1.11.1-hbf2880b_1",
     "zstd-1.5.7-hf451053_7",
-    "ca-certificates-2026.7.22-hbd8a1cb_0",
+    "ca-certificates-2026.10.23-hbd8a1cb_0",
     "bzip2-1.0.8-h4e30115_10",
-    "libedit-3.1.20250104-pl5321h26f1114_1",
-    "libcxx-23.1.2-h55c6f16_0",
-    "c-ares-1.34.8-h74c22ad_2",
+    "libedit-3.1.20260512-pl5321h26f1114_0",
+    "libcxx-23.1.4-h55c6f16_2",
+    "c-ares-1.34.9-h74c22ad_0",
     "libev-4.33-h1a92334_3",
     "icu-78.3-py310h579977c_2",
     "ncurses-6.6-he64c551_1",
 ]
 
 [[tools.direnv]]
-version = "2.37.1"
+version = "2.38.2"
 backend = "aqua:direnv/direnv"
 
 [tools.direnv."platforms.macos-arm64"]
-checksum = "sha256:4f569f3a36732bfd8b8fea7bfcc6ad87a59745c109022164d0ca4832451d5369"
-url = "https://github.com/direnv/direnv/releases/download/v2.37.1/direnv.darwin-arm64"
-url_api = "https://api.github.com/repos/direnv/direnv/releases/assets/274610544"
-
-[[tools.duckdb]]
-version = "1.5.5"
-backend = "aqua:duckdb/duckdb"
-
-[tools.duckdb."platforms.macos-arm64"]
-checksum = "sha256:7a4bc3a93f7f92f5b40cd09c21afaf98e415c6cb9d9170064993782e779f4115"
-url = "https://github.com/duckdb/duckdb/releases/download/v1.5.5/duckdb_cli-osx-universal.zip"
-url_api = "https://api.github.com/repos/duckdb/duckdb/releases/assets/485847030"
+checksum = "sha256:30443c413e74614a53deb90234e9c97661b1041a0f4aca601ceb482a578ae8b6"
+url = "https://github.com/direnv/direnv/releases/download/v2.38.2/direnv.darwin-arm64"
+url_api = "https://api.github.com/repos/direnv/direnv/releases/assets/627455431"
 
 [[tools.ecspresso]]
-version = "2.8.5"
+version = "2.8.7"
 backend = "aqua:kayac/ecspresso"
 
 [tools.ecspresso."platforms.macos-arm64"]
-checksum = "sha256:7bff092d896e294417b5aa7a1611dc85955ee6860905b3d94043931ad76c60e7"
-url = "https://github.com/kayac/ecspresso/releases/download/v2.8.5/ecspresso_2.8.5_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/kayac/ecspresso/releases/assets/469202575"
+checksum = "sha256:8c26a9d293cb0c29242e0ce9fbed0504368085f9d1fd33233a8ba568a210efb2"
+url = "https://github.com/kayac/ecspresso/releases/download/v2.8.7/ecspresso_2.8.7_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/kayac/ecspresso/releases/assets/592330641"
 
 [[tools.fd]]
 version = "10.5.0"
@@ -613,41 +632,41 @@ url = "https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-aarch6
 url_api = "https://api.github.com/repos/sharkdp/fd/releases/assets/530481346"
 
 [[tools.fzf]]
-version = "0.74.4"
+version = "0.74.5"
 backend = "aqua:junegunn/fzf"
 
 [tools.fzf."platforms.macos-arm64"]
-checksum = "sha256:4f6a113bfc0c7959e0005c78d566a51afc4fcefc956f43735c62a9deb19e92ae"
-url = "https://github.com/junegunn/fzf/releases/download/v0.74.4/fzf-0.74.4-darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/junegunn/fzf/releases/assets/558287774"
+checksum = "sha256:ada808c7401b9949ce8842274ac16a6b6193fd32dcada396884a6a9a89e5985a"
+url = "https://github.com/junegunn/fzf/releases/download/v0.74.5/fzf-0.74.5-darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/junegunn/fzf/releases/assets/629581702"
 
 [[tools.gh]]
-version = "2.97.0"
+version = "2.103.2"
 backend = "aqua:cli/cli"
 
 [tools.gh."platforms.macos-arm64"]
-checksum = "sha256:a58b8fd77b417a38f47a0b54d1370c59b0fcdb324ccc9ca002b0998f7c4c999e"
-url = "https://github.com/cli/cli/releases/download/v2.97.0/gh_2.97.0_macOS_arm64.zip"
-url_api = "https://api.github.com/repos/cli/cli/releases/assets/496108298"
+checksum = "sha256:5416000f5d17580a187339e0c4068a01ca5c87f7d4fe6ca64933696f967bc418"
+url = "https://github.com/cli/cli/releases/download/v2.103.2/gh_2.103.2_macOS_arm64.zip"
+url_api = "https://api.github.com/repos/cli/cli/releases/assets/670305145"
 provenance = "github-attestations"
 
 [[tools.ghq]]
-version = "1.10.1"
+version = "1.11.2"
 backend = "aqua:x-motemen/ghq"
 
 [tools.ghq."platforms.macos-arm64"]
-checksum = "sha256:5e3100de0c5a248eebe6ab176ad94d6e12386af70a58c535368a4301861b1398"
-url = "https://github.com/x-motemen/ghq/releases/download/v1.10.1/ghq_darwin_arm64.zip"
-url_api = "https://api.github.com/repos/x-motemen/ghq/releases/assets/394135804"
+checksum = "sha256:8317f8ea5671bccb31e7747eb0a892a77a472dbc7c988f9d47cdfc969a59e242"
+url = "https://github.com/x-motemen/ghq/releases/download/v1.11.2/ghq_darwin_arm64.zip"
+url_api = "https://api.github.com/repos/x-motemen/ghq/releases/assets/598741463"
 
 [[tools."github:zenbu-labs/terminal-browser"]]
-version = "0.6.0"
+version = "0.13.4"
 backend = "github:zenbu-labs/terminal-browser"
 
 [tools."github:zenbu-labs/terminal-browser"."platforms.macos-arm64"]
-checksum = "sha256:d2d1a060b6208f1c8c504a1af825eed0fb05bfadbd8b23f1e0065619c577e749"
-url = "https://github.com/zenbu-labs/terminal-browser/releases/download/v0.6.0/terminal-browser-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/zenbu-labs/terminal-browser/releases/assets/523316884"
+checksum = "sha256:f017230c78c60a07ef4451a1eb0a92727f0b955a8fcd87aec358910c5d0c03c7"
+url = "https://github.com/zenbu-labs/terminal-browser/releases/download/v0.13.4/terminal-browser-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/zenbu-labs/terminal-browser/releases/assets/604405729"
 
 [[tools.gitleaks]]
 version = "8.30.1"
@@ -659,21 +678,21 @@ url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8
 url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332059"
 
 [[tools.go]]
-version = "1.26.10"
+version = "1.27.3"
 backend = "core:go"
 
 [tools.go."platforms.macos-arm64"]
-checksum = "sha256:0b5183492292ada170f9b561a834863808dd02edba599e4ad0e89899330020b3"
-url = "https://dl.google.com/go/go1.26.10.darwin-arm64.tar.gz"
+checksum = "sha256:dd3908cf20959d798c1e06ebe5b72213f0505ce01373b40ce3110975a6cd99c2"
+url = "https://dl.google.com/go/go1.27.3.darwin-arm64.tar.gz"
 
 [[tools.herdr]]
-version = "0.8.2"
+version = "0.9.5"
 backend = "aqua:ogulcancelik/herdr"
 
 [tools.herdr."platforms.macos-arm64"]
-checksum = "sha256:a5d4f4d504d8b309c91f811050559300faba31258425f53c50852fc96f6ae574"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.8.2/herdr-macos-aarch64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/521169108"
+checksum = "sha256:fb77c2232a05a8035421382c894392f4174e4e38a18e48af3dd0290157c3a7e2"
+url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-aarch64"
+url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898230"
 
 [[tools."http:blacksmith"]]
 version = "0.5.2"
@@ -683,14 +702,30 @@ backend = "http:blacksmith"
 checksum = "sha256:82d428b8dbeba0ecdbc796d27de72ea4938a97ec00c97bc70aec3e26cfe66e77"
 url = "https://clireleases.blacksmith.sh/cli/v0.5.2/darwin/arm64/blacksmith"
 
+[[tools."http:duckdb"]]
+version = "2.0.0"
+backend = "http:duckdb"
+
+[tools."http:duckdb"."platforms.macos-arm64"]
+checksum = "blake3:3cc5a83b815a5ac16ae6925836966a0f38d51f5460d2c183b744112a4ccf787e"
+url = "https://github.com/duckdb/duckdb/releases/download/v2.0.0/duckdb-cli-osx-arm64.tar.gz"
+
+[[tools."http:nightlight"]]
+version = "1.0.0"
+backend = "http:nightlight"
+
+[tools."http:nightlight"."platforms.macos-arm64"]
+checksum = "blake3:1a12645f225f2d7301df4082e956434783c0e9c79f5acf2b971704291637ce3a"
+url = "https://github.com/smudge/nightlight/releases/download/v1.0.0/nightlight.arm64"
+
 [[tools.lefthook]]
-version = "2.1.10"
+version = "2.2.2"
 backend = "aqua:evilmartians/lefthook"
 
 [tools.lefthook."platforms.macos-arm64"]
-checksum = "sha256:1dd4dc7b4c50efb1f9d9122cd6535c793738d6e59751c228d49f768ec9dbb604"
-url = "https://github.com/evilmartians/lefthook/releases/download/v2.1.10/lefthook_2.1.10_MacOS_arm64.gz"
-url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/470227499"
+checksum = "sha256:aef03ff2faaf87594068ec3ab794dcc1acd8d64f2aa3109785244c8359fbf15b"
+url = "https://github.com/evilmartians/lefthook/releases/download/v2.2.2/lefthook_2.2.2_MacOS_arm64.gz"
+url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/636518817"
 provenance = "github-attestations"
 
 [[tools.node]]
@@ -702,27 +737,27 @@ checksum = "sha256:1901d539912c02afa10d1cc126943a8855a7eedebe830119463470db5e6c5
 url = "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-arm64.tar.gz"
 
 [[tools."npm:@deepseek-ai/dsh"]]
-version = "0.2.0-rc.2"
+version = "0.2.1-rc.2"
 backend = "npm:@deepseek-ai/dsh"
 
 [[tools."npm:@devcontainers/cli"]]
-version = "0.88.0"
+version = "0.89.0"
 backend = "npm:@devcontainers/cli"
 
 [[tools."npm:@informalsystems/quint"]]
-version = "0.32.0"
+version = "0.33.0"
 backend = "npm:@informalsystems/quint"
 
 [[tools."npm:@openai/codex"]]
-version = "0.155.1"
+version = "0.164.0"
 backend = "npm:@openai/codex"
 
 [[tools."npm:@openai/codex-security"]]
-version = "0.1.5"
+version = "0.6.0"
 backend = "npm:@openai/codex-security"
 
 [[tools."npm:hunkdiff"]]
-version = "0.17.7"
+version = "0.24.1"
 backend = "npm:hunkdiff"
 
 [[tools.opencode]]
@@ -735,17 +770,17 @@ url = "https://github.com/anomalyco/opencode/releases/download/v1.19.4/opencode-
 url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/665836811"
 
 [[tools."pipx:apm-cli"]]
-version = "0.26.0"
+version = "0.35.0"
 backend = "pipx:apm-cli"
 
 [[tools.pnpm]]
-version = "11.20.0"
+version = "12.15.0"
 backend = "aqua:pnpm/pnpm"
 
 [tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:4bc97fea72e5c92eec1fefc8d410c35d01e0d0d52f3160c59f38c32db58b5cd2"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.20.0/pnpm-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/500142373"
+checksum = "sha256:6a41a2877773e97f19832067187cc6fc82e186d8a2cf91fec4b4c1a5fbd6ef27"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.15.0/pnpm-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/662173343"
 provenance = "github-attestations"
 
 [[tools.ripgrep]]
@@ -758,7 +793,7 @@ url = "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15
 url_api = "https://api.github.com/repos/BurntSushi/ripgrep/releases/assets/478118851"
 
 [[tools.ruby]]
-version = "4.0.6"
+version = "4.0.9"
 backend = "core:ruby"
 
 [tools.ruby.options]
@@ -768,25 +803,25 @@ ruby_build_repo = "https://github.com/rbenv/ruby-build.git"
 ruby_install = "false"
 
 [tools.ruby."platforms.macos-arm64"]
-checksum = "sha256:f219dab680aae07600e76956ddf63567b360fa8f50ba026130cc275d77a55bcb"
-url = "https://github.com/jdx/ruby/releases/download/4.0.6-2/ruby-4.0.6.macos.tar.gz"
+checksum = "sha256:6eca5d2aaf6bb6c805daa31b4139a3c974526f41dae990ab0cef0ee3db8ea5d1"
+url = "https://github.com/jdx/ruby/releases/download/4.0.9-1/ruby-4.0.9.macos.tar.gz"
 provenance = "github-attestations"
 
 [[tools.rust]]
-version = "1.97.1"
+version = "1.99.1"
 backend = "core:rust"
 
 [tools.rust.options]
 components = "clippy,rustfmt"
 
 [[tools.uv]]
-version = "0.13.4"
+version = "0.13.5"
 backend = "aqua:astral-sh/uv"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:e0b1d4743ce64c55d9f0f4a444afa6b81125680070ee04e853fcd0f6c1ebf8f1"
-url = "https://github.com/astral-sh/uv/releases/download/0.13.4/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/659693291"
+checksum = "sha256:743f85035a1996ecb350659e01cd9faea9709829be09b1b4b03c73eaf3c9cd73"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/664335803"
 provenance = "github-attestations"
 
 [[tools.xcodegen]]

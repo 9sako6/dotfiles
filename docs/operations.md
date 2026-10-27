@@ -6,7 +6,6 @@
 |---|---|
 | 通常の設定、コピー対象、ユーザーツール、シェルプラグイン | `mise run home:apply` |
 | APMで管理する指示・スキル | `mise run agents:apply` |
-| システム更新で必要なビルドの予定確認 | `mise run system:check` |
 | macOS、Homebrew、private Nix、Night Shift、AnkiConnect | `mise run system:apply` |
 
 管理境界とバージョン固定の規則は[設計](repo-map.md)に従う。変更前に対象の宣言元を確認し、その領域のタスクだけを実行する。
@@ -23,11 +22,13 @@ Bootstrapはorigin/masterを取得し、固定miseとBunを導入して、home�
 
 `.zsh.d` は `symlink-each` で、`home/.zsh.d` にあるファイルを個別にリンクする。Git管理外の `home/.zsh.d/local.zsh` と `home/.zsh.d/secrets.zsh` も、配置元にあれば `home:apply` で反映する。旧 `dist/` を参照するリンクも現在の配置元へ更新する。配置元にないファイルはリンクを作らず、配置先にだけあるファイルは保持する。
 
+通常のCLIを更新するときは、バージョンとlockの変更を取り込んで `mise run home:apply` を実行する。ツール更新のためにsystem:applyを実行する必要はない。AWS CLIとNightlightは公式のビルド済み配布物をmiseで導入し、Nix側の依存を再コンパイルしない。
+
 ツールの宣言元は `home/.config/mise/config.toml`、取得先の固定は同じディレクトリの `mise.lock`。home:applyはこの設定を明示して `mise install --locked` を実行する。バイナリはmiseのユーザー共有領域に入り、リポジトリ専用のツールディレクトリは作らない。ホームのmise設定で常用ツールを有効にし、各プロジェクトの設定では必要な版を選ぶ。
 
 Blacksmithの組織トークン発行と使用量照会には[公式CLI](https://docs.blacksmith.sh/blacksmith-cli/overview)を使う。miseのレジストリに未登録のため、[公式installer](https://get.blacksmith.sh)と同じ配布元から、`http`バックエンドでバージョン指定のバイナリとSHA-256を取得する。0.5.2の配布とmacOS arm64での起動を2026-10-23に確認した。取得先とchecksumはmise.lockへ固定し、`BLACKSMITH_DISABLE_AUTO_UPDATE=1`でCLI自身の自動更新を無効にする。更新時は設定の完全なバージョンを変更し、`mise lock --global http:blacksmith --platform macos-arm64` を実行する。以前の版へ戻す場合も設定とlockを一緒に戻してhome:applyを実行する。公開バイナリのソースとの対応とbuild provenanceは未確認。
 
-Rubyは `settings.ruby.compile = true` でソースからの導入を明示し、lockに保存した取得先と一致させる。mise 2026.8以降はビルド済みバイナリが既定になるため、導入方式を省略すると既存のlockを使えなくなる。
+通常のツール導入は同時２件までとする。Rubyは `settings.ruby.compile = false` として配布済みバイナリの取得先とchecksumをlockへ固定する。Pythonツールの導入では `UV_NO_BUILD=1` を指定し、wheelがない依存を端末上でコンパイルしない。必要な配布物を取得できない場合は導入を失敗させ、ソースビルドへの切り替えで補わない。
 
 シェルプラグインは同じmise設定の `[bootstrap.repos]` に40桁のコミットで固定する。home:applyで取得し、zshは取得済みのファイルを直接読む。シェル起動時にGit検査やダウンロードを行わない。
 
@@ -55,10 +56,6 @@ mise run agents:update
 
 `mise run system:apply` はログインユーザーとして実行する。必要なら固定Lixを導入し、Nixでシステムと補助資源をビルドする。補助資源とNight Shiftを反映した後、sudoで標準system profileを更新し、生成されたnix-darwinをactivateする。home:applyとagents:applyはNixやsudoを起動しない。
 
-更新前に `mise run system:check` を実行すると、Nixの `--dry-run` で必要なビルドと取得予定を確認できる。Lixの導入、パッケージのソースビルド、補助資源の配備、Night Shift、sudoによる反映は行わない。Nixの入力取得や評価には時間がかかる場合がある。Lixが未導入ならエラーで終了する。評価中に生成物を要求する設定も、その場でビルドせずエラーで終了する。予定の確認に成功しても、ビルド全体の成功を示すものではない。
-
-確認結果はその端末内で判断でき、設定やログの外部共有は不要。大量のビルドが必要なら、その場でsystem:applyへ進まず、ビルド済み配布物を使う導入方法を選ぶ。並列数の制限だけで、その端末上のビルドを安全に完走できるとは判断しない。
-
 system:apply のNixビルドは `--max-jobs 1 --cores 2` を指定する。同時に１件をビルドし、各ビルドへ２並列を要求して、更新中のPCへの負荷を抑える。既存のNix設定が高い並列数でも、設定反映前の最初の実行からこの指定を使う。反映後に直接Nixを使う場合も、既定値は同時１件・各２並列とする。
 
 `cores` はビルドスクリプトへの指定であり、CPU・メモリー使用量の厳密な制限ではない。また、再ビルドする部品数は減らない。ビルド済み配布物がない場合は、待ち時間が長くなることがある。ビルドが失敗した場合は、出力の末尾と最初に失敗したパッケージを確認する。成功した成果物は同じコマンドの再実行で再利用できる。並列設定の意味は [Lixの公式説明](https://docs.lix.systems/manual/lix/stable/advanced-topics/cores-vs-jobs.html)を参照する。
@@ -76,7 +73,9 @@ private flakeは `darwinModules.default` を公開する。Home Managerのhome.f
 
 公開・privateともNixのGit入力を使う。追跡済みの未コミット編集は評価に入り、未追跡・無視されたファイルは入らない。新しいNixファイルはgit addしてから評価する。例外は、明示的に読み込むdotfiles.local.tomlだけ。ビルド中の宣言変更を固定する独自snapshotは持たないため、反映中に設定を編集しない。
 
-補助資源はNightlight、AnkiConnect。Nixのout-linkを状態ディレクトリの `dotfiles/current` に登録し、依存をGCから保持する。状態ディレクトリはXDG_STATE_HOME、未指定時はホームの `.local/state`。配置したリンクの参照先だけを `dotfiles/artifacts.json` に記録し、版変更では記録と一致するリンクを更新する。管理外のリンクへの置き換えや既存ファイルとの衝突は拒否する。Ankiのprofileやmediaは削除しない。
+Nixの補助資源はAnkiConnect。Nixのout-linkを状態ディレクトリの `dotfiles/current` に登録し、依存をGCから保持する。状態ディレクトリはXDG_STATE_HOME、未指定時はホームの `.local/state`。配置したリンクの参照先だけを `dotfiles/artifacts.json` に記録し、版変更では記録と一致するリンクを更新する。管理外のリンクへの置き換えや既存ファイルとの衝突は拒否する。Ankiのprofileやmediaは削除しない。
+
+Nightlightはmise管理の公式Apple Siliconバイナリを使う。初回はhome:applyで導入してからsystem:applyを実行する。以前のNix版へのリンクは、所有記録と一致するものだけhome:applyで解除する。利用者が置き換えたリンクやファイルは保持する。
 
 Night Shiftは `[settings.night_shift]` のstart、end、temperatureで指定する。ローカル設定では個々の値を上書きできる。時刻はHH:MM、temperatureは0〜100の整数。スケジュールと色温度を反映し、手動のON/OFFは変更しない。
 

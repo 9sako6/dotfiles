@@ -9,8 +9,8 @@ export async function run(args: string[], cwd = repository, env: NodeJS.ProcessE
   if (await child.exited !== 0) throw new Error(`${args[0]} failed`);
 }
 
-export async function capture(args: string[], cwd = repository) {
-  const child = Bun.spawn(args, { cwd, stdin: "ignore", stdout: "pipe", stderr: "inherit" });
+export async function capture(args: string[], cwd = repository, env: NodeJS.ProcessEnv = process.env) {
+  const child = Bun.spawn(args, { cwd, env, stdin: "ignore", stdout: "pipe", stderr: "inherit" });
   const text = await new Response(child.stdout).text();
   if (await child.exited !== 0) throw new Error(`${args[0]} failed`);
   return text.trim();
