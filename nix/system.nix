@@ -53,10 +53,14 @@ in
       options = "--delete-older-than 2d";
     };
     package = pkgs.lix;
-    settings.experimental-features = [
-      "flakes"
-      "nix-command"
-    ];
+    settings = {
+      cores = lib.mkDefault 2;
+      experimental-features = [
+        "flakes"
+        "nix-command"
+      ];
+      max-jobs = lib.mkDefault 1;
+    };
   };
 
   nix-homebrew = {

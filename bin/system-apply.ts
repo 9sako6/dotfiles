@@ -13,7 +13,7 @@ const state = path.join(process.env.XDG_STATE_HOME ?? path.join(home!, ".local/s
 await safeParents(anchor, path.join(state, "current"));
 await mkdir(state, { recursive: true });
 const user = await capture(["/usr/bin/id", "-un"]);
-await run([nix, "--extra-experimental-features", "nix-command flakes", "build", "--impure", "--no-update-lock-file", "--no-write-lock-file", "--file", "nix/apply.nix", "--argstr", "directory", repository, "--argstr", "user", user, "bundle", "--out-link", path.join(state, "current")]);
+await run([nix, "--extra-experimental-features", "nix-command flakes", "build", "--max-jobs", "1", "--cores", "2", "--impure", "--no-update-lock-file", "--no-write-lock-file", "--file", "nix/apply.nix", "--argstr", "directory", repository, "--argstr", "user", user, "bundle", "--out-link", path.join(state, "current")]);
 const system = await realpath(path.join(state, "current/system"));
 const resources = await realpath(path.join(state, "current/resources"));
 await deployResources(home!, state, resources);

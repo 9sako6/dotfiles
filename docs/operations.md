@@ -54,6 +54,10 @@ mise run agents:update
 
 `mise run system:apply` はログインユーザーとして実行する。必要なら固定Lixを導入し、Nixでシステムと補助資源をビルドする。補助資源とNight Shiftを反映した後、sudoで標準system profileを更新し、生成されたnix-darwinをactivateする。home:applyとagents:applyはNixやsudoを起動しない。
 
+system:apply のNixビルドは `--max-jobs 1 --cores 2` を指定する。同時に１件をビルドし、各ビルドへ２並列を要求して、更新中もPCを操作できる余裕を確保する。既存のNix設定が高い並列数でも、設定反映前の最初の実行からこの指定を使う。反映後に直接Nixを使う場合も、既定値は同時１件・各２並列とする。
+
+`cores` はビルドスクリプトへの指定であり、CPU・メモリー使用量の厳密な制限ではない。また、再ビルドする部品数は減らない。ビルド済み配布物がない場合は、待ち時間が長くなることがある。ビルドが失敗した場合は、出力の末尾と最初に失敗したパッケージを確認する。成功した成果物は同じコマンドの再実行で再利用できる。並列設定の意味は [Lixの公式説明](https://docs.lix.systems/manual/lix/stable/advanced-topics/cores-vs-jobs.html)を参照する。
+
 公開設定は `dotfiles.toml`。マシン固有の設定はGit管理外の `dotfiles.local.toml` に置く。`private.path` はローカル設定だけで指定し、公開checkoutからの相対パスも使える。
 
 ```toml
