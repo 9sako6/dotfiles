@@ -28,7 +28,7 @@ Bootstrapはorigin/masterを取得し、固定miseとBunを導入して、home�
 
 Blacksmithの組織トークン発行と使用量照会には[公式CLI](https://docs.blacksmith.sh/blacksmith-cli/overview)を使う。miseのレジストリに未登録のため、[公式installer](https://get.blacksmith.sh)と同じ配布元から、`http`バックエンドでバージョン指定のバイナリとSHA-256を取得する。0.5.2の配布とmacOS arm64での起動を2026-10-23に確認した。取得先とchecksumはmise.lockへ固定し、`BLACKSMITH_DISABLE_AUTO_UPDATE=1`でCLI自身の自動更新を無効にする。更新時は設定の完全なバージョンを変更し、`mise lock --global http:blacksmith --platform macos-arm64` を実行する。以前の版へ戻す場合も設定とlockを一緒に戻してhome:applyを実行する。公開バイナリのソースとの対応とbuild provenanceは未確認。
 
-通常のツール導入は同時２件までとする。Rubyは `settings.ruby.compile = false` として配布済みバイナリの取得先とchecksumをlockへ固定する。Pythonツールの導入では `UV_NO_BUILD=1` を指定し、wheelがない依存を端末上でコンパイルしない。必要な配布物を取得できない場合は導入を失敗させ、ソースビルドへの切り替えで補わない。
+通常のツール導入は同時２件までとする。Rubyは `settings.ruby.compile = false` として配布済みバイナリの取得先とchecksumをlockへ固定する。APM用Pythonはツールの `python` オプションで3.13.18へ固定し、ビルド済み配布物を使う。Pythonツールの導入では `UV_NO_BUILD=1` を指定し、wheelがない依存を端末上でコンパイルしない。必要な配布物を取得できない場合は導入を失敗させ、ソースビルドへの切り替えで補わない。
 
 シェルプラグインは同じmise設定の `[bootstrap.repos]` に40桁のコミットで固定する。home:applyで取得し、zshは取得済みのファイルを直接読む。シェル起動時にGit検査やダウンロードを行わない。
 

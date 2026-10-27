@@ -32,7 +32,7 @@ opencode = "1.19.4"
 "npm:@openai/codex" = "0.164.0"
 "npm:@openai/codex-security" = "0.6.0"
 "npm:hunkdiff" = "0.24.1"
-"pipx:apm-cli" = "0.35.0"
+"pipx:apm-cli" = { version = "0.35.0", python = "3.13.18" }
 pnpm = "12.15.0"
 ripgrep = "15.2.0"
 ruby = "4.0.9"
@@ -52,6 +52,9 @@ jobs = 2
 
 [settings.github]
 credential_command = 'gh_path="$(mise which gh)"; exec "$gh_path" auth token'
+
+[settings.python]
+compile = false
 
 [settings.ruby]
 compile = false
