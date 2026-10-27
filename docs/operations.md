@@ -6,6 +6,7 @@
 |---|---|
 | 通常の設定、コピー対象、ユーザーツール、シェルプラグイン | `mise run home:apply` |
 | APMで管理する指示・スキル | `mise run agents:apply` |
+| システム更新で必要なビルドの予定確認 | `mise run system:check` |
 | macOS、Homebrew、private Nix、Night Shift、AnkiConnect | `mise run system:apply` |
 
 管理境界とバージョン固定の規則は[設計](repo-map.md)に従う。変更前に対象の宣言元を確認し、その領域のタスクだけを実行する。
@@ -54,7 +55,11 @@ mise run agents:update
 
 `mise run system:apply` はログインユーザーとして実行する。必要なら固定Lixを導入し、Nixでシステムと補助資源をビルドする。補助資源とNight Shiftを反映した後、sudoで標準system profileを更新し、生成されたnix-darwinをactivateする。home:applyとagents:applyはNixやsudoを起動しない。
 
-system:apply のNixビルドは `--max-jobs 1 --cores 2` を指定する。同時に１件をビルドし、各ビルドへ２並列を要求して、更新中もPCを操作できる余裕を確保する。既存のNix設定が高い並列数でも、設定反映前の最初の実行からこの指定を使う。反映後に直接Nixを使う場合も、既定値は同時１件・各２並列とする。
+更新前に `mise run system:check` を実行すると、Nixの `--dry-run` で必要なビルドと取得予定を確認できる。Lixの導入、パッケージのソースビルド、補助資源の配備、Night Shift、sudoによる反映は行わない。Nixの入力取得や評価には時間がかかる場合がある。Lixが未導入ならエラーで終了する。評価中に生成物を要求する設定も、その場でビルドせずエラーで終了する。予定の確認に成功しても、ビルド全体の成功を示すものではない。
+
+確認結果はその端末内で判断でき、設定やログの外部共有は不要。大量のビルドが必要なら、その場でsystem:applyへ進まず、ビルド済み配布物を使う導入方法を選ぶ。並列数の制限だけで、その端末上のビルドを安全に完走できるとは判断しない。
+
+system:apply のNixビルドは `--max-jobs 1 --cores 2` を指定する。同時に１件をビルドし、各ビルドへ２並列を要求して、更新中のPCへの負荷を抑える。既存のNix設定が高い並列数でも、設定反映前の最初の実行からこの指定を使う。反映後に直接Nixを使う場合も、既定値は同時１件・各２並列とする。
 
 `cores` はビルドスクリプトへの指定であり、CPU・メモリー使用量の厳密な制限ではない。また、再ビルドする部品数は減らない。ビルド済み配布物がない場合は、待ち時間が長くなることがある。ビルドが失敗した場合は、出力の末尾と最初に失敗したパッケージを確認する。成功した成果物は同じコマンドの再実行で再利用できる。並列設定の意味は [Lixの公式説明](https://docs.lix.systems/manual/lix/stable/advanced-topics/cores-vs-jobs.html)を参照する。
 
