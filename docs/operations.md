@@ -103,7 +103,7 @@ DOTFILES_TEST_FFPROBE="$(mise which ffprobe)" \
 
 [CVE-2026-111497](https://patchtheplanet.org/brotli)への対応として、Bunは1.4.4、Nixの共有BrotliライブラリとFFmpegのBrotli依存は1.2.1に固定する。Nixでは `nix/brotli-overlay.nix` を公開設定とprivate設定で共有する。上流のNixpkgsを更新するときは、このoverrideが引き続き必要か確認する。
 
-マージ後は設定を取得し、次の順に反映する。FFmpeg本体の版は変わらないため、lockだけでなく導入済みの依存も置き換える。
+マージ後は設定を取得し、次の順に反映する。以前のFFmpegを導入済みの場合も、固定依存を含めて確実に置き換える。
 
 ```sh
 mise run home:apply
