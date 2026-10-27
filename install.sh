@@ -44,10 +44,10 @@ main() {
   "$DOTFILES_DIR/bin/install-mise.sh"
   export PATH="$HOME/.local/bin:$PATH"
   "$MISE_BIN" trust "$DOTFILES_DIR/home/.config/mise/config.toml"
-  MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" "$MISE_BIN" install --locked bun
+  MISE_GLOBAL_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" "$MISE_BIN" install --locked bun
   cd "$DOTFILES_DIR"
   "$MISE_BIN" trust
-  MISE_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" \
+  MISE_GLOBAL_CONFIG_FILE="$DOTFILES_DIR/home/.config/mise/config.toml" \
     "$MISE_BIN" exec -- mise run home:apply
   "$MISE_BIN" exec -- mise run agents:apply
   "$MISE_BIN" exec -- mise run system:apply

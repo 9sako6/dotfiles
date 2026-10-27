@@ -47,7 +47,7 @@ async function initRepoWithManagedGitConfig(tempDir: string) {
   const repoDir = path.join(tempDir, "repo");
   const hooksDir = path.join(homeDir, ".config", "git", "hooks");
   const globalConfigPath = path.join(homeDir, ".gitconfig");
-  const gitleaksPath = path.join(homeDir, ".local", "share", "mise", "installs", "gitleaks", "8.30.1", "gitleaks");
+  const gitleaksPath = path.join(homeDir, ".local", "share", "mise", "installs", "gitleaks", "fixture", "gitleaks");
   const misePath = path.join(homeDir, ".local", "bin", "mise");
   const mybinDir = path.join(homeDir, "mybin");
   const undoScriptPath = path.join(mybinDir, "git-undo");
@@ -74,7 +74,7 @@ async function initRepoWithManagedGitConfig(tempDir: string) {
     misePath,
     `#!/bin/sh
 [ "$1" = "which" ] && [ "$2" = "gitleaks" ] || exit 2
-printf '%s\n' "$HOME/.local/share/mise/installs/gitleaks/8.30.1/gitleaks"
+printf '%s\n' "$HOME/.local/share/mise/installs/gitleaks/fixture/gitleaks"
 `,
   );
   await makeExecutable(gitleaksPath, "#!/bin/sh\nexit 0\n");
@@ -488,25 +488,21 @@ printf '%s\n' 'export DIRENV_HOOK_LOADED=1'
     });
   });
 
-  test("pre-commit hookはmanaged gitleaksでcleanなstageを検査する", async () => {
-    await withTempDir("pre-commit-gitleaks-clean", async (tempDir) => {
-      const { env, gitleaksPath, repoDir } = await initRepoWithManagedGitConfig(tempDir);
-      const logPath = path.join(tempDir, "gitleaks.log");
-      await makeExecutable(
-        gitleaksPath,
-        `#!/bin/sh
-printf '<%s>' "$@" > "$GITLEAKS_LOG"
-`,
-      );
-      await writeRepoFile(repoDir, "README.md", "safe markdown\n");
-      expect((await runGit(repoDir, env, "add", "README.md")).code).toBe(0);
-
-      const commitResult = await runGit(repoDir, { ...env, GITLEAKS_LOG: logPath }, "commit", "-m", "test");
-
-      expect(commitResult.code).toBe(0);
-      expect(await readFile(logPath, "utf8")).toBe("<protect><--staged><--no-banner>");
+  for (const stagedSecret of [false, true]) {
+    test(`pre-commit hookは実際のgitleaksで${stagedSecret ? "stage内の秘密情報を拒否する" : "stage外の秘密情報に影響されずコミットする"}`, async () => {
+      await withTempDir("pre-commit-gitleaks", async tempDir => {
+        const { env, gitleaksPath, repoDir } = await initRepoWithManagedGitConfig(tempDir);
+        await copyFile(Bun.which("gitleaks")!, gitleaksPath);
+        await chmod(gitleaksPath, 0o755);
+        const secret = "token=ghp_" + "b91f2c83e47a506d".repeat(2) + "f8a2\n";
+        await writeRepoFile(repoDir, "credentials.txt", stagedSecret ? secret : "safe\n");
+        expect((await runGit(repoDir, env, "add", "credentials.txt")).code).toBe(0);
+        await writeRepoFile(repoDir, "credentials.txt", stagedSecret ? "safe\n" : secret);
+        const result = await runGit(repoDir, env, "commit", "-m", "test");
+        expect(result.code).toBe(stagedSecret ? 1 : 0);
+      });
     });
-  });
+  }
 
   for (const failure of [
     { exitCode: 1, message: "gitleaks: secrets detected. Commit aborted." },

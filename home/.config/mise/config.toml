@@ -1,42 +1,43 @@
 [tools]
-antigravity-cli = "1.2.2"
-atuin = "18.18.1"
-awscli = "2.35.11"
+antigravity-cli = "1.4.7"
+atuin = "18.24.2"
+awscli = "2.38.5"
 # Bitwarden CLI (bw)
-bitwarden = "2026.9.1"
+bitwarden = "2026.10.0"
 # Secrets Manager CLI (bws)
 bitwarden-secrets-manager = "2.1.0"
 bun = "1.4.4"
-claude = "2.1.306"
-"conda:ffmpeg" = "8.1.2"
-"conda:git" = "2.55.0"
-direnv = "2.37.1"
-duckdb = "1.5.5"
-ecspresso = "2.8.5"
+claude = "2.1.310"
+"conda:ffmpeg" = "9.0.2"
+"conda:git" = "2.56.0"
+direnv = "2.38.2"
+ecspresso = "2.8.7"
 fd = "10.5.0"
-fzf = "0.74.4"
-gh = "2.97.0"
-ghq = "1.10.1"
-"github:zenbu-labs/terminal-browser" = "0.6.0"
+fzf = "0.74.5"
+gh = "2.103.2"
+ghq = "1.11.2"
+"github:zenbu-labs/terminal-browser" = "0.13.4"
 gitleaks = "8.30.1"
-go = "1.26.10"
-herdr = "0.8.2"
+go = "1.27.3"
+herdr = "0.9.5"
 "http:blacksmith" = { version = "0.5.2", url = 'https://clireleases.blacksmith.sh/cli/v{{ version }}/{{ os(macos="darwin") }}/{{ arch(x64="amd64") }}/blacksmith', checksum_url = 'https://clireleases.blacksmith.sh/cli/v{{ version }}/{{ os(macos="darwin") }}/{{ arch(x64="amd64") }}/blacksmith.sha256', checksum_expr = '"sha256:" + split(body, " ")[0]' }
-lefthook = "2.1.10"
+"http:duckdb" = { version = "2.0.0", url = "https://github.com/duckdb/duckdb/releases/download/v{{ version }}/duckdb-cli-osx-arm64.tar.gz" }
+"http:nightlight" = { version = "1.0.0", url = "https://github.com/smudge/nightlight/releases/download/v{{ version }}/nightlight.arm64", bin = "nightlight" }
+lefthook = "2.2.2"
 node = "26.12.1"
 opencode = "1.19.4"
-"npm:@deepseek-ai/dsh" = "0.2.0-rc.2"
-"npm:@devcontainers/cli" = "0.88.0"
-"npm:@informalsystems/quint" = "0.32.0"
-"npm:@openai/codex" = "0.155.1"
-"npm:@openai/codex-security" = "0.1.5"
-"npm:hunkdiff" = "0.17.7"
-"pipx:apm-cli" = "0.26.0"
-pnpm = "11.20.0"
+"npm:@deepseek-ai/dsh" = "0.2.1-rc.2"
+"npm:@devcontainers/cli" = "0.89.0"
+"npm:@informalsystems/quint" = "0.33.0"
+"npm:@openai/codex" = "0.164.0"
+"npm:@openai/codex-security" = "0.6.0"
+"npm:hunkdiff" = "0.24.1"
+"pipx:apm-cli" = { version = "0.35.0", python = "3.13.18" }
+pnpm = "12.15.0"
 ripgrep = "15.2.0"
-ruby = "4.0.6"
-rust = { version = "1.97.1", components = ["rustfmt", "clippy"] }
-uv = "0.13.4"
+ruby = "4.0.9"
+rust = { version = "1.99.1", components = ["rustfmt", "clippy"] }
+uv = "0.13.5"
 xcodegen = "2.46.0"
 zoxide = "0.10.0"
 
@@ -47,13 +48,16 @@ BLACKSMITH_DISABLE_AUTO_UPDATE = "1"
 [settings]
 activate_aggressive = true
 auto_install = false
-disable_tools = ["awscli"]
+jobs = 2
 
 [settings.github]
 credential_command = 'gh_path="$(mise which gh)"; exec "$gh_path" auth token'
 
+[settings.python]
+compile = false
+
 [settings.ruby]
-compile = true
+compile = false
 
 [bootstrap.repos]
 "~/.local/share/zinit/plugins/momo-lab---zsh-abbrev-alias" = { url = "https://github.com/momo-lab/zsh-abbrev-alias.git", ref = "33fe094da0a70e279e1cc5376a3d7cb7a5343df5" }

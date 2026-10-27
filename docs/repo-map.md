@@ -10,7 +10,7 @@
 | エージェント資源 | home/.apm、home/apm.yml、home/apm.lock.yaml | `mise run agents:apply` |
 | macOSとNix補助資源 | nix、flake.lock、dotfiles.local.toml | `mise run system:apply` |
 
-普通のCLIとツールチェーンはmiseのユーザー領域に導入する。ホームのmise設定で有効にし、各プロジェクトの設定で版を選ぶ。GUI、システムサービス、Nightlight、AnkiConnectはNix側に置く。Anki GUI 26.05はシステムのNixパッケージとして維持する。
+普通のCLIとツールチェーンはmiseのユーザー領域に導入する。ホームのmise設定で有効にし、各プロジェクトの設定で版を選ぶ。AWS CLIとNightlightもmiseでビルド済み配布物を導入する。GUI、システムサービス、AnkiConnectはNix側に置く。Anki GUI 26.05はシステムのNixパッケージとして維持する。
 
 通常の設定はmiseの `[dotfiles]` でcheckoutへリンクする。devcontainerなどから実体として読む必要がある設定だけ、dotfiles.tomlのcopyで宣言する。コピー処理はBun TypeScriptに置き、コピーと反映を同じタスクで完了させる。指定したディレクトリ配下を全て所有し、削除も同期する。管理外の親や兄弟を消さず、symlinkをたどって書き込まない。
 
@@ -24,7 +24,7 @@ Nix宣言はnixディレクトリにまとめる。system.nixがmacOSとHomebrew
 
 privateは独立したGit checkoutとflakeを持ち、darwinModules.defaultを公開する。Home Manager userはprivateが明示的に定義する。公開側はuserを作らず、privateのhome.file、packages、launchd、stateVersionを維持する。configuration、dotfilesDirectory、dotfilesSourceHome、inputsのspecialArgsと、公開nixpkgsを共有する契約も維持する。公開配置と重なるprivate home.fileは拒否する。
 
-補助資源のNix rootはNightlightとAnkiConnectへのリンクを持ち、状態ディレクトリにout-linkとして登録する。前回配置したリンクの参照先だけを記録し、利用者や他ツールが置き換えた配置は更新を拒否する。コピー対象のディレクトリには独自の所有記録を作らず、現在のcopy宣言を所有範囲とする。
+補助資源のNix rootはAnkiConnectへのリンクを持ち、状態ディレクトリにout-linkとして登録する。前回配置したリンクの参照先だけを記録し、利用者や他ツールが置き換えた配置は更新を拒否する。コピー対象のディレクトリには独自の所有記録を作らず、現在のcopy宣言を所有範囲とする。
 
 公開・privateはNix標準のGit入力で取得する。独自snapshot、全領域のplan、inventory、評価cache、CLIの自己更新を持たない。システム反映は標準nix-darwinの世代とactivationに任せる。Bootstrapだけが固定miseとBunを導入して3つのタスクを順に実行する。
 

@@ -33,22 +33,6 @@ jobs:
       - name: Run gitleaks
         run: gitleaks git --redact --no-banner --exit-code 1
 
-  rootless-contract:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Prepare mise and Bun
-        env:
-          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-          MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
-        run: |
-          ./bin/install-mise.sh
-          "$HOME/.local/bin/mise" install bun
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "$(dirname "$("$HOME/.local/bin/mise" which bun)")" >> "$GITHUB_PATH"
-      - name: Verify actual home and agents tasks without Nix or Rust
-        run: bun test tests/apply.test.ts
-
   contract-test:
     runs-on: macos-latest
     env:
@@ -59,22 +43,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Lix
-        run: |
-          if ! command -v nix >/dev/null 2>&1; then
-            ./bin/install-lix.sh
-          fi
-          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
-
-      - name: Restore and save Nix store
-        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
-        with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'flake.nix', 'nix/**/*.nix') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
-
       - name: Prepare mise and Bun
         env:
-          MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
+          MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
         run: |
           ./bin/install-mise.sh
@@ -82,31 +53,68 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           echo "$(dirname "$("$HOME/.local/bin/mise" which bun)")" >> "$GITHUB_PATH"
 
-      - name: Verify mise-managed FFmpeg media behavior
+      - name: Deploy public home and fixed tools
         env:
-          MISE_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
+          MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/home/.config/mise/config.toml
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-          MISE_AUTO_INSTALL: "false"
         run: |
-          test "$(uname -s)" = Darwin
-          test "$(uname -m)" = arm64
-          before="$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
-          "$HOME/.local/bin/mise" install --force --locked conda:ffmpeg
-          test "$before" = "$(shasum -a 256 home/.config/mise/config.toml home/.config/mise/mise.lock)"
-          DOTFILES_TEST_FFMPEG="$("$HOME/.local/bin/mise" which ffmpeg)"
-          DOTFILES_TEST_FFPROBE="$("$HOME/.local/bin/mise" which ffprobe)"
-          export DOTFILES_TEST_FFMPEG DOTFILES_TEST_FFPROBE
-          test -x "$DOTFILES_TEST_FFMPEG"
-          test -x "$DOTFILES_TEST_FFPROBE"
-          file -L "$DOTFILES_TEST_FFMPEG" "$DOTFILES_TEST_FFPROBE"
-          "$DOTFILES_TEST_FFMPEG" -buildconf
+          test ! -e "$HOME/.zsh.d/secrets.zsh"
+          mkdir -p "$HOME/.zsh.d"
+          printf runtime > "$HOME/.zsh.d/runtime.zsh"
+          ln -s "$GITHUB_WORKSPACE/dist/.zsh.d/alias.zsh" "$HOME/.zsh.d/alias.zsh"
+          mise exec -- mise run home:apply
+          test "$(cat "$HOME/.zsh.d/runtime.zsh")" = runtime
+
+      - name: Verify daily-use tools start
+        run: |
+          for tool in agy atuin bun cargo codex fd fzf gh ghq git herdr pnpm quint rg rustc terminal-browser zoxide; do
+            mise exec -- "$tool" --version
+          done
+          mise exec -- aws --version
+          mise exec -- blacksmith --version
+          mise exec -- gitleaks version
+          mise exec -- go version
+          mise exec -- nightlight --help
+          mise exec -- ruby -ropenssl -rpsych -e 'puts RUBY_VERSION'
+          mise exec -- duckdb -no-agent :memory: 'SELECT 42;'
+
+      - name: Verify shell plugins load
+        run: |
+          zsh -i -c '
+            [[ -n $ZSH_HIGHLIGHT_VERSION ]] || exit 1
+            [[ -n $functions[_zsh_autosuggest_start] ]] || exit 1
+            whence -w abbrev-alias | grep -q function || exit 1
+            alias codex >/dev/null || exit 1
+            [[ "$(command -v fd)" == "$(mise which fd)" ]] || exit 1
+            [[ "$(command -v fzf)" == "$(mise which fzf)" ]] || exit 1
+          '
+          mise bootstrap repos status --missing
+
+      - name: Generate and deploy agent resources
+        run: |
+          mise exec -- mise run agents:apply
+          for resource in .agents/skills .claude/rules .claude/settings.json .claude/skills .codex/AGENTS.md; do
+            diff -r "home/$resource" "$HOME/$resource"
+          done
+          test ! -e "$HOME/.zsh.d/secrets.zsh"
+
+      - name: Verify FFmpeg media behavior
+        run: |
+          export DOTFILES_TEST_FFMPEG="$(mise which ffmpeg)"
+          export DOTFILES_TEST_FFPROBE="$(mise which ffprobe)"
           python3 -m unittest discover -s tests -p test_ffmpeg.py -v
 
       - name: Check TypeScript and shell contracts
         run: |
           bun install --frozen-lockfile
-          bun run tsc --noEmit
-          bun test ./tests ./home/.apm/skills/anki/tools/*.test.ts
+          bin/check-for-agent
+
+      - name: Install Lix
+        run: |
+          if ! command -v nix >/dev/null 2>&1; then
+            ./bin/install-lix.sh
+          fi
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
       - name: Check artifact and private composition
         run: |

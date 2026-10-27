@@ -22,11 +22,13 @@ Bootstrapはorigin/masterを取得し、固定miseとBunを導入して、home�
 
 `.zsh.d` は `symlink-each` で、`home/.zsh.d` にあるファイルを個別にリンクする。Git管理外の `home/.zsh.d/local.zsh` と `home/.zsh.d/secrets.zsh` も、配置元にあれば `home:apply` で反映する。旧 `dist/` を参照するリンクも現在の配置元へ更新する。配置元にないファイルはリンクを作らず、配置先にだけあるファイルは保持する。
 
+通常のCLIを更新するときは、バージョンとlockの変更を取り込んで `mise run home:apply` を実行する。ツール更新のためにsystem:applyを実行する必要はない。AWS CLIとNightlightは公式のビルド済み配布物をmiseで導入し、Nix側の依存を再コンパイルしない。
+
 ツールの宣言元は `home/.config/mise/config.toml`、取得先の固定は同じディレクトリの `mise.lock`。home:applyはこの設定を明示して `mise install --locked` を実行する。バイナリはmiseのユーザー共有領域に入り、リポジトリ専用のツールディレクトリは作らない。ホームのmise設定で常用ツールを有効にし、各プロジェクトの設定では必要な版を選ぶ。
 
 Blacksmithの組織トークン発行と使用量照会には[公式CLI](https://docs.blacksmith.sh/blacksmith-cli/overview)を使う。miseのレジストリに未登録のため、[公式installer](https://get.blacksmith.sh)と同じ配布元から、`http`バックエンドでバージョン指定のバイナリとSHA-256を取得する。0.5.2の配布とmacOS arm64での起動を2026-10-23に確認した。取得先とchecksumはmise.lockへ固定し、`BLACKSMITH_DISABLE_AUTO_UPDATE=1`でCLI自身の自動更新を無効にする。更新時は設定の完全なバージョンを変更し、`mise lock --global http:blacksmith --platform macos-arm64` を実行する。以前の版へ戻す場合も設定とlockを一緒に戻してhome:applyを実行する。公開バイナリのソースとの対応とbuild provenanceは未確認。
 
-Rubyは `settings.ruby.compile = true` でソースからの導入を明示し、lockに保存した取得先と一致させる。mise 2026.8以降はビルド済みバイナリが既定になるため、導入方式を省略すると既存のlockを使えなくなる。
+通常のツール導入は同時２件までとする。Rubyは `settings.ruby.compile = false` として配布済みバイナリの取得先とchecksumをlockへ固定する。APM用Pythonはツールの `python` オプションで3.13.18へ固定し、ビルド済み配布物を使う。Pythonツールの導入では `UV_NO_BUILD=1` を指定し、wheelがない依存を端末上でコンパイルしない。必要な配布物を取得できない場合は導入を失敗させ、ソースビルドへの切り替えで補わない。
 
 シェルプラグインは同じmise設定の `[bootstrap.repos]` に40桁のコミットで固定する。home:applyで取得し、zshは取得済みのファイルを直接読む。シェル起動時にGit検査やダウンロードを行わない。
 
@@ -54,6 +56,10 @@ mise run agents:update
 
 `mise run system:apply` はログインユーザーとして実行する。必要なら固定Lixを導入し、Nixでシステムと補助資源をビルドする。補助資源とNight Shiftを反映した後、sudoで標準system profileを更新し、生成されたnix-darwinをactivateする。home:applyとagents:applyはNixやsudoを起動しない。
 
+system:apply のNixビルドは `--max-jobs 1 --cores 2` を指定する。同時に１件をビルドし、各ビルドへ２並列を要求して、更新中のPCへの負荷を抑える。既存のNix設定が高い並列数でも、設定反映前の最初の実行からこの指定を使う。反映後に直接Nixを使う場合も、既定値は同時１件・各２並列とする。
+
+`cores` はビルドスクリプトへの指定であり、CPU・メモリー使用量の厳密な制限ではない。また、再ビルドする部品数は減らない。ビルド済み配布物がない場合は、待ち時間が長くなることがある。ビルドが失敗した場合は、出力の末尾と最初に失敗したパッケージを確認する。成功した成果物は同じコマンドの再実行で再利用できる。並列設定の意味は [Lixの公式説明](https://docs.lix.systems/manual/lix/stable/advanced-topics/cores-vs-jobs.html)を参照する。
+
 公開設定は `dotfiles.toml`。マシン固有の設定はGit管理外の `dotfiles.local.toml` に置く。`private.path` はローカル設定だけで指定し、公開checkoutからの相対パスも使える。
 
 ```toml
@@ -67,7 +73,9 @@ private flakeは `darwinModules.default` を公開する。Home Managerのhome.f
 
 公開・privateともNixのGit入力を使う。追跡済みの未コミット編集は評価に入り、未追跡・無視されたファイルは入らない。新しいNixファイルはgit addしてから評価する。例外は、明示的に読み込むdotfiles.local.tomlだけ。ビルド中の宣言変更を固定する独自snapshotは持たないため、反映中に設定を編集しない。
 
-補助資源はNightlight、AnkiConnect。Nixのout-linkを状態ディレクトリの `dotfiles/current` に登録し、依存をGCから保持する。状態ディレクトリはXDG_STATE_HOME、未指定時はホームの `.local/state`。配置したリンクの参照先だけを `dotfiles/artifacts.json` に記録し、版変更では記録と一致するリンクを更新する。管理外のリンクへの置き換えや既存ファイルとの衝突は拒否する。Ankiのprofileやmediaは削除しない。
+Nixの補助資源はAnkiConnect。Nixのout-linkを状態ディレクトリの `dotfiles/current` に登録し、依存をGCから保持する。状態ディレクトリはXDG_STATE_HOME、未指定時はホームの `.local/state`。配置したリンクの参照先だけを `dotfiles/artifacts.json` に記録し、版変更では記録と一致するリンクを更新する。管理外のリンクへの置き換えや既存ファイルとの衝突は拒否する。Ankiのprofileやmediaは削除しない。
+
+Nightlightはmise管理の公式Apple Siliconバイナリを使う。初回はhome:applyで導入してからsystem:applyを実行する。以前のNix版へのリンクは、所有記録と一致するものだけhome:applyで解除する。利用者が置き換えたリンクやファイルは保持する。
 
 Night Shiftは `[settings.night_shift]` のstart、end、temperatureで指定する。ローカル設定では個々の値を上書きできる。時刻はHH:MM、temperatureは0〜100の整数。スケジュールと色温度を反映し、手動のON/OFFは変更しない。
 
@@ -95,7 +103,7 @@ DOTFILES_TEST_FFPROBE="$(mise which ffprobe)" \
 
 [CVE-2026-111497](https://patchtheplanet.org/brotli)への対応として、Bunは1.4.4、Nixの共有BrotliライブラリとFFmpegのBrotli依存は1.2.1に固定する。Nixでは `nix/brotli-overlay.nix` を公開設定とprivate設定で共有する。上流のNixpkgsを更新するときは、このoverrideが引き続き必要か確認する。
 
-マージ後は設定を取得し、次の順に反映する。FFmpeg本体の版は変わらないため、lockだけでなく導入済みの依存も置き換える。
+マージ後は設定を取得し、次の順に反映する。以前のFFmpegを導入済みの場合も、固定依存を含めて確実に置き換える。
 
 ```sh
 mise run home:apply
@@ -122,6 +130,6 @@ nix build --no-link --no-update-lock-file --no-write-lock-file \
 python3 -m unittest discover -s nix/tests -p 'test_*.py'
 ```
 
-Bunのテストはコピーの更新・削除、未変更時の保持、symlinkの拒否、補助資源の所有確認、APM失敗後の再実行を検証する。実際のmiseタスクも隔離したホームで実行し、NixとRustが不要なことを確認する。Nixのテストはprivate合成、補助資源のGC rootを確認する。
+Bunのテストはコピーの更新・削除、未変更時の保持、symlinkの拒否、補助資源の所有確認、APM失敗後の再実行を検証する。通常の導入はPRのmacOS CIで実際のhome:apply・agents:applyを実行し、ツールの起動、シェルプラグイン、生成物の配備、FFmpegの変換を確認する。Nixはこれらの確認が終わってから導入する。Nixのテストはprivate合成、補助資源のGC rootを確認する。
 
-push時のtest workflowに加え、public-install-smokeを手動実行すると、固定ツールの導入、APMの生成・配備、シェルプラグイン、公開システムのビルドをmacOSで確認できる。CIでは実機のmacOS設定をactivateしない。
+test workflowはPRとmasterへのpushで実導入と振る舞いを検証する。public-system-buildは定期実行または手動実行で公開システム全体をビルドする。通常のツール導入はtest workflowだけに置き、二重に実行しない。CIではmacOS設定をactivateしない。
